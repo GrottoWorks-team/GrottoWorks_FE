@@ -147,3 +147,22 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# Local & auxiliary files (chỉ bổ trợ ở máy cá nhân, không thuộc dự án)
+claude.md
+CLAUDE.md
+agent.agentmd
+AGENTS.md
+*.agentmd
+ORCHESTRATION.md
+PRODUCT.md
+DESIGN_SYSTEM.md
+docs/plan-flow-4-5-6.md
+docs/superpowers/
+.impeccable/
+.superpowers/
+.playwright-mcp/
+.tmp-verify/
+*.docx
+*.tsbuildinfo
+ui-demo.html

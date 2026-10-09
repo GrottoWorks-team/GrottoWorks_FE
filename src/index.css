@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* GOLDEN WINTER — Design Tokens (DESIGN_SYSTEM.md mục 37) */
+    /* shadcn variables mapped to Golden Winter palette (HSL) */
+    --background: 210 17% 98%; /* canvas #F8F9FA */
+    --foreground: 234 22% 22%; /* ink #2B2D42 */
+    --primary: 152 80% 20%; /* pine #0A5C36 */
+    --primary-foreground: 0 0% 100%; /* on-primary #FFFFFF */
+    --secondary: 0 0% 100%; /* card #FFFFFF */
+    --secondary-foreground: 234 22% 22%; /* ink #2B2D42 */
+    --muted: 210 16% 96%; /* table-header #F1F5F2 */
+    --muted-foreground: 208 7% 46%; /* muted #6C757D */
+    --accent: 45 97% 47%; /* gold #EEB902 */
+    --accent-foreground: 234 22% 22%; /* ink #2B2D42 */
+    --destructive: 0 72% 37%; /* danger #991B1B */
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 14% 93%; /* hairline #E9ECEF */
+    --input: 210 14% 93%;
+    --ring: 152 80% 20%; /* focus ring = primary */
+    --radius: 10px;
+
+    /* Raw Golden Winter tokens (dùng trực tiếp khi cần) */
+    --color-primary: #0a5c36;
+    --color-primary-hover: #0d7344;
+    --color-primary-light: #e8f5e9;
+    --color-accent-gold: #eeb902;
+    --color-accent-gold-light: #fef9c3;
+    --color-accent-warm: #f4a261;
+
+    --bg-canvas: #f8f9fa;
+    --bg-card: #ffffff;
+    --bg-table-header: #f1f5f2;
+    --bg-hover: #f8f9fa;
+
+    --text-main: #2b2d42;
+    --text-muted: #6c757d;
+    --text-light: #adb5bd;
+    --text-on-primary: #ffffff;
+
+    --border-light: #e9ecef;
+    --border-accent: #e8f0ec;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+
+  /* a11y: ring focus-visible cho mọi phần tử tương tác KHÔNG dùng Button/Input
+     (nav link, hàng bảng có tabindex, chip lọc, tab, chuông) — 2 component đó
+     đã có ring riêng ở utilities layer (thắng base). */
+  a:focus-visible,
+  button:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.lbl-mono {
+  @apply font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground;
+}
+
+@keyframes g-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Thanh tiến độ vươn ra từ 0 (giữ width đích ở style inline). */
+@keyframes g-bar {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.g-bar {
+  transform-origin: left;
+  animation: g-bar 0.9s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--d, 0) * 70ms + 200ms);
+}
+
+.stagger > * {
+  animation: g-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--d, 0) * 70ms);
+}
+
+/* Biến thể dùng trực tiếp trên một phần tử (nav item, hàng bảng…). */
+.g-item {
+  animation: g-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: calc(var(--d, 0) * 70ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+::selection {
+  background: #eeb902;
+  color: #2b2d42;
+}
+
