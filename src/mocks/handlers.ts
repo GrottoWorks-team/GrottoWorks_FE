@@ -276,6 +276,24 @@ export const handlers = [
     })
   }),
 
+  // F-IDN-03: Làm mới token
+  http.post('/api/v1/auth/refresh', async ({ request }) => {
+    const { refreshToken } = (await request.json()) as { refreshToken?: string }
+    if (!refreshToken || !refreshToken.startsWith('refresh-')) {
+      return HttpResponse.json({ code: 'UNAUTHORIZED', detail: 'Refresh token không hợp lệ hoặc đã hết hạn' }, { status: 401 })
+    }
+    const userId = refreshToken.split('-')[1] ?? 'u1'
+    return HttpResponse.json({
+      data: {
+        accessToken: `demo-${userId}`,
+        refreshToken: `refresh-${userId}-${Date.now()}`,
+        expiresIn: 900,
+        tokenType: 'Bearer',
+      },
+      meta: { correlationId: 'refresh-' + Date.now() },
+    })
+  }),
+
   // Auth — mật khẩu demo chung: 'grotto'.
   http.post('/api/auth/login', async ({ request }) => {
     const { email, password } = (await request.json()) as { email?: string; password?: string }
