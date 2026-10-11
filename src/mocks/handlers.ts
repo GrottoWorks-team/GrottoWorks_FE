@@ -329,6 +329,15 @@ export const handlers = [
     const u = tokenUser(loadDb(), request)
     return u ? HttpResponse.json(u) : new HttpResponse(null, { status: 401 })
   }),
+  // F-IDN-03: Đăng xuất thu hồi token
+  http.post('/api/v1/auth/logout', async ({ request }) => {
+    const authHeader = request.headers.get('authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json({ code: 'UNAUTHORIZED', detail: 'Chưa đăng nhập' }, { status: 401 })
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
   // Dashboard summaries.
   http.get('/api/dashboard/community', () => HttpResponse.json(committeeSummary(loadDb()))),
