@@ -33,4 +33,11 @@ describe('Auth Identity Service APIs', () => {
 
     expect(res).toBeUndefined()
   })
+
+  it('GET /api/v1/users/me returns authenticated caller profile', async () => {
+    localStorage.setItem('grotto-token', 'demo-u1')
+    const profile = await api<{ id: string; email: string; displayName: string }>('/api/v1/users/me')
+    expect(profile.id).toBe('u1')
+    expect(profile.displayName).toBeDefined()
+  })
 })
