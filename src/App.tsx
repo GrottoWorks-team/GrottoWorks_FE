@@ -16,6 +16,7 @@ function rolePrefix(role: Role): string {
 }
 
 const Login = lazy(() => import('@/pages/Login'))
+const Register = lazy(() => import('@/pages/Register'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 const Profile = lazy(() => import('@/pages/Profile'))
 const SeasonListPage = lazy(() => import('@/features/season/pages/SeasonListPage'))
@@ -206,6 +207,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
                 <Route path="/login" element={<LoginGate />} />
+                <Route path="/register" element={<Register />} />
                 <Route
                   path="/profile"
                   element={

@@ -223,6 +223,41 @@ const crud = (resource: string) => [
 ]
 
 export const handlers = [
+  // F-IDN-02: Đăng ký tài khoản
+  http.post('/api/v1/auth/register', async ({ request }) => {
+    const db = loadDb()
+    const body = (await request.json()) as any
+    const existing = db.users.find((u: any) => u.email === body.email)
+    if (existing) {
+      return HttpResponse.json({ code: 'CONFLICT', detail: 'Email đã được đăng ký' }, { status: 409 })
+    }
+    const newUser = {
+      id: nextId(db, 'users'),
+      name: body.displayName || 'Tình nguyện viên mới',
+      email: body.email,
+      role: 'COMMUNITY',
+      skills: [],
+      points: 0,
+      avatarHue: Math.floor(Math.random() * 360),
+      phone: body.phone,
+      parishId: body.parishId,
+    }
+    db.users.push(newUser)
+    saveDb(db)
+    return HttpResponse.json({
+      data: {
+        id: newUser.id,
+        email: newUser.email,
+        displayName: newUser.name,
+        phone: newUser.phone,
+        status: 'Active',
+        parishId: newUser.parishId,
+        role: newUser.role,
+      },
+      meta: { correlationId: 'reg-' + Date.now() },
+    }, { status: 201 })
+  }),
+
   // Auth — mật khẩu demo chung: 'grotto'.
   http.post('/api/auth/login', async ({ request }) => {
     const { email, password } = (await request.json()) as { email?: string; password?: string }

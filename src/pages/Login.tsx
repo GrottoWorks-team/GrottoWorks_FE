@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
@@ -123,6 +123,13 @@ export default function Login() {
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? t('login.loggingIn') : t('login.submit')}
             </Button>
+
+            <div className="text-center text-sm pt-2 text-grotto-muted">
+              Chưa có tài khoản?{' '}
+              <Link to="/register" className="font-medium text-grotto-primary hover:underline">
+                Đăng ký ngay
+              </Link>
+            </div>
           </form>
         </div>
       </Card>
