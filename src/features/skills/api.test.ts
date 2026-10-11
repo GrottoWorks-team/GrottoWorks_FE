@@ -23,4 +23,14 @@ describe('Skills Catalog APIs (F-IDN-06)', () => {
     expect(list[0]).toHaveProperty('name')
     expect(list[0]).toHaveProperty('status', 'Active')
   })
+
+  it('POST /api/v1/skills creates a new skill', async () => {
+    const created = await api<SkillDto>('/api/v1/skills', {
+      method: 'POST',
+      body: JSON.stringify({ code: 'TEST_SKILL', name: 'Kỹ năng thử nghiệm', description: 'Mô tả test' }),
+    })
+    expect(created.name).toBe('Kỹ năng thử nghiệm')
+    expect(created.code).toBe('TEST_SKILL')
+    expect(created.status).toBe('Active')
+  })
 })

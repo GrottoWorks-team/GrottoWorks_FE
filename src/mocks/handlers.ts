@@ -408,6 +408,33 @@ export const handlers = [
     })
   }),
 
+  // F-IDN-06: Tạo kỹ năng mới (Role: Admin)
+  http.post('/api/v1/skills', async ({ request }) => {
+    const db = loadDb()
+    const body = (await request.json()) as any
+    const code = (body.code ?? '').trim()
+    const name = (body.name ?? '').trim()
+    if (!code || !name) {
+      return HttpResponse.json({ code: 'VALIDATION_FAILED', detail: 'Thiếu mã hoặc tên kỹ năng' }, { status: 422 })
+    }
+    if (db.skills.includes(name)) {
+      return HttpResponse.json({ code: 'CONFLICT', detail: 'Tên kỹ năng đã tồn tại' }, { status: 409 })
+    }
+    db.skills.push(name)
+    saveDb(db)
+    const newSkill = {
+      id: `sk-${db.skills.length}`,
+      code,
+      name,
+      description: body.description ?? `Kỹ năng: ${name}`,
+      status: 'Active',
+    }
+    return HttpResponse.json({
+      data: newSkill,
+      meta: { correlationId: 'skill-create-' + Date.now() },
+    }, { status: 201 })
+  }),
+
   // seed key object đơn / mảng chuỗi — mock layer loại trừ khỏi crud() generic.
   http.post('/api/skills', async ({ request }) => {
     const db = loadDb()
