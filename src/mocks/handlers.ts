@@ -316,12 +316,46 @@ export const handlers = [
         status: u.locked ? 'Locked' : 'Active',
         parishId: u.parishId ?? '11111111-1111-1111-1111-111111111111',
         role: u.role,
+        points: u.points ?? 0,
         communityId: u.communityId ?? null,
         introduction: 'Tình nguyện viên phục vụ giáo xứ',
         skillIds: u.skills ?? [],
         availability: [],
       },
       meta: { correlationId: 'me-' + Date.now() },
+    })
+  }),
+
+  // F-IDN-05: Cập nhật thông tin người dùng hiện tại
+  http.patch('/api/v1/users/me', async ({ request }) => {
+    const u = tokenUser(loadDb(), request)
+    if (!u) return new HttpResponse(null, { status: 401 })
+    const body = (await request.json()) as any
+    const db = loadDb()
+    const idx = db.users.findIndex((x: any) => x.id === u.id)
+    if (idx >= 0) {
+      if (body.displayName) db.users[idx].name = body.displayName
+      if (body.phone !== undefined) db.users[idx].phone = body.phone
+      if (body.communityId !== undefined) db.users[idx].communityId = body.communityId
+      saveDb(db)
+    }
+    const updated = db.users[idx] ?? u
+    return HttpResponse.json({
+      data: {
+        id: updated.id,
+        email: updated.email,
+        displayName: updated.name,
+        phone: updated.phone ?? null,
+        status: updated.locked ? 'Locked' : 'Active',
+        parishId: updated.parishId ?? '11111111-1111-1111-1111-111111111111',
+        role: updated.role,
+        points: updated.points ?? 0,
+        communityId: updated.communityId ?? null,
+        introduction: body.introduction ?? 'Tình nguyện viên phục vụ giáo xứ',
+        skillIds: updated.skills ?? [],
+        availability: [],
+      },
+      meta: { correlationId: 'patch-me-' + Date.now() },
     })
   }),
 

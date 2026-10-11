@@ -40,4 +40,13 @@ describe('Auth Identity Service APIs', () => {
     expect(profile.id).toBe('u1')
     expect(profile.displayName).toBeDefined()
   })
+
+  it('PATCH /api/v1/users/me updates current user profile', async () => {
+    localStorage.setItem('grotto-token', 'demo-u1')
+    const updated = await api<{ id: string; displayName: string }>('/api/v1/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ displayName: 'Khoa Updated Name' }),
+    })
+    expect(updated.displayName).toBe('Khoa Updated Name')
+  })
 })

@@ -18,7 +18,7 @@ import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { useSkills } from '@/features/tasks/api'
 import { useTimesheets } from '@/features/timesheets/api'
-import { useUpdateProfile } from '@/features/profile/api'
+import { useUpdateMyProfile, useUpdateProfile } from '@/features/profile/api'
 import type { User } from '@/types'
 
 const schema = z.object({
@@ -32,6 +32,7 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
   const { t } = useTranslation()
   const toast = useToast()
   const update = useUpdateProfile()
+  const updateMyProfile = useUpdateMyProfile()
   const { data: allSkills = [] } = useSkills()
 
   const {
@@ -47,6 +48,11 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
   const onSubmit = async (data: FormData) => {
     try {
       await update.mutateAsync({ id: user.id, name: data.name, skills: data.skills })
+      try {
+        await updateMyProfile.mutateAsync({ displayName: data.name })
+      } catch {
+        // v1 endpoint optional in legacy test env
+      }
     } catch {
       toast(t('common.error'), 'alert')
       return
