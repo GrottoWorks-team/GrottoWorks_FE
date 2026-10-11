@@ -389,6 +389,25 @@ export const handlers = [
       headers: { 'Content-Disposition': 'attachment; filename="grottoworks-backup.json"' },
     }),
   ),
+  // F-IDN-06: Lấy danh mục kỹ năng
+  http.get('/api/v1/skills', ({ request }) => {
+    const url = new URL(request.url)
+    const status = url.searchParams.get('status')
+    const db = loadDb()
+    const list = (db.skills || []).map((s: string, idx: number) => ({
+      id: `sk-${idx + 1}`,
+      code: `SK_${idx + 1}`,
+      name: s,
+      description: `Kỹ năng phục vụ: ${s}`,
+      status: 'Active',
+    }))
+    const filtered = status ? list.filter((s: any) => s.status.toLowerCase() === status.toLowerCase()) : list
+    return HttpResponse.json({
+      data: filtered,
+      meta: { correlationId: 'skills-' + Date.now() },
+    })
+  }),
+
   // seed key object đơn / mảng chuỗi — mock layer loại trừ khỏi crud() generic.
   http.post('/api/skills', async ({ request }) => {
     const db = loadDb()
