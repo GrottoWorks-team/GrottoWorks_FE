@@ -33,4 +33,23 @@ describe('Skills Catalog APIs (F-IDN-06)', () => {
     expect(created.code).toBe('TEST_SKILL')
     expect(created.status).toBe('Active')
   })
+
+  it('PATCH /api/v1/skills/:skillId updates an existing skill', async () => {
+    const list = await api<SkillDto[]>('/api/v1/skills')
+    const firstSkill = list[0]
+
+    const updated = await api<SkillDto>(`/api/v1/skills/${firstSkill.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        name: 'Kỹ năng đã đổi tên',
+        description: 'Mô tả mới sau cập nhật',
+        status: 'Inactive',
+      }),
+    })
+
+    expect(updated.id).toBe(firstSkill.id)
+    expect(updated.name).toBe('Kỹ năng đã đổi tên')
+    expect(updated.description).toBe('Mô tả mới sau cập nhật')
+    expect(updated.status).toBe('Inactive')
+  })
 })

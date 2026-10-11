@@ -435,6 +435,44 @@ export const handlers = [
     }, { status: 201 })
   }),
 
+  // F-IDN-06: Cập nhật kỹ năng / trạng thái (Role: Admin)
+  http.patch('/api/v1/skills/:skillId', async ({ params, request }) => {
+    const { skillId } = params
+    const db = loadDb()
+    const body = (await request.json()) as any
+    const list = (db.skills || []).map((s: string, idx: number) => ({
+      id: `sk-${idx + 1}`,
+      code: `SK_${idx + 1}`,
+      name: s,
+      description: `Kỹ năng phục vụ: ${s}`,
+      status: 'Active',
+    }))
+    const index = list.findIndex((s: any) => s.id === skillId)
+    if (index === -1) {
+      return HttpResponse.json({ code: 'NOT_FOUND', detail: 'Không tìm thấy kỹ năng' }, { status: 404 })
+    }
+    const current = list[index]
+    if (body.name && body.name.trim()) {
+      const nextName = body.name.trim()
+      if (db.skills.some((s: string, i: number) => s === nextName && i !== index)) {
+        return HttpResponse.json({ code: 'CONFLICT', detail: 'Tên kỹ năng đã tồn tại' }, { status: 409 })
+      }
+      db.skills[index] = nextName
+      saveDb(db)
+      current.name = nextName
+    }
+    if (body.description !== undefined) {
+      current.description = body.description
+    }
+    if (body.status !== undefined) {
+      current.status = body.status
+    }
+    return HttpResponse.json({
+      data: current,
+      meta: { correlationId: 'skill-update-' + Date.now() },
+    })
+  }),
+
   // seed key object đơn / mảng chuỗi — mock layer loại trừ khỏi crud() generic.
   http.post('/api/skills', async ({ request }) => {
     const db = loadDb()

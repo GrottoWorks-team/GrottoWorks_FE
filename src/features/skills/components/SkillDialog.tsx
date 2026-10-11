@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -6,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useCreateSkill } from '@/features/skills/api'
+import { useCreateSkill, useUpdateSkill } from '@/features/skills/api'
+import type { SkillDto } from '@/types/identity'
 
 const schema = z.object({
   code: z.string().trim().min(2, 'Mã kỹ năng tối thiểu 2 ký tự').toUpperCase(),
@@ -19,11 +21,13 @@ type FormData = z.infer<typeof schema>
 interface SkillDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  skill?: SkillDto | null
 }
 
-export function SkillDialog({ open, onOpenChange }: SkillDialogProps) {
+export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
   const toast = useToast()
   const createSkill = useCreateSkill()
+  const updateSkill = useUpdateSkill()
 
   const {
     register,
@@ -32,20 +36,44 @@ export function SkillDialog({ open, onOpenChange }: SkillDialogProps) {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
+    defaultValues: {
+      code: skill?.code || '',
+      name: skill?.name || '',
+      description: skill?.description || '',
+    },
   })
+
+  useEffect(() => {
+    if (open) {
+      reset({
+        code: skill?.code || '',
+        name: skill?.name || '',
+        description: skill?.description || '',
+      })
+    }
+  }, [open, skill, reset])
 
   const onSubmit = async (data: FormData) => {
     try {
-      await createSkill.mutateAsync({
-        code: data.code,
-        name: data.name,
-        description: data.description || null,
-      })
-      toast('Thêm kỹ năng mới thành công!')
+      if (skill) {
+        await updateSkill.mutateAsync({
+          skillId: skill.id,
+          name: data.name,
+          description: data.description || null,
+        })
+        toast('Cập nhật kỹ năng thành công!')
+      } else {
+        await createSkill.mutateAsync({
+          code: data.code,
+          name: data.name,
+          description: data.description || null,
+        })
+        toast('Thêm kỹ năng mới thành công!')
+      }
       reset()
       onOpenChange(false)
     } catch (err: any) {
-      toast(err.message || 'Không thể tạo kỹ năng', 'alert')
+      toast(err.message || 'Thao tác không thành công', 'alert')
     }
   }
 
@@ -53,7 +81,9 @@ export function SkillDialog({ open, onOpenChange }: SkillDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md bg-white border-grotto-border">
         <DialogHeader>
-          <DialogTitle className="text-grotto-text font-bold">Thêm Kỹ Năng Mới</DialogTitle>
+          <DialogTitle className="text-grotto-text font-bold">
+            {skill ? 'Cập Nhật Kỹ Năng' : 'Thêm Kỹ Năng Mới'}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
