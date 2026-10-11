@@ -258,6 +258,24 @@ export const handlers = [
     }, { status: 201 })
   }),
 
+  // F-IDN-02: Đăng nhập trả về TokenPair
+  http.post('/api/v1/auth/login', async ({ request }) => {
+    const { email, password } = (await request.json()) as { email?: string; password?: string }
+    const u = loadDb().users.find((x: any) => x.email === email && !x.locked)
+    if (!u || (password !== 'grotto' && password !== 'Admin!123456' && password !== 'ChangeMe!123456')) {
+      return HttpResponse.json({ code: 'UNAUTHORIZED', detail: 'Email hoặc mật khẩu không đúng' }, { status: 401 })
+    }
+    return HttpResponse.json({
+      data: {
+        accessToken: `demo-${u.id}`,
+        refreshToken: `refresh-${u.id}-${Date.now()}`,
+        expiresIn: 900,
+        tokenType: 'Bearer',
+      },
+      meta: { correlationId: 'login-' + Date.now() },
+    })
+  }),
+
   // Auth — mật khẩu demo chung: 'grotto'.
   http.post('/api/auth/login', async ({ request }) => {
     const { email, password } = (await request.json()) as { email?: string; password?: string }
@@ -267,6 +285,28 @@ export const handlers = [
     }
     return HttpResponse.json({ token: `demo-${u.id}`, user: u })
   }),
+  // F-IDN-05: Lấy thông tin người dùng hiện tại
+  http.get('/api/v1/users/me', ({ request }) => {
+    const u = tokenUser(loadDb(), request)
+    if (!u) return new HttpResponse(null, { status: 401 })
+    return HttpResponse.json({
+      data: {
+        id: u.id,
+        email: u.email,
+        displayName: u.name,
+        phone: u.phone ?? null,
+        status: u.locked ? 'Locked' : 'Active',
+        parishId: u.parishId ?? '11111111-1111-1111-1111-111111111111',
+        role: u.role,
+        communityId: u.communityId ?? null,
+        introduction: 'Tình nguyện viên phục vụ giáo xứ',
+        skillIds: u.skills ?? [],
+        availability: [],
+      },
+      meta: { correlationId: 'me-' + Date.now() },
+    })
+  }),
+
   http.get('/api/auth/me', ({ request }) => {
     const u = tokenUser(loadDb(), request)
     return u ? HttpResponse.json(u) : new HttpResponse(null, { status: 401 })
