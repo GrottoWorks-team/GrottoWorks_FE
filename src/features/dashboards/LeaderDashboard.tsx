@@ -8,7 +8,7 @@ import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { ArrowRight, Users } from 'lucide-react'
+import { ArrowRight, FileImage, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
@@ -101,6 +101,14 @@ export default function LeaderDashboard() {
       <PageHeader
         title={area ? t('features.dashboards.leaderTitle', { name: area.name }) : t('features.dashboards.leaderTitleNoArea')}
         sub={t('features.dashboards.leaderSub')}
+        actions={
+          area && (
+            <Button variant="outline" onClick={() => navigate(`/leader/areas/${area.id}/design`)}>
+              <FileImage className="size-4" />
+              {t('features.design.title')}
+            </Button>
+          )
+        }
       />
 
       {isPending ? (

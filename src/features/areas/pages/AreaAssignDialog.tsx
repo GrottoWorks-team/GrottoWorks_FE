@@ -81,6 +81,7 @@ export function AreaAssignDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.areas.assignTitle', { name: area.name })}
       footer={
         <>

@@ -75,6 +75,7 @@ function ReceptionDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.donations.recordTitle')}
       footer={
         <>

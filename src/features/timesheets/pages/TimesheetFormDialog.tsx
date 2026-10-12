@@ -83,6 +83,7 @@ export function TimesheetFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.timesheets.createTitle')}
       footer={
         <>

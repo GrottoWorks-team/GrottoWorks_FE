@@ -124,6 +124,7 @@ export function TaskFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="lg"
       title={editing ? t('features.tasks.edit') : t('features.tasks.create')}
       footer={
         <>
@@ -137,14 +138,16 @@ export function TaskFormDialog({
       }
     >
       <form id="task-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <div>
-          <Label htmlFor="task-title">{t('features.tasks.name')}</Label>
-          <Input id="task-title" {...register('title')} />
-          {err(errors.title?.message)}
-        </div>
-        <div>
-          <Label htmlFor="task-description">{t('features.tasks.description')}</Label>
-          <Input id="task-description" {...register('description')} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="task-title">{t('features.tasks.name')}</Label>
+            <Input id="task-title" {...register('title')} />
+            {err(errors.title?.message)}
+          </div>
+          <div>
+            <Label htmlFor="task-description">{t('features.tasks.description')}</Label>
+            <Input id="task-description" {...register('description')} />
+          </div>
         </div>
         {fixedAreaId ? null : (
           <div>
@@ -186,7 +189,7 @@ export function TaskFormDialog({
             })}
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <Label htmlFor="task-hours">{t('features.tasks.estimateHours')}</Label>
             <Input id="task-hours" type="number" min={0} step="0.5" className="tabular" {...register('estimateHours')} />
@@ -197,11 +200,11 @@ export function TaskFormDialog({
             <Input id="task-needed" type="number" min={1} step="1" className="tabular" {...register('volunteersNeeded')} />
             {err(errors.volunteersNeeded?.message)}
           </div>
-        </div>
-        <div>
-          <Label htmlFor="task-due">{t('features.tasks.dueDate')}</Label>
-          <Input id="task-due" type="date" className="tabular" {...register('dueDate')} />
-          {err(errors.dueDate?.message)}
+          <div>
+            <Label htmlFor="task-due">{t('features.tasks.dueDate')}</Label>
+            <Input id="task-due" type="date" className="tabular" {...register('dueDate')} />
+            {err(errors.dueDate?.message)}
+          </div>
         </div>
         <div>
           <Label className="mb-1.5 block">{t('features.tasks.materials')}</Label>

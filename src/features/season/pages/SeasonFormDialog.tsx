@@ -105,6 +105,7 @@ export function SeasonFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={editing ? t('features.season.edit') : t('features.season.create')}
       footer={
         <>

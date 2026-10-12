@@ -93,6 +93,7 @@ export function DonationFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.donations.createTitle')}
       footer={
         <>

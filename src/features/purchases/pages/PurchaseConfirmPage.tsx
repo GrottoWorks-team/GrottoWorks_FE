@@ -97,6 +97,7 @@ function RecordDialog({ request, materials, onClose }: {
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.purchases.recordTitle', { code: request.id })}
       footer={
         <>

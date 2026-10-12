@@ -58,6 +58,20 @@ test('POST task persist rồi GET thấy, kèm activity log', async () => {
   ).toBe(true)
 })
 
+test('POST registration tự gắn createdAt + status PENDING (đăng ký công khai)', async () => {
+  const res = await fetch(`${base}/api/registrations`, {
+    method: 'POST',
+    body: JSON.stringify({ name: 'Têresa', phone: '0901234567', kind: 'VOLUNTEER' }),
+  })
+  expect(res.status).toBe(201)
+  const created = await res.json()
+  expect(created.id).toBe('reg1')
+  expect(created.status).toBe('PENDING')
+  expect(typeof created.createdAt).toBe('string')
+  const list = await (await fetch(`${base}/api/registrations`)).json()
+  expect(list).toHaveLength(1)
+})
+
 test('DELETE id không tồn tại → 404', async () => {
   const res = await fetch(`${base}/api/tasks/t999`, { method: 'DELETE' })
   expect(res.status).toBe(404)

@@ -8,6 +8,7 @@ import { purchaseRecords, purchaseRequests } from './seed/purchases';
 import { timesheets } from './seed/timesheets';
 import { activityLogs, allocations, borrowedItems, checklistItems, supportRegs, supportRequests, volunteerRegs } from './seed/misc';
 import { SKILLS } from '../types';
+import type { Design, DesignComment, DesignVersion, Registration } from '../types';
 
 export const seed = {
   parish,
@@ -28,6 +29,13 @@ export const seed = {
   supportRegs,
   checklists: checklistItems,
   activityLogs,
+  // Đăng ký đồng hành công khai từ landing — khởi tạo rỗng, chỉ ghi khi có
+  // người gửi form /register (POST /api/registrations).
+  registrations: [] as Registration[],
+  // Design Review (2D/3D) — rỗng, người dùng tạo qua UI.
+  designs: [] as Design[],
+  designVersions: [] as DesignVersion[],
+  designComments: [] as DesignComment[],
   skills: [...SKILLS],
 };
 

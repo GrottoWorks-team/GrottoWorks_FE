@@ -117,5 +117,101 @@ export interface ChecklistItem { id: string; areaId: string; label: string; done
 
 export interface ActivityLog { id: string; at: string; actor: string; action: string; target: string }
 
+/** Hình thức đồng hành đăng ký từ trang landing công khai (chưa có tài khoản). */
+export type RegistrationKind = 'VOLUNTEER' | 'MATERIAL' | 'MONETARY';
+export type RegistrationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+/**
+ * Đăng ký đồng hành công khai (form trên trang /register) — KHÁC với
+ * VolunteerReg/SupportReg (đăng ký vào một nhiệm vụ/yêu cầu cụ thể, cần đăng
+ * nhập). Bản ghi này để ban điều hành liên hệ lại; `createdAt`/`status` do
+ * server/mock sinh khi POST.
+ */
+export interface Registration {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  /** Giáo khu người đăng ký sinh hoạt (không bắt buộc với khách ngoài giáo xứ). */
+  communityId?: string;
+  /** Khu vực muốn đồng hành — 5 loại khu vực công tác. */
+  areaType?: AreaType;
+  kind: RegistrationKind;
+  /** Kỹ năng có thể hỗ trợ (khớp danh mục /api/skills). */
+  skills?: string[];
+  note?: string;
+  createdAt: string;
+  status: RegistrationStatus;
+}
+
+// ── Design Review (2D/3D) ──────────────────────────────────────────────────
+// Hồ sơ thiết kế của một khu vực + phiên bản file + yêu cầu chỉnh sửa.
+// KHÁC với các luồng mua/quyên góp: đây là không gian review bản vẽ/ảnh/mô
+// hình đã có sẵn (không tạo mô hình bằng AI).
+
+export type DesignType = 'TWO_D' | 'THREE_D';
+export type DesignVersionStatus = 'DRAFT' | 'IN_REVIEW' | 'APPROVED' | 'CHANGES_REQUESTED';
+export type DesignCommentStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
+export type DesignCommentPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+/** Kiểu vị trí gắn kèm của một yêu cầu review. */
+export type DesignPositionType = 'NONE' | 'IMAGE_2D' | 'MODEL_3D';
+
+export interface Design {
+  id: string;
+  /** Khu vực công tác (WorkArea.id) mà hồ sơ thiết kế thuộc về. */
+  areaId: string;
+  title: string;
+  description?: string;
+  designType: DesignType;
+  /** Phiên bản đang xem mặc định (DesignVersion.id). */
+  currentVersionId?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DesignVersion {
+  id: string;
+  designId: string;
+  versionNumber: number;
+  /**
+   * Khoá blob phía client (IndexedDB `grotto-blobs-v1`) trong giai đoạn mock.
+   * Production: thay bằng storage key/URL của hệ thống file thật.
+   */
+  fileKey: string;
+  fileName: string;
+  mimeType: string;
+  fileSize: number;
+  changeNote?: string;
+  status: DesignVersionStatus;
+  uploadedBy: string;
+  uploadedAt: string;
+  approvedBy?: string;
+  approvedAt?: string;
+}
+
+export interface DesignComment {
+  id: string;
+  /** Yêu cầu luôn gắn với MỘT phiên bản — không chỉ với hồ sơ thiết kế. */
+  designVersionId: string;
+  title: string;
+  description?: string;
+  priority: DesignCommentPriority;
+  status: DesignCommentStatus;
+  positionType: DesignPositionType;
+  /** Toạ độ CHUẨN HOÁ 0..1 theo ảnh gốc (chỉ khi positionType = IMAGE_2D). */
+  position2D?: { x: number; y: number };
+  /** Toạ độ theo hệ toạ độ model (chỉ khi positionType = MODEL_3D) — L3. */
+  position3D?: { x: number; y: number; z: number };
+  /** Tên mesh/object nếu xác định được (chỉ khi MODEL_3D). */
+  objectName?: string;
+  createdBy: string;
+  assignedTo?: string;
+  /** Task.id nếu yêu cầu đã được chuyển thành nhiệm vụ. */
+  taskId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Danh mục kỹ năng dùng chung (Admin — Task 12 quản trị danh mục).
 export const SKILLS = ['Điện', 'Mộc', 'Hàn', 'Trang trí', 'Vận chuyển', 'Logistics', 'Sơn'] as const;

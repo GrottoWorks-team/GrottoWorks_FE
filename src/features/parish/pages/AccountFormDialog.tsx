@@ -119,6 +119,7 @@ export function AccountFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={editing ? t('features.parish.editAccount') : t('features.parish.createAccount')}
       footer={
         <>

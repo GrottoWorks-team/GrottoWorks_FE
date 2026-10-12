@@ -94,6 +94,7 @@ export function MaterialFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={editing ? t('features.materials.edit') : t('features.materials.create')}
       footer={
         <>

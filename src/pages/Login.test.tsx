@@ -12,7 +12,8 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 beforeEach(() => {
   resetDb()
   localStorage.removeItem('grotto-token')
-  window.history.pushState({}, '', '/')
+  // "/" giờ là landing công khai; đi thẳng tới /login để test form đăng nhập.
+  window.history.pushState({}, '', '/login')
 })
 afterAll(() => server.close())
 

@@ -8,10 +8,17 @@ describe('App', () => {
     window.history.pushState({}, '', '/')
   })
 
-  it('chưa có phiên → chuyển hướng sang trang đăng nhập', async () => {
+  it('chưa có phiên → hiển thị trang landing công khai', async () => {
     render(<App />)
-    expect(await screen.findByLabelText('Email')).toBeDefined()
-    expect(screen.getByLabelText('Mật khẩu')).toBeDefined()
+    // Landing là lazy route: chờ hero render xong (badge là text duy nhất).
+    expect(
+      await screen.findByText('Nền tảng điều phối mùa Giáng Sinh giáo xứ'),
+    ).toBeDefined()
+    expect(screen.getByText('Đăng nhập')).toBeDefined()
+    // Landing có liên kết tới trang đăng ký đồng hành.
+    expect(
+      screen.getAllByRole('link').some((a) => a.getAttribute('href') === '/register'),
+    ).toBe(true)
   })
 
   it('route lạ → trang 404', async () => {

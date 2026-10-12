@@ -10,6 +10,8 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
+import { Snowfall } from '@/components/shared/Snowfall'
+import { WinterBackdrop } from '@/components/shared/WinterBackdrop'
 import type { Role } from '@/types'
 
 const schema = z.object({
@@ -59,21 +61,26 @@ export default function Login() {
   }
 
   return (
-    <main className="grid min-h-screen place-items-center bg-background p-4">
-      <Card className="g-item w-full max-w-sm overflow-hidden">
-        {/* Christmas accent — dải pine với dấu sao (DESIGN_SYSTEM.md mục 36). */}
-        <div className="relative grid h-28 place-items-center bg-primary">
-          <div className="grid size-14 place-items-center rounded-card bg-brand-gold text-2xl font-extrabold text-foreground">
-            ★
-          </div>
+    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-background p-4">
+      {/* Nền mùa đông: thị trấn trên các đỉnh núi tuyết + tuyết rơi liên tục. */}
+      <WinterBackdrop />
+      <Snowfall />
+      <Card className="g-item relative z-10 w-full max-w-sm overflow-hidden shadow-xl ring-1 ring-black/5">
+        {/* Logo GrottoWorks (DESIGN_SYSTEM.md mục 36 — Christmas element ở Login). */}
+        <div className="grid place-items-center gap-3 border-b border-border bg-gradient-to-b from-brand-pineLight to-card px-6 py-6">
+          {/* w-full + max-w để logo to nhất có thể mà không tràn thẻ trên màn nhỏ;
+              h-auto giữ đúng tỉ lệ (không méo). */}
+          <img
+            src="/pic/Logo_GrottoWorks.png"
+            alt="GrottoWorks"
+            draggable={false}
+            className="h-auto w-full max-w-[17rem] select-none"
+          />
+          <h1 className="sr-only">{t('app.name')}</h1>
+          <p className="text-center text-sm text-muted-foreground">{t('login.subtitle')}</p>
         </div>
         <div className="p-6">
-          <h1 className="text-xl font-extrabold tracking-tight text-foreground">
-            {t('app.name')}
-          </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">{t('login.subtitle')}</p>
-
-          <p className="lbl-mono mt-5">{t('login.demoAccounts')}</p>
+          <p className="lbl-mono">{t('login.demoAccounts')}</p>
           <div className="mt-2 grid grid-cols-2 gap-2">
             {DEMO.map((d) => (
               <button

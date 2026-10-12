@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { FileImage, Pencil, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -180,32 +180,46 @@ export default function TaskListPage() {
             : t('features.tasks.sub')
         }
         actions={
-          !readOnly &&
           areaId && (
             <>
-              {myAreas.length > 1 && (
-                <select
-                  aria-label={t('features.tasks.area')}
-                  className={`${SELECT_CLS} w-48`}
-                  value={leaderAreaId}
-                  onChange={(e) => setSelectedArea(e.target.value)}
-                >
-                  {myAreas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              )}
               <Button
-                onClick={() => {
-                  setEditing(null)
-                  setFormOpen(true)
-                }}
+                variant="outline"
+                onClick={() =>
+                  navigate(
+                    `${pathname.startsWith('/parish') ? '/parish' : pathname.startsWith('/leader') ? '/leader' : '/community'}/areas/${areaId}/design`,
+                  )
+                }
               >
-                <Plus className="size-4" />
-                {t('features.tasks.create')}
+                <FileImage className="size-4" />
+                {t('features.design.title')}
               </Button>
+              {!readOnly && (
+                <>
+                  {myAreas.length > 1 && (
+                    <select
+                      aria-label={t('features.tasks.area')}
+                      className={`${SELECT_CLS} w-48`}
+                      value={leaderAreaId}
+                      onChange={(e) => setSelectedArea(e.target.value)}
+                    >
+                      {myAreas.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <Button
+                    onClick={() => {
+                      setEditing(null)
+                      setFormOpen(true)
+                    }}
+                  >
+                    <Plus className="size-4" />
+                    {t('features.tasks.create')}
+                  </Button>
+                </>
+              )}
             </>
           )
         }

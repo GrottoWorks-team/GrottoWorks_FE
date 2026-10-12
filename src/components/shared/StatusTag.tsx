@@ -12,6 +12,10 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   AT_RISK: 'alert', UNUSABLE: 'alert', DAMAGED: 'alert', LOST: 'alert',
   OPEN: 'warn', // yêu cầu hỗ trợ đang chờ điều phối
   NOT_RETURNED: 'soft', // đồ mượn chưa trả
+  IN_REVIEW: 'warn', // phiên bản thiết kế đang review
+  IN_PROGRESS: 'warn', // yêu cầu chỉnh sửa đang xử lý
+  CHANGES_REQUESTED: 'alert', // phiên bản thiết kế bị yêu cầu chỉnh sửa
+  DRAFT: 'soft',
 }
 
 // DESIGN_SYSTEM.md mục 12 — Status Badge: pastel background + dark text.

@@ -27,6 +27,10 @@ const PREFIX: Record<string, string> = {
   supportRegs: 'srg',
   checklists: 'cl',
   activityLogs: 'log',
+  registrations: 'reg',
+  designs: 'dg',
+  designVersions: 'dv',
+  designComments: 'dc',
 }
 
 // label tiếng Việt cho ActivityLog action, theo style seed.
@@ -47,6 +51,10 @@ const LABEL: Record<string, string> = {
   supportRequests: 'yêu cầu hỗ trợ',
   supportRegs: 'đăng ký hỗ trợ',
   checklists: 'checklist',
+  registrations: 'đăng ký đồng hành',
+  designs: 'bản thiết kế',
+  designVersions: 'phiên bản thiết kế',
+  designComments: 'yêu cầu chỉnh sửa',
   skills: 'kỹ năng',
 }
 
@@ -196,6 +204,12 @@ const crud = (resource: string) => [
     const body = (await request.json()) as any
     body.id = nextId(db, resource)
     if (resource === 'materials') refreshMaterial(body)
+    // Đăng ký công khai: client chỉ gửi thông tin liên hệ — mock tự gắn
+    // thời điểm tạo + trạng thái chờ duyệt (như backend thật sẽ làm).
+    if (resource === 'registrations') {
+      body.createdAt = new Date().toISOString().replace('Z', '')
+      body.status = 'PENDING'
+    }
     db[resource].push(body)
     logMutation(db, request, resource, 'tạo', body.id)
     saveDb(db)
@@ -551,10 +565,16 @@ export const handlers = [
   ...crud('purchaseRecords'),
   ...crud('donations'),
   ...crud('borrowedItems'),
+  // Đăng ký đồng hành công khai (trang /register) — không cần đăng nhập.
+  ...crud('registrations'),
   ...crud('allocations'),
   ...crud('timesheets'),
   ...crud('supportRequests'),
   ...crud('supportRegs'),
   ...crud('checklists'),
   ...crud('activityLogs'),
+  // Design Review 2D/3D — hồ sơ thiết kế, phiên bản, yêu cầu chỉnh sửa.
+  ...crud('designs'),
+  ...crud('designVersions'),
+  ...crud('designComments'),
 ]

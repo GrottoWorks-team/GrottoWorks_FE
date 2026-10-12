@@ -102,12 +102,72 @@
   animation-delay: calc(var(--d, 0) * 70ms);
 }
 
+/* Scroll-reveal cho landing page: ẩn nhẹ rồi trượt lên khi cuộn tới.
+   .is-in do <Reveal /> gắn qua IntersectionObserver; --reveal-delay tạo so le.
+   Dưới prefers-reduced-motion khối override bên dưới bỏ ẩn để không mất nội dung. */
+@keyframes g-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+}
+
+.landing-reveal.is-in {
+  animation: g-rise-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--reveal-delay, 0ms);
+}
+
+/* Tuyết rơi cho nền trang Login (DESIGN_SYSTEM.md mục 36). Mỗi bông tự khai
+   báo --g-drift (lệch ngang), --g-dur (thời gian rơi) và --g-delay; chỉ dùng
+   transform nên không gây layout thrash. */
+@keyframes g-fall {
+  from {
+    transform: translate3d(0, -12vh, 0);
+  }
+  to {
+    transform: translate3d(var(--g-drift, 0px), 112vh, 0);
+  }
+}
+
+.g-snow {
+  animation: g-fall var(--g-dur, 12s) linear infinite;
+  animation-delay: var(--g-delay, 0s);
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+  /* Tuyết đứng yên thành hàng ở mép trên trông như lỗi → ẩn hẳn. */
+  .g-snow {
+    display: none !important;
+  }
+  /* Reveal phải hiện ngay, nếu không animation bị tắt sẽ giữ opacity: 0. */
+  .landing-reveal,
+  .landing-reveal.is-in {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Cuộn mượt cho các liên kết neo trên landing — chỉ khi người dùng không
+   yêu cầu giảm chuyển động. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
   }
 }
 

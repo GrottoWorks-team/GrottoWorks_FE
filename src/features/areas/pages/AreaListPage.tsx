@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutGrid, Table2, Pencil, Trash2, Plus, UserPlus } from 'lucide-react'
+import { LayoutGrid, Table2, Pencil, Trash2, Plus, UserPlus, FileImage } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -162,6 +162,18 @@ export default function AreaListPage() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label={t('features.design.openDesign')}
+              onClick={() =>
+                navigate(
+                  `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/design`,
+                )
+              }
+            >
+              <FileImage className="size-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               aria-label={t('features.areas.assign')}
               onClick={() => setAssigning(a)}
             >
@@ -190,7 +202,7 @@ export default function AreaListPage() {
         ),
       },
     ],
-    [t, users, seasonMap],
+    [t, users, seasonMap, navigate, pathname],
   )
 
   const onDelete = async (a: WorkArea) => {
@@ -292,6 +304,11 @@ export default function AreaListPage() {
                 onClick={(x) =>
                   navigate(
                     `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/tasks`,
+                  )
+                }
+                onOpenDesign={(x) =>
+                  navigate(
+                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/design`,
                   )
                 }
               />

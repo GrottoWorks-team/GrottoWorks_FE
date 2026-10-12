@@ -81,6 +81,7 @@ export function PurchaseFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.purchases.createTitle')}
       footer={
         <>

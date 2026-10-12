@@ -16,9 +16,11 @@ function rolePrefix(role: Role): string {
 }
 
 const Login = lazy(() => import('@/pages/Login'))
-const Register = lazy(() => import('@/pages/Register'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 const Profile = lazy(() => import('@/pages/Profile'))
+const Landing = lazy(() => import('@/features/landing/LandingPage'))
+const Register = lazy(() => import('@/features/landing/RegisterPage'))
+const UserRegister = lazy(() => import('@/pages/Register'))
 const SeasonListPage = lazy(() => import('@/features/season/pages/SeasonListPage'))
 const AreaListPage = lazy(() => import('@/features/areas/pages/AreaListPage'))
 const TaskListPage = lazy(() => import('@/features/tasks/pages/TaskListPage'))
@@ -47,6 +49,7 @@ const PointRulesPage = lazy(() => import('@/features/parish/pages/PointRulesPage
 const NotificationsPage = lazy(() => import('@/features/parish/pages/NotificationsPage'))
 const ActivityPage = lazy(() => import('@/features/parish/pages/ActivityPage'))
 const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
+const DesignReviewPage = lazy(() => import('@/features/designs/pages/DesignReviewPage'))
 
 // Trang thật theo route `to` của nav-config; mục chưa có → Placeholder.
 // Task 5+ thêm dần vào map này (pattern lazy page).
@@ -84,13 +87,19 @@ const PAGES: Record<string, ComponentType> = {
 // Route có param — nav-config không mô tả được, khai báo tường minh theo role
 // (page tự đọc useParams/useLocation để biết ngữ cảnh mount).
 const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = {
-  LEADER: [{ path: 'tasks/:id', Page: TaskDetailPage }, { path: 'volunteers/:id', Page: VolunteerDetailPage }],
+  LEADER: [
+    { path: 'tasks/:id', Page: TaskDetailPage },
+    { path: 'volunteers/:id', Page: VolunteerDetailPage },
+    { path: 'areas/:id/design', Page: DesignReviewPage },
+  ],
   COMMUNITY: [
     { path: 'areas/:id/tasks', Page: TaskListPage },
+    { path: 'areas/:id/design', Page: DesignReviewPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
   ],
   PARISH: [
     { path: 'areas/:id/tasks', Page: TaskListPage },
+    { path: 'areas/:id/design', Page: DesignReviewPage },
   ],
 }
 
@@ -109,11 +118,11 @@ function Placeholder({ label }: { label: string }) {
   )
 }
 
-// / → dashboard theo role, hoặc /login khi chưa đăng nhập.
+// / → landing công khai cho khách chưa đăng nhập, hoặc dashboard theo role.
 function RootRedirect() {
   const { user, isPending } = useAuth()
   if (isPending) return null
-  return <Navigate to={user ? `/${rolePrefix(user.role)}` : '/login'} replace />
+  return user ? <Navigate to={`/${rolePrefix(user.role)}`} replace /> : <Landing />
 }
 
 // /login khi đã có phiên → thẳng dashboard role, không hiện form lần nữa.
@@ -207,7 +216,9 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
                 <Route path="/login" element={<LoginGate />} />
+                {/* Trang công khai: landing ở "/", đăng ký đồng hành ở "/register". */}
                 <Route path="/register" element={<Register />} />
+                <Route path="/register-account" element={<UserRegister />} />
                 <Route
                   path="/profile"
                   element={

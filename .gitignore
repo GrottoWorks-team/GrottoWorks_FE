@@ -166,6 +166,8 @@ docs/superpowers/
 *.docx
 *.tsbuildinfo
 ui-demo.html
+docs/AI_LOG.md
+docs/combo_1.html
 
 # E2E test reports & screenshots
 reports/

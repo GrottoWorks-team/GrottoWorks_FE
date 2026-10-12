@@ -72,6 +72,7 @@ export function SupportFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.support.createTitle')}
       footer={
         <>

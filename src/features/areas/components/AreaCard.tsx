@@ -2,8 +2,9 @@
 // Login), icon theo type, StatusTag, deadline, season badge, thanh tiến độ moss vươn từ 0 (.g-bar).
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Landmark, TreePine, Lightbulb, Trees, Theater } from 'lucide-react'
+import { Landmark, TreePine, Lightbulb, Trees, Theater, FileImage } from 'lucide-react'
 import { StatusTag } from '@/components/shared/StatusTag'
+import { Button } from '@/components/ui/button'
 import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { AreaType, WorkArea } from '@/types'
@@ -23,11 +24,13 @@ export function AreaCard({
   index,
   seasonYear,
   onClick,
+  onOpenDesign,
 }: {
   area: WorkArea
   index: number
   seasonYear?: number
   onClick?: (area: WorkArea) => void
+  onOpenDesign?: (area: WorkArea) => void
 }) {
   const { t } = useTranslation()
   const Icon = AREA_ICONS[area.type]
@@ -112,6 +115,20 @@ export function AreaCard({
           {area.volunteerCount} {t('features.areas.volunteers')} · {area.taskCount}{' '}
           {t('features.areas.tasks')}
         </p>
+        {onOpenDesign && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-4 w-full"
+            onClick={(e) => {
+              e.stopPropagation()
+              onOpenDesign(area)
+            }}
+          >
+            <FileImage className="size-4" />
+            {t('features.design.title')}
+          </Button>
+        )}
       </div>
     </div>
   )

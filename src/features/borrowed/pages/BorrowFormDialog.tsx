@@ -61,6 +61,7 @@ export function BorrowFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="md"
       title={t('features.borrowed.createTitle')}
       footer={
         <>

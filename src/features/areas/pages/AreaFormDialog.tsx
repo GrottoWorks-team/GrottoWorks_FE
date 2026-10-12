@@ -188,6 +188,7 @@ export function AreaFormDialog({
     <Dialog
       open
       onClose={onClose}
+      size="lg"
       title={editing ? t('features.areas.edit') : t('features.areas.create')}
       footer={
         <>
@@ -201,22 +202,24 @@ export function AreaFormDialog({
       }
     >
       <form id="area-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <div>
-          <Label htmlFor="area-season">{t('features.areas.season')}</Label>
-          <select id="area-season" className={SELECT_CLS} {...register('seasonId')}>
-            {seasons.map((s) => (
-              <option key={s.id} value={s.id}>
-                {`Mùa Giáng sinh ${s.year} (${t(`status.${s.status}`, s.status)})`}
-              </option>
-            ))}
-          </select>
-          {err(errors.seasonId?.message)}
-        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="area-season">{t('features.areas.season')}</Label>
+            <select id="area-season" className={SELECT_CLS} {...register('seasonId')}>
+              {seasons.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {`Mùa Giáng sinh ${s.year} (${t(`status.${s.status}`, s.status)})`}
+                </option>
+              ))}
+            </select>
+            {err(errors.seasonId?.message)}
+          </div>
 
-        <div>
-          <Label htmlFor="area-name">{t('features.areas.name')}</Label>
-          <Input id="area-name" {...register('name')} />
-          {err(errors.name?.message)}
+          <div>
+            <Label htmlFor="area-name">{t('features.areas.name')}</Label>
+            <Input id="area-name" {...register('name')} />
+            {err(errors.name?.message)}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -289,22 +292,24 @@ export function AreaFormDialog({
           </div>
         </div>
 
-        <div>
-          <Label htmlFor="area-deadline">{t('features.areas.deadline')}</Label>
-          <Input id="area-deadline" type="date" {...register('deadline')} />
-          {err(errors.deadline?.message)}
-        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="area-deadline">{t('features.areas.deadline')}</Label>
+            <Input id="area-deadline" type="date" {...register('deadline')} />
+            {err(errors.deadline?.message)}
+          </div>
 
-        <div>
-          <Label htmlFor="area-description">{t('features.areas.description')}</Label>
-          <textarea
-            id="area-description"
-            rows={2}
-            placeholder={t('features.areas.descriptionPlaceholder')}
-            className={TEXTAREA_CLS}
-            {...register('description')}
-          />
-          {err(errors.description?.message)}
+          <div>
+            <Label htmlFor="area-description">{t('features.areas.description')}</Label>
+            <textarea
+              id="area-description"
+              rows={2}
+              placeholder={t('features.areas.descriptionPlaceholder')}
+              className={TEXTAREA_CLS}
+              {...register('description')}
+            />
+            {err(errors.description?.message)}
+          </div>
         </div>
       </form>
     </Dialog>
