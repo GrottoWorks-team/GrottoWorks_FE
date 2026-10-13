@@ -176,3 +176,58 @@
   color: #2b2d42;
 }
 
+/* Ngôi sao Bê-lem phát sáng nhịp thở (DESIGN_SYSTEM / Taste Auth) */
+@keyframes bethlehem-pulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: drop-shadow(0 0 12px rgba(238, 185, 2, 0.75)) drop-shadow(0 0 28px rgba(238, 185, 2, 0.35));
+  }
+  50% {
+    transform: scale(1.08) rotate(3deg);
+    filter: drop-shadow(0 0 22px rgba(254, 240, 138, 0.95)) drop-shadow(0 0 42px rgba(238, 185, 2, 0.55));
+  }
+}
+
+.star-pulse {
+  animation: bethlehem-pulse 3.5s ease-in-out infinite;
+}
+
+/* Thẻ kính mờ pha lê (Frosted Glass Crystal) */
+.glass-crystal {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 25px 50px -12px rgba(10, 92, 54, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+}
+
+/* Nút bấm hiệu ứng ánh kim lướt qua (Festive Shimmer & Tactile Push) */
+.btn-festive {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-festive::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 40%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(25deg);
+  transition: all 0.6s ease;
+}
+.btn-festive:hover::after {
+  left: 130%;
+}
+.btn-festive:active {
+  transform: scale(0.98);
+}
+
+

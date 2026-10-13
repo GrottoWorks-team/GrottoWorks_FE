@@ -1,17 +1,29 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import {
+  Crown,
+  Users,
+  Hammer,
+  Package,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  HelpCircle,
+} from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { Snowfall } from '@/components/shared/Snowfall'
-import { WinterBackdrop } from '@/components/shared/WinterBackdrop'
+import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 import type { Role } from '@/types'
 
 const schema = z.object({
@@ -20,11 +32,18 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const DEMO: { role: Role; email: string }[] = [
-  { role: 'PARISH', email: 'admin@grottoworks.vn' },
-  { role: 'COMMUNITY', email: 'committee@grottoworks.vn' },
-  { role: 'LEADER', email: 'leader@grottoworks.vn' },
-  { role: 'MATERIAL_OFFICER', email: 'officer@grottoworks.vn' },
+interface DemoRoleConfig {
+  role: Role
+  email: string
+  icon: typeof Crown
+  color: string
+}
+
+const DEMO: DemoRoleConfig[] = [
+  { role: 'PARISH', email: 'admin@grottoworks.vn', icon: Crown, color: 'text-amber-600' },
+  { role: 'COMMUNITY', email: 'committee@grottoworks.vn', icon: Users, color: 'text-emerald-700' },
+  { role: 'LEADER', email: 'leader@grottoworks.vn', icon: Hammer, color: 'text-blue-700' },
+  { role: 'MATERIAL_OFFICER', email: 'officer@grottoworks.vn', icon: Package, color: 'text-indigo-700' },
 ]
 
 export default function Login() {
@@ -33,6 +52,16 @@ export default function Login() {
   const navigate = useNavigate()
   const toast = useToast()
   const [serverError, setServerError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [activeDemo, setActiveDemo] = useState<string | null>(null)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+    }
+  }, [])
+
   const {
     register,
     handleSubmit,
@@ -44,6 +73,9 @@ export default function Login() {
     setValue('email', email)
     setValue('password', 'grotto')
     setServerError('')
+    setActiveDemo(email)
+    if (timerRef.current) clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => setActiveDemo(null), 1200)
   }
 
   const onSubmit = async (data: FormData) => {
@@ -52,8 +84,6 @@ export default function Login() {
       const user = await login(data.email, data.password)
       navigate(`/${user.role === 'MATERIAL_OFFICER' ? 'material-officer' : user.role.toLowerCase()}`)
     } catch {
-      // ponytail: mock chỉ có 2 dạng lỗi — 401 sai tài khoản; còn lại hiển thị
-      // chung thông điệp tương tự, log để debug.
       const msg = t('login.invalid')
       setServerError(msg)
       toast(msg, 'alert')
@@ -61,86 +91,168 @@ export default function Login() {
   }
 
   return (
-    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-background p-4">
-      {/* Nền mùa đông: thị trấn trên các đỉnh núi tuyết + tuyết rơi liên tục. */}
-      <WinterBackdrop />
-      <Snowfall />
-      <Card className="g-item relative z-10 w-full max-w-sm overflow-hidden shadow-xl ring-1 ring-black/5">
-        {/* Logo GrottoWorks (DESIGN_SYSTEM.md mục 36 — Christmas element ở Login). */}
-        <div className="grid place-items-center gap-3 border-b border-border bg-gradient-to-b from-brand-pineLight to-card px-6 py-6">
-          {/* w-full + max-w để logo to nhất có thể mà không tràn thẻ trên màn nhỏ;
-              h-auto giữ đúng tỉ lệ (không méo). */}
-          <img
-            src="/pic/Logo_GrottoWorks.png"
-            alt="GrottoWorks"
-            draggable={false}
-            className="h-auto w-full max-w-[17rem] select-none"
-          />
-          <h1 className="sr-only">{t('app.name')}</h1>
-          <p className="text-center text-sm text-muted-foreground">{t('login.subtitle')}</p>
-        </div>
-        <div className="p-6">
-          <p className="lbl-mono">{t('login.demoAccounts')}</p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {DEMO.map((d) => (
-              <button
-                key={d.email}
-                type="button"
-                onClick={() => fillDemo(d.email)}
-                title={d.email}
-                className="rounded-md border border-border bg-background px-3 py-2 text-left text-xs font-semibold text-muted-foreground transition-colors hover:border-primary hover:text-primary"
-              >
-                <span className="block truncate">{t(`role.${d.role}`)}</span>
-                <span className="block truncate font-mono text-[10px]">
-                  {d.email.split('@')[0]}
-                </span>
-              </button>
-            ))}
+    <AuthSplitLayout activeTab="login">
+      <div className="space-y-5">
+        {/* Hộp chọn nhanh tài khoản mẫu (1-Chạm) */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="lbl-mono flex items-center gap-1.5 font-bold text-slate-600">
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
+              {t('login.demoAccounts')}
+            </span>
+            <span className="text-[10px] text-slate-500 font-medium">Bấm để tự điền</span>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="mt-5 space-y-4" noValidate>
-            <div>
-              <Label htmlFor="email">{t('login.email')}</Label>
-              <Input id="email" type="email" autoComplete="email" {...register('email')} />
-              {errors.email && (
-                <p className="mt-1 text-xs font-semibold text-destructive">
-                  {t(errors.email.message ?? '')}
-                </p>
-              )}
-            </div>
-            <div>
-              <Label htmlFor="password">{t('login.password')}</Label>
+          <div className="grid grid-cols-2 gap-2">
+            {DEMO.map((d) => {
+              const Icon = d.icon
+              const isSelected = activeDemo === d.email
+              return (
+                <button
+                  key={d.email}
+                  type="button"
+                  onClick={() => fillDemo(d.email)}
+                  title={d.email}
+                  className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 ${
+                    isSelected
+                      ? 'border-brand-pine bg-brand-pineLight/60 ring-2 ring-brand-pine/30 shadow-sm'
+                      : 'border-slate-200 bg-white/80 hover:border-brand-pine hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${d.color}`} />
+                    <span className="truncate text-xs font-bold text-slate-800 group-hover:text-brand-pine">
+                      {t(`role.${d.role}`)}
+                    </span>
+                  </div>
+                  <span className="block truncate font-mono text-[10px] text-slate-500 mt-0.5">
+                    {d.email.split('@')[0]}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Form đăng nhập chính */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+          {/* Ô nhập Email */}
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
+              {t('login.email')}
+            </Label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                <Mail className="w-4 h-4" />
+              </span>
               <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                {...register('password')}
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="tenban@grottoworks.vn"
+                className="pl-10 pr-3.5 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
+                {...register('email')}
               />
-              {errors.password && (
-                <p className="mt-1 text-xs font-semibold text-destructive">
-                  {t(errors.password.message ?? '')}
-                </p>
-              )}
             </div>
-            {serverError && (
-              <p role="alert" className="text-xs font-semibold text-destructive">
-                {serverError}
+            {errors.email && (
+              <p className="flex items-center gap-1 mt-1 text-xs font-semibold text-destructive">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{t(errors.email.message ?? '')}</span>
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? t('login.loggingIn') : t('login.submit')}
-            </Button>
+          </div>
 
-            <div className="text-center text-sm pt-2 text-grotto-muted">
-              Chưa có tài khoản?{' '}
-              <Link to="/register" className="font-medium text-grotto-primary hover:underline">
-                Đăng ký ngay
+          {/* Ô nhập Password */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
+                {t('login.password')}
+              </Label>
+              <button
+                type="button"
+                onClick={() => toast('Vui lòng liên hệ Cha xứ hoặc Ban điều hành để cấp lại mật khẩu!', 'ok')}
+                className="text-xs font-medium text-brand-pine hover:underline flex items-center gap-1"
+              >
+                <HelpCircle className="w-3 h-3" />
+                <span>Quên mật khẩu?</span>
+              </button>
+            </div>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+              </span>
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="pl-10 pr-10 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
+                {...register('password')}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {errors.password && (
+              <p className="flex items-center gap-1 mt-1 text-xs font-semibold text-destructive">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                <span>{t(errors.password.message ?? '')}</span>
+              </p>
+            )}
+          </div>
+
+          {/* Thông báo lỗi từ server */}
+          {serverError && (
+            <div
+              role="alert"
+              className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs font-semibold text-destructive flex items-center gap-2"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{serverError}</span>
+            </div>
+          )}
+
+          {/* Nút bấm Submit với hiệu ứng Shimmer */}
+          <Button
+            type="submit"
+            className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm shadow-lg shadow-brand-pine/25 flex items-center justify-center gap-2"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>{t('login.loggingIn')}</span>
+              </>
+            ) : (
+              <>
+                <span>{t('login.submit')}</span>
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </Button>
+
+          {/* Liên kết điều hướng phụ */}
+          <div className="pt-2 text-center text-xs text-slate-600 space-y-1">
+            <div>
+              Chưa có tài khoản quản lý?{' '}
+              <Link to="/register-account" className="font-semibold text-brand-pine hover:underline">
+                Đăng ký tài khoản
               </Link>
             </div>
-          </form>
-        </div>
-      </Card>
-    </main>
+            <div>
+              Hoặc tham gia thiện nguyện?{' '}
+              <Link to="/register" className="font-semibold text-brand-goldHover hover:underline">
+                Đăng ký Đồng Hành
+              </Link>
+            </div>
+          </div>
+        </form>
+      </div>
+    </AuthSplitLayout>
   )
 }
-
