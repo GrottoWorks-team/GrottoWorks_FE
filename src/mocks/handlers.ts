@@ -31,6 +31,7 @@ const PREFIX: Record<string, string> = {
   designs: 'dg',
   designVersions: 'dv',
   designComments: 'dc',
+  parishMaps: 'pm',
 }
 
 // label tiếng Việt cho ActivityLog action, theo style seed.
@@ -55,6 +56,7 @@ const LABEL: Record<string, string> = {
   designs: 'bản thiết kế',
   designVersions: 'phiên bản thiết kế',
   designComments: 'yêu cầu chỉnh sửa',
+  parishMaps: 'bản đồ giáo xứ',
   skills: 'kỹ năng',
 }
 
@@ -577,4 +579,5 @@ export const handlers = [
   ...crud('designs'),
   ...crud('designVersions'),
   ...crud('designComments'),
+  ...crud('parishMaps'),
 ]

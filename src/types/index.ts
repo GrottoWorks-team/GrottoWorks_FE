@@ -25,6 +25,22 @@ export interface WorkArea {
   seasonId?: string;
   deadline?: string;
   description?: string;
+  /** Toạ độ chuẩn hoá 0..1 của khu trên bản đồ mặt bằng giáo xứ (nếu đã phân bổ). */
+  mapX?: number;
+  mapY?: number;
+}
+
+/**
+ * Bản đồ mặt bằng giáo xứ — ảnh nền để ban hành giáo (COMMUNITY) phân bổ khu
+ * vực công tác. Ảnh nằm ở IndexedDB phía client (lib/blobStore) giai đoạn mock;
+ * chỉ metadata + toạ độ khu đi qua MSW.
+ */
+export interface ParishMap {
+  id: string;
+  /** Khoá blob ảnh mặt bằng (IndexedDB `grotto-blobs-v1`). */
+  imageKey: string;
+  fileName?: string;
+  updatedAt: string;
 }
 
 export interface Task {

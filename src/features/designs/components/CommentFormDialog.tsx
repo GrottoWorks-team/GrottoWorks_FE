@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import { useUsers } from '@/features/users/api'
 import type { DesignComment, DesignCommentPriority, DesignCommentStatus } from '@/types'
 import { useCreateDesignComment, useUpdateDesignComment } from '../api'
-import type { NormalizedPoint } from '../coords'
+import type { ReviewPoint } from '../position'
 
 const PRIORITIES: DesignCommentPriority[] = ['LOW', 'MEDIUM', 'HIGH']
 const STATUSES: DesignCommentStatus[] = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'REJECTED']
@@ -43,8 +43,8 @@ export function CommentFormDialog({
   versionId: string
   /** Có giá trị = đang sửa; không có = tạo mới. */
   comment?: DesignComment | null
-  /** Vị trí vừa click trên ảnh (chỉ khi tạo mới có marker). */
-  point?: NormalizedPoint | null
+  /** Vị trí vừa click trên ảnh/model (chỉ khi tạo mới có marker). */
+  point?: ReviewPoint | null
   createdBy: string
   onClose: () => void
 }) {
@@ -92,6 +92,7 @@ export function CommentFormDialog({
           // Bỏ gắn vị trí → thành góp ý tổng quát.
           patch.positionType = 'NONE'
           patch.position2D = undefined
+          patch.position3D = undefined
         }
         await update.mutateAsync(patch)
         toast(t('features.design.commentUpdated'))
@@ -99,8 +100,9 @@ export function CommentFormDialog({
         await create.mutateAsync({
           ...fields,
           designVersionId: versionId,
-          positionType: position ? 'IMAGE_2D' : 'NONE',
-          position2D: position ?? undefined,
+          positionType: position?.type ?? 'NONE',
+          position2D: position?.type === 'IMAGE_2D' ? position.point : undefined,
+          position3D: position?.type === 'MODEL_3D' ? position.point : undefined,
           createdBy,
           createdAt: now,
           updatedAt: now,
@@ -140,10 +142,16 @@ export function CommentFormDialog({
           <div className="flex items-center justify-between gap-2 rounded-md border border-brand-pine/30 bg-brand-pineLight px-3 py-2 text-xs">
             <span className="inline-flex items-center gap-1.5 font-semibold text-brand-pine">
               <MapPin className="size-3.5" />
-              {t('features.design.positionAttached', {
-                x: position.x.toFixed(2),
-                y: position.y.toFixed(2),
-              })}
+              {position.type === 'IMAGE_2D'
+                ? t('features.design.positionAttached', {
+                    x: position.point.x.toFixed(2),
+                    y: position.point.y.toFixed(2),
+                  })
+                : t('features.design.positionAttached3d', {
+                    x: position.point.x.toFixed(2),
+                    y: position.point.y.toFixed(2),
+                    z: position.point.z.toFixed(2),
+                  })}
             </span>
             <button
               type="button"
@@ -225,9 +233,16 @@ export function CommentFormDialog({
 }
 
 // Tách riêng để initial state chỉ tính 1 lần, tránh reset khi re-render.
-function useStatePoint(comment?: DesignComment | null, point?: NormalizedPoint | null) {
-  const [position, setPosition] = useState<NormalizedPoint | null>(() =>
-    point ?? (comment?.positionType === 'IMAGE_2D' ? (comment.position2D ?? null) : null),
-  )
+function useStatePoint(comment?: DesignComment | null, point?: ReviewPoint | null) {
+  const [position, setPosition] = useState<ReviewPoint | null>(() => {
+    if (point) return point
+    if (comment?.positionType === 'IMAGE_2D' && comment.position2D) {
+      return { type: 'IMAGE_2D', point: comment.position2D }
+    }
+    if (comment?.positionType === 'MODEL_3D' && comment.position3D) {
+      return { type: 'MODEL_3D', point: comment.position3D }
+    }
+    return null
+  })
   return [position, setPosition] as const
 }

@@ -12,6 +12,9 @@ export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp'] as
 /** `accept` cho <input type="file">. */
 export const IMAGE_ACCEPT_ATTR = '.png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp';
 
+/** `accept` cho <input type="file"> của mô hình 3D. */
+export const MODEL_ACCEPT_ATTR = '.glb,model/gltf-binary';
+
 /** Giới hạn kích thước model 3D (byte) — 25 MB. Dùng cho L3. */
 export const MAX_MODEL_BYTES = 25 * 1024 * 1024;
 

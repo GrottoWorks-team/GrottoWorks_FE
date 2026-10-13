@@ -31,6 +31,10 @@ export default function AreaListPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user } = useAuth()
 
+  // Ban hành giáo (COMMUNITY) chỉ quản lý/phân bổ khu vực — không mở bản thiết kế.
+  // PARISH (quản trị) vẫn xem/duyệt bản thiết kế.
+  const canViewDesign = user?.role !== 'COMMUNITY'
+
   const { data: rawAreas = [], isPending: isAreasPending } = useAreas()
   const { data: users = [] } = useUsers()
   const { data: seasons = [], isPending: isSeasonsPending } = useSeasons()
@@ -159,18 +163,20 @@ export default function AreaListPage() {
         header: t('common.actions'),
         render: (a: WorkArea) => (
           <div className="flex justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('features.design.openDesign')}
-              onClick={() =>
-                navigate(
-                  `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/design`,
-                )
-              }
-            >
-              <FileImage className="size-4" />
-            </Button>
+            {canViewDesign && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('features.design.openDesign')}
+                onClick={() =>
+                  navigate(
+                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/design`,
+                  )
+                }
+              >
+                <FileImage className="size-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -202,7 +208,7 @@ export default function AreaListPage() {
         ),
       },
     ],
-    [t, users, seasonMap, navigate, pathname],
+    [t, users, seasonMap, navigate, pathname, canViewDesign],
   )
 
   const onDelete = async (a: WorkArea) => {
@@ -306,10 +312,13 @@ export default function AreaListPage() {
                     `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/tasks`,
                   )
                 }
-                onOpenDesign={(x) =>
-                  navigate(
-                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/design`,
-                  )
+                onOpenDesign={
+                  canViewDesign
+                    ? (x) =>
+                        navigate(
+                          `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/design`,
+                        )
+                    : undefined
                 }
               />
             ))}

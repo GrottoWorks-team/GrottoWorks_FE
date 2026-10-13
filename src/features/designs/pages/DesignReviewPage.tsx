@@ -42,10 +42,12 @@ import {
 } from '../api'
 import { ImageReviewCanvas } from '../components/ImageReviewCanvas'
 import type { CanvasMarker } from '../components/ImageReviewCanvas'
+import { ModelReviewCanvas } from '../components/ModelReviewCanvas'
+import type { ModelMarker } from '../components/ModelReviewCanvas'
 import { CommentFormDialog } from '../components/CommentFormDialog'
 import { NewDesignDialog } from '../components/NewDesignDialog'
 import { UploadVersionDialog } from '../components/UploadVersionDialog'
-import type { NormalizedPoint } from '../coords'
+import type { ReviewPoint } from '../position'
 
 const SELECT_CLS =
   'flex h-9 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -64,9 +66,12 @@ export default function DesignReviewPage() {
   const { id: areaId = '' } = useParams()
   const { user } = useAuth()
 
-  // Ở giai đoạn này: cộng đoàn/Ban hành giáo xem & bình luận, nhưng tải phiên
-  // bản và duyệt thuộc Leader/Quản trị — khớp quy ước readOnly hiện có.
-  const readOnly = pathname.startsWith('/community/')
+  // Phân quyền chi tiết (chỉ kiểm ở UI — backend thật phải kiểm lại):
+  // - LEADER: tạo hồ sơ thiết kế, tải phiên bản, gắn vị trí, duyệt/yêu cầu chỉnh sửa.
+  // - PARISH (quản trị): chỉ xem + duyệt/yêu cầu chỉnh sửa, KHÔNG tạo/tải phiên bản.
+  // - COMMUNITY (ban hành giáo): chỉ xem + bình luận.
+  const canCreate = user?.role === 'LEADER'
+  const canApprove = user?.role === 'LEADER' || user?.role === 'PARISH'
   const prefix = pathname.startsWith('/parish')
     ? '/parish'
     : pathname.startsWith('/leader')
@@ -79,6 +84,8 @@ export default function DesignReviewPage() {
 
   const { data: designs = [], isPending: designsPending } = useDesigns(areaId)
   const design = designs[0]
+  // Loại hồ sơ quyết định canvas: ảnh 2D hay mô hình 3D (.glb).
+  const is3d = design?.designType === 'THREE_D'
   const { data: versions = [] } = useDesignVersions(design?.id)
 
   const [pickedVersionId, setPickedVersionId] = useState<string | null>(null)
@@ -96,9 +103,9 @@ export default function DesignReviewPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [priorityFilter, setPriorityFilter] = useState('all')
   const [addMode, setAddMode] = useState(false)
-  const [pendingPoint, setPendingPoint] = useState<NormalizedPoint | null>(null)
+  const [pendingPoint, setPendingPoint] = useState<ReviewPoint | null>(null)
   const [commentDialog, setCommentDialog] = useState<
-    { mode: 'new'; point?: NormalizedPoint } | { mode: 'edit'; comment: DesignComment } | null
+    { mode: 'new'; point?: ReviewPoint } | { mode: 'edit'; comment: DesignComment } | null
   >(null)
   const [deletingComment, setDeletingComment] = useState<DesignComment | null>(null)
   const [newDesignOpen, setNewDesignOpen] = useState(false)
@@ -151,6 +158,21 @@ export default function DesignReviewPage() {
           id: c.id,
           x: c.position2D!.x,
           y: c.position2D!.y,
+          label: numberById.get(c.id) ?? 0,
+          active: c.id === activeId,
+        })),
+    [comments, numberById, activeId],
+  )
+
+  const markers3D = useMemo<ModelMarker[]>(
+    () =>
+      comments
+        .filter((c) => c.positionType === 'MODEL_3D' && c.position3D)
+        .map((c) => ({
+          id: c.id,
+          x: c.position3D!.x,
+          y: c.position3D!.y,
+          z: c.position3D!.z,
           label: numberById.get(c.id) ?? 0,
           active: c.id === activeId,
         })),
@@ -232,7 +254,7 @@ export default function DesignReviewPage() {
               <ArrowLeft className="size-4" />
               {t('common.back')}
             </Button>
-            {!readOnly && selectedVersion && (
+            {canCreate && selectedVersion && (
               <Button variant="outline" onClick={() => setUploadOpen(true)}>
                 <Upload className="size-4" />
                 {t('features.design.uploadVersion')}
@@ -245,7 +267,7 @@ export default function DesignReviewPage() {
       {!design ? (
         <Card className="p-8 text-center">
           <EmptyState text={t('features.design.noDesign')} />
-          {!readOnly && (
+          {canCreate && (
             <Button className="mt-4" onClick={() => setNewDesignOpen(true)}>
               <FilePlus2 className="size-4" />
               {t('features.design.createDesign')}
@@ -255,7 +277,7 @@ export default function DesignReviewPage() {
       ) : !selectedVersion ? (
         <Card className="p-8 text-center">
           <EmptyState text={t('features.design.noVersion')} />
-          {!readOnly && (
+          {canCreate && (
             <Button className="mt-4" onClick={() => setUploadOpen(true)}>
               <Upload className="size-4" />
               {t('features.design.uploadVersion')}
@@ -285,7 +307,7 @@ export default function DesignReviewPage() {
                     </p>
                   )}
                 </div>
-                {!readOnly && (
+                {canApprove && (
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={requestChanges}>
                       {t('features.design.requestChanges')}
@@ -298,27 +320,46 @@ export default function DesignReviewPage() {
                 )}
               </div>
 
-              <ImageReviewCanvas
-                src={imageUrl}
-                markers={markers}
-                addMode={addMode && !readOnly}
-                onSelectMarker={setActiveId}
-                onAddMarker={(point) => {
-                  setAddMode(false)
-                  setPendingPoint(point)
-                  setCommentDialog({ mode: 'new', point })
-                }}
-                onLoadError={() => setImageError(true)}
-              />
-
-              {imageError && (
-                <p className="mt-2 rounded-md border border-status-dangerBg bg-status-dangerBg/40 px-3 py-2 text-xs font-semibold text-status-dangerText">
-                  {t('features.design.storageMissing')}
+              {!imageUrl ? (
+                <p className="grid h-[420px] place-items-center rounded-card border border-border bg-muted/30 px-6 text-center text-sm font-semibold text-muted-foreground sm:h-[520px]">
+                  {imageError
+                    ? is3d
+                      ? t('features.design.modelMissing')
+                      : t('features.design.storageMissing')
+                    : t('common.loading')}
                 </p>
+              ) : is3d ? (
+                <ModelReviewCanvas
+                  src={imageUrl}
+                  markers={markers3D}
+                  addMode={addMode && canCreate}
+                  onSelectMarker={setActiveId}
+                  onAddMarker={(p) => {
+                    setAddMode(false)
+                    const rp: ReviewPoint = { type: 'MODEL_3D', point: p }
+                    setPendingPoint(rp)
+                    setCommentDialog({ mode: 'new', point: rp })
+                  }}
+                  onLoadError={() => setImageError(true)}
+                />
+              ) : (
+                <ImageReviewCanvas
+                  src={imageUrl}
+                  markers={markers}
+                  addMode={addMode && canCreate}
+                  onSelectMarker={setActiveId}
+                  onAddMarker={(p) => {
+                    setAddMode(false)
+                    const rp: ReviewPoint = { type: 'IMAGE_2D', point: p }
+                    setPendingPoint(rp)
+                    setCommentDialog({ mode: 'new', point: rp })
+                  }}
+                  onLoadError={() => setImageError(true)}
+                />
               )}
 
               <p className="mt-3 text-xs text-muted-foreground">
-                {t('features.design.canvasHint')}
+                {is3d ? t('features.design.modelHint') : t('features.design.canvasHint')}
               </p>
             </Card>
 
@@ -378,7 +419,7 @@ export default function DesignReviewPage() {
                 <Plus className="size-4" />
                 {t('features.design.addComment')}
               </Button>
-              {!readOnly && (
+              {canCreate && (
                 <Button
                   size="sm"
                   variant={addMode ? 'default' : 'outline'}
@@ -457,7 +498,7 @@ export default function DesignReviewPage() {
                             tone={PRIORITY_TONE[c.priority].tone}
                             glyph={PRIORITY_TONE[c.priority].glyph}
                           />
-                          {c.positionType === 'IMAGE_2D' && (
+                          {(c.positionType === 'IMAGE_2D' || c.positionType === 'MODEL_3D') && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-pine">
                               <MapPin className="size-3" />
                               {t('features.design.hasPosition')}
@@ -524,6 +565,7 @@ export default function DesignReviewPage() {
       {uploadOpen && design && user && (
         <UploadVersionDialog
           designId={design.id}
+          designType={design.designType}
           nextVersionNumber={(versions[0]?.versionNumber ?? 0) + 1}
           uploadedBy={user.id}
           onUploaded={setPickedVersionId}

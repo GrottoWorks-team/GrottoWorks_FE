@@ -50,14 +50,17 @@ const NotificationsPage = lazy(() => import('@/features/parish/pages/Notificatio
 const ActivityPage = lazy(() => import('@/features/parish/pages/ActivityPage'))
 const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
 const DesignReviewPage = lazy(() => import('@/features/designs/pages/DesignReviewPage'))
+const ParishMapPage = lazy(() => import('@/features/map/pages/ParishMapPage'))
 
 // Trang thật theo route `to` của nav-config; mục chưa có → Placeholder.
 // Task 5+ thêm dần vào map này (pattern lazy page).
 const PAGES: Record<string, ComponentType> = {
   '/parish/seasons': SeasonListPage,
   '/parish/areas': AreaListPage,
+  '/parish/map': ParishMapPage,
   '/community/seasons': SeasonListPage,
   '/community/areas': AreaListPage,
+  '/community/map': ParishMapPage,
     '/leader/tasks': TaskListPage,
   '/leader/volunteers': VolunteerListPage,
   '/community/volunteers': VolunteerListPage,
@@ -94,7 +97,6 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
   ],
   COMMUNITY: [
     { path: 'areas/:id/tasks', Page: TaskListPage },
-    { path: 'areas/:id/design', Page: DesignReviewPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
   ],
   PARISH: [

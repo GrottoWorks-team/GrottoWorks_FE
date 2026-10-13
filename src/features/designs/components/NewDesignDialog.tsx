@@ -14,8 +14,12 @@ import { useCreateDesign } from '../api'
 const schema = z.object({
   title: z.string().trim().min(1, 'features.design.titleRequired'),
   description: z.string().trim().max(300, 'features.design.descriptionMax'),
+  designType: z.enum(['TWO_D', 'THREE_D']),
 })
 type FormData = z.infer<typeof schema>
+
+const SELECT_CLS =
+  'flex h-10 w-full rounded-md border border-border bg-card px-3 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
 const TEXTAREA_CLS =
   'flex min-h-[72px] w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -40,7 +44,7 @@ export function NewDesignDialog({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { title: '', description: '' },
+    defaultValues: { title: '', description: '', designType: 'TWO_D' },
   })
 
   const onSubmit = async (data: FormData) => {
@@ -50,7 +54,7 @@ export function NewDesignDialog({
         areaId,
         title: data.title.trim(),
         description: data.description.trim() || undefined,
-        designType: 'TWO_D',
+        designType: data.designType,
         createdBy,
         createdAt: now,
         updatedAt: now,
@@ -81,6 +85,13 @@ export function NewDesignDialog({
       }
     >
       <form id="new-design-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <div>
+          <Label htmlFor="design-type">{t('features.design.designType')}</Label>
+          <select id="design-type" className={SELECT_CLS} {...register('designType')}>
+            <option value="TWO_D">{t('features.design.type2d')}</option>
+            <option value="THREE_D">{t('features.design.type3d')}</option>
+          </select>
+        </div>
         <div>
           <Label htmlFor="design-title">{t('features.design.designTitle')}</Label>
           <Input id="design-title" {...register('title')} />

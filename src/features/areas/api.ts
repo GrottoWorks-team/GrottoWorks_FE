@@ -35,9 +35,14 @@ export function useCreateArea() {
 }
 
 export function useUpdateArea() {
-  // communityId: null = xoá thuộc tính (mock PATCH shallow-merge giữ key null).
+  // communityId/mapX/mapY: null = xoá thuộc tính (mock PATCH shallow-merge giữ key null).
   return useAreaMutation(
-    ({ id, ...data }: Partial<Omit<WorkArea, 'communityId'>> & { id: string; communityId?: string | null }) =>
+    ({ id, ...data }: Partial<Omit<WorkArea, 'communityId' | 'mapX' | 'mapY'>> & {
+      id: string
+      communityId?: string | null
+      mapX?: number | null
+      mapY?: number | null
+    }) =>
       api<WorkArea>(`/areas/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   )
 }

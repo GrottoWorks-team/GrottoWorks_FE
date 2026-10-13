@@ -7,6 +7,7 @@ import {
   LogOut, LayoutDashboard, Calendar, MapPin, Users, ShoppingCart, LifeBuoy,
   ListChecks, FileText, ClipboardList, ClipboardCheck, UserPlus, Inbox, Clock,
   Package, Gift, Backpack, Boxes, UserCog, Church, Tags, Star, History, Database,
+  MapPinned,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -26,7 +27,7 @@ const ICONS: Record<string, LucideIcon> = {
   tasks: ClipboardList, inbox: Inbox, clock: Clock, materials: Package,
   gift: Gift, borrowed: Backpack, boxes: Boxes, accounts: UserCog,
   church: Church, tags: Tags, star: Star, history: History, backup: Database,
-  assign: UserPlus, confirm: ClipboardCheck,
+  assign: UserPlus, confirm: ClipboardCheck, map: MapPinned,
 }
 
 export function AppShell({ role }: { role?: Role }) {

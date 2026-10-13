@@ -12,8 +12,19 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { deleteBlob, newBlobKey, putBlob } from '@/lib/blobStore'
-import { ACCEPTED_IMAGE_TYPES, IMAGE_ACCEPT_ATTR, MAX_IMAGE_BYTES, formatBytes, validateImageFile } from '../config'
+import {
+  ACCEPTED_IMAGE_TYPES,
+  ACCEPTED_MODEL_EXTENSIONS,
+  IMAGE_ACCEPT_ATTR,
+  MAX_IMAGE_BYTES,
+  MAX_MODEL_BYTES,
+  MODEL_ACCEPT_ATTR,
+  formatBytes,
+  validateImageFile,
+  validateModelFile,
+} from '../config'
 import { useCreateDesignVersion, useUpdateDesign } from '../api'
+import type { DesignType } from '@/types'
 
 type FileError = 'none' | 'type' | 'size' | 'empty'
 
@@ -29,12 +40,14 @@ const TEXTAREA_CLS =
 
 export function UploadVersionDialog({
   designId,
+  designType,
   nextVersionNumber,
   uploadedBy,
   onUploaded,
   onClose,
 }: {
   designId: string
+  designType: DesignType
   nextVersionNumber: number
   uploadedBy: string
   onUploaded: (versionId: string) => void
@@ -45,6 +58,7 @@ export function UploadVersionDialog({
   const createVersion = useCreateDesignVersion()
   const updateDesign = useUpdateDesign()
   const inputRef = useRef<HTMLInputElement>(null)
+  const is3d = designType === 'THREE_D'
 
   const [file, setFile] = useState<File | null>(null)
   const [note, setNote] = useState('')
@@ -57,7 +71,7 @@ export function UploadVersionDialog({
       setFile(null)
       return
     }
-    const check = validateImageFile(f)
+    const check = is3d ? validateModelFile(f) : validateImageFile(f)
     if (!check.ok) {
       setFile(null)
       setError(check.reason)
@@ -120,12 +134,14 @@ export function UploadVersionDialog({
     >
       <div className="space-y-4">
         <div>
-          <Label htmlFor="design-file">{t('features.design.imageFile')}</Label>
+          <Label htmlFor="design-file">
+            {is3d ? t('features.design.modelFile') : t('features.design.imageFile')}
+          </Label>
           <input
             id="design-file"
             ref={inputRef}
             type="file"
-            accept={IMAGE_ACCEPT_ATTR}
+            accept={is3d ? MODEL_ACCEPT_ATTR : IMAGE_ACCEPT_ATTR}
             onChange={(e) => pick(e.target.files?.[0] ?? null)}
             className={cn(
               'block w-full cursor-pointer rounded-md border border-border bg-card px-3 py-2 text-sm',
@@ -134,10 +150,15 @@ export function UploadVersionDialog({
             aria-describedby="design-file-hint"
           />
           <p id="design-file-hint" className="mt-1 text-xs text-muted-foreground">
-            {t('features.design.imageHint', {
-              types: ACCEPTED_IMAGE_TYPES.map((x) => x.replace('image/', '')).join(', '),
-              size: formatBytes(MAX_IMAGE_BYTES),
-            })}
+            {is3d
+              ? t('features.design.modelHintFile', {
+                  types: ACCEPTED_MODEL_EXTENSIONS.join(', '),
+                  size: formatBytes(MAX_MODEL_BYTES),
+                })
+              : t('features.design.imageHint', {
+                  types: ACCEPTED_IMAGE_TYPES.map((x) => x.replace('image/', '')).join(', '),
+                  size: formatBytes(MAX_IMAGE_BYTES),
+                })}
           </p>
           {error && (
             <p className="mt-1 text-xs font-semibold text-destructive">{t(ERROR_KEY[error])}</p>

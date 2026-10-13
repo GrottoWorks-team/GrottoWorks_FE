@@ -8,7 +8,7 @@ import { purchaseRecords, purchaseRequests } from './seed/purchases';
 import { timesheets } from './seed/timesheets';
 import { activityLogs, allocations, borrowedItems, checklistItems, supportRegs, supportRequests, volunteerRegs } from './seed/misc';
 import { SKILLS } from '../types';
-import type { Design, DesignComment, DesignVersion, Registration } from '../types';
+import type { Design, DesignComment, DesignVersion, ParishMap, Registration } from '../types';
 
 export const seed = {
   parish,
@@ -36,6 +36,8 @@ export const seed = {
   designs: [] as Design[],
   designVersions: [] as DesignVersion[],
   designComments: [] as DesignComment[],
+  // Bản đồ mặt bằng giáo xứ — rỗng, ban hành giáo tải lên qua UI.
+  parishMaps: [] as ParishMap[],
   skills: [...SKILLS],
 };
 

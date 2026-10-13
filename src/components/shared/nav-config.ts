@@ -23,6 +23,7 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.community.dashboard', to: '/community', icon: 'dashboard' },
         { label: 'nav.community.seasons', to: '/community/seasons', icon: 'calendar' },
         { label: 'nav.community.areas', to: '/community/areas', icon: 'areas' },
+        { label: 'nav.community.map', to: '/community/map', icon: 'map' },
       ],
     },
     {
@@ -85,6 +86,7 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.parish.dashboard', to: '/parish', icon: 'dashboard' },
         { label: 'nav.parish.seasons', to: '/parish/seasons', icon: 'calendar' },
         { label: 'nav.parish.areas', to: '/parish/areas', icon: 'areas' },
+        { label: 'nav.parish.map', to: '/parish/map', icon: 'map' },
         {
           label: 'nav.parish.purchases',
           to: '/parish/purchases',

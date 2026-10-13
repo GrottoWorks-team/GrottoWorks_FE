@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -78,62 +78,49 @@ export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white border-grotto-border">
-        <DialogHeader>
-          <DialogTitle className="text-grotto-text font-bold">
-            {skill ? 'Cập Nhật Kỹ Năng' : 'Thêm Kỹ Năng Mới'}
-          </DialogTitle>
-        </DialogHeader>
+    <Dialog
+      open={open}
+      onClose={() => onOpenChange(false)}
+      size="md"
+      title={skill ? 'Cập nhật kỹ năng' : 'Thêm kỹ năng mới'}
+      footer={
+        <>
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Hủy
+          </Button>
+          <Button type="submit" form="skill-form" disabled={isSubmitting}>
+            {isSubmitting ? 'Đang lưu...' : skill ? 'Lưu thay đổi' : 'Thêm kỹ năng'}
+          </Button>
+        </>
+      }
+    >
+      <form id="skill-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <div className="space-y-1.5">
+          <Label htmlFor="skill-code">Mã kỹ năng *</Label>
+          <Input
+            id="skill-code"
+            placeholder="VD: DIEN, MOC, HAN"
+            disabled={Boolean(skill)}
+            {...register('code')}
+          />
+          {errors.code && (
+            <p className="mt-1 text-xs font-semibold text-destructive">{errors.code.message}</p>
+          )}
+        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="skill-code">Mã kỹ năng *</Label>
-            <Input
-              id="skill-code"
-              placeholder="VD: DIEN, MOC, HAN"
-              {...register('code')}
-            />
-            {errors.code && <p className="text-xs text-red-500">{errors.code.message}</p>}
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="skill-name">Tên kỹ năng *</Label>
+          <Input id="skill-name" placeholder="VD: Sửa chữa điện" {...register('name')} />
+          {errors.name && (
+            <p className="mt-1 text-xs font-semibold text-destructive">{errors.name.message}</p>
+          )}
+        </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="skill-name">Tên kỹ năng *</Label>
-            <Input
-              id="skill-name"
-              placeholder="VD: Sửa chữa điện"
-              {...register('name')}
-            />
-            {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="skill-desc">Mô tả chi tiết</Label>
-            <Input
-              id="skill-desc"
-              placeholder="Mô tả kỹ năng cần thiết..."
-              {...register('description')}
-            />
-          </div>
-
-          <DialogFooter className="pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Hủy
-            </Button>
-            <Button
-              type="submit"
-              className="bg-grotto-primary hover:bg-grotto-primary/90 text-white"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Đang lưu...' : 'Thêm kỹ năng'}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+        <div className="space-y-1.5">
+          <Label htmlFor="skill-desc">Mô tả chi tiết</Label>
+          <Input id="skill-desc" placeholder="Mô tả kỹ năng cần thiết..." {...register('description')} />
+        </div>
+      </form>
     </Dialog>
   )
 }
