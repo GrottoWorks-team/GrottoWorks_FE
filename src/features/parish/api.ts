@@ -97,7 +97,20 @@ export function useUpdateParish() {
 }
 
 export function useAdminSkills() {
-  return useQuery({ queryKey: adminKeys.skills, queryFn: () => api<string[]>('/skills') })
+  return useQuery({
+    queryKey: adminKeys.skills,
+    queryFn: async () => {
+      try {
+        const skills = await api<any[]>('/api/v1/skills')
+        if (Array.isArray(skills)) {
+          return skills.map((s) => (typeof s === 'string' ? s : s.name))
+        }
+      } catch {
+        // fallback
+      }
+      return []
+    },
+  })
 }
 
 function useAdminMutation<TVars>(
@@ -171,15 +184,29 @@ export function useDeleteCommunity() {
 // ---- Parish (object đơn) + Skills (string[]) ------------------------------
 
 export function useCreateSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], (name: string) =>
-    api<string[]>('/skills', { method: 'POST', body: JSON.stringify({ name }) }),
-  )
+  return useAdminMutation([[ 'admin', 'skills' ]], async (name: string) => {
+    const code = name.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'SKL'
+    return api<any>('/api/v1/skills', {
+      method: 'POST',
+      body: JSON.stringify({ code: `${code}${Math.floor(Math.random() * 899 + 100)}`, name }),
+    })
+  })
 }
 
 export function useRenameSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], ({ index, name }: { index: number; name: string }) =>
-    api<string[]>(`/skills/${index}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
-  )
+  return useAdminMutation([[ 'admin', 'skills' ]], async ({ index, name }: { index: number; name: string }) => {
+    try {
+      const skills = await api<any[]>('/api/v1/skills')
+      if (Array.isArray(skills) && skills[index]?.id) {
+        return api<any>(`/api/v1/skills/${skills[index].id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name }),
+        })
+      }
+    } catch {
+      // fallback
+    }
+  })
 }
 
 export function useDeleteSkill() {

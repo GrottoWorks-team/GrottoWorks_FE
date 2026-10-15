@@ -29,7 +29,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { getBlob } from '@/lib/blobStore'
 import { relTime } from '@/lib/format'
-import { useAreas } from '@/features/areas/api'
+import { useArea, useAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import type { DesignComment } from '@/types'
 import {
@@ -78,9 +78,10 @@ export default function DesignReviewPage() {
       ? '/leader'
       : '/community'
 
+  const { data: areaFromSingle } = useArea(areaId)
   const { data: areas = [] } = useAreas()
   const { data: users = [] } = useUsers()
-  const area = areas.find((a) => a.id === areaId)
+  const area = areaFromSingle ?? areas.find((a) => a.id === areaId)
 
   const { data: designs = [], isPending: designsPending } = useDesigns(areaId)
   const design = designs[0]

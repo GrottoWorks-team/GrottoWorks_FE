@@ -2,7 +2,7 @@
 // Login), icon theo type, StatusTag, deadline, season badge, thanh tiến độ moss vươn từ 0 (.g-bar).
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Landmark, TreePine, Lightbulb, Trees, Theater, FileImage, Calendar } from 'lucide-react'
+import { Landmark, TreePine, Lightbulb, Trees, Theater, FileImage, Calendar, Info } from 'lucide-react'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { viDate } from '@/lib/format'
@@ -25,12 +25,14 @@ export function AreaCard({
   seasonYear,
   onClick,
   onOpenDesign,
+  onOpenDetail,
 }: {
   area: WorkArea
   index: number
   seasonYear?: number
   onClick?: (area: WorkArea) => void
   onOpenDesign?: (area: WorkArea) => void
+  onOpenDetail?: (area: WorkArea) => void
 }) {
   const { t } = useTranslation()
   const Icon = AREA_ICONS[area.type]
@@ -128,20 +130,36 @@ export function AreaCard({
           {area.volunteerCount} {t('features.areas.volunteers')} · {area.taskCount}{' '}
           {t('features.areas.tasks')}
         </p>
-        {onOpenDesign && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="mt-4 w-full"
-            onClick={(e) => {
-              e.stopPropagation()
-              onOpenDesign(area)
-            }}
-          >
-            <FileImage className="size-4" />
-            {t('features.design.title')}
-          </Button>
-        )}
+        <div className="mt-4 flex gap-2">
+          {onOpenDetail && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenDetail(area)
+              }}
+            >
+              <Info className="size-3.5 mr-1 text-brand-pine" />
+              {t('features.areas.detailBtn', { defaultValue: 'Chi tiết' })}
+            </Button>
+          )}
+          {onOpenDesign && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpenDesign(area)
+              }}
+            >
+              <FileImage className="size-3.5 mr-1" />
+              {t('features.design.title')}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )
