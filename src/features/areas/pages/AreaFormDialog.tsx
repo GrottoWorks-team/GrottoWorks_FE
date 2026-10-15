@@ -11,6 +11,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
+import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
 import type { Season, WorkArea } from '@/types'
@@ -162,22 +163,24 @@ export function AreaFormDialog({
         })
         toast(t('features.areas.updated', { name: data.name }))
       } else {
-        // Khu mới: tiến độ 0, chưa có TNV/nhiệm vụ, mặc định đúng tiến độ.
         await create.mutateAsync({
-          ...data,
-          communityId: communityId ?? undefined,
-          deadline: data.deadline || undefined,
-          description: data.description || undefined,
-          progress: 0,
-          volunteerCount: 0,
-          taskCount: 0,
-          status: 'IN_PROGRESS',
+          seasonId: data.seasonId,
+          name: data.name,
+          description: data.description || null,
+          communityId: data.level === 'COMMUNITY' ? (communityId ?? null) : null,
+          startDate: null,
+          deadline: data.deadline || null,
         })
         toast(t('features.areas.created', { name: data.name }))
       }
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (e) {
+      toast(
+        e instanceof ApiError && e.code === 'SEASON_INVALID_STATE'
+          ? t('features.areas.seasonInvalidState')
+          : t('common.error'),
+        'alert',
+      )
     }
   }
 
@@ -266,6 +269,9 @@ export function AreaFormDialog({
           </div>
         )}
 
+        {/* ponytail: BE chưa có endpoint phân công leader/officer cho khu vực
+            (WorkAreaDto có LeaderId/MaterialOfficerId nhưng chỉ đọc). Hai select
+            này chỉ có tác dụng với mock. */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="area-leader">{t('features.areas.leader')}</Label>

@@ -35,13 +35,15 @@ export function AreaCard({
   const { t } = useTranslation()
   const Icon = AREA_ICONS[area.type]
   const style = { '--d': index } as CSSProperties
+  const displayName = area.name?.trim() || t('features.areas.areaFallback', { id: area.id.slice(0, 8) })
+
   return (
     <div
       data-area-id={area.id}
       style={style}
       onClick={onClick ? () => onClick(area) : undefined}
       role={onClick ? 'button' : undefined}
-      aria-label={onClick ? area.name : undefined}
+      aria-label={onClick ? displayName : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
         onClick
@@ -60,7 +62,6 @@ export function AreaCard({
     >
       {/* Vòm hang: dải terra + mái vòm panel cắt lên trên, icon ở giữa. */}
       <div className="relative grid h-24 place-items-center bg-primary">
-        
         <div className="grid h-full place-items-center">
           <div className="grid size-11 place-items-center rounded-card bg-primary text-primary-foreground">
             <Icon className="size-5" aria-hidden />
@@ -70,7 +71,7 @@ export function AreaCard({
       <div className="p-5">
         <div className="flex items-center justify-between gap-2">
           <p className="lbl-mono">
-            {t(`features.areas.areaType.${area.type}`)} · {t(`features.areas.level.${area.level}`)}
+            {area.deadline ? t('features.areas.deadline') : t('features.areas.title')}
           </p>
           {seasonYear ? (
             <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
@@ -78,7 +79,7 @@ export function AreaCard({
             </span>
           ) : null}
         </div>
-        <h3 className="mt-1 text-lg font-bold leading-tight text-foreground">{area.name}</h3>
+        <h3 className="mt-1 text-lg font-bold leading-tight text-foreground">{displayName}</h3>
         {area.description ? (
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground" title={area.description}>
             {area.description}
@@ -86,9 +87,12 @@ export function AreaCard({
         ) : null}
         <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
           <StatusTag status={area.status} />
-          {area.deadline ? (
+          {area.startDate || area.deadline ? (
             <span className="tabular text-xs text-muted-foreground">
-              {t('features.areas.deadline')}: <strong className="font-semibold text-foreground">{viDate(area.deadline)}</strong>
+              {area.startDate ? viDate(area.startDate) : '—'} →{' '}
+              <strong className="font-semibold text-foreground">
+                {area.deadline ? viDate(area.deadline) : '—'}
+              </strong>
             </span>
           ) : null}
         </div>

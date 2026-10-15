@@ -1,9 +1,12 @@
-// Work-area API hooks — cùng pattern season: query key <resource>, api()
-// wrapper, invalidate sau mutation. useUsers/useCommunities sống ở domain
-// riêng (features/users, features/communities) — re-export cho import cũ.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+// Work-area API hooks. BE không có /areas phẳng: khu vực luôn nằm trong một
+// mùa (/api/v1/seasons/{seasonId}/work-areas), nên "tất cả các mùa" = gọi
+// song song từng mùa rồi gộp.
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { WorkArea } from '@/types'
+import type { CreateWorkAreaRequest, WorkAreaDto } from '@/types/parish'
+import { toWorkArea } from '@/features/parish/mappers'
+import { useSeasons } from '@/features/season/api'
 
 export { useUsers } from '@/features/users/api'
 export { useCommunities } from '@/features/communities/api'
@@ -11,42 +14,86 @@ export { useSeasons } from '@/features/season/api'
 
 export const areaKeys = {
   all: ['areas'] as const,
+  bySeason: (seasonId: string) => ['areas', seasonId] as const,
 }
 
-export function useAreas() {
+/** GET /api/v1/seasons/{seasonId}/work-areas — một mùa. */
+export function useSeasonAreas(seasonId?: string) {
   return useQuery({
-    queryKey: areaKeys.all,
-    queryFn: () => api<WorkArea[]>('/areas'),
+    queryKey: areaKeys.bySeason(seasonId ?? ''),
+    queryFn: async () => {
+      const list = await api<WorkAreaDto[]>(
+        `/api/v1/seasons/${seasonId}/work-areas?size=100`,
+      )
+      return list.map(toWorkArea)
+    },
+    enabled: Boolean(seasonId),
   })
 }
 
-function useAreaMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: fn,
-    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
+/** Gộp khu vực của nhiều mùa. Khi seasonIds không truyền: tự động lấy tất cả các mùa. */
+export function useAreas(seasonIds?: string[]) {
+  const { data: allSeasons = [] } = useSeasons()
+  const effectiveSeasonIds = seasonIds ?? allSeasons.map((s) => s.id)
+  const results = useQueries({
+    queries: effectiveSeasonIds.map((seasonId) => ({
+      queryKey: areaKeys.bySeason(seasonId),
+      queryFn: async () => {
+        const list = await api<WorkAreaDto[]>(
+          `/api/v1/seasons/${seasonId}/work-areas?size=100`,
+        )
+        return list.map(toWorkArea)
+      },
+      enabled: Boolean(seasonId),
+    })),
+  })
+
+  return {
+    data: results.flatMap((r) => r.data ?? []),
+    isPending: results.some((r) => r.isPending),
+  }
+}
+
+/** GET /api/v1/work-areas/{id} */
+export function useArea(id?: string) {
+  return useQuery({
+    queryKey: ['area', id ?? ''],
+    queryFn: async () => toWorkArea(await api<WorkAreaDto>(`/api/v1/work-areas/${id}`)),
+    enabled: Boolean(id),
   })
 }
 
 export function useCreateArea() {
-  return useAreaMutation((data: Omit<WorkArea, 'id'>) =>
-    api<WorkArea>('/areas', { method: 'POST', body: JSON.stringify(data) }),
-  )
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ seasonId, ...data }: CreateWorkAreaRequest & { seasonId: string }) =>
+      api<WorkAreaDto>(`/api/v1/seasons/${seasonId}/work-areas`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
+  })
 }
 
+// ponytail: BE chưa có PATCH/DELETE /work-areas/{id} — sửa và xoá khu vực vẫn
+// đi MSW mock. Gắn khi ParishCoordination bổ sung endpoint.
 export function useUpdateArea() {
-  // communityId/mapX/mapY: null = xoá thuộc tính (mock PATCH shallow-merge giữ key null).
-  return useAreaMutation(
-    ({ id, ...data }: Partial<Omit<WorkArea, 'communityId' | 'mapX' | 'mapY'>> & {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: Partial<Omit<WorkArea, 'communityId' | 'mapX' | 'mapY'>> & {
       id: string
       communityId?: string | null
       mapX?: number | null
       mapY?: number | null
-    }) =>
-      api<WorkArea>(`/areas/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-  )
+    }) => api<WorkArea>(`/areas/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
+  })
 }
 
 export function useDeleteArea() {
-  return useAreaMutation((id: string) => api<void>(`/areas/${id}`, { method: 'DELETE' }))
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api<void>(`/areas/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
+  })
 }
