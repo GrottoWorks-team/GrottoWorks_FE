@@ -1,33 +1,66 @@
-// GrottoWorks domain types — phiên bản chữ là bản thật, mọi task sau phụ thuộc file này.
-export type Role = 'PARISH' | 'COMMUNITY' | 'LEADER' | 'MATERIAL_OFFICER';
+import type { ParishStatus, SeasonStatus, WorkAreaStatus } from './parish'
 
-export interface Parish { id: string; name: string }
-export interface Community { id: string; name: string; parishId: string }
+export type Role = 'PARISH' | 'COMMUNITY' | 'LEADER' | 'MATERIAL_OFFICER'
+
+export interface Parish {
+  id: string
+  name: string
+  address?: string
+  description?: string
+  status: ParishStatus
+  /** Dùng cho If-Match khi PATCH — BE chặn ghi đè bằng 412. */
+  version: number
+}
+
+export interface Community {
+  id: string
+  name: string
+  parishId: string
+  description?: string
+  status: 'ACTIVE' | 'INACTIVE'
+}
 
 export interface User {
   id: string; name: string; email: string; role: Role; communityId?: string;
+  /** Giáo xứ của user — BE dùng để chặn truy cập chéo giáo xứ (403). */
+  parishId?: string;
   locked?: boolean; skills: string[]; points: number; avatarHue: number;
 }
 
 export interface Season {
-  id: string; year: number; startDate: string; endDate: string;
-  status: 'ACTIVE' | 'CLOSED' | 'PLANNED'; budget: number;
-  description?: string;
-  communityIds?: string[];
+  id: string
+  parishId: string
+  name: string
+  year: number
+  startDate: string
+  endDate: string
+  status: SeasonStatus
+  budget: number
+  description?: string
+  /** BE không lưu cộng đoàn trên mùa — suy ra từ WorkArea.CommunityId. */
+  communityIds?: string[]
 }
 
-export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE';
+export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'
 
 export interface WorkArea {
-  id: string; name: string; type: AreaType; level: 'PARISH' | 'COMMUNITY'; communityId?: string;
-  leaderId: string; officerId: string; progress: number; volunteerCount: number;
-  taskCount: number; status: 'ON_TRACK' | 'AT_RISK' | 'LATE';
-  seasonId?: string;
-  deadline?: string;
-  description?: string;
-  /** Toạ độ chuẩn hoá 0..1 của khu trên bản đồ mặt bằng giáo xứ (nếu đã phân bổ). */
-  mapX?: number;
-  mapY?: number;
+  id: string
+  name: string
+  type: AreaType
+  level: 'PARISH' | 'COMMUNITY'
+  communityId?: string
+  leaderId: string
+  officerId: string
+  progress: number
+  volunteerCount: number
+  taskCount: number
+  status: WorkAreaStatus
+  seasonId?: string
+  startDate?: string
+  deadline?: string
+  description?: string
+  mapX?: number
+  mapY?: number
 }
 
 /**

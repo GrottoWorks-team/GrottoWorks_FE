@@ -17,10 +17,12 @@ beforeEach(() => {
 afterAll(() => server.close())
 const validSeason: Season = {
   id: 's1',
+  parishId: 'p1',
+  name: 'Mùa 2026',
   year: 2026,
   startDate: '2026-09-15',
   endDate: '2026-12-24',
-  status: 'PLANNED',
+  status: 'PLANNING',
   budget: 100_000_000,
   description: 'Mùa 2026',
   communityIds: ['c1'],
@@ -36,7 +38,7 @@ const validArea: WorkArea = {
   progress: 0,
   volunteerCount: 0,
   taskCount: 0,
-  status: 'ON_TRACK',
+  status: 'IN_PROGRESS',
   seasonId: 's1',
 }
 

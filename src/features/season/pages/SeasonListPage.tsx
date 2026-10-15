@@ -135,7 +135,7 @@ export default function SeasonListPage() {
         header: t('common.actions'),
         render: (s: Season) => (
           <div className="flex justify-end gap-1">
-            {s.status === 'PLANNED' && (
+            {s.status === 'PLANNING' && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -157,7 +157,7 @@ export default function SeasonListPage() {
             >
               <Pencil className="size-4" />
             </Button>
-            {s.status !== 'CLOSED' && (
+            {s.status !== 'COMPLETED' && s.status !== 'ARCHIVED' && (
               <Button
                 variant="ghost"
                 size="icon"

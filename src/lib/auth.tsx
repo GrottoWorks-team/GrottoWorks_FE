@@ -40,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: p.email,
         role: normalizeRole(p.role),
         communityId: p.communityId,
+        parishId: p.parishId,
         skills: p.skillIds ?? p.skills ?? [],
         points: p.points ?? 0,
         avatarHue: 45,

@@ -176,7 +176,7 @@ test('AreaAssignDialog: hiển thị thông tin thời hạn và phân công th�
     progress: 35,
     volunteerCount: 12,
     taskCount: 8,
-    status: 'AT_RISK',
+    status: 'NEEDS_CORRECTION',
     deadline: '2026-12-20',
     description: 'Khu vực hang đá chính',
   }

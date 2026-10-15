@@ -1,11 +1,11 @@
 import type { Community, Parish, User } from '../../types';
 
-export const parish: Parish = { id: 'p1', name: 'Tân Định' };
+export const parish: Parish = { id: 'p1', name: 'Tân Định', status: 'ACTIVE', version: 1 };
 
 export const communities: Community[] = [
-  { id: 'c1', name: 'Giáo khu Thánh Tâm', parishId: 'p1' },
-  { id: 'c2', name: 'Giáo khu Mẹ Thiên Chúa', parishId: 'p1' },
-  { id: 'c3', name: 'Giáo khu Thánh Giuse', parishId: 'p1' },
+  { id: 'c1', name: 'Giáo khu Thánh Tâm', parishId: 'p1', status: 'ACTIVE' },
+  { id: 'c2', name: 'Giáo khu Mẹ Thiên Chúa', parishId: 'p1', status: 'ACTIVE' },
+  { id: 'c3', name: 'Giáo khu Thánh Giuse', parishId: 'p1', status: 'ACTIVE' },
 ];
 
 const S = {

@@ -64,7 +64,7 @@ function CommunityFormDialog({
         toast(t('features.parish.updated', { name: data.name }))
       } else {
         // parishId: giáo xứ demo duy nhất 'p1' (seed).
-        await create.mutateAsync({ name: data.name, parishId: 'p1' })
+        await create.mutateAsync({ name: data.name, parishId: 'p1', status: 'ACTIVE' })
         toast(t('features.parish.created', { name: data.name }))
       }
       onClose()

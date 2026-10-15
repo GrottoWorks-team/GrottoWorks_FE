@@ -46,12 +46,12 @@ export function useActivateSeason() {
   )
 }
 
-// Chốt mùa: PATCH status='CLOSED'.
+// Chốt mùa: PATCH status='COMPLETED'.
 export function useCloseSeason() {
   return useSeasonMutation((id: string) =>
     api<Season>(`/seasons/${id}`, {
       method: 'PATCH',
-      body: JSON.stringify({ status: 'CLOSED' }),
+      body: JSON.stringify({ status: 'COMPLETED' }),
     }),
   )
 }

@@ -92,7 +92,12 @@ export function SeasonFormDialog({
         await update.mutateAsync({ id: season.id, ...data })
         toast(t('features.season.updated', { year: data.year }))
       } else {
-        await create.mutateAsync({ ...data, status: 'PLANNED' })
+        await create.mutateAsync({
+          ...data,
+          name: `Mùa Giáng sinh ${data.year}`,
+          parishId: 'p1',
+          status: 'PLANNING',
+        })
         toast(t('features.season.created', { year: data.year }))
       }
       onClose()

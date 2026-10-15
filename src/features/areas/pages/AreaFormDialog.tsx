@@ -90,7 +90,7 @@ export function AreaFormDialog({
   const initialSeasonId = useMemo(() => {
     if (area?.seasonId) return area.seasonId
     if (defaultSeasonId) return defaultSeasonId
-    const activeOrPlanned = seasons.find((s) => s.status === 'ACTIVE' || s.status === 'PLANNED')
+    const activeOrPlanned = seasons.find((s) => s.status === 'ACTIVE' || s.status === 'PLANNING')
     return activeOrPlanned?.id ?? seasons[0]?.id ?? 's1'
   }, [area?.seasonId, defaultSeasonId, seasons])
 
@@ -171,7 +171,7 @@ export function AreaFormDialog({
           progress: 0,
           volunteerCount: 0,
           taskCount: 0,
-          status: 'ON_TRACK',
+          status: 'IN_PROGRESS',
         })
         toast(t('features.areas.created', { name: data.name }))
       }

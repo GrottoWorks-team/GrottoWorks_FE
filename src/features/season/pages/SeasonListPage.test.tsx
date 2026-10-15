@@ -44,10 +44,12 @@ describe('SeasonListPage (Flow 4 + Flow 6)', () => {
     const db = loadDb()
     db.seasons.push({
       id: 's-planned',
+      parishId: 'p1',
+      name: 'Mùa dự kiến 2027',
       year: 2027,
       startDate: '2027-09-15',
       endDate: '2027-12-24',
-      status: 'PLANNED',
+      status: 'PLANNING',
       budget: 80_000_000,
       description: 'Mùa dự kiến 2027',
       communityIds: ['c1'],
