@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
+import { StatusTag } from '@/components/shared/StatusTag'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
@@ -17,6 +18,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
+import { ApiError } from '@/lib/api'
 import { useAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import {
@@ -24,9 +26,10 @@ import {
   useCreateCommunity,
   useDeleteCommunity,
   useParish,
-  useRenameParish,
+  useUpdateParish,
   useUpdateCommunity,
 } from '../api'
+import { useCurrentParishId } from '../hooks'
 import type { Community } from '@/types'
 
 const schema = z.object({
@@ -45,6 +48,7 @@ function CommunityFormDialog({
   const { t } = useTranslation()
   const toast = useToast()
   const editing = Boolean(community)
+  const { parishId } = useCurrentParishId()
   const create = useCreateCommunity()
   const update = useUpdateCommunity()
 
@@ -63,8 +67,7 @@ function CommunityFormDialog({
         await update.mutateAsync({ id: community.id, name: data.name })
         toast(t('features.parish.updated', { name: data.name }))
       } else {
-        // parishId: giáo xứ demo duy nhất 'p1' (seed).
-        await create.mutateAsync({ name: data.name, parishId: 'p1', status: 'ACTIVE' })
+        await create.mutateAsync({ name: data.name, parishId: parishId! })
         toast(t('features.parish.created', { name: data.name }))
       }
       onClose()
@@ -108,25 +111,34 @@ function ParishCard() {
   const { t } = useTranslation()
   const toast = useToast()
   const { data: parish } = useParish()
-  const rename = useRenameParish()
+  const updateParish = useUpdateParish()
   const [name, setName] = useState<string | null>(null)
   const value = name ?? parish?.name ?? ''
 
   const save = async () => {
     const v = value.trim()
-    if (!v || v === parish?.name) return
+    if (!v || v === parish?.name || !parish) return
     try {
-      await rename.mutateAsync(v)
+      await updateParish.mutateAsync({ id: parish.id, version: parish.version, name: v })
       toast(t('features.parish.updated', { name: v }))
       setName(null)
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (e) {
+      // 412 = ai đó vừa sửa trước; tải lại để lấy version mới.
+      toast(
+        e instanceof ApiError && e.status === 412
+          ? t('features.parish.versionConflict')
+          : t('common.error'),
+        'alert',
+      )
     }
   }
 
   return (
     <Card className="mb-5 p-5">
-      <p className="lbl-mono">{t('features.parish.parishName')}</p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="lbl-mono">{t('features.parish.parishName')}</p>
+        {parish?.status && <StatusTag status={parish.status} />}
+      </div>
       <div className="mt-2 flex max-w-md gap-2">
         <Input
           aria-label={t('features.parish.parishName')}
@@ -138,6 +150,16 @@ function ParishCard() {
           }}
         />
       </div>
+      {parish?.address && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          <strong className="text-foreground">{t('features.parish.address')}:</strong> {parish.address}
+        </p>
+      )}
+      {parish?.description && (
+        <p className="mt-1 text-xs text-muted-foreground">
+          <strong className="text-foreground">{t('features.parish.parishDescription')}:</strong> {parish.description}
+        </p>
+      )}
     </Card>
   )
 }
@@ -178,6 +200,15 @@ export default function CommunitiesPage() {
         render: (c: Community) => <span className="font-semibold">{c.name}</span>,
       },
       {
+        key: 'description',
+        header: t('features.parish.communityDescription'),
+        render: (c: Community) => (
+          <span className="text-xs text-muted-foreground" title={c.description}>
+            {c.description ? (c.description.length > 40 ? `${c.description.slice(0, 40)}…` : c.description) : '—'}
+          </span>
+        ),
+      },
+      {
         key: 'members',
         header: t('features.parish.members'),
         align: 'right' as const,
@@ -192,6 +223,11 @@ export default function CommunitiesPage() {
         render: (c: Community) => (
           <span className="tabular">{areas.filter((a) => a.communityId === c.id).length}</span>
         ),
+      },
+      {
+        key: 'status',
+        header: t('common.status'),
+        render: (c: Community) => <StatusTag status={c.status} />,
       },
       {
         key: 'actions',

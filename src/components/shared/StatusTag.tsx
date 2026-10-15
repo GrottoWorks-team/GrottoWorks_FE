@@ -15,6 +15,8 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   IN_REVIEW: 'warn', // phiên bản thiết kế đang review
   IN_PROGRESS: 'warn', // yêu cầu chỉnh sửa đang xử lý
   CHANGES_REQUESTED: 'alert', // phiên bản thiết kế bị yêu cầu chỉnh sửa
+  PLANNING: 'soft', PLANNED: 'soft', READY: 'ok', COMPLETED: 'ok', ARCHIVED: 'soft',
+  READINESS_REVIEW: 'warn', NEEDS_CORRECTION: 'alert', INACTIVE: 'soft',
   DRAFT: 'soft',
 }
 

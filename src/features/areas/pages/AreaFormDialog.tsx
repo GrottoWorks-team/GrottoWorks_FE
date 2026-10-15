@@ -144,7 +144,7 @@ export function AreaFormDialog({
       if (!editing) setValue('level', 'COMMUNITY')
       setValue('communityId', user.communityId)
     }
-  }, [isCommunity, user?.communityId, editing, setValue])
+  }, [isCommunity, user?.communityId, editing, setValue, level])
 
   const onSubmit = async (data: FormData) => {
     // PARISH: update gửi null để mock PATCH xoá communityId cũ (shallow merge
@@ -253,6 +253,7 @@ export function AreaFormDialog({
               className={SELECT_CLS}
               disabled={isCommunity}
               {...register('communityId')}
+              value={watch('communityId') || ''}
             >
               <option value="">{t('features.areas.selectPlaceholder')}</option>
               {communities.map((c) => (

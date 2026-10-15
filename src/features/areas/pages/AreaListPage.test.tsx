@@ -110,6 +110,7 @@ test('AreaFormDialog: COMMUNITY khóa select communityId', async () => {
     </QueryClientProvider>,
   )
   const selectComm = (await screen.findByLabelText(/Giáo khu/i)) as HTMLSelectElement
+  await screen.findByRole('option', { name: /Thánh Tâm/i })
   expect(selectComm.disabled).toBe(true)
   expect(selectComm.value).toBe('c1')
 })

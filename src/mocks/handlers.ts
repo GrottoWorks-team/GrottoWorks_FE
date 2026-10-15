@@ -313,6 +313,117 @@ export const handlers = [
     })
   }),
 
+  // ParishCoordination API v1 mocks (cho vitest test suite & demo mode)
+  http.get('/api/v1/parishes', ({ request }) => {
+    const auth = request.headers.get('authorization') ?? ''
+    if (typeof window !== 'undefined' && auth.startsWith('Bearer ey')) return passthrough()
+    const db = loadDb()
+    return HttpResponse.json({
+      data: [
+        {
+          id: '11111111-1111-1111-1111-111111111111',
+          name: db.parish.name,
+          address: db.parish.address ?? '123 Đường Giáng Sinh',
+          description: db.parish.description ?? 'Giáo xứ mẫu',
+          status: 'ACTIVE',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: null,
+          version: 1,
+        },
+      ],
+      meta: { correlationId: 'mock-parishes' },
+    })
+  }),
+
+  http.get('/api/v1/parishes/:id', ({ params, request }) => {
+    const auth = request.headers.get('authorization') ?? ''
+    if (typeof window !== 'undefined' && auth.startsWith('Bearer ey')) return passthrough()
+    const db = loadDb()
+    return HttpResponse.json({
+      data: {
+        id: params.id,
+        name: db.parish.name,
+        address: db.parish.address ?? '123 Đường Giáng Sinh',
+        description: db.parish.description ?? 'Giáo xứ mẫu',
+        status: 'ACTIVE',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: null,
+        version: 1,
+      },
+      meta: { correlationId: 'mock-parish' },
+    })
+  }),
+
+  http.patch('/api/v1/parishes/:id', async ({ request }) => {
+    const auth = request.headers.get('authorization') ?? ''
+    if (typeof window !== 'undefined' && auth.startsWith('Bearer ey')) return passthrough()
+    const db = loadDb()
+    const body = (await request.json()) as any
+    if (body.name) db.parish.name = body.name
+    if (body.address !== undefined) db.parish.address = body.address
+    if (body.description !== undefined) db.parish.description = body.description
+    saveDb(db)
+    return HttpResponse.json({
+      data: {
+        id: '11111111-1111-1111-1111-111111111111',
+        name: db.parish.name,
+        address: db.parish.address ?? '123 Đường Giáng Sinh',
+        description: db.parish.description ?? 'Giáo xứ mẫu',
+        status: 'ACTIVE',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: new Date().toISOString(),
+        version: 2,
+      },
+      meta: { correlationId: 'mock-parish-update' },
+    })
+  }),
+
+  http.get('/api/v1/parishes/:id/communities', ({ params, request }) => {
+    const auth = request.headers.get('authorization') ?? ''
+    if (typeof window !== 'undefined' && auth.startsWith('Bearer ey')) return passthrough()
+    const db = loadDb()
+    const list = (db.communities ?? []).map((c: any) => ({
+      id: c.id,
+      parishId: String(params.id),
+      name: c.name,
+      description: c.description ?? null,
+      status: c.status ?? 'ACTIVE',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: null,
+      version: 1,
+    }))
+    return HttpResponse.json({
+      data: list,
+      meta: { correlationId: 'mock-communities' },
+    })
+  }),
+
+  http.post('/api/v1/parishes/:id/communities', async ({ params, request }) => {
+    const auth = request.headers.get('authorization') ?? ''
+    if (typeof window !== 'undefined' && auth.startsWith('Bearer ey')) return passthrough()
+    const db = loadDb()
+    const body = (await request.json()) as any
+    const id = nextId(db, 'communities')
+    const item = {
+      id,
+      name: body.name,
+      description: body.description ?? null,
+      status: 'ACTIVE',
+      parishId: String(params.id),
+    }
+    db.communities.push(item)
+    saveDb(db)
+    return HttpResponse.json({
+      data: {
+        ...item,
+        createdAt: new Date().toISOString(),
+        updatedAt: null,
+        version: 1,
+      },
+      meta: { correlationId: 'mock-create-community' },
+    }, { status: 201 })
+  }),
+
   // Auth — mật khẩu demo chung: 'grotto'.
   http.post('/api/auth/login', async ({ request }) => {
     const { email, password } = (await request.json()) as { email?: string; password?: string }
