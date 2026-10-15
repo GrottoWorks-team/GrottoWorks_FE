@@ -5,13 +5,34 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { ActivityLog, Community, Role, User } from '@/types'
-import type { CommunityDto, CreateCommunityRequest, ParishDto, UpdateParishRequest } from '@/types/parish'
+import type {
+  CommunityDto,
+  CreateCommunityRequest,
+  CreateParishRequest,
+  ParishDto,
+  UpdateParishRequest,
+} from '@/types/parish'
 import { toParish } from './mappers'
 import { useCurrentParishId } from './hooks'
 
 export const parishKeys = {
   all: ['parishes'] as const,
   detail: (id: string) => ['parishes', id] as const,
+}
+
+/** POST /api/v1/parishes — Tạo giáo xứ mới (ADMIN). */
+export function useCreateParish() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateParishRequest) =>
+      api<ParishDto>('/api/v1/parishes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: parishKeys.all })
+    },
+  })
 }
 
 /** GET /api/v1/parishes — ADMIN thấy mọi giáo xứ, PARISH chỉ thấy giáo xứ mình. */

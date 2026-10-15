@@ -1,5 +1,4 @@
-// Dialog tạo/sửa mùa — RHF + zod: year 2026–2035, start < end, budget ≥ 0,
-// description tối đa 500 ký tự, chọn ít nhất 1 cộng đoàn tham gia.
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,7 +11,7 @@ import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useCommunities } from '@/features/communities/api'
 import { useCurrentParishId } from '@/features/parish/hooks'
-import { useCreateSeason, useUpdateSeason } from '../api'
+import { useCreateSeason, useSeason, useUpdateSeason } from '../api'
 import type { Season } from '@/types'
 
 const schema = z
@@ -58,25 +57,27 @@ export function SeasonFormDialog({
   const create = useCreateSeason()
   const update = useUpdateSeason()
   const { data: communities = [] } = useCommunities()
+  // GET /api/v1/seasons/{id} — gọi endpoint chi tiết mùa từ backend khi mở modal
+  const { data: detailSeason } = useSeason(season?.id)
+  const activeSeason = detailSeason ?? season
   const editing = Boolean(season)
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    // Cha mount dialog có điều kiện (formOpen && …) → mỗi lần mở là một
-    // form mới với giá trị đúng create/edit — không cần reset thủ công.
-    defaultValues: season
+    defaultValues: activeSeason
       ? {
-          name: season.name,
-          year: season.year,
-          startDate: season.startDate,
-          endDate: season.endDate,
-          budget: season.budget,
-          description: season.description ?? '',
-          communityIds: season.communityIds ?? [],
+          name: activeSeason.name,
+          year: activeSeason.year,
+          startDate: activeSeason.startDate,
+          endDate: activeSeason.endDate,
+          budget: activeSeason.budget,
+          description: activeSeason.description ?? '',
+          communityIds: activeSeason.communityIds ?? [],
         }
       : {
           name: '',
@@ -88,6 +89,20 @@ export function SeasonFormDialog({
           communityIds: [],
         },
   })
+
+  useEffect(() => {
+    if (activeSeason) {
+      reset({
+        name: activeSeason.name,
+        year: activeSeason.year,
+        startDate: activeSeason.startDate,
+        endDate: activeSeason.endDate,
+        budget: activeSeason.budget,
+        description: activeSeason.description ?? '',
+        communityIds: activeSeason.communityIds ?? [],
+      })
+    }
+  }, [activeSeason, reset])
 
   const err = (msg?: string) =>
     msg ? <p className="mt-1 text-xs font-semibold text-destructive">{t(msg)}</p> : null
