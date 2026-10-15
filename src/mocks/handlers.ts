@@ -2,7 +2,7 @@
 // backup export + CRUD generic cho mọi resource key mảng của seed
 // (src/mocks/seed.ts). Mọi mutation persist qua src/lib/db.ts và ghi thêm
 // 1 dòng ActivityLog (actor suy từ Bearer token).
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, passthrough } from 'msw'
 import { loadDb, saveDb } from '../lib/db'
 
 // Structural: khớp cả Request của DOM lẫn request object của MSW.
@@ -278,7 +278,10 @@ export const handlers = [
   http.post('/api/v1/auth/login', async ({ request }) => {
     const { email, password } = (await request.json()) as { email?: string; password?: string }
     const u = loadDb().users.find((x: any) => x.email === email && !x.locked)
-    if (!u || (password !== 'grotto' && password !== 'Admin!123456' && password !== 'ChangeMe!123456')) {
+    if (!u) {
+      return passthrough()
+    }
+    if (password !== 'grotto' && password !== 'Admin!123456' && password !== 'ChangeMe!123456') {
       return HttpResponse.json({ code: 'UNAUTHORIZED', detail: 'Email hoặc mật khẩu không đúng' }, { status: 401 })
     }
     return HttpResponse.json({
@@ -322,7 +325,7 @@ export const handlers = [
   // F-IDN-05: Lấy thông tin người dùng hiện tại
   http.get('/api/v1/users/me', ({ request }) => {
     const u = tokenUser(loadDb(), request)
-    if (!u) return new HttpResponse(null, { status: 401 })
+    if (!u) return passthrough()
     return HttpResponse.json({
       data: {
         id: u.id,
@@ -345,7 +348,7 @@ export const handlers = [
   // F-IDN-05: Cập nhật thông tin người dùng hiện tại
   http.patch('/api/v1/users/me', async ({ request }) => {
     const u = tokenUser(loadDb(), request)
-    if (!u) return new HttpResponse(null, { status: 401 })
+    if (!u) return passthrough()
     const body = (await request.json()) as any
     const db = loadDb()
     const idx = db.users.findIndex((x: any) => x.id === u.id)

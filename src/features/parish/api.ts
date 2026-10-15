@@ -5,6 +5,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { ActivityLog, Community, Parish, Role, User } from '@/types'
+import type { ParishDto } from '@/types/parish'
+import { toParish } from './mappers'
+
+export const parishKeys = {
+  all: ['parishes'] as const,
+  detail: (id: string) => ['parishes', id] as const,
+}
+
+/** GET /api/v1/parishes — ADMIN thấy mọi giáo xứ, PARISH chỉ thấy giáo xứ mình. */
+export function useParishes() {
+  return useQuery({
+    queryKey: parishKeys.all,
+    queryFn: async () => {
+      // ponytail: api() unwrap mất `page`; size=100 lấy hết một lượt rồi để
+      // DataTable phân trang client. BE chặn size>100 bằng 400.
+      const list = await api<ParishDto[]>('/api/v1/parishes?size=100')
+      return list.map(toParish)
+    },
+  })
+}
 
 export const adminKeys = {
   activity: ['admin', 'activity'] as const,

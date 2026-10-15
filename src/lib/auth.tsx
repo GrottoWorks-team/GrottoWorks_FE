@@ -21,7 +21,7 @@ interface AuthContextValue {
   isPending: boolean
   login: (email: string, password: string) => Promise<User>
   logout: () => Promise<void>
-  /** Tải lại user từ /api/v1/users/me hoặc /auth/me. */
+  /** Tải lại user từ /api/v1/users/me. */
   refresh: () => Promise<User>
 }
 
@@ -31,28 +31,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isPending, setIsPending] = useState(() => Boolean(localStorage.getItem('grotto-token')))
 
+  // BE thật là nguồn duy nhất — không còn fallback sang lớp mock. Lỗi ở đây
+  // nghĩa là phiên hỏng thật, và useEffect bên dưới sẽ xoá token.
   const fetchProfile = async (): Promise<User> => {
-    try {
-      const p = await api<any>('/api/v1/users/me')
-      const u: User = {
-        id: p.id,
-        name: p.displayName ?? p.name ?? 'Người dùng',
-        email: p.email,
-        role: normalizeRole(p.role),
-        communityId: p.communityId,
-        parishId: p.parishId,
-        skills: p.skillIds ?? p.skills ?? [],
-        points: p.points ?? 0,
-        avatarHue: 45,
-      }
-      setUser(u)
-      return u
-    } catch {
-      // Fallback legacy /auth/me
-      const u = await api<User>('/auth/me')
-      setUser(u)
-      return u
+    const p = await api<any>('/api/v1/users/me')
+    const u: User = {
+      id: p.id,
+      name: p.displayName ?? p.name ?? 'Người dùng',
+      email: p.email,
+      role: normalizeRole(p.role),
+      communityId: p.communityId,
+      parishId: p.parishId,
+      skills: p.skillIds ?? p.skills ?? [],
+      points: p.points ?? 0,
+      avatarHue: 45,
     }
+    setUser(u)
+    return u
   }
 
   useEffect(() => {
@@ -66,29 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    let tokenPair: TokenPair
-    try {
-      tokenPair = await api<TokenPair>('/api/v1/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      })
-    } catch (err: any) {
-      // Fallback legacy nếu endpoint v1 chưa sẵn sàng
-      const legacy = await api<{ token: string; user: User }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      })
-      tokenPair = {
-        accessToken: legacy.token,
-        refreshToken: `refresh-${legacy.user.id}`,
-        expiresIn: 900,
-        tokenType: 'Bearer',
-      }
-      localStorage.setItem('grotto-token', tokenPair.accessToken)
-      localStorage.setItem('grotto-refresh-token', tokenPair.refreshToken)
-      setUser(legacy.user)
-      return legacy.user
-    }
+    // Đăng nhập chỉ đi Identity service thật. Sai mật khẩu → 401 nổi lên cho
+    // Login page hiện lỗi; không nuốt lỗi rồi thử đường khác.
+    const tokenPair = await api<TokenPair>('/api/v1/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    })
 
     localStorage.setItem('grotto-token', tokenPair.accessToken)
     localStorage.setItem('grotto-refresh-token', tokenPair.refreshToken)
@@ -108,11 +86,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           method: 'POST',
           body: JSON.stringify({ refreshToken }),
         })
-      } else {
-        await api('/auth/logout', { method: 'POST' })
       }
     } catch {
-      // mock layer — bỏ qua lỗi khi logout
+      // Thu hồi refresh token thất bại (mạng, token đã hết hạn) không được
+      // chặn việc đăng xuất ở client — vẫn xoá phiên bên dưới.
     }
     localStorage.removeItem('grotto-token')
     localStorage.removeItem('grotto-refresh-token')
