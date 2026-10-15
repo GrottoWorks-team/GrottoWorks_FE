@@ -9,12 +9,15 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
+import { ApiError } from '@/lib/api'
 import { useCommunities } from '@/features/communities/api'
+import { useCurrentParishId } from '@/features/parish/hooks'
 import { useCreateSeason, useUpdateSeason } from '../api'
 import type { Season } from '@/types'
 
 const schema = z
   .object({
+    name: z.string().trim().min(1, 'common.required').max(150, 'common.required'),
     year: z.coerce
       .number({ invalid_type_error: 'features.season.yearRange' })
       .int()
@@ -51,6 +54,7 @@ export function SeasonFormDialog({
 }) {
   const { t } = useTranslation()
   const toast = useToast()
+  const { parishId } = useCurrentParishId()
   const create = useCreateSeason()
   const update = useUpdateSeason()
   const { data: communities = [] } = useCommunities()
@@ -66,6 +70,7 @@ export function SeasonFormDialog({
     // form mới với giá trị đúng create/edit — không cần reset thủ công.
     defaultValues: season
       ? {
+          name: season.name,
           year: season.year,
           startDate: season.startDate,
           endDate: season.endDate,
@@ -74,6 +79,7 @@ export function SeasonFormDialog({
           communityIds: season.communityIds ?? [],
         }
       : {
+          name: '',
           year: 2026,
           startDate: '',
           endDate: '',
@@ -93,16 +99,26 @@ export function SeasonFormDialog({
         toast(t('features.season.updated', { year: data.year }))
       } else {
         await create.mutateAsync({
-          ...data,
-          name: `Mùa Giáng sinh ${data.year}`,
-          parishId: 'p1',
-          status: 'PLANNING',
+          parishId: parishId!,
+          name: data.name,
+          seasonYear: data.year,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          description: data.description || null,
+          estimatedBudget: data.budget,
         })
         toast(t('features.season.created', { year: data.year }))
       }
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (e) {
+      toast(
+        e instanceof ApiError && e.code === 'SEASON_YEAR_CONFLICT'
+          ? t('features.season.yearConflict')
+          : e instanceof ApiError && e.code === 'SEASON_NAME_CONFLICT'
+            ? t('features.season.nameConflict')
+            : t('common.error'),
+        'alert',
+      )
     }
   }
 
@@ -124,6 +140,12 @@ export function SeasonFormDialog({
       }
     >
       <form id="season-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <div>
+          <Label htmlFor="season-name">{t('features.season.name')}</Label>
+          <Input id="season-name" {...register('name')} />
+          {err(errors.name?.message)}
+        </div>
+
         <div>
           <Label htmlFor="season-year">{t('features.season.year')}</Label>
           <Input id="season-year" type="number" inputMode="numeric" {...register('year')} />
@@ -162,6 +184,9 @@ export function SeasonFormDialog({
         </div>
 
         <div>
+          {/* ponytail: BE không lưu cộng đoàn trên mùa (SeasonDto không có field
+              communityIds) — liên kết nằm ở WorkArea.CommunityId. Trường này chỉ
+              còn tác dụng với mock; gắn khi BE bổ sung. */}
           <Label>{t('features.season.communityIds')}</Label>
           <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
             {communities.map((c) => (

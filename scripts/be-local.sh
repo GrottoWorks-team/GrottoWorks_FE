@@ -34,6 +34,7 @@ start_pg
 
 export Jwt__SigningKey="$JWT"
 export ASPNETCORE_ENVIRONMENT=Development
+export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 
 (cd "$BE/Services/Identity/Identity.Api" && \
   ConnectionStrings__IdentityDatabase="Host=localhost;Port=$PGPORT;Database=identity_db;Username=postgres;Password=postgres" \

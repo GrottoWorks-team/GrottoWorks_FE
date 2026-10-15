@@ -70,9 +70,16 @@ export default function SeasonListPage() {
   const columns = useMemo(
     () => [
       {
-        key: 'year',
-        header: t('features.season.year'),
-        render: (s: Season) => <span className="tabular font-semibold">{s.year}</span>,
+        key: 'name',
+        header: t('features.season.name'),
+        render: (s: Season) => (
+          <div>
+            <span className="font-semibold text-foreground">{s.name}</span>
+            <p className="tabular text-xs text-muted-foreground">
+              {t('features.season.year')} {s.year}
+            </p>
+          </div>
+        ),
       },
       {
         key: 'period',
