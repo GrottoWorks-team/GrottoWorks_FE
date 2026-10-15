@@ -178,7 +178,7 @@ export default function AreaListPage() {
                 aria-label={t('features.design.openDesign')}
                 onClick={() =>
                   navigate(
-                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/design`,
+                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/designer`,
                   )
                 }
               >
@@ -325,7 +325,7 @@ export default function AreaListPage() {
                   canViewDesign
                     ? (x) =>
                         navigate(
-                          `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/design`,
+                          `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/designer`,
                         )
                     : undefined
                 }

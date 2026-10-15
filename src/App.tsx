@@ -51,6 +51,7 @@ const ActivityPage = lazy(() => import('@/features/parish/pages/ActivityPage'))
 const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
 const DesignReviewPage = lazy(() => import('@/features/designs/pages/DesignReviewPage'))
 const ParishMapPage = lazy(() => import('@/features/map/pages/ParishMapPage'))
+const GrottoDesignerPage = lazy(() => import('@/features/designer/pages/GrottoDesignerPage'))
 
 // Trang thật theo route `to` của nav-config; mục chưa có → Placeholder.
 // Task 5+ thêm dần vào map này (pattern lazy page).
@@ -94,14 +95,17 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'tasks/:id', Page: TaskDetailPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
+    { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
   ],
   COMMUNITY: [
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
+    { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
   ],
   PARISH: [
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
+    { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
   ],
 }
 
