@@ -10,7 +10,6 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
-import { resetDb } from '@/lib/db'
 import { useBackup } from '../api'
 import { useState } from 'react'
 
@@ -39,9 +38,7 @@ export default function BackupPage() {
   }
 
   const doReset = () => {
-    resetDb()
-    // Token cũ có thể trỏ user đã bị xoá reset → đăng nhập lại từ đầu.
-    localStorage.removeItem('grotto-token')
+    localStorage.clear()
     window.location.href = '/login'
   }
 
