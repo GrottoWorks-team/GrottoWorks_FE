@@ -2,7 +2,7 @@
 // Login), icon theo type, StatusTag, deadline, season badge, thanh tiến độ moss vươn từ 0 (.g-bar).
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Landmark, TreePine, Lightbulb, Trees, Theater, FileImage } from 'lucide-react'
+import { Landmark, TreePine, Lightbulb, Trees, Theater, FileImage, Calendar } from 'lucide-react'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { viDate } from '@/lib/format'
@@ -56,15 +56,19 @@ export function AreaCard({
           : undefined
       }
       className={cn(
-        'g-item overflow-hidden rounded-card border border-border bg-card shadow-card',
-        onClick && 'cursor-pointer transition-transform hover:-translate-y-0.5 hover:shadow-hover',
+        'g-item group overflow-hidden rounded-card border border-border bg-card shadow-card transition-all duration-300',
+        onClick && 'cursor-pointer hover:-translate-y-1 hover:shadow-hover hover:border-primary/30',
       )}
     >
-      {/* Vòm hang: dải terra + mái vòm panel cắt lên trên, icon ở giữa. */}
-      <div className="relative grid h-24 place-items-center bg-primary">
-        <div className="grid h-full place-items-center">
-          <div className="grid size-11 place-items-center rounded-card bg-primary text-primary-foreground">
-            <Icon className="size-5" aria-hidden />
+      {/* Vòm hang đá: dải thông Noel + mái vòm cong hang đá Bê-lem */}
+      <div className="relative h-24 overflow-hidden bg-gradient-to-br from-brand-pine via-[#0D7344] to-[#0A5C36]">
+        {/* Vòm cong hang đá cắt lên nền card */}
+        <div className="absolute inset-x-0 bottom-0 h-4 rounded-t-[20px] bg-card" />
+
+        {/* Biểu tượng khu vực vòm trung tâm */}
+        <div className="relative z-10 grid h-full place-items-center">
+          <div className="grid size-12 place-items-center rounded-2xl bg-white/15 text-brand-gold shadow-sm backdrop-blur-md border border-white/20 transition-transform duration-300 group-hover:scale-110">
+            <Icon className="size-6 text-brand-gold" aria-hidden />
           </div>
         </div>
       </div>
@@ -79,21 +83,26 @@ export function AreaCard({
             </span>
           ) : null}
         </div>
-        <h3 className="mt-1 text-lg font-bold leading-tight text-foreground">{displayName}</h3>
+        <h3 className="mt-1 text-lg font-bold leading-tight text-foreground group-hover:text-primary transition-colors">
+          {displayName}
+        </h3>
         {area.description ? (
           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground" title={area.description}>
             {area.description}
           </p>
         ) : null}
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <StatusTag status={area.status} />
           {area.startDate || area.deadline ? (
-            <span className="tabular text-xs text-muted-foreground">
-              {area.startDate ? viDate(area.startDate) : '—'} →{' '}
-              <strong className="font-semibold text-foreground">
-                {area.deadline ? viDate(area.deadline) : '—'}
-              </strong>
-            </span>
+            <div className="inline-flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-0.5 tabular text-[11px] text-muted-foreground">
+              <Calendar className="size-3 text-muted-foreground/70" />
+              <span>
+                {area.startDate ? viDate(area.startDate) : '—'} →{' '}
+                <strong className="font-semibold text-foreground">
+                  {area.deadline ? viDate(area.deadline) : '—'}
+                </strong>
+              </span>
+            </div>
           ) : null}
         </div>
         <div className="mt-4">
