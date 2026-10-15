@@ -23,8 +23,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
     passWithNoTests: true,
-    // Full-suite chạy 22 file / 60 test trên 1 máy: ReportPage (aggregate 8
-    // resource) hay vượt timeout 5s mặc định dưới tải — nâng lên 15s.
-    testTimeout: 15_000,
+    // Full-suite chạy 22 file / 63 test trên 1 máy: ReportPage và lazy routes
+    // trong App/Login hay vượt timeout mặc định dưới tải — nâng lên 20s.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
   },
 })

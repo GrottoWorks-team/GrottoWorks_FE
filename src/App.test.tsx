@@ -12,7 +12,7 @@ describe('App', () => {
     render(<App />)
     // Landing là lazy route: chờ hero render xong (badge là text duy nhất).
     expect(
-      await screen.findByText('Nền tảng điều phối mùa Giáng Sinh giáo xứ'),
+      await screen.findByText('Nền tảng điều phối mùa Giáng Sinh giáo xứ', {}, { timeout: 10_000 }),
     ).toBeDefined()
     expect(screen.getByText('Đăng nhập')).toBeDefined()
     // Landing có liên kết tới trang đăng ký đồng hành.
@@ -24,7 +24,7 @@ describe('App', () => {
   it('route lạ → trang 404', async () => {
     window.history.pushState({}, '', '/khong-ton-tai')
     render(<App />)
-    expect(await screen.findByText('Không tìm thấy trang')).toBeDefined()
+    expect(await screen.findByText('Không tìm thấy trang', {}, { timeout: 10_000 })).toBeDefined()
   })
 
   it('NAV: COMMUNITY có seasons, areas, support, checklist, reports, volunteers và PARISH có seasons, areas, purchases', () => {

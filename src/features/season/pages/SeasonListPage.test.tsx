@@ -40,6 +40,7 @@ const mockCommunities = [
 
 vi.mock('../api', () => ({
   useSeasons: () => ({ data: mockSeasons, isPending: false }),
+  useSeason: () => ({ data: undefined, isPending: false }),
   useCloseSeason: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useActivateSeason: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateSeason: () => ({ mutateAsync: vi.fn(), isPending: false }),

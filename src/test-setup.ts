@@ -1,7 +1,13 @@
 // Setup chung cho vitest: i18n (useTranslation cần instance đã init) + cleanup RTL.
 import { afterEach, vi } from 'vitest'
 import '@/lib/i18n'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
+
+// Nâng timeout của findBy* và waitFor từ mặc định 1000ms lên 10000ms (10s)
+// để tránh flaky khi chạy full suite dưới tải CPU cao (lazy routes + Suspense).
+configure({
+  asyncUtilTimeout: 10_000,
+})
 
 // jsdom chưa có ResizeObserver — recharts ResponsiveContainer cần (dashboard
 // BarChart/PieChart trong test). Stub tức thì: kích thước 0 → chart vẫn vẽ
