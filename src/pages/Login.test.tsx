@@ -1,21 +1,47 @@
-// Login qua MSW node handlers thật (login → navigate → AppShell render).
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { setupServer } from 'msw/node'
 import App from '@/App'
-import { handlers } from '@/mocks/handlers'
-import { resetDb } from '@/lib/db'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+vi.mock('@/lib/api', () => ({
+  api: vi.fn(async (url: string) => {
+    if (url === '/api/v1/auth/login') {
+      return {
+        accessToken: 'token-u2',
+        refreshToken: 'refresh-u2',
+        tokenType: 'Bearer',
+        expiresIn: 900,
+      }
+    }
+    if (url === '/api/v1/users/me') {
+      return {
+        id: 'u2',
+        displayName: 'Giuse Trần Văn Bình',
+        name: 'Giuse Trần Văn Bình',
+        email: 'committee@grottoworks.vn',
+        role: 'COMMUNITY',
+        communityId: 'c1',
+        points: 0,
+        skills: [],
+      }
+    }
+    return []
+  }),
+}))
+
+vi.mock('@/features/dashboards/api', () => ({
+  useActivity: () => ({ data: [], isPending: false }),
+}))
+
+vi.mock('@/features/users/api', () => ({
+  useUsers: () => ({ data: [], isPending: false }),
+}))
+
 beforeEach(() => {
-  resetDb()
   localStorage.removeItem('grotto-token')
-  // "/" giờ là landing công khai; đi thẳng tới /login để test form đăng nhập.
+  localStorage.removeItem('grotto-refresh-token')
   window.history.pushState({}, '', '/login')
 })
-afterAll(() => server.close())
 
 test('hiện 4 chip tài khoản demo', async () => {
   render(<App />)
@@ -34,5 +60,3 @@ test('đăng nhập committee → vào shell với nav điều phối, hiện M�
   expect(await screen.findByRole('link', { name: /Mùa chuẩn bị/i })).toBeDefined()
   expect(await screen.findByRole('link', { name: /Khu vực công tác/i })).toBeDefined()
 })
-
-

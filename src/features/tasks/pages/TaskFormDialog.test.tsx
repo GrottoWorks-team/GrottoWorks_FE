@@ -1,19 +1,22 @@
-// Validation TaskFormDialog: submit thiếu title (và khu) → lỗi zod hiển thị.
-// Dialog dùng useAreas/useSkills/useMaterials → cần msw server; zodResolver
-// validate async nên phải findByText.
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { setupServer } from 'msw/node'
 import { ToastProvider } from '@/components/ui/toast'
 import { TaskFormDialog } from './TaskFormDialog'
-import { handlers } from '@/mocks/handlers'
-import { resetDb } from '@/lib/db'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-beforeEach(() => resetDb())
-afterAll(() => server.close())
+vi.mock('@/features/areas/api', () => ({
+  useAreas: () => ({ data: [{ id: 'a1', name: 'Hang đá Bê-lem' }], isPending: false }),
+}))
+
+vi.mock('@/features/materials/api', () => ({
+  useMaterials: () => ({ data: [], isPending: false }),
+}))
+
+vi.mock('../api', () => ({
+  useSkills: () => ({ data: ['Điện', 'Mộc'], isPending: false }),
+  useCreateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUpdateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
 
 test('submit thiếu title → hiện lỗi zod "Vui lòng nhập tên việc"', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

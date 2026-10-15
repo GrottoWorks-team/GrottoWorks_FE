@@ -1,41 +1,67 @@
-// ReportPage render aggregates từ db seed (msw + render page thật với
-// committee u2). Kiểm: bảng tổng kết + StatCard (chờ count-up 700ms xong),
-// RecognitionBoard sort điểm desc + huy chương top 1, và nút Xuất CSV
-// gọi exportCsv thật (stub URL.createObjectURL SAU khi data load — stub
-// sớm sẽ phá fetch/msw; soi BOM trong blob).
-import { afterAll, beforeAll, beforeEach, expect, test, vi } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { setupServer } from 'msw/node'
 import { ToastProvider } from '@/components/ui/toast'
-import { AuthProvider } from '@/lib/auth'
-import { resetDb } from '@/lib/db'
-import { handlers } from '@/mocks/handlers'
 import ReportPage from './ReportPage'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-beforeEach(() => {
-  resetDb()
-  localStorage.setItem('grotto-token', 'demo-u2') // committee
-})
-afterAll(() => server.close())
+const mockReportData = {
+  purchaseRecords: [
+    { id: 'pc1', areaId: 'a1', materialId: 'm1', cost: 2760000, date: '2026-10-10', buyerId: 'u4', supplier: 'Đại lý A', qty: 10, confirmed: true },
+    { id: 'pc2', areaId: 'a1', materialId: 'm1', cost: 700000, date: '2026-10-11', buyerId: 'u4', supplier: 'Đại lý A', qty: 5, confirmed: true },
+    { id: 'pc3', areaId: 'a1', materialId: 'm1', cost: 2700000, date: '2026-10-12', buyerId: 'u4', supplier: 'Đại lý A', qty: 15, confirmed: true },
+    { id: 'pc4', areaId: 'a1', materialId: 'm1', cost: 600000, date: '2026-10-13', buyerId: 'u4', supplier: 'Đại lý A', qty: 3, confirmed: true },
+  ],
+  donations: [
+    { id: 'd1', donorName: 'Bà Anna Võ Kim Ngân', materialId: 'm1', monetary: 5000000, date: '2026-10-10', promisedQty: 10, receivedQty: 10, status: 'RECEIVED' },
+  ],
+  timesheets: [
+    { id: 'ts1', volunteerId: 'u27', hours: 7, status: 'APPROVED', date: '2026-10-10' },
+    { id: 'ts2', volunteerId: 'u27', hours: 7, status: 'APPROVED', date: '2026-10-11' },
+    { id: 'ts3', volunteerId: 'u27', hours: 7, status: 'APPROVED', date: '2026-10-12' },
+    { id: 'ts4', volunteerId: 'u27', hours: 7, status: 'APPROVED', date: '2026-10-13' },
+  ],
+  tasks: [
+    { id: 't1', areaId: 'a1', title: 'Xây nền hang đá', status: 'DONE', assignees: ['u27', 'u11'], estimateHours: 10, dueDate: '2026-10-15', submittedPhotos: 2 },
+  ],
+  users: [
+    { id: 'u11', name: 'Antôn Nguyễn Đức Long', role: 'VOLUNTEER', points: 130, communityId: 'c1', skills: [], avatarHue: 10 },
+    { id: 'u27', name: 'Antôn Trương Minh Nhật', role: 'VOLUNTEER', points: 100, communityId: 'c1', skills: [], avatarHue: 20 },
+  ],
+  communities: [
+    { id: 'c1', name: 'Giáo khu Thánh Tâm' },
+  ],
+  areas: [
+    { id: 'a1', name: 'Hang đá Bê-lem', seasonId: 's1', type: 'GROTTO', level: 'PARISH' },
+  ],
+  materials: [
+    { id: 'm1', name: 'Xi măng PCB40', areaId: 'a1', unit: 'bao' },
+  ],
+}
+
+vi.mock('@/lib/auth', () => ({
+  useAuth: () => ({
+    user: { id: 'u2', role: 'COMMUNITY', name: 'Giuse Bình' },
+    isPending: false,
+  }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
+vi.mock('../api', () => ({
+  useReportData: () => ({ data: mockReportData, isPending: false }),
+}))
 
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <ReportPage />
-        </AuthProvider>
+        <ReportPage />
       </ToastProvider>
     </QueryClientProvider>,
   )
 }
 
-// jsdom Blob thiếu arrayBuffer() — đọc bytes qua FileReader (như csv.test).
 const blobBytes = (b: Blob) =>
   new Promise<Uint8Array>((resolve) => {
     const fr = new FileReader()
@@ -46,15 +72,9 @@ const blobBytes = (b: Blob) =>
 test('render aggregates đúng seed: tổng chi phí, nhiệm vụ DONE, giờ công, quyên góp', async () => {
   mount()
 
-  // StatCard tổng chi phí: pc1..pc4 = 2_760_000+700_000+2_700_000+600_000.
-  // Count-up 700ms sau khi data về → timeout rộng cho jsdom rAF chậm.
   expect(await screen.findByText('6.760.000', {}, { timeout: 5000 })).toBeDefined()
-  // Bảng nhiệm vụ hoàn thành: t1 "Xây nền hang đá" (DONE seed).
   expect(await screen.findByText('Xây nền hang đá')).toBeDefined()
-  // Bảng quyên góp: donor d1.
   expect(await screen.findByText('Bà Anna Võ Kim Ngân')).toBeDefined()
-  // Giờ công theo TNV: u27 có 4 ca × 7h = 28h (xuất hiện ở cả bảng giờ công
-  // và vinh danh → findAll rồi soi đúng hàng có 28.0).
   const hoursRow = (await screen.findAllByText('Antôn Trương Minh Nhật')).find((el) =>
     el.closest('tr')?.textContent?.includes('28.0'),
   )
@@ -73,11 +93,9 @@ test('Xuất CSV bảng chi phí: đúng tên file + BOM UTF-8', async () => {
   mount()
   const user = userEvent.setup()
 
-  // Chờ data thật render (bảng chi phí có dòng) trước khi stub URL —
-  // stub toàn cục URL trước mount phá fetch/msw → mọi query chết.
   await screen.findAllByText('Xi măng PCB40')
   const exportButtons = await screen.findAllByRole('button', { name: 'Xuất CSV' })
-  expect(exportButtons.length).toBe(4) // 4 bảng, mỗi bảng 1 nút
+  expect(exportButtons.length).toBe(4)
 
   let captured: Blob | null = null
   let filename = ''
@@ -94,7 +112,7 @@ test('Xuất CSV bảng chi phí: đúng tên file + BOM UTF-8', async () => {
     filename = this.download
   })
 
-  await user.click(exportButtons[0]) // bảng đầu = chi phí
+  await user.click(exportButtons[0])
 
   expect(filename).toBe('grottoworks-bao-cao-chi-phi.csv')
   const bytes = await blobBytes(captured!)

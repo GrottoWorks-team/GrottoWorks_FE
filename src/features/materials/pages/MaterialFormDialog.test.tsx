@@ -1,5 +1,5 @@
 // Validation MaterialFormDialog: thiếu name → zod error (pattern
-// SeasonFormDialog.test). Không cần msw — submit sai khong gui request nao.
+// SeasonFormDialog.test). Submit sai không gửi request nào.
 import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'

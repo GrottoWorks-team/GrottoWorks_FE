@@ -1,7 +1,6 @@
 // Trang xuất & sao lưu (route /parish/backup):
-//   • "Tải backup JSON" — POST /api/export/backup → blob download
-//     (endpoint có thật: handlers.ts trả toàn bộ db + header attachment).
-//   • "Đặt lại dữ liệu demo" — resetDb() (xoá 'grotto-db-v1') + reload;
+//   • "Tải backup JSON" — POST /api/export/backup → blob download.
+//   • "Đặt lại dữ liệu demo" — xoá localStorage + reload;
 //     ConfirmDialog tone destructive trước khi thực hiện.
 import { useTranslation } from 'react-i18next'
 import { Download, RotateCcw } from 'lucide-react'

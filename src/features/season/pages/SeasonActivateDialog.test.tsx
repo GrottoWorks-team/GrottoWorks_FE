@@ -1,20 +1,17 @@
-import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { setupServer } from 'msw/node'
 import { ToastProvider } from '@/components/ui/toast'
 import { SeasonActivateDialog, validateSeasonActivation } from './SeasonActivateDialog'
-import { handlers } from '@/mocks/handlers'
-import { resetDb } from '@/lib/db'
 import type { Season, WorkArea } from '@/types'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-beforeEach(() => {
-  resetDb()
-  localStorage.removeItem('grotto-token')
-})
-afterAll(() => server.close())
+vi.mock('../api', () => ({
+  useActivateSeason: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({ id: 's1', status: 'ACTIVE' }),
+    isPending: false,
+  }),
+}))
+
 const validSeason: Season = {
   id: 's1',
   parishId: 'p1',
@@ -27,6 +24,7 @@ const validSeason: Season = {
   description: 'Mùa 2026',
   communityIds: ['c1'],
 }
+
 const validArea: WorkArea = {
   id: 'a-test',
   name: 'Hang đá thử nghiệm',
@@ -90,7 +88,7 @@ describe('validateSeasonActivation logic', () => {
 
 describe('SeasonActivateDialog UI', () => {
   it('chưa đủ điều kiện → nút Kích hoạt bị disabled', () => {
-    setup(validSeason, []) // không có khu vực
+    setup(validSeason, [])
     const activateBtn = screen.getByRole('button', { name: /kích hoạt/i })
     expect((activateBtn as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText('Chưa đủ điều kiện kích hoạt mùa')).toBeDefined()

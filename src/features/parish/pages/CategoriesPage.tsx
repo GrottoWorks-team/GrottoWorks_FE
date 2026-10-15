@@ -31,8 +31,8 @@ import type { WorkArea } from '@/types'
 const AREA_TYPES: WorkArea['type'][] = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE']
 const DONATION_KINDS = ['MATERIAL', 'MONETARY'] as const
 
-// 13 đơn vị trong seed materials.ts — localStorage chỉ lưu delta (ẩn mặc định
-// / thêm mới) để reset demo ('grotto-db-v1') không đụng danh mục này.
+// 13 đơn vị mặc định — localStorage chỉ lưu delta (ẩn mặc định
+// / thêm mới) để reset demo không đụng danh mục này.
 const DEFAULT_UNITS = [
   'bao', 'viên', 'bó', 'm', 'm2', 'cây', 'dây', 'kg', 'cuộn', 'cái', 'thùng', 'tấm', 'hộp',
 ]
