@@ -1,20 +1,30 @@
-// Validation SeasonFormDialog: zod refine start < end, chọn cộng đoàn.
-import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { setupServer } from 'msw/node'
 import { ToastProvider } from '@/components/ui/toast'
 import { SeasonFormDialog } from './SeasonFormDialog'
-import { handlers } from '@/mocks/handlers'
-import { resetDb } from '@/lib/db'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-beforeEach(() => {
-  resetDb()
-  localStorage.removeItem('grotto-token')
-})
-afterAll(() => server.close())
+vi.mock('@/features/communities/api', () => ({
+  useCommunities: () => ({
+    data: [{ id: 'c1', name: 'Giáo khu Thánh Tâm' }],
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/features/parish/hooks', () => ({
+  useCurrentParishId: () => ({ parishId: 'p1', isPending: false }),
+}))
+
+vi.mock('../api', () => ({
+  useCreateSeason: () => ({
+    mutateAsync: vi.fn(() => new Promise((resolve) => setTimeout(resolve, 500))),
+    isPending: false,
+  }),
+  useUpdateSeason: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}))
 
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -27,7 +37,6 @@ function setup() {
   )
 }
 
-// jsdom không gõ được từng ký tự vào input[type=date] → fireEvent.change.
 const setDate = (label: string, value: string) => {
   fireEvent.change(screen.getByLabelText(label), { target: { value } })
 }
@@ -63,6 +72,9 @@ describe('SeasonFormDialog validation', () => {
 
   it('end sau start và đã chọn cộng đoàn → submit thành công', async () => {
     setup()
+    const nameInput = screen.queryByLabelText(/Tên mùa/i)
+    if (nameInput) fireEvent.change(nameInput, { target: { value: 'Mùa 2026' } })
+
     setDate('Ngày mở', '2026-09-15')
     setDate('Ngày kết thúc', '2026-12-24')
     const checkbox = await screen.findByRole('checkbox', { name: 'Giáo khu Thánh Tâm' })

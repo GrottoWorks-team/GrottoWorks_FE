@@ -1,19 +1,33 @@
-// RegisterPage: validate trường bắt buộc + luồng gửi thành công qua MSW thật.
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { setupServer } from 'msw/node'
-import { handlers } from '@/mocks/handlers'
-import { resetDb } from '@/lib/db'
 import { ToastProvider } from '@/components/ui/toast'
 import RegisterPage from './RegisterPage'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-beforeEach(() => resetDb())
-afterAll(() => server.close())
+vi.mock('@/features/communities/api', () => ({
+  useCommunities: () => ({
+    data: [{ id: 'c1', name: 'Giáo khu Thánh Tâm' }],
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/features/tasks/api', () => ({
+  useSkills: () => ({
+    data: ['Điện', 'Mộc'],
+    isPending: false,
+  }),
+}))
+
+const createRegistrationMock = vi.fn().mockResolvedValue({ id: 'r1' })
+
+vi.mock('./api', () => ({
+  useCreateRegistration: () => ({
+    mutateAsync: createRegistrationMock,
+    isPending: false,
+  }),
+}))
 
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -43,7 +57,6 @@ test('điền đủ thông tin → gửi thành công, hiện xác nhận', asyn
   await user.type(screen.getByLabelText('Họ và tên'), 'Têresa Nguyễn Thị Hoa')
   await user.type(screen.getByLabelText('Số điện thoại'), '0901234567')
 
-  // Giáo khu tải từ MSW — chờ option xuất hiện trước khi chọn.
   await screen.findByRole('option', { name: 'Giáo khu Thánh Tâm' })
   await user.selectOptions(screen.getByLabelText('Giáo khu'), 'c1')
   await user.selectOptions(screen.getByLabelText('Khu vực muốn đồng hành'), 'GROTTO')
@@ -54,4 +67,5 @@ test('điền đủ thông tin → gửi thành công, hiện xác nhận', asyn
   expect(
     screen.getByText('Cảm ơn bạn. Ban điều hành giáo xứ sẽ liên hệ trong thời gian sớm nhất.'),
   ).toBeDefined()
+  expect(createRegistrationMock).toHaveBeenCalled()
 })

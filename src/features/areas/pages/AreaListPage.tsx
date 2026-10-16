@@ -35,13 +35,20 @@ export default function AreaListPage() {
   // PARISH (quản trị) vẫn xem/duyệt bản thiết kế.
   const canViewDesign = user?.role !== 'COMMUNITY'
 
-  const { data: rawAreas = [], isPending: isAreasPending } = useAreas()
-  const { data: users = [] } = useUsers()
-  const { data: seasons = [], isPending: isSeasonsPending } = useSeasons()
-  const deleteArea = useDeleteArea()
-
   const seasonParam = searchParams.get('season') ?? 'all'
   const [selectedSeason, setSelectedSeason] = useState<string>(seasonParam)
+
+  const { data: seasons = [], isPending: isSeasonsPending } = useSeasons()
+
+  // BE không có /areas phẳng: chọn 1 mùa thì gọi 1 lần, "tất cả" thì gọi mỗi
+  // mùa một lần rồi gộp.
+  const seasonIds = useMemo(
+    () => (selectedSeason === 'all' ? seasons.map((s) => s.id) : [selectedSeason]),
+    [selectedSeason, seasons],
+  )
+  const { data: rawAreas = [], isPending: isAreasPending } = useAreas(seasonIds)
+  const { data: users = [] } = useUsers()
+  const deleteArea = useDeleteArea()
 
   // Đồng bộ URL param khi URL thay đổi từ ngoài
   useEffect(() => {
@@ -62,15 +69,11 @@ export default function AreaListPage() {
   const seasonMap = useMemo(() => new Map(seasons.map((s) => [s.id, s])), [seasons])
 
   const areas = useMemo(() => {
-    let list = rawAreas
     if (user?.role === 'COMMUNITY') {
-      list = list.filter((a) => a.communityId === user.communityId)
+      return rawAreas.filter((a) => a.communityId === user.communityId)
     }
-    if (selectedSeason !== 'all') {
-      list = list.filter((a) => (a.seasonId ?? 's1') === selectedSeason)
-    }
-    return list
-  }, [rawAreas, user, selectedSeason])
+    return rawAreas
+  }, [rawAreas, user])
 
   const [view, setView] = useState<View>('grid')
   const [formOpen, setFormOpen] = useState(false)
@@ -79,6 +82,7 @@ export default function AreaListPage() {
   const [assigning, setAssigning] = useState<WorkArea | null>(null)
 
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
+  const displayName = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
 
   const columns = useMemo(
     () => [
@@ -87,7 +91,7 @@ export default function AreaListPage() {
         header: t('features.areas.name'),
         render: (a: WorkArea) => (
           <div>
-            <span className="font-semibold text-foreground">{a.name}</span>
+            <span className="font-semibold text-foreground">{displayName(a)}</span>
             {a.description ? (
               <p className="line-clamp-1 text-xs text-muted-foreground" title={a.description}>
                 {a.description}
@@ -100,7 +104,7 @@ export default function AreaListPage() {
         key: 'season',
         header: t('features.areas.season'),
         render: (a: WorkArea) => {
-          const season = seasonMap.get(a.seasonId ?? 's1')
+          const season = seasonMap.get(a.seasonId ?? '')
           return (
             <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">
               {season ? t('features.areas.seasonBadge', { year: season.year }) : '—'}
@@ -137,6 +141,8 @@ export default function AreaListPage() {
           </span>
         ),
       },
+      // ponytail: progress/volunteerCount/taskCount thuộc service Task/Volunteer
+      // (chưa gắn) — mapper đang trả 0. Gắn service tương ứng thì bỏ chú thích.
       {
         key: 'progress',
         header: t('features.areas.progress'),

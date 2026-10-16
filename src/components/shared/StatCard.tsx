@@ -34,6 +34,7 @@ export function StatCard({
   unit,
   delta,
   tone = 'ok',
+  icon: Icon,
   className,
 }: {
   label: string
@@ -41,14 +42,18 @@ export function StatCard({
   unit?: string
   delta?: { dir: 'up' | 'down'; text: string }
   tone?: 'ok' | 'warn' | 'alert'
+  icon?: React.ComponentType<{ className?: string }>
   className?: string
 }) {
   const v = useCountUp(value)
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN'
   return (
-    <Card className={cn('relative overflow-hidden p-5', className)}>
+    <Card className={cn('relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-hover', className)}>
       <div className={cn('absolute inset-x-0 top-0 h-1.5', BAR[tone])} aria-hidden />
-      <p className="lbl-mono">{label}</p>
+      <div className="flex items-start justify-between">
+        <p className="lbl-mono">{label}</p>
+        {Icon && <Icon className="size-5 text-muted-foreground/50 transition-colors group-hover:text-foreground" />}
+      </div>
       <p className="tabular mt-2 text-3xl font-extrabold text-foreground">
         {v.toLocaleString(locale)}
         {unit && <span className="ml-1.5 text-sm font-semibold text-muted-foreground">{unit}</span>}

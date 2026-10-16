@@ -12,7 +12,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api/v1': {
-        target: 'http://localhost:6102',
+        // Mặc định là gateway trong docker-compose (6102). Chạy BE native
+        // (scripts/be-local.sh, gateway ở 5190) thì đặt VITE_API_TARGET.
+        target: process.env.VITE_API_TARGET ?? 'http://localhost:6102',
         changeOrigin: true,
       },
     },

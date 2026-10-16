@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarPlus, Pencil, LockKeyhole, Rocket } from 'lucide-react'
+import { CalendarPlus, Pencil, LockKeyhole, Rocket, Calendar, Sparkles, Wallet, Clock } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -70,17 +70,27 @@ export default function SeasonListPage() {
   const columns = useMemo(
     () => [
       {
-        key: 'year',
-        header: t('features.season.year'),
-        render: (s: Season) => <span className="tabular font-semibold">{s.year}</span>,
+        key: 'name',
+        header: t('features.season.name'),
+        render: (s: Season) => (
+          <div>
+            <span className="font-semibold text-foreground hover:text-primary transition-colors">{s.name}</span>
+            <p className="tabular text-xs text-muted-foreground">
+              {t('features.season.year')} {s.year}
+            </p>
+          </div>
+        ),
       },
       {
         key: 'period',
         header: t('features.season.period'),
         render: (s: Season) => (
-          <span className="tabular">
-            {viDate(s.startDate)} → {viDate(s.endDate)}
-          </span>
+          <div className="flex items-center gap-1.5 tabular text-xs text-muted-foreground">
+            <Clock className="size-3.5 text-muted-foreground/60" />
+            <span>
+              {viDate(s.startDate)} → {viDate(s.endDate)}
+            </span>
+          </div>
         ),
       },
       {
@@ -106,7 +116,12 @@ export default function SeasonListPage() {
         header: t('features.season.budget'),
         align: 'right' as const,
         render: (s: Season) => (
-          <span className="tabular">{s.budget.toLocaleString(locale)}</span>
+          <div className="text-right">
+            <span className="tabular font-semibold text-foreground">
+              {s.budget.toLocaleString(locale)}{' '}
+              <span className="text-xs font-normal text-muted-foreground">₫</span>
+            </span>
+          </div>
         ),
       },
       {
@@ -135,7 +150,7 @@ export default function SeasonListPage() {
         header: t('common.actions'),
         render: (s: Season) => (
           <div className="flex justify-end gap-1">
-            {s.status === 'PLANNED' && (
+            {s.status === 'PLANNING' && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -157,7 +172,7 @@ export default function SeasonListPage() {
             >
               <Pencil className="size-4" />
             </Button>
-            {s.status !== 'CLOSED' && (
+            {s.status !== 'COMPLETED' && s.status !== 'ARCHIVED' && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -203,16 +218,26 @@ export default function SeasonListPage() {
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 stagger">
         <div style={d(0)}>
-          <StatCard label={t('features.season.stats.total')} value={seasons.length} />
+          <StatCard
+            label={t('features.season.stats.total')}
+            value={seasons.length}
+            icon={Calendar}
+          />
         </div>
         <div style={d(1)}>
-          <StatCard label={t('features.season.stats.active')} value={active.length} tone="warn" />
+          <StatCard
+            label={t('features.season.stats.active')}
+            value={active.length}
+            tone="warn"
+            icon={Sparkles}
+          />
         </div>
         <div style={d(2)}>
           <StatCard
             label={t('features.season.stats.activeBudget')}
             value={active.reduce((sum, s) => sum + s.budget, 0)}
             unit="₫"
+            icon={Wallet}
           />
         </div>
       </div>
@@ -220,7 +245,16 @@ export default function SeasonListPage() {
       {isPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
       ) : (
-        <DataTable rows={seasons} columns={columns} pageSize={8} emptyText={t('features.season.empty')} />
+        <DataTable
+          rows={seasons}
+          columns={columns}
+          pageSize={8}
+          emptyText={t('features.season.empty')}
+          onRowClick={(s) => {
+            setEditing(s)
+            setFormOpen(true)
+          }}
+        />
       )}
 
       {formOpen && (

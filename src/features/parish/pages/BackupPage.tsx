@@ -1,7 +1,6 @@
 // Trang xuất & sao lưu (route /parish/backup):
-//   • "Tải backup JSON" — POST /api/export/backup → blob download
-//     (endpoint có thật: handlers.ts trả toàn bộ db + header attachment).
-//   • "Đặt lại dữ liệu demo" — resetDb() (xoá 'grotto-db-v1') + reload;
+//   • "Tải backup JSON" — POST /api/export/backup → blob download.
+//   • "Đặt lại dữ liệu demo" — xoá localStorage + reload;
 //     ConfirmDialog tone destructive trước khi thực hiện.
 import { useTranslation } from 'react-i18next'
 import { Download, RotateCcw } from 'lucide-react'
@@ -10,7 +9,6 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
-import { resetDb } from '@/lib/db'
 import { useBackup } from '../api'
 import { useState } from 'react'
 
@@ -39,9 +37,7 @@ export default function BackupPage() {
   }
 
   const doReset = () => {
-    resetDb()
-    // Token cũ có thể trỏ user đã bị xoá reset → đăng nhập lại từ đầu.
-    localStorage.removeItem('grotto-token')
+    localStorage.clear()
     window.location.href = '/login'
   }
 

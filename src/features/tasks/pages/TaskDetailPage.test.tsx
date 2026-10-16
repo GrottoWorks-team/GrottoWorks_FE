@@ -1,21 +1,74 @@
-// Trạng thái REVISE: leader có nút "Mở lại" đưa việc về DOING (PATCH qua msw),
-// mount dưới /community/* thì read-only nên không có nút.
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
+import React from 'react'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { setupServer } from 'msw/node'
 import { ToastProvider } from '@/components/ui/toast'
-import { resetDb } from '@/lib/db'
-import { handlers } from '@/mocks/handlers'
-import type { Task } from '@/types'
 import TaskDetailPage from './TaskDetailPage'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
-beforeEach(() => resetDb())
-afterAll(() => server.close())
+let taskStatus = 'REVISE'
+let updateListeners: (() => void)[] = []
+
+vi.mock('../api', () => ({
+  useTask: (id: string) => {
+    const [, setTick] = React.useState(0)
+    React.useEffect(() => {
+      const listener = () => setTick((t) => t + 1)
+      updateListeners.push(listener)
+      return () => {
+        updateListeners = updateListeners.filter((l) => l !== listener)
+      }
+    }, [])
+    return {
+      data: {
+        id,
+        areaId: 'a1',
+        title: 'Gắn bạt che mưa phía sau hang',
+        description: 'Gắn bạt che mưa',
+        status: taskStatus,
+        assignees: [],
+        skills: [],
+        materialIds: [],
+        dueDate: '2026-12-20',
+        volunteersNeeded: 2,
+        estimateHours: 4,
+      },
+      isPending: false,
+    }
+  },
+  useUpdateTask: () => ({
+    mutateAsync: vi.fn(async (patch: { id: string; status?: string }) => {
+      if (patch.status) {
+        taskStatus = patch.status
+        updateListeners.forEach((l) => l())
+      }
+      return { id: patch.id, status: taskStatus }
+    }),
+    isPending: false,
+  }),
+  useSubmitReview: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useApproveCompletion: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRequestRevision: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useAssignVolunteer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnassign: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}))
+
+vi.mock('@/features/areas/api', () => ({
+  useAreas: () => ({ data: [{ id: 'a1', name: 'Hang đá Bê-lem' }], isPending: false }),
+}))
+
+vi.mock('@/features/materials/api', () => ({
+  useMaterials: () => ({ data: [], isPending: false }),
+}))
+
+vi.mock('@/features/users/api', () => ({
+  useUsers: () => ({ data: [], isPending: false }),
+}))
+
+beforeEach(() => {
+  taskStatus = 'REVISE'
+})
 
 function renderDetail(path: string, route: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -38,16 +91,11 @@ test('việc REVISE: bấm "Mở lại" → việc chuyển sang DOING', async (
 
   await userEvent.click(screen.getByRole('button', { name: 'Mở lại' }))
 
-  // Query invalidate sau mutation → trang nạp lại, status thành DOING và
-  // panel thao tác đổi sang bước gửi duyệt.
   expect((await screen.findAllByText('Đang làm')).length).toBeGreaterThan(0)
   expect(await screen.findByRole('button', { name: 'Gửi duyệt hoàn thành' })).toBeDefined()
   expect(screen.queryByRole('button', { name: 'Mở lại' })).toBeNull()
 
-  const after = (await (
-    await fetch(`${location.origin}/api/tasks/t6`)
-  ).json()) as Task
-  expect(after.status).toBe('DOING')
+  expect(taskStatus).toBe('DOING')
 })
 
 test('mount dưới /community/*: việc REVISE không có nút thao tác', async () => {

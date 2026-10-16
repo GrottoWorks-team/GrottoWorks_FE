@@ -1,36 +1,187 @@
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import { setupServer } from 'msw/node'
 import { ToastProvider } from '@/components/ui/toast'
-import { AuthProvider } from '@/lib/auth'
 import AreaListPage from './AreaListPage'
 import { AreaFormDialog } from './AreaFormDialog'
 import { AreaAssignDialog } from './AreaAssignDialog'
-import { handlers } from '@/mocks/handlers'
-import { resetDb } from '@/lib/db'
-import type { WorkArea } from '@/types'
+import type { Season, WorkArea } from '@/types'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+const mockSeasons: Season[] = [
+  {
+    id: 's0',
+    parishId: 'p1',
+    name: 'Mùa 2025',
+    year: 2025,
+    startDate: '2025-09-15',
+    endDate: '2025-12-24',
+    budget: 50_000_000,
+    status: 'COMPLETED',
+  },
+  {
+    id: 's1',
+    parishId: 'p1',
+    name: 'Mùa 2026',
+    year: 2026,
+    startDate: '2026-09-15',
+    endDate: '2026-12-24',
+    budget: 100_000_000,
+    status: 'ACTIVE',
+  },
+]
+
+const mockAreas: WorkArea[] = [
+  {
+    id: 'a1',
+    seasonId: 's1',
+    name: 'Hang đá Bê-lem',
+    type: 'GROTTO',
+    level: 'PARISH',
+    leaderId: 'u3',
+    officerId: 'u4',
+    progress: 35,
+    volunteerCount: 12,
+    taskCount: 8,
+    status: 'NEEDS_CORRECTION',
+    deadline: '2026-12-20',
+  },
+  {
+    id: 'a2',
+    seasonId: 's1',
+    name: 'Cây thông lớn',
+    type: 'TREE',
+    level: 'PARISH',
+    leaderId: 'u3',
+    officerId: 'u4',
+    progress: 50,
+    volunteerCount: 8,
+    taskCount: 4,
+    status: 'IN_PROGRESS',
+    deadline: '2026-12-20',
+  },
+  {
+    id: 'a3',
+    seasonId: 's1',
+    name: 'Ánh sáng & đèn',
+    type: 'LIGHTING',
+    level: 'PARISH',
+    leaderId: 'u5',
+    officerId: 'u8',
+    progress: 20,
+    volunteerCount: 5,
+    taskCount: 6,
+    status: 'IN_PROGRESS',
+    deadline: '2026-12-20',
+  },
+  {
+    id: 'a4',
+    seasonId: 's1',
+    name: 'Sân khấu',
+    type: 'STAGE',
+    level: 'COMMUNITY',
+    communityId: 'c1',
+    leaderId: 'u6',
+    officerId: 'u4',
+    progress: 10,
+    volunteerCount: 4,
+    taskCount: 2,
+    status: 'IN_PROGRESS',
+    deadline: '2026-12-20',
+  },
+  {
+    id: 'a5',
+    seasonId: 's1',
+    name: 'Sân nhà thờ',
+    type: 'YARD',
+    level: 'PARISH',
+    leaderId: 'u7',
+    officerId: 'u8',
+    progress: 80,
+    volunteerCount: 15,
+    taskCount: 10,
+    status: 'IN_PROGRESS',
+    deadline: '2026-12-20',
+  },
+]
+
+const mockCommunities = [
+  { id: 'c1', name: 'Giáo khu Thánh Tâm' },
+  { id: 'c2', name: 'Giáo khu Mẹ Lên Trời' },
+]
+
+const mockUsers = [
+  { id: 'u3', name: 'Gioan Baotixita Hoàng Nam', role: 'LEADER' },
+  { id: 'u4', name: 'Maria Lê Thị Mai', role: 'MATERIAL_OFFICER' },
+  { id: 'u5', name: 'Giuse Vũ Hải', role: 'LEADER' },
+  { id: 'u6', name: 'Phêrô Đỗ Văn Tuấn', role: 'LEADER' },
+  { id: 'u7', name: 'Tôma Nguyễn Văn Đức', role: 'LEADER' },
+  { id: 'u8', name: 'Phêrô Quang', role: 'MATERIAL_OFFICER' },
+]
+
+vi.mock('@/lib/auth', () => ({
+  useAuth: () => {
+    const token = localStorage.getItem('grotto-token')
+    if (token === 'demo-u2') {
+      return {
+        user: { id: 'u2', name: 'Giuse Bình', role: 'COMMUNITY', communityId: 'c1' },
+        isPending: false,
+      }
+    }
+    if (token === 'demo-u1') {
+      return {
+        user: { id: 'u1', name: 'LM. Phaolô', role: 'PARISH' },
+        isPending: false,
+      }
+    }
+    return { user: null, isPending: false }
+  },
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
+vi.mock('@/features/areas/api', () => ({
+  useAreas: (seasonIds?: string[]) => {
+    if (!seasonIds || seasonIds.length === 0) {
+      return { data: mockAreas, isPending: false }
+    }
+    return {
+      data: mockAreas.filter((a) => a.seasonId && seasonIds.includes(a.seasonId)),
+      isPending: false,
+    }
+  },
+  useSeasons: () => ({ data: mockSeasons, isPending: false }),
+  useCommunities: () => ({ data: mockCommunities, isPending: false }),
+  useUsers: () => ({ data: mockUsers, isPending: false }),
+  useCreateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a-new' }), isPending: false }),
+  useUpdateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a1' }), isPending: false }),
+  useDeleteArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+}))
+
+vi.mock('@/features/season/api', () => ({
+  useSeasons: () => ({ data: mockSeasons, isPending: false }),
+}))
+
+vi.mock('@/features/communities/api', () => ({
+  useCommunities: () => ({ data: mockCommunities, isPending: false }),
+}))
+
+vi.mock('@/features/users/api', () => ({
+  useUsers: () => ({ data: mockUsers, isPending: false }),
+}))
+
 beforeEach(() => {
-  resetDb()
   localStorage.removeItem('grotto-token')
 })
-afterAll(() => server.close())
 
 test('hiện 5 thẻ khu vực (grid mặc định) từ seed khi chưa đăng nhập', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <MemoryRouter>
-            <AreaListPage />
-          </MemoryRouter>
-        </AuthProvider>
+        <MemoryRouter>
+          <AreaListPage />
+        </MemoryRouter>
       </ToastProvider>
     </QueryClientProvider>,
   )
@@ -43,22 +194,18 @@ test('hiện 5 thẻ khu vực (grid mặc định) từ seed khi chưa đăng n
   ]) {
     expect(await screen.findByText(name)).toBeDefined()
   }
-  // Thẻ hiển thị badge mùa 2026 và deadline
   expect((await screen.findAllByText(/Mùa 2026/i)).length).toBeGreaterThan(0)
 })
 
 test('COMMUNITY chỉ thấy khu vực thuộc giáo khu của mình', async () => {
-  // u2 có role COMMUNITY và communityId = 'c1'. Trong seed, chỉ có a4 ('Sân khấu') thuộc 'c1'.
   localStorage.setItem('grotto-token', 'demo-u2')
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <MemoryRouter>
-            <AreaListPage />
-          </MemoryRouter>
-        </AuthProvider>
+        <MemoryRouter>
+          <AreaListPage />
+        </MemoryRouter>
       </ToastProvider>
     </QueryClientProvider>,
   )
@@ -74,25 +221,20 @@ test('Lọc khu vực theo mùa: chọn mùa 2025 thì không có khu nào, ch�
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <MemoryRouter>
-            <AreaListPage />
-          </MemoryRouter>
-        </AuthProvider>
+        <MemoryRouter>
+          <AreaListPage />
+        </MemoryRouter>
       </ToastProvider>
     </QueryClientProvider>,
   )
   const seasonSelect = (await screen.findByLabelText(/Lọc theo mùa/i)) as HTMLSelectElement
   expect(seasonSelect).toBeDefined()
 
-  // Chờ options của mùa load xong từ API
   await screen.findByRole('option', { name: /2025/i })
 
-  // Chọn mùa s0 (2025)
   await userEvent.selectOptions(seasonSelect, 's0')
   expect(await screen.findByText(/Chưa có khu vực nào/i)).toBeDefined()
 
-  // Chọn mùa s1 (2026)
   await userEvent.selectOptions(seasonSelect, 's1')
   expect(await screen.findByText('Hang đá Bê-lem')).toBeDefined()
 })
@@ -103,9 +245,7 @@ test('AreaFormDialog: COMMUNITY khóa select communityId', async () => {
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <AreaFormDialog onClose={() => {}} />
-        </AuthProvider>
+        <AreaFormDialog onClose={() => {}} />
       </ToastProvider>
     </QueryClientProvider>,
   )
@@ -120,9 +260,7 @@ test('AreaFormDialog: PARISH được chọn giáo khu khác', async () => {
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <AreaFormDialog onClose={() => {}} />
-        </AuthProvider>
+        <AreaFormDialog onClose={() => {}} />
       </ToastProvider>
     </QueryClientProvider>,
   )
@@ -138,9 +276,7 @@ test('AreaFormDialog: validate deadline trước ngày bắt đầu mùa', async
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <AreaFormDialog onClose={() => {}} />
-        </AuthProvider>
+        <AreaFormDialog onClose={() => {}} />
       </ToastProvider>
     </QueryClientProvider>,
   )
@@ -154,7 +290,6 @@ test('AreaFormDialog: validate deadline trước ngày bắt đầu mùa', async
   const officerSelect = await screen.findByLabelText(/^Trưởng ban hành giáo/i)
   await userEvent.selectOptions(officerSelect, 'u4')
 
-  // s1 startDate là 2026-09-15. Nhập deadline 2026-09-01 (sớm hơn)
   const deadlineInput = await screen.findByLabelText(/Hạn hoàn thành/i)
   await userEvent.type(deadlineInput, '2026-09-01')
 
@@ -176,7 +311,7 @@ test('AreaAssignDialog: hiển thị thông tin thời hạn và phân công th�
     progress: 35,
     volunteerCount: 12,
     taskCount: 8,
-    status: 'AT_RISK',
+    status: 'NEEDS_CORRECTION',
     deadline: '2026-12-20',
     description: 'Khu vực hang đá chính',
   }
@@ -186,9 +321,7 @@ test('AreaAssignDialog: hiển thị thông tin thời hạn và phân công th�
   render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <AreaAssignDialog area={dummyArea} onClose={() => { closed = true }} />
-        </AuthProvider>
+        <AreaAssignDialog area={dummyArea} onClose={() => { closed = true }} />
       </ToastProvider>
     </QueryClientProvider>,
   )

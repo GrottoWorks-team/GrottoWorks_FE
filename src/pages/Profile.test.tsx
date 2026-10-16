@@ -1,32 +1,75 @@
-// Profile form: render stat + prefill từ seed (u27: 100 điểm, 28 giờ công,
-// kỹ năng Hàn); submit → PATCH /api/users/:id persist (verify db) + toast.
-import { afterAll, beforeAll, beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { setupServer } from 'msw/node'
 import { ToastProvider } from '@/components/ui/toast'
-import { AuthProvider } from '@/lib/auth'
-import { resetDb } from '@/lib/db'
-import { handlers } from '@/mocks/handlers'
 import Profile from './Profile'
 
-const server = setupServer(...handlers)
-beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+let currentUser = {
+  id: 'u27',
+  name: 'Antôn Trương Minh Nhật',
+  email: 'u27@test.com',
+  role: 'VOLUNTEER' as const,
+  skills: ['Hàn'],
+  points: 100,
+  avatarHue: 20,
+}
+
+let updatedPayload: any = null
+
+vi.mock('@/lib/auth', () => ({
+  useAuth: () => ({ user: currentUser, isPending: false, refresh: vi.fn().mockResolvedValue({}) }),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
+vi.mock('@/features/timesheets/api', () => ({
+  useTimesheets: () => ({
+    data: [{ volunteerId: 'u27', hours: 28 }],
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/features/tasks/api', () => ({
+  useSkills: () => ({
+    data: ['Hàn', 'Sơn', 'Mộc'],
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/features/profile/api', () => ({
+  useUpdateProfile: () => ({
+    mutateAsync: vi.fn(async (payload) => {
+      updatedPayload = payload
+      currentUser = { ...currentUser, ...payload }
+      return currentUser
+    }),
+    isPending: false,
+  }),
+  useUpdateMyProfile: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+  }),
+}))
+
 beforeEach(() => {
-  resetDb()
-  localStorage.setItem('grotto-token', 'demo-u27')
+  currentUser = {
+    id: 'u27',
+    name: 'Antôn Trương Minh Nhật',
+    email: 'u27@test.com',
+    role: 'VOLUNTEER' as const,
+    skills: ['Hàn'],
+    points: 100,
+    avatarHue: 20,
+  }
+  updatedPayload = null
 })
-afterAll(() => server.close())
 
 function mount() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <AuthProvider>
-          <Profile />
-        </AuthProvider>
+        <Profile />
       </ToastProvider>
     </QueryClientProvider>,
   )
@@ -35,8 +78,8 @@ function mount() {
 test('hiện điểm vinh danh, giờ công và prefilled tên theo seed (u27)', async () => {
   mount()
 
-  expect(await screen.findByText('100')).toBeDefined() // điểm vinh danh
-  expect(await screen.findByText('28')).toBeDefined() // giờ công: 4 ca × 7h
+  expect(await screen.findByText('100')).toBeDefined()
+  expect(await screen.findByText('28')).toBeDefined()
   const name = await screen.findByLabelText('Họ tên')
   expect((name as HTMLInputElement).value).toBe('Antôn Trương Minh Nhật')
 })
@@ -48,13 +91,11 @@ test('submit → PATCH /api/users/u27 với tên + kỹ năng mới', async () =
   const name = await screen.findByLabelText('Họ tên')
   await user.clear(name)
   await user.type(name, 'Antôn Tên Mới')
-  fireEvent.click(screen.getByRole('button', { name: 'Sơn' })) // bật thêm kỹ năng Sơn
+  fireEvent.click(screen.getByRole('button', { name: 'Sơn' }))
 
   await user.click(screen.getByRole('button', { name: 'Lưu' }))
 
   expect(await screen.findByText('Đã cập nhật hồ sơ')).toBeDefined()
-  // Persist thật qua msw: PATCH users/:id shallow-merge rồi GET lại.
-  const u = await (await fetch(`${location.origin}/api/users/u27`)).json()
-  expect(u.name).toBe('Antôn Tên Mới')
-  expect(u.skills).toEqual(['Hàn', 'Sơn'])
+  expect(updatedPayload.name).toBe('Antôn Tên Mới')
+  expect(updatedPayload.skills).toEqual(['Hàn', 'Sơn'])
 })

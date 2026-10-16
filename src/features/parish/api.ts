@@ -4,7 +4,28 @@
 // invalidate từ admin nhắm đúng key đó để cache người khác cũng mới).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { ActivityLog, Community, Parish, Role, User } from '@/types'
+import type { ActivityLog, Community, Role, User } from '@/types'
+import type { CommunityDto, CreateCommunityRequest, ParishDto, UpdateParishRequest } from '@/types/parish'
+import { toParish } from './mappers'
+import { useCurrentParishId } from './hooks'
+
+export const parishKeys = {
+  all: ['parishes'] as const,
+  detail: (id: string) => ['parishes', id] as const,
+}
+
+/** GET /api/v1/parishes — ADMIN thấy mọi giáo xứ, PARISH chỉ thấy giáo xứ mình. */
+export function useParishes() {
+  return useQuery({
+    queryKey: parishKeys.all,
+    queryFn: async () => {
+      // ponytail: api() unwrap mất `page`; size=100 lấy hết một lượt rồi để
+      // DataTable phân trang client. BE chặn size>100 bằng 400.
+      const list = await api<ParishDto[]>('/api/v1/parishes?size=100')
+      return list.map(toParish)
+    },
+  })
+}
 
 export const adminKeys = {
   activity: ['admin', 'activity'] as const,
@@ -24,8 +45,34 @@ export function useActivityLogs() {
   })
 }
 
+/** GET /api/v1/parishes/{id} — giáo xứ đang thao tác. */
 export function useParish() {
-  return useQuery({ queryKey: adminKeys.parish, queryFn: () => api<Parish>('/parish') })
+  const { parishId } = useCurrentParishId()
+  return useQuery({
+    queryKey: parishKeys.detail(parishId ?? ''),
+    queryFn: async () => toParish(await api<ParishDto>(`/api/v1/parishes/${parishId}`)),
+    enabled: Boolean(parishId),
+  })
+}
+
+/**
+ * PATCH /api/v1/parishes/{id} — BE dùng optimistic concurrency: gửi
+ * If-Match: "<version>"; version cũ → 412 PARISH_VERSION_MISMATCH.
+ */
+export function useUpdateParish() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, version, ...data }: UpdateParishRequest & { id: string; version: number }) =>
+      api<ParishDto>(`/api/v1/parishes/${id}`, {
+        method: 'PATCH',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_r, v) => {
+      void qc.invalidateQueries({ queryKey: parishKeys.all })
+      void qc.invalidateQueries({ queryKey: parishKeys.detail(v.id) })
+    },
+  })
 }
 
 export function useAdminSkills() {
@@ -72,14 +119,19 @@ export function useDeleteUser() {
   )
 }
 
-// ---- Communities (CRUD generic /api/communities) -------------------------
+// ---- Communities (CRUD) --------------------------------------------------
 
 export function useCreateCommunity() {
-  return useAdminMutation([[ 'communities' ]], (data: Omit<Community, 'id'>) =>
-    api<Community>('/communities', { method: 'POST', body: JSON.stringify(data) }),
+  return useAdminMutation([['communities']], ({ parishId, ...data }: CreateCommunityRequest & { parishId: string }) =>
+    api<CommunityDto>(`/api/v1/parishes/${parishId}/communities`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   )
 }
 
+// ponytail: BE chưa có PATCH /communities/{id} — giữ mock /api/communities/{id}
+// (MSW). Gắn khi service bổ sung endpoint.
 export function useUpdateCommunity() {
   return useAdminMutation(
     [[ 'communities' ], [ 'admin', 'parish' ]],
@@ -88,6 +140,7 @@ export function useUpdateCommunity() {
   )
 }
 
+// ponytail: BE chưa có DELETE /communities/{id} — giữ mock.
 export function useDeleteCommunity() {
   return useAdminMutation([[ 'communities' ]], (id: string) =>
     api<void>(`/communities/${id}`, { method: 'DELETE' }),
@@ -95,12 +148,6 @@ export function useDeleteCommunity() {
 }
 
 // ---- Parish (object đơn) + Skills (string[]) ------------------------------
-
-export function useRenameParish() {
-  return useAdminMutation([[ 'admin', 'parish' ]], (name: string) =>
-    api<Parish>('/parish', { method: 'PATCH', body: JSON.stringify({ name }) }),
-  )
-}
 
 export function useCreateSkill() {
   return useAdminMutation([[ 'admin', 'skills' ]], (name: string) =>
