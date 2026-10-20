@@ -1046,5 +1046,10 @@
   "auth.confirmNewPassword": "Confirm new password",
   "auth.passwordMismatch": "Passwords do not match",
   "auth.resetPasswordSuccess": "Password reset successfully! You can now log in.",
-  "auth.resetPasswordBtn": "Reset password"
+  "auth.resetPasswordBtn": "Reset password",
+  "profile.availability": "Availability",
+  "profile.availabilityHint": "Select time slots when you are available to help",
+  "profile.slotWeekendMorning": "Weekend mornings (Sat, Sun 08:00 - 12:00)",
+  "profile.slotWeekendAfternoon": "Weekend afternoons (Sat, Sun 13:30 - 17:30)",
+  "profile.slotWeekdayEvening": "Weekday evenings (18:30 - 21:30)"
 }

@@ -1046,5 +1046,10 @@
   "auth.confirmNewPassword": "Xác nhận mật khẩu mới",
   "auth.passwordMismatch": "Mật khẩu xác nhận không khớp",
   "auth.resetPasswordSuccess": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay.",
-  "auth.resetPasswordBtn": "Đổi mật khẩu"
+  "auth.resetPasswordBtn": "Đổi mật khẩu",
+  "profile.availability": "Thời gian rảnh",
+  "profile.availabilityHint": "Chọn các buổi hoặc khung giờ bạn có thể tham gia phụ giúp",
+  "profile.slotWeekendMorning": "Sáng cuối tuần (T7, CN 08:00 - 12:00)",
+  "profile.slotWeekendAfternoon": "Chiều cuối tuần (T7, CN 13:30 - 17:30)",
+  "profile.slotWeekdayEvening": "Tối các ngày trong tuần (18:30 - 21:30)"
 }
