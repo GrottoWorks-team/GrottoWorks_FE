@@ -131,7 +131,12 @@ export function useMaterialCatalog(params?: {
       if (params?.q) query.set('q', params.q)
       if (params?.sort) query.set('sort', params.sort)
       const qs = query.toString() ? `?${query.toString()}` : ''
-      return api<PagedResult<MaterialCatalogItemDto>>(`/api/v1/materials${qs}`)
+        const token = localStorage.getItem('grotto-token')
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+        if (token) headers['Authorization'] = `Bearer ${token}`
+        const res = await fetch(`/api/v1/materials${qs}`, { headers })
+        if (!res.ok) throw new Error('Không thể tải danh sách vật tư')
+        return res.json() as Promise<PagedResult<MaterialCatalogItemDto>>
     },
   })
 }
