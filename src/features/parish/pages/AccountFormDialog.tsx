@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useCommunities } from '@/features/communities/api'
-import { useAdminSkills, useCreateUser, useUpdateUser } from '../api'
+import { useAdminSkills, useAssignUserRole, useCreateUser, useRoles, useUpdateUser } from '../api'
 import { useCurrentParishId } from '../hooks'
 import type { User } from '@/types'
 
@@ -20,7 +20,7 @@ export const SELECT_CLS =
 
 const CHECK_CLS = 'size-4 rounded border border-border bg-card accent-primary'
 
-const ROLES = ['PARISH', 'COMMUNITY', 'LEADER', 'MATERIAL_OFFICER'] as const
+const FALLBACK_ROLES = ['PARISH', 'COMMUNITY', 'LEADER', 'MATERIAL_OFFICER'] as const
 
 const schema = z
   .object({
@@ -30,12 +30,12 @@ const schema = z
       .trim()
       .min(1, 'features.parish.emailRequired')
       .email('features.parish.emailInvalid'),
-    role: z.enum(ROLES),
+    role: z.string().min(1),
     communityId: z.string(),
     password: z.string().optional(),
     skills: z.array(z.string()),
   })
-  .refine((d) => d.role === 'PARISH' || d.communityId !== '', {
+  .refine((d) => d.role === 'PARISH' || d.role === 'ADMIN' || d.communityId !== '', {
     path: ['communityId'],
     message: 'features.parish.communityRequired',
   })
@@ -54,9 +54,15 @@ export function AccountFormDialog({
   const editing = Boolean(account)
   const create = useCreateUser()
   const update = useUpdateUser()
+  const assignRole = useAssignUserRole()
+  const { data: rolesData } = useRoles()
   const { data: communities = [] } = useCommunities()
   const { data: skills = [] } = useAdminSkills()
   const { parishId } = useCurrentParishId()
+
+  const availableRoles = rolesData?.length
+    ? rolesData.map((r) => r.code)
+    : FALLBACK_ROLES
 
   const {
     register,
@@ -73,7 +79,7 @@ export function AccountFormDialog({
           password: '',
           skills: account.skills,
         }
-      : { name: '', email: '', role: 'MATERIAL_OFFICER', communityId: '', password: '', skills: [] },
+      : { name: '', email: '', role: 'LEADER', communityId: '', password: '', skills: [] },
   })
 
   const onSubmit = async (data: FormData) => {
@@ -84,20 +90,20 @@ export function AccountFormDialog({
           displayName: data.name,
           email: data.email,
         })
+        if (data.role !== account.role) {
+          await assignRole.mutateAsync({
+            id: account.id,
+            role: data.role,
+            parishId: data.role === 'ADMIN' ? null : parishId ?? null,
+          })
+        }
         toast(t('features.parish.updated', { name: data.name }))
       } else {
-        // Map FE role sang BE role code:
-        // 'MATERIAL_OFFICER' -> 'MO'
-        // 'PARISH' -> 'PARISH'
-        // 'LEADER' -> 'LEADER'
-        // 'COMMUNITY' -> 'VOLUNTEER'
-        const beRole = data.role === 'MATERIAL_OFFICER' ? 'MO' : data.role === 'COMMUNITY' ? 'VOLUNTEER' : data.role
-
         await create.mutateAsync({
           displayName: data.name,
           email: data.email,
-          role: beRole,
-          parishId: parishId ?? null,
+          role: data.role,
+          parishId: data.role === 'ADMIN' ? null : parishId ?? null,
           password: data.password && data.password.length >= 8 ? data.password : null,
         })
         toast(t('features.parish.created', { name: data.name }))
@@ -149,9 +155,9 @@ export function AccountFormDialog({
           <div>
             <Label htmlFor="account-role">{t('features.parish.role')}</Label>
             <select id="account-role" className={SELECT_CLS} {...register('role')}>
-              {ROLES.map((r) => (
+              {availableRoles.map((r) => (
                 <option key={r} value={r}>
-                  {t(`role.${r}`)}
+                  {t(`role.${r}`, { defaultValue: r })}
                 </option>
               ))}
             </select>

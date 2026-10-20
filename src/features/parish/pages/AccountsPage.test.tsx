@@ -28,6 +28,8 @@ vi.mock('../api', () => ({
   useUnlockUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminSkills: () => ({ data: ['Điện', 'Mộc'], isPending: false }),
+  useAssignUserRole: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRoles: () => ({ data: [{ id: 'r1', code: 'LEADER', name: 'Leader' }], isPending: false }),
   useParishes: () => ({ data: [{ id: 'p1', name: 'Giáo xứ Demo' }], isPending: false }),
 }))
 
