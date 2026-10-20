@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarPlus, Pencil, LockKeyhole, Rocket, Calendar, Sparkles, Wallet, Clock } from 'lucide-react'
+import { CalendarPlus, Pencil, LockKeyhole, Rocket, Calendar, Sparkles, Wallet, Clock, Archive } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -15,7 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
 import { useCommunities } from '@/features/communities/api'
 import { useAreas } from '@/features/areas/api'
-import { useSeasons, useCloseSeason, useActivateSeason } from '../api'
+import { useSeasons, useCompleteSeason, useActivateSeason, useArchiveSeason } from '../api'
 import { SeasonFormDialog } from './SeasonFormDialog'
 import { SeasonActivateDialog, validateSeasonActivation } from './SeasonActivateDialog'
 import type { Season } from '@/types'
@@ -30,12 +30,14 @@ export default function SeasonListPage() {
   const { data: seasons = [], isPending } = useSeasons()
   const { data: communities = [] } = useCommunities()
   const { data: areas = [] } = useAreas()
-  const closeSeason = useCloseSeason()
+  const completeSeason = useCompleteSeason()
   const activateSeason = useActivateSeason()
+  const archiveSeason = useArchiveSeason()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Season | null>(null)
   const [closing, setClosing] = useState<Season | null>(null)
+  const [archiving, setArchiving] = useState<Season | null>(null)
   const [activatingCheck, setActivatingCheck] = useState<Season | null>(null)
   const [activatingConfirm, setActivatingConfirm] = useState<Season | null>(null)
 
@@ -59,11 +61,11 @@ export default function SeasonListPage() {
 
   const onConfirmActivate = async (s: Season) => {
     try {
-      await activateSeason.mutateAsync(s.id)
+      await activateSeason.mutateAsync({ id: s.id, version: s.version })
       toast(t('features.season.activateSuccess', { year: s.year }))
       setActivatingConfirm(null)
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
     }
   }
 
@@ -172,6 +174,17 @@ export default function SeasonListPage() {
             >
               <Pencil className="size-4" />
             </Button>
+            {s.status === 'COMPLETED' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('features.season.archive')}
+                className="text-amber-600 hover:bg-amber-50"
+                onClick={() => setArchiving(s)}
+              >
+                <Archive className="size-4" />
+              </Button>
+            )}
             {s.status !== 'COMPLETED' && s.status !== 'ARCHIVED' && (
               <Button
                 variant="ghost"
@@ -191,10 +204,21 @@ export default function SeasonListPage() {
 
   const onCloseSeason = async (s: Season) => {
     try {
-      await closeSeason.mutateAsync(s.id)
+      await completeSeason.mutateAsync({ id: s.id, version: s.version })
       toast(t('features.season.closed', { year: s.year }))
-    } catch {
-      toast(t('common.error'), 'alert')
+      setClosing(null)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+    }
+  }
+
+  const onArchiveSeason = async (s: Season) => {
+    try {
+      await archiveSeason.mutateAsync({ id: s.id, version: s.version })
+      toast(t('features.season.archived', { year: s.year }))
+      setArchiving(null)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
     }
   }
 
@@ -269,6 +293,16 @@ export default function SeasonListPage() {
         confirmLabel={t('features.season.close')}
         onConfirm={() => closing && onCloseSeason(closing)}
         onClose={() => setClosing(null)}
+      />
+      <ConfirmDialog
+        open={Boolean(archiving)}
+        title={t('features.season.archiveTitle')}
+        description={
+          archiving ? t('features.season.archiveConfirm', { year: archiving.year }) : undefined
+        }
+        confirmLabel={t('features.season.archive')}
+        onConfirm={() => archiving && onArchiveSeason(archiving)}
+        onClose={() => setArchiving(null)}
       />
       <ConfirmDialog
         open={Boolean(activatingConfirm)}
