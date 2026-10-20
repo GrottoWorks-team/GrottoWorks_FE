@@ -1,11 +1,11 @@
-﻿// Admin domain â€” quáº£n trá»‹ tÃ i khoáº£n + danh má»¥c + nháº­t kÃ½ há»‡ thá»‘ng.
+// Admin domain â€” quáº£n trá»‹ tÃ i khoáº£n + danh má»¥c + nháº­t kÃ½ há»‡ thá»‘ng.
 // Query key tÃ¡ch domain: ['admin', <resource>]; khÃ´ng Ä‘á»¥ng key cá»§a feature khÃ¡c
 // (useUsers/useCommunities giá»¯ nguyÃªn key ['users']/['communities'] gá»‘c â€”
 // invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { ActivityLog, Community, Role, User } from '@/types'
-import type { AdminUserDto, CreateAdminUserRequest } from '@/types/identity'
+import type { AdminUserDto, CreateAdminUserRequest, RoleDto } from '@/types/identity'
 import type {
   CommunityDto,
   CreateCommunityRequest,
@@ -160,6 +160,40 @@ export function useUpdateUser() {
       body: JSON.stringify(data),
     }),
   )
+}
+export function useLockUser() {
+  return useAdminMutation([['users']], ({ id, version, reason }: { id: string; version?: number; reason: string }) =>
+    api<AdminUserDto>(/api/v1/admin/users/ + id + /lock, {
+      method: 'POST',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify({ reason, version }),
+    }),
+  )
+}
+
+export function useUnlockUser() {
+  return useAdminMutation([['users']], ({ id, version, reason }: { id: string; version?: number; reason: string }) =>
+    api<AdminUserDto>(/api/v1/admin/users/ + id + /unlock, {
+      method: 'POST',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify({ reason, version }),
+    }),
+  )
+}
+export function useAssignUserRole() {
+  return useAdminMutation([['users']], ({ id, version, role, parishId }: { id: string; version?: number; role: string; parishId?: string | null }) =>
+    api<AdminUserDto>(/api/v1/admin/users/ + id + /role, {
+      method: 'PUT',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify({ role, parishId, version }),
+    }),
+  )
+}
+export function useRoles() {
+  return useQuery({
+    queryKey: ['roles'],
+    queryFn: () => api<RoleDto[]>('/api/v1/roles'),
+  })
 }
 export function useDeleteUser() {
   return useAdminMutation([[ 'users' ]], (id: string) =>
