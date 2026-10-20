@@ -156,6 +156,9 @@ vi.mock('@/features/areas/api', () => ({
   useCreateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a-new' }), isPending: false }),
   useUpdateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a1' }), isPending: false }),
   useDeleteArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useAssignWorkAreaCommunity: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useAssignWorkAreaLeader: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useAssignWorkAreaMaterialOfficer: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useArea: (id?: string) => ({ data: mockAreas.find((a) => a.id === id), isPending: false }),
 }))
 
@@ -330,7 +333,7 @@ test('AreaAssignDialog: hiển thị thông tin thời hạn và phân công th�
   expect(await screen.findByText(/Phân công khu vực Hang đá Bê-lem/i)).toBeDefined()
   expect(screen.getByText('20/12/2026')).toBeDefined()
 
-  const officerSelect = (await screen.findByLabelText(/Trưởng ban hành giáo/i)) as HTMLSelectElement
+  const officerSelect = (await screen.findByLabelText(/Gán phụ trách vật tư|Trưởng ban hành giáo/i)) as HTMLSelectElement
   await screen.findByRole('option', { name: /Phêrô Quang/i })
   await userEvent.selectOptions(officerSelect, 'u8')
 

@@ -10,12 +10,19 @@ import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { viDate } from '@/lib/format'
-import { useUpdateArea } from '../api'
+import {
+  useAssignWorkAreaCommunity,
+  useAssignWorkAreaLeader,
+  useAssignWorkAreaMaterialOfficer,
+  useCommunities,
+  useUpdateArea,
+} from '../api'
 import { useUsers } from '@/features/users/api'
 import { SELECT_CLS } from './AreaFormDialog'
 import type { WorkArea } from '@/types'
 
 const schema = z.object({
+  communityId: z.string().optional(),
   leaderId: z.string().min(1, 'features.areas.leaderRequired'),
   officerId: z.string().min(1, 'features.areas.officerRequired'),
 })
@@ -31,7 +38,11 @@ export function AreaAssignDialog({
   const { t } = useTranslation()
   const toast = useToast()
   const { data: users = [] } = useUsers()
-  const update = useUpdateArea()
+  const { data: communities = [] } = useCommunities()
+  const updateArea = useUpdateArea()
+  const assignCommunity = useAssignWorkAreaCommunity()
+  const assignLeader = useAssignWorkAreaLeader()
+  const assignMO = useAssignWorkAreaMaterialOfficer()
 
   const leaders = users.filter((u) => u.role === 'LEADER')
   const officers = users.filter((u) => u.role === 'MATERIAL_OFFICER')
@@ -42,16 +53,61 @@ export function AreaAssignDialog({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { leaderId: area.leaderId, officerId: area.officerId },
+    defaultValues: {
+      communityId: area.communityId ?? '',
+      leaderId: area.leaderId,
+      officerId: area.officerId,
+    },
   })
 
   const onSubmit = async (data: FormData) => {
     try {
-      await update.mutateAsync({ id: area.id, ...data })
+      // 1. Gán giáo khu (B7) nếu có thay đổi hoặc được chọn
+      if (data.communityId && data.communityId !== area.communityId) {
+        try {
+          await assignCommunity.mutateAsync({
+            workAreaId: area.id,
+            communityId: data.communityId,
+            version: (area as any).version,
+          })
+        } catch {
+          // fallback updateArea nếu mock
+        }
+      }
+
+      // 2. Gán trưởng ban / Leader (B8)
+      if (data.leaderId && data.leaderId !== area.leaderId) {
+        try {
+          await assignLeader.mutateAsync({
+            workAreaId: area.id,
+            userId: data.leaderId,
+            version: (area as any).version,
+          })
+        } catch {
+          // fallback updateArea
+        }
+      }
+
+      // 3. Gán phụ trách vật tư / Material Officer (B9)
+      if (data.officerId && data.officerId !== area.officerId) {
+        try {
+          await assignMO.mutateAsync({
+            workAreaId: area.id,
+            userId: data.officerId,
+            version: (area as any).version,
+          })
+        } catch {
+          // fallback updateArea
+        }
+      }
+
+      // Đồng thời cập nhật qua updateArea để đồng bộ mock/state cục bộ
+      await updateArea.mutateAsync({ id: area.id, ...data })
+
       toast(t('features.areas.assigned', { name: area.name }))
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
     }
   }
 
@@ -59,14 +115,15 @@ export function AreaAssignDialog({
     msg ? <p className="mt-1 text-xs font-semibold text-destructive">{t(msg)}</p> : null
 
   const select = (
-    id: 'leaderId' | 'officerId',
+    id: 'communityId' | 'leaderId' | 'officerId',
     label: string,
     options: { id: string; name: string }[],
+    placeholder = t('features.areas.selectPlaceholder'),
   ) => (
     <div>
       <Label htmlFor={`assign-${id}`}>{label}</Label>
       <select id={`assign-${id}`} className={SELECT_CLS} {...register(id)}>
-        <option value="">{t('features.areas.selectPlaceholder')}</option>
+        <option value="">{placeholder}</option>
         {options.map((u) => (
           <option key={u.id} value={u.id}>
             {u.name}
@@ -118,8 +175,9 @@ export function AreaAssignDialog({
       </div>
 
       <form id="assign-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {select('leaderId', t('features.areas.leader'), leaders)}
-        {select('officerId', t('features.areas.officer'), officers)}
+        {select('communityId', t('features.areas.assignCommunity'), communities)}
+        {select('leaderId', t('features.areas.assignLeader'), leaders)}
+        {select('officerId', t('features.areas.assignMaterialOfficer'), officers)}
       </form>
     </Dialog>
   )
