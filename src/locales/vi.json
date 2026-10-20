@@ -1031,5 +1031,20 @@
   "role.MO": "Thủ kho / Phụ trách vật tư",
   "role.VOLUNTEER": "Tình nguyện viên",
   "features.parish.password": "Mật khẩu (tuỳ chọn)",
-  "features.parish.phone": "Số điện thoại"
+  "features.parish.phone": "Số điện thoại",
+  "auth.forgotPasswordTitle": "Quên mật khẩu",
+  "auth.forgotPasswordSub": "Nhập email để nhận hướng dẫn hoặc mã đặt lại mật khẩu",
+  "auth.forgotPasswordSuccess": "Nếu email tồn tại trong hệ thống, hướng dẫn đặt lại mật khẩu đã được gửi.",
+  "auth.sendResetCode": "Gửi yêu cầu",
+  "auth.backToLogin": "Quay lại đăng nhập",
+  "auth.resetPasswordTitle": "Đặt lại mật khẩu",
+  "auth.resetPasswordSub": "Nhập mã token xác thực và mật khẩu mới của bạn",
+  "auth.token": "Mã Token xác thực",
+  "auth.tokenRequired": "Vui lòng nhập mã token",
+  "auth.newPassword": "Mật khẩu mới",
+  "auth.newPasswordMin": "Mật khẩu phải từ 8 ký tự trở lên",
+  "auth.confirmNewPassword": "Xác nhận mật khẩu mới",
+  "auth.passwordMismatch": "Mật khẩu xác nhận không khớp",
+  "auth.resetPasswordSuccess": "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập ngay.",
+  "auth.resetPasswordBtn": "Đổi mật khẩu"
 }

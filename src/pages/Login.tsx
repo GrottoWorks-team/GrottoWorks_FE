@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -93,14 +93,14 @@ export default function Login() {
   return (
     <AuthSplitLayout activeTab="login">
       <div className="space-y-5">
-        {/* Hộp chọn nhanh tài khoản mẫu (1-Chạm) */}
+        {/* Há»™p chá»n nhanh tÃ i khoáº£n máº«u (1-Cháº¡m) */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="lbl-mono flex items-center gap-1.5 font-bold text-slate-600">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
               {t('login.demoAccounts')}
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">Bấm để tự điền</span>
+            <span className="text-[10px] text-slate-500 font-medium">Báº¥m Ä‘á»ƒ tá»± Ä‘iá»n</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -134,9 +134,9 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Form đăng nhập chính */}
+        {/* Form Ä‘Äƒng nháº­p chÃ­nh */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          {/* Ô nhập Email */}
+          {/* Ã” nháº­p Email */}
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
               {t('login.email')}
@@ -162,20 +162,19 @@ export default function Login() {
             )}
           </div>
 
-          {/* Ô nhập Password */}
+          {/* Ã” nháº­p Password */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
                 {t('login.password')}
               </Label>
-              <button
-                type="button"
-                onClick={() => toast('Vui lòng liên hệ Cha xứ hoặc Ban điều hành để cấp lại mật khẩu!', 'ok')}
+              <Link
+                to="/forgot-password"
                 className="text-xs font-medium text-brand-pine hover:underline flex items-center gap-1"
               >
                 <HelpCircle className="w-3 h-3" />
                 <span>Quên mật khẩu?</span>
-              </button>
+              </Link>
             </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
@@ -185,14 +184,14 @@ export default function Login() {
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 className="pl-10 pr-10 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
                 {...register('password')}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                aria-label={showPassword ? 'áº¨n máº­t kháº©u' : 'Hiá»‡n máº­t kháº©u'}
                 className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 transition-colors"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -206,7 +205,7 @@ export default function Login() {
             )}
           </div>
 
-          {/* Thông báo lỗi từ server */}
+          {/* ThÃ´ng bÃ¡o lá»—i tá»« server */}
           {serverError && (
             <div
               role="alert"
@@ -217,7 +216,7 @@ export default function Login() {
             </div>
           )}
 
-          {/* Nút bấm Submit với hiệu ứng Shimmer */}
+          {/* NÃºt báº¥m Submit vá»›i hiá»‡u á»©ng Shimmer */}
           <Button
             type="submit"
             className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm shadow-lg shadow-brand-pine/25 flex items-center justify-center gap-2"
@@ -236,18 +235,18 @@ export default function Login() {
             )}
           </Button>
 
-          {/* Liên kết điều hướng phụ */}
+          {/* LiÃªn káº¿t Ä‘iá»u hÆ°á»›ng phá»¥ */}
           <div className="pt-2 text-center text-xs text-slate-600 space-y-1">
             <div>
-              Chưa có tài khoản quản lý?{' '}
+              ChÆ°a cÃ³ tÃ i khoáº£n quáº£n lÃ½?{' '}
               <Link to="/register-account" className="font-semibold text-brand-pine hover:underline">
-                Đăng ký tài khoản
+                ÄÄƒng kÃ½ tÃ i khoáº£n
               </Link>
             </div>
             <div>
-              Hoặc tham gia thiện nguyện?{' '}
+              Hoáº·c tham gia thiá»‡n nguyá»‡n?{' '}
               <Link to="/register" className="font-semibold text-brand-goldHover hover:underline">
-                Đăng ký Đồng Hành
+                ÄÄƒng kÃ½ Äá»“ng HÃ nh
               </Link>
             </div>
           </div>

@@ -1031,5 +1031,20 @@
   "role.MO": "Material Officer",
   "role.VOLUNTEER": "Volunteer",
   "features.parish.password": "Password (optional)",
-  "features.parish.phone": "Phone number"
+  "features.parish.phone": "Phone number",
+  "auth.forgotPasswordTitle": "Forgot password",
+  "auth.forgotPasswordSub": "Enter your email to receive password reset instructions",
+  "auth.forgotPasswordSuccess": "If the email exists, password reset instructions have been sent.",
+  "auth.sendResetCode": "Send request",
+  "auth.backToLogin": "Back to login",
+  "auth.resetPasswordTitle": "Reset password",
+  "auth.resetPasswordSub": "Enter your reset token and new password",
+  "auth.token": "Reset token",
+  "auth.tokenRequired": "Please enter the reset token",
+  "auth.newPassword": "New password",
+  "auth.newPasswordMin": "Password must be at least 8 characters",
+  "auth.confirmNewPassword": "Confirm new password",
+  "auth.passwordMismatch": "Passwords do not match",
+  "auth.resetPasswordSuccess": "Password reset successfully! You can now log in.",
+  "auth.resetPasswordBtn": "Reset password"
 }
