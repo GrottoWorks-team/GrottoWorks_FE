@@ -1,7 +1,8 @@
 // Dịch DTO của ParishCoordination service sang domain type của FE.
 // Một chỗ duy nhất — page/hook không tự map tay.
-import type { Community, Parish, Season, WorkArea } from '@/types'
+import type { Community, Parish, Role, Season, User, WorkArea } from '@/types'
 import type { CommunityDto, ParishDto, SeasonDto, WorkAreaDto } from '@/types/parish'
+import type { AdminUserDto } from '@/types/identity'
 
 /** BE trả null cho field optional, domain type dùng undefined. */
 const opt = (v: string | null | undefined): string | undefined =>
@@ -64,5 +65,24 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
     progress: 0,
     volunteerCount: 0,
     taskCount: 0,
+  }
+}
+
+export function toUser(dto: AdminUserDto): User {
+  let hue = 0
+  for (let i = 0; i < dto.email.length; i++) hue = (hue * 31 + dto.email.charCodeAt(i)) | 0
+  const avatarHue = Math.abs(hue) % 360
+
+  return {
+    id: dto.id,
+    name: dto.displayName || dto.email,
+    email: dto.email,
+    role: (dto.role as Role) || 'VOLUNTEER',
+    communityId: opt(dto.communityId),
+    parishId: opt(dto.parishId),
+    locked: dto.status === 'LOCKED',
+    skills: [],
+    points: 0,
+    avatarHue,
   }
 }

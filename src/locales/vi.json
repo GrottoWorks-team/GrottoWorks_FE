@@ -70,7 +70,7 @@
   "nav.community.checklist": "Checklist sẵn sàng",
   "nav.community.reports": "Báo cáo tổng kết",
   "nav.leader.dashboard": "Dashboard khu",
-    "nav.leader.tasks": "Nhiệm vụ",
+  "nav.leader.tasks": "Nhiệm vụ",
   "nav.leader.regs": "Duyệt hỗ trợ",
   "nav.leader.volunteers": "Tình nguyện viên",
   "nav.leader.timesheets": "Chấm công",
@@ -1026,5 +1026,8 @@
   "features.map.errNone": "Vui lòng chọn một tệp ảnh",
   "features.map.errType": "Định dạng ảnh không được hỗ trợ",
   "features.map.errSize": "Ảnh vượt quá dung lượng cho phép",
-  "features.map.errEmpty": "Tệp rỗng, không thể dùng"
+  "features.map.errEmpty": "Tệp rỗng, không thể dùng",
+  "role.ADMIN": "Quản trị viên hệ thống",
+  "role.MO": "Thủ kho / Phụ trách vật tư",
+  "role.VOLUNTEER": "Tình nguyện viên"
 }

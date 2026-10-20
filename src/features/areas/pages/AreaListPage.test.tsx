@@ -156,6 +156,7 @@ vi.mock('@/features/areas/api', () => ({
   useCreateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a-new' }), isPending: false }),
   useUpdateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a1' }), isPending: false }),
   useDeleteArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
+  useArea: (id?: string) => ({ data: mockAreas.find((a) => a.id === id), isPending: false }),
 }))
 
 vi.mock('@/features/season/api', () => ({

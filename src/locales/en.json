@@ -9,7 +9,7 @@
   "common.search": "Search",
   "common.confirm": "Confirm",
   "common.close": "Close",
-    "common.actions": "Actions",
+  "common.actions": "Actions",
   "common.status": "Status",
   "common.approve": "Approve",
   "common.reject": "Reject",
@@ -70,7 +70,7 @@
   "nav.community.checklist": "Readiness checklist",
   "nav.community.reports": "Closing reports",
   "nav.leader.dashboard": "Area dashboard",
-    "nav.leader.tasks": "Tasks",
+  "nav.leader.tasks": "Tasks",
   "nav.leader.regs": "Approve support",
   "nav.leader.volunteers": "Volunteers",
   "nav.leader.timesheets": "Timesheets",
@@ -442,7 +442,7 @@
   "features.support.coordinated": "{{name}} coordinated",
   "features.support.resolve": "Mark resolved",
   "features.support.resolved": "Support request resolved",
-    "features.support.assignee": "Assignee",
+  "features.support.assignee": "Assignee",
   "features.support.resolveUncoordinated": "No volunteer has been coordinated yet. Resolve anyway?",
   "features.support.community": "Community",
   "features.support.people": "Volunteers needed",
@@ -1026,5 +1026,8 @@
   "features.map.errNone": "Please choose an image file",
   "features.map.errType": "Unsupported image format",
   "features.map.errSize": "Image exceeds the size limit",
-  "features.map.errEmpty": "Empty file, cannot use"
+  "features.map.errEmpty": "Empty file, cannot use",
+  "role.ADMIN": "System Administrator",
+  "role.MO": "Material Officer",
+  "role.VOLUNTEER": "Volunteer"
 }
