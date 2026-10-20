@@ -57,12 +57,12 @@ describe('MaterialCategoriesPage Component', () => {
       </ToastProvider>,
     )
 
-    expect(await screen.findByText('Danh mục vật tư')).toBeDefined()
+    expect(await screen.findByText('features.materials.categories.title')).toBeDefined()
     expect(await screen.findByText('LIGHTING')).toBeDefined()
     expect(await screen.findByText('Đèn và chiếu sáng')).toBeDefined()
     expect(await screen.findByText('TIMBER')).toBeDefined()
-    expect(await screen.findByText('Hoạt động')).toBeDefined()
-    expect(await screen.findByText('Ngừng dùng')).toBeDefined()
+    expect(await screen.findByText('features.materials.categories.statusActive')).toBeDefined()
+    expect(await screen.findByText('features.materials.categories.statusInactive')).toBeDefined()
   })
 
   it('mở dialog thêm danh mục mới C2 và submit thành công', async () => {
@@ -72,18 +72,18 @@ describe('MaterialCategoriesPage Component', () => {
       </ToastProvider>,
     )
 
-    const addButton = screen.getByRole('button', { name: /Thêm danh mục/i })
+    const addButton = screen.getByRole('button', { name: /features\.materials\.categories\.create/i })
     fireEvent.click(addButton)
 
-    expect(await screen.findByText('Thêm danh mục vật tư mới')).toBeDefined()
+    expect(await screen.findByText('features.materials.categories.dialogCreate')).toBeDefined()
 
-    const codeInput = screen.getByLabelText(/Mã danh mục/i)
-    const nameInput = screen.getByLabelText(/Tên danh mục/i)
+    const codeInput = screen.getByLabelText(/features\.materials\.categories\.code/i)
+    const nameInput = screen.getByLabelText(/features\.materials\.categories\.name/i)
 
     fireEvent.change(codeInput, { target: { value: 'PAINT' } })
     fireEvent.change(nameInput, { target: { value: 'Sơn và màu vẽ' } })
 
-    const submitBtn = screen.getByRole('button', { name: 'Tạo mới' })
+    const submitBtn = screen.getByRole('button', { name: 'common.create' })
     fireEvent.click(submitBtn)
   })
 })

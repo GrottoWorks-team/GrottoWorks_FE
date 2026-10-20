@@ -4,6 +4,7 @@
 // Lưu ý C6: Sau khi vật tư đã phát sinh giao dịch/nhu cầu, trường 'unit' sẽ bị khóa
 // bởi BE (MATERIAL_UNIT_LOCKED). UI disable ô nhập và hiển thị tooltip/cảnh báo rõ ràng.
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,16 +24,16 @@ import type { MaterialCatalogItemDto } from '../api'
 import { api } from '@/lib/api'
 
 const schema = z.object({
-  categoryId: z.string().min(1, 'Vui lòng chọn nhóm danh mục'),
+  categoryId: z.string().min(1, 'features.materials.catalog.categoryRequired'),
   code: z
     .string()
     .trim()
-    .min(1, 'Mã vật tư không được để trống')
-    .max(50, 'Mã không quá 50 ký tự')
-    .regex(/^[A-Za-z0-9_-]+$/, 'Mã chỉ chứa chữ cái, số, gạch nối hoặc gạch dưới'),
-  name: z.string().trim().min(1, 'Tên vật tư không được để trống').max(150, 'Tên không quá 150 ký tự'),
-  unit: z.string().trim().min(1, 'Đơn vị tính không được để trống').max(30, 'Đơn vị không quá 30 ký tự'),
-  description: z.string().max(2000, 'Mô tả không quá 2000 ký tự').optional(),
+    .min(1, 'features.materials.catalog.codeRequired')
+    .max(50, 'features.materials.catalog.codeMax')
+    .regex(/^[A-Za-z0-9_-]+$/, 'features.materials.catalog.codeRegex'),
+  name: z.string().trim().min(1, 'features.materials.catalog.nameRequired').max(150, 'features.materials.catalog.nameMax'),
+  unit: z.string().trim().min(1, 'features.materials.catalog.unitRequired').max(30, 'features.materials.catalog.unitMax'),
+  description: z.string().max(2000, 'features.materials.catalog.descMax').optional(),
 })
 
 type FormData = z.infer<typeof schema>
@@ -44,6 +45,7 @@ export function MaterialCatalogFormDialog({
   onClose: () => void
   material?: MaterialCatalogItemDto | null
 }) {
+  const { t } = useTranslation()
   const toast = useToast()
   const { data: categories = [] } = useMaterialCategories('ACTIVE')
   const create = useCreateMaterialCatalogItem()
@@ -110,7 +112,7 @@ export function MaterialCatalogFormDialog({
           unit: isUnitLocked ? undefined : values.unit,
           description: values.description || null,
         })
-        toast('Cập nhật thông tin vật tư thành công')
+        toast(t('features.materials.catalog.updated'))
       } else {
         // C5: POST /api/v1/materials
         await create.mutateAsync({
@@ -120,11 +122,11 @@ export function MaterialCatalogFormDialog({
           unit: values.unit,
           description: values.description || null,
         })
-        toast('Thêm vật tư vào danh mục thành công')
+        toast(t('features.materials.catalog.created'))
       }
       onClose()
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Có lỗi xảy ra khi lưu'
+      const message = err instanceof Error ? err.message : t('features.materials.catalog.saveError')
       toast(message)
     }
   }
@@ -133,17 +135,17 @@ export function MaterialCatalogFormDialog({
     <Dialog
       open
       onClose={onClose}
-      title={editing ? 'Chỉnh sửa vật tư danh mục' : 'Thêm vật tư mới vào danh mục'}
+      title={editing ? t('features.materials.catalog.dialogEdit') : t('features.materials.catalog.dialogCreate')}
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div>
-          <Label htmlFor="cat-id">Nhóm danh mục *</Label>
+          <Label htmlFor="cat-id">{t('features.materials.catalog.category')} *</Label>
           <select
             id="cat-id"
             {...register('categoryId')}
             className="flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 mt-1"
           >
-            <option value="">-- Chọn danh mục --</option>
+            <option value="">{t('features.materials.catalog.categoryPlaceholder')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name} ({c.code})
@@ -151,42 +153,42 @@ export function MaterialCatalogFormDialog({
             ))}
           </select>
           {errors.categoryId && (
-            <p className="text-xs text-destructive mt-1">{errors.categoryId.message}</p>
+            <p className="text-xs text-destructive mt-1">{t(errors.categoryId.message || '')}</p>
           )}
         </div>
 
         <div>
-          <Label htmlFor="mat-code">Mã vật tư *</Label>
+          <Label htmlFor="mat-code">{t('features.materials.catalog.code')} *</Label>
           <Input
             id="mat-code"
             {...register('code')}
             disabled={editing}
-            placeholder="VD: LED-WARM-10M, WOOD-PLANK-2M..."
+            placeholder={t('features.materials.catalog.codePlaceholder')}
             className="mt-1 font-mono uppercase"
           />
-          {errors.code && <p className="text-xs text-destructive mt-1">{errors.code.message}</p>}
+          {errors.code && <p className="text-xs text-destructive mt-1">{t(errors.code.message || '')}</p>}
           {editing && (
-            <p className="text-xs text-muted-foreground mt-1">Mã vật tư không thể đổi sau khi tạo</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('features.materials.catalog.codeImmutable')}</p>
           )}
         </div>
 
         <div>
-          <Label htmlFor="mat-name">Tên vật tư *</Label>
+          <Label htmlFor="mat-name">{t('features.materials.catalog.name')} *</Label>
           <Input
             id="mat-name"
             {...register('name')}
-            placeholder="VD: Dây đèn LED vàng 10m cuộn tròn..."
+            placeholder={t('features.materials.catalog.namePlaceholder')}
             className="mt-1"
           />
-          {errors.name && <p className="text-xs text-destructive mt-1">{errors.name.message}</p>}
+          {errors.name && <p className="text-xs text-destructive mt-1">{t(errors.name.message || '')}</p>}
         </div>
 
         <div>
           <div className="flex items-center justify-between">
-            <Label htmlFor="mat-unit">Đơn vị tính *</Label>
+            <Label htmlFor="mat-unit">{t('features.materials.catalog.unitFullName')} *</Label>
             {isUnitLocked && (
               <span className="flex items-center gap-1 text-[11px] text-amber-500 font-medium">
-                <Lock className="size-3" /> Đã phát sinh giao dịch - Đơn vị tính bị khóa
+                <Lock className="size-3" /> {t('features.materials.catalog.unitLockedBadge')}
               </span>
             )}
           </div>
@@ -194,44 +196,44 @@ export function MaterialCatalogFormDialog({
             id="mat-unit"
             {...register('unit')}
             disabled={isUnitLocked}
-            placeholder="VD: cuộn, cây, tấm, mét, thùng..."
+            placeholder={t('features.materials.catalog.unitPlaceholder')}
             className="mt-1"
           />
-          {errors.unit && <p className="text-xs text-destructive mt-1">{errors.unit.message}</p>}
+          {errors.unit && <p className="text-xs text-destructive mt-1">{t(errors.unit.message || '')}</p>}
           {isUnitLocked ? (
             <div className="flex items-start gap-1.5 mt-1.5 rounded bg-muted/60 p-2 text-xs text-muted-foreground">
               <Info className="size-4 shrink-0 mt-0.5 text-amber-500" />
               <span>
-                Vật tư này đã có giao dịch hoặc nhu cầu ghi nhận trong kho. Việc đổi đơn vị tính bị hệ thống khóa để đảm bảo toàn vẹn số lượng.
+                {t('features.materials.catalog.unitLockedWarning')}
               </span>
             </div>
           ) : (
             <p className="text-xs text-muted-foreground mt-1">
-              Đơn vị đo lường cơ sở cho toàn bộ các nhu cầu và xuất/nhập kho.
+              {t('features.materials.catalog.unitHelper')}
             </p>
           )}
         </div>
 
         <div>
-          <Label htmlFor="mat-desc">Mô tả / Ghi chú</Label>
+          <Label htmlFor="mat-desc">{t('features.materials.catalog.descFull')}</Label>
           <Textarea
             id="mat-desc"
             {...register('description')}
             rows={2}
-            placeholder="Chi tiết quy cách, kích thước, chủng loại..."
+            placeholder={t('features.materials.catalog.descPlaceholder')}
             className="mt-1"
           />
           {errors.description && (
-            <p className="text-xs text-destructive mt-1">{errors.description.message}</p>
+            <p className="text-xs text-destructive mt-1">{t(errors.description.message || '')}</p>
           )}
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>
-            Hủy
+            {t('common.cancel')}
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Đang lưu...' : editing ? 'Cập nhật' : 'Tạo mới'}
+            {isSubmitting ? t('common.saving') : editing ? t('common.update') : t('common.create')}
           </Button>
         </div>
       </form>
