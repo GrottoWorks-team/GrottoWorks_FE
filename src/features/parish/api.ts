@@ -1,7 +1,7 @@
-// Admin domain — quản trị tài khoản + danh mục + nhật ký hệ thống.
-// Query key tách domain: ['admin', <resource>]; không đụng key của feature khác
-// (useUsers/useCommunities giữ nguyên key ['users']/['communities'] gốc —
-// invalidate từ admin nhắm đúng key đó để cache người khác cũng mới).
+﻿// Admin domain â€” quáº£n trá»‹ tÃ i khoáº£n + danh má»¥c + nháº­t kÃ½ há»‡ thá»‘ng.
+// Query key tÃ¡ch domain: ['admin', <resource>]; khÃ´ng Ä‘á»¥ng key cá»§a feature khÃ¡c
+// (useUsers/useCommunities giá»¯ nguyÃªn key ['users']/['communities'] gá»‘c â€”
+// invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { ActivityLog, Community, Role, User } from '@/types'
@@ -21,7 +21,7 @@ export const parishKeys = {
   detail: (id: string) => ['parishes', id] as const,
 }
 
-/** POST /api/v1/parishes — Tạo giáo xứ mới (ADMIN). */
+/** POST /api/v1/parishes â€” Táº¡o giÃ¡o xá»© má»›i (ADMIN). */
 export function useCreateParish() {
   const qc = useQueryClient()
   return useMutation({
@@ -36,13 +36,13 @@ export function useCreateParish() {
   })
 }
 
-/** GET /api/v1/parishes — ADMIN thấy mọi giáo xứ, PARISH chỉ thấy giáo xứ mình. */
+/** GET /api/v1/parishes â€” ADMIN tháº¥y má»i giÃ¡o xá»©, PARISH chá»‰ tháº¥y giÃ¡o xá»© mÃ¬nh. */
 export function useParishes() {
   return useQuery({
     queryKey: parishKeys.all,
     queryFn: async () => {
-      // ponytail: api() unwrap mất `page`; size=100 lấy hết một lượt rồi để
-      // DataTable phân trang client. BE chặn size>100 bằng 400.
+      // ponytail: api() unwrap máº¥t `page`; size=100 láº¥y háº¿t má»™t lÆ°á»£t rá»“i Ä‘á»ƒ
+      // DataTable phÃ¢n trang client. BE cháº·n size>100 báº±ng 400.
       const list = await api<ParishDto[]>('/api/v1/parishes?size=100')
       return list.map(toParish)
     },
@@ -55,19 +55,19 @@ export const adminKeys = {
   skills: ['admin', 'skills'] as const,
 }
 
-// Communities CRUD dùng từ trang admin — re-export hook read của domain
-// communities cho trọn bộ import một chỗ.
+// Communities CRUD dÃ¹ng tá»« trang admin â€” re-export hook read cá»§a domain
+// communities cho trá»n bá»™ import má»™t chá»—.
 export { useCommunities } from '@/features/communities/api'
 
 export function useActivityLogs() {
   return useQuery({
     queryKey: adminKeys.activity,
-    // /api/activity = activityLogs 50 dòng mới nhất, mới nhất đứng đầu.
+    // /api/activity = activityLogs 50 dÃ²ng má»›i nháº¥t, má»›i nháº¥t Ä‘á»©ng Ä‘áº§u.
     queryFn: () => api<ActivityLog[]>('/activity'),
   })
 }
 
-/** GET /api/v1/parishes/{id} — giáo xứ đang thao tác. */
+/** GET /api/v1/parishes/{id} â€” giÃ¡o xá»© Ä‘ang thao tÃ¡c. */
 export function useParish() {
   const { parishId } = useCurrentParishId()
   return useQuery({
@@ -78,8 +78,8 @@ export function useParish() {
 }
 
 /**
- * PATCH /api/v1/parishes/{id} — BE dùng optimistic concurrency: gửi
- * If-Match: "<version>"; version cũ → 412 PARISH_VERSION_MISMATCH.
+ * PATCH /api/v1/parishes/{id} â€” BE dÃ¹ng optimistic concurrency: gá»­i
+ * If-Match: "<version>"; version cÅ© â†’ 412 PARISH_VERSION_MISMATCH.
  */
 export function useUpdateParish() {
   const qc = useQueryClient()
@@ -129,25 +129,38 @@ function useAdminMutation<TVars>(
 
 // ---- Users (CRUD generic /api/users) -------------------------------------
 
-// communityId: null = xoá field (mock PATCH shallow-merge giữ key null) —
+// communityId: null = xoÃ¡ field (mock PATCH shallow-merge giá»¯ key null) â€”
 // pattern areas/api.ts.
 type UserPayload = Partial<Omit<User, 'id' | 'communityId'>> & {
   communityId?: string | null
 }
 
 export function useCreateUser() {
-  return useAdminMutation([[ 'users' ]], (data: Omit<User, 'id'>) =>
-    api<User>('/users', { method: 'POST', body: JSON.stringify(data) }),
+  return useAdminMutation([['users']], (data: CreateAdminUserRequest) =>
+    api<AdminUserDto>('/api/v1/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   )
 }
 
 export function useUpdateUser() {
-  // locked: null không cần (lock là boolean) — PATCH shallow-merge đủ dùng.
-  return useAdminMutation([[ 'users' ]], ({ id, ...data }: UserPayload & { id: string }) =>
-    api<User>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  return useAdminMutation([['users']], ({ id, version, ...data }: {
+    id: string
+    version?: number
+    displayName?: string
+    email?: string
+    phone?: string | null
+    parishId?: string | null
+    status?: 'ACTIVE' | 'INACTIVE'
+  }) =>
+    api<AdminUserDto>(/api/v1/admin/users/ + id, {
+      method: 'PATCH',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify(data),
+    }),
   )
 }
-
 export function useDeleteUser() {
   return useAdminMutation([[ 'users' ]], (id: string) =>
     api<void>(`/users/${id}`, { method: 'DELETE' }),
@@ -165,8 +178,8 @@ export function useCreateCommunity() {
   )
 }
 
-// ponytail: BE chưa có PATCH /communities/{id} — giữ mock /api/communities/{id}
-// (MSW). Gắn khi service bổ sung endpoint.
+// ponytail: BE chÆ°a cÃ³ PATCH /communities/{id} â€” giá»¯ mock /api/communities/{id}
+// (MSW). Gáº¯n khi service bá»• sung endpoint.
 export function useUpdateCommunity() {
   return useAdminMutation(
     [[ 'communities' ], [ 'admin', 'parish' ]],
@@ -175,14 +188,14 @@ export function useUpdateCommunity() {
   )
 }
 
-// ponytail: BE chưa có DELETE /communities/{id} — giữ mock.
+// ponytail: BE chÆ°a cÃ³ DELETE /communities/{id} â€” giá»¯ mock.
 export function useDeleteCommunity() {
   return useAdminMutation([[ 'communities' ]], (id: string) =>
     api<void>(`/communities/${id}`, { method: 'DELETE' }),
   )
 }
 
-// ---- Parish (object đơn) + Skills (string[]) ------------------------------
+// ---- Parish (object Ä‘Æ¡n) + Skills (string[]) ------------------------------
 
 export function useCreateSkill() {
   return useAdminMutation([[ 'admin', 'skills' ]], async (name: string) => {
@@ -226,9 +239,9 @@ export function useBackup() {
 
 export function useRoleLabel(): Record<Role, string> {
   return {
-    PARISH: 'Quản trị',
-    COMMUNITY: 'Ban hành giáo',
-    LEADER: 'Trưởng khu',
-    MATERIAL_OFFICER: 'Trưởng ban hành giáo',
+    PARISH: 'Quáº£n trá»‹',
+    COMMUNITY: 'Ban hÃ nh giÃ¡o',
+    LEADER: 'TrÆ°á»Ÿng khu',
+    MATERIAL_OFFICER: 'TrÆ°á»Ÿng ban hÃ nh giÃ¡o',
   }
 }

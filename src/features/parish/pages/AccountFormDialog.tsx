@@ -81,11 +81,8 @@ export function AccountFormDialog({
       if (editing && account) {
         await update.mutateAsync({
           id: account.id,
-          name: data.name,
+          displayName: data.name,
           email: data.email,
-          role: data.role,
-          communityId: data.role === 'PARISH' ? null : data.communityId,
-          skills: data.skills,
         })
         toast(t('features.parish.updated', { name: data.name }))
       } else {
