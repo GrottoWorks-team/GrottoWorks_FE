@@ -60,9 +60,10 @@ export function MaterialCatalogFormDialog({
     }
 
     let isMounted = true
-    api<{ data: unknown[] }>(`/api/v1/materials/${material.id}/allocation-history`)
-      .then((res) => {
-        if (isMounted && res.data && res.data.length > 0) {
+    api<unknown[]>(`/api/v1/materials/${material.id}/allocation-history`)
+      .then((data) => {
+        const items = Array.isArray(data) ? data : (data as any)?.data
+        if (isMounted && items && items.length > 0) {
           setIsUnitLocked(true)
         }
       })
