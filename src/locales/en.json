@@ -1029,5 +1029,7 @@
   "features.map.errEmpty": "Empty file, cannot use",
   "role.ADMIN": "System Administrator",
   "role.MO": "Material Officer",
-  "role.VOLUNTEER": "Volunteer"
+  "role.VOLUNTEER": "Volunteer",
+  "features.parish.password": "Password (optional)",
+  "features.parish.phone": "Phone number"
 }

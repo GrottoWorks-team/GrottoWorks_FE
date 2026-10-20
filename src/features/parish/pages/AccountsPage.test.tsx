@@ -26,6 +26,7 @@ vi.mock('../api', () => ({
   useUpdateUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCreateUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAdminSkills: () => ({ data: ['Điện', 'Mộc'], isPending: false }),
+  useParishes: () => ({ data: [{ id: 'p1', name: 'Giáo xứ Demo' }], isPending: false }),
 }))
 
 function mount() {

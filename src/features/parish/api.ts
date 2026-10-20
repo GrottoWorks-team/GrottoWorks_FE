@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { ActivityLog, Community, Role, User } from '@/types'
+import type { AdminUserDto, CreateAdminUserRequest } from '@/types/identity'
 import type {
   CommunityDto,
   CreateCommunityRequest,

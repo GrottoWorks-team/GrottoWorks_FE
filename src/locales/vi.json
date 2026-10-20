@@ -1029,5 +1029,7 @@
   "features.map.errEmpty": "Tệp rỗng, không thể dùng",
   "role.ADMIN": "Quản trị viên hệ thống",
   "role.MO": "Thủ kho / Phụ trách vật tư",
-  "role.VOLUNTEER": "Tình nguyện viên"
+  "role.VOLUNTEER": "Tình nguyện viên",
+  "features.parish.password": "Mật khẩu (tuỳ chọn)",
+  "features.parish.phone": "Số điện thoại"
 }
