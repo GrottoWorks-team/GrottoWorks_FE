@@ -4,7 +4,7 @@
 // invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { ActivityLog, Community, Role, User } from '@/types'
+import type { ActivityLog, Community, Role } from '@/types'
 import type { AdminUserDto, CreateAdminUserRequest, RoleDto } from '@/types/identity'
 import type {
   CommunityDto,
@@ -131,12 +131,6 @@ function useAdminMutation<TVars>(
 }
 
 // ---- Users (CRUD generic /api/users) -------------------------------------
-
-// communityId: null = xoÃ¡ field (mock PATCH shallow-merge giá»¯ key null) â€”
-// pattern areas/api.ts.
-type UserPayload = Partial<Omit<User, 'id' | 'communityId'>> & {
-  communityId?: string | null
-}
 
 export function useCreateUser() {
   return useAdminMutation([['users']], (data: CreateAdminUserRequest) =>

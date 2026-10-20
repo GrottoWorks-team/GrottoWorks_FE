@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/toast'
 import { useCommunities } from '@/features/communities/api'
 import { useUsers } from '@/features/users/api'
 import { cn } from '@/lib/utils'
-import { useDeleteUser, useLockUser, useUnlockUser, useUpdateUser } from '../api'
+import { useDeleteUser, useLockUser, useUnlockUser } from '../api'
 import { AccountFormDialog } from './AccountFormDialog'
 import type { User } from '@/types'
 
