@@ -55,22 +55,33 @@ export function useUpdateSeason() {
   )
 }
 
-// Kích hoạt mùa: PATCH status='ACTIVE'.
+// Kích hoạt mùa: POST /api/v1/seasons/{seasonId}/activate (B1)
 export function useActivateSeason() {
-  return useSeasonMutation((id: string) =>
-    api<Season>(`/seasons/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'ACTIVE' }),
+  return useSeasonMutation(({ id, version }: { id: string; version?: number }) =>
+    api<SeasonDto>(`/api/v1/seasons/${id}/activate`, {
+      method: 'POST',
+      body: JSON.stringify(version ? { version } : {}),
     }),
   )
 }
 
-// Chốt mùa: PATCH status='COMPLETED'.
-export function useCloseSeason() {
-  return useSeasonMutation((id: string) =>
-    api<Season>(`/seasons/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'COMPLETED' }),
+// Chốt mùa / Hoàn thành mùa: POST /api/v1/seasons/{seasonId}/complete (B2)
+export function useCompleteSeason() {
+  return useSeasonMutation(({ id, version }: { id: string; version?: number }) =>
+    api<SeasonDto>(`/api/v1/seasons/${id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(version ? { version } : {}),
+    }),
+  )
+}
+export const useCloseSeason = useCompleteSeason
+
+// Lưu trữ mùa: POST /api/v1/seasons/{seasonId}/archive (B3)
+export function useArchiveSeason() {
+  return useSeasonMutation(({ id, version }: { id: string; version?: number }) =>
+    api<SeasonDto>(`/api/v1/seasons/${id}/archive`, {
+      method: 'POST',
+      body: JSON.stringify(version ? { version } : {}),
     }),
   )
 }

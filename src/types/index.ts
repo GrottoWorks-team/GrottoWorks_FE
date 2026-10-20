@@ -39,6 +39,7 @@ export interface Season {
   description?: string
   /** BE không lưu cộng đoàn trên mùa — suy ra từ WorkArea.CommunityId. */
   communityIds?: string[]
+  version?: number
 }
 
 export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'

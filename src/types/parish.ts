@@ -45,6 +45,7 @@ export interface SeasonDto {
   estimatedBudget: number | null
   createdAt: string
   updatedAt: string | null
+  version?: number
 }
 
 export interface WorkAreaDto {

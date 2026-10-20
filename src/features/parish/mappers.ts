@@ -42,6 +42,7 @@ export function toSeason(dto: SeasonDto): Season {
     description: opt(dto.description),
     // BE không lưu cộng đoàn trên mùa; trang Mùa suy ra từ work-areas.
     communityIds: [],
+    version: dto.version,
   }
 }
 
