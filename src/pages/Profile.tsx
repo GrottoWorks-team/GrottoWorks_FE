@@ -1,7 +1,7 @@
-// Hồ sơ cá nhân — RHF + zod: sửa tên + kỹ năng (PATCH /users/:id), email readonly.
-// Điểm vinh danh + giờ công (timesheets lọc theo volunteerId) + chip kỹ năng.
-// Sau lưu gọi auth.refresh() để context/header nhận user mới (auth user là snapshot).
+// Hồ sơ cá nhân — RHF + zod: sửa tên + kỹ năng (PUT /users/me/skills), email readonly,
+// Thời gian rảnh (PUT /users/me/availability).
 import type { CSSProperties } from 'react'
+import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,7 +18,12 @@ import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { useSkills } from '@/features/tasks/api'
 import { useTimesheets } from '@/features/timesheets/api'
-import { useUpdateMyProfile, useUpdateProfile } from '@/features/profile/api'
+import {
+  useReplaceMyAvailability,
+  useReplaceMySkills,
+  useUpdateMyProfile,
+  useUpdateProfile,
+} from '@/features/profile/api'
 import type { User } from '@/types'
 
 const schema = z.object({
@@ -27,13 +32,21 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-// Form mount riêng khi user đã có (auth pending xong) — defaultValues luôn đúng.
+const DEFAULT_SLOTS = [
+  { id: 'weekend_morn', labelKey: 'profile.slotWeekendMorning', from: '2026-10-24T08:00:00Z', to: '2026-10-24T12:00:00Z' },
+  { id: 'weekend_after', labelKey: 'profile.slotWeekendAfternoon', from: '2026-10-24T13:30:00Z', to: '2026-10-24T17:30:00Z' },
+  { id: 'weekday_eve', labelKey: 'profile.slotWeekdayEvening', from: '2026-10-21T18:30:00Z', to: '2026-10-21T21:30:00Z' },
+]
+
 function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unknown> }) {
   const { t } = useTranslation()
   const toast = useToast()
   const update = useUpdateProfile()
   const updateMyProfile = useUpdateMyProfile()
+  const replaceSkills = useReplaceMySkills()
+  const replaceAvailability = useReplaceMyAvailability()
   const { data: allSkills = [] } = useSkills()
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([])
 
   const {
     register,
@@ -53,14 +66,42 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
       } catch {
         // v1 endpoint optional in legacy test env
       }
+
+      // A10: PUT /api/v1/users/me/skills
+      try {
+        await replaceSkills.mutateAsync(data.skills)
+      } catch {
+        // Volunteer only in BE policy
+      }
+
+      // A11: PUT /api/v1/users/me/availability
+      try {
+        const slotsToSubmit = DEFAULT_SLOTS
+          .filter((s) => selectedSlots.includes(s.id))
+          .map((s) => ({
+            availableFrom: s.from,
+            availableTo: s.to,
+            note: t(s.labelKey),
+          }))
+        if (slotsToSubmit.length > 0) {
+          await replaceAvailability.mutateAsync(slotsToSubmit)
+        }
+      } catch {
+        // Volunteer only in BE policy
+      }
     } catch {
       toast(t('common.error'), 'alert')
       return
     }
-    // PATCH đã thành công — refresh context fail không kéo theo toast lỗi
-    // (header sẽ tự cập nhật lần fetch sau), chỉ log.
+
     await onSaved().catch((e: unknown) => console.error('profile refresh failed', e))
     toast(t('profile.saved'))
+  }
+
+  const toggleSlot = (id: string) => {
+    setSelectedSlots((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    )
   }
 
   return (
@@ -120,7 +161,35 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
             )}
           />
         </div>
-        <div className="flex justify-end">
+
+        {/* A11: Khối thời gian rảnh */}
+        <div>
+          <Label>{t('profile.availability')}</Label>
+          <p className="mb-2 text-xs text-muted-foreground">{t('profile.availabilityHint')}</p>
+          <div className="space-y-2">
+            {DEFAULT_SLOTS.map((s) => {
+              const active = selectedSlots.includes(s.id)
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => toggleSlot(s.id)}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-lg border p-2.5 text-xs font-medium transition-colors text-left',
+                    active
+                      ? 'border-primary bg-primary/10 text-primary font-semibold'
+                      : 'border-border bg-card text-muted-foreground hover:border-primary/50',
+                  )}
+                >
+                  <span>{t(s.labelKey)}</span>
+                  <span className="text-[10px] uppercase tracking-wider">{active ? '✓ Chọn' : '+ Thêm'}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
           <Button type="submit" form="profile-form" disabled={isSubmitting}>
             {t('common.save')}
           </Button>

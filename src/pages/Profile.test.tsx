@@ -1,4 +1,4 @@
-import { beforeEach, expect, test, vi } from 'vitest'
+﻿import { beforeEach, expect, test, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -46,6 +46,14 @@ vi.mock('@/features/profile/api', () => ({
     isPending: false,
   }),
   useUpdateMyProfile: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+  }),
+  useReplaceMySkills: () => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+  }),
+  useReplaceMyAvailability: () => ({
     mutateAsync: vi.fn().mockResolvedValue({}),
     isPending: false,
   }),
