@@ -10,7 +10,7 @@ export function normalizeRole(roleStr?: string): Role {
   if (!roleStr) return 'COMMUNITY'
   const upper = roleStr.toUpperCase()
   if (upper.includes('PARISH') || upper.includes('ADMIN')) return 'PARISH'
-  if (upper.includes('MATERIAL') || upper.includes('OFFICER')) return 'MATERIAL_OFFICER'
+  if (upper.includes('MATERIAL') || upper.includes('OFFICER') || upper === 'MO') return 'MATERIAL_OFFICER'
   if (upper.includes('LEADER')) return 'LEADER'
   if (upper.includes('COMMUNITY')) return 'COMMUNITY'
   return 'COMMUNITY'
