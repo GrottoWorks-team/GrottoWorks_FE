@@ -1,4 +1,4 @@
-﻿// Admin domain â€” quáº£n trá»‹ tÃ i khoáº£n + danh má»¥c + nháº­t kÃ½ há»‡ thá»‘ng.
+// Admin domain â€” quáº£n trá»‹ tÃ i khoáº£n + danh má»¥c + nháº­t kÃ½ há»‡ thá»‘ng.
 // Query key tÃ¡ch domain: ['admin', <resource>]; khÃ´ng Ä‘á»¥ng key cá»§a feature khÃ¡c
 // (useUsers/useCommunities giá»¯ nguyÃªn key ['users']/['communities'] gá»‘c â€”
 // invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
@@ -10,8 +10,11 @@ import type {
   CommunityDto,
   CreateCommunityRequest,
   CreateParishRequest,
+  CreateWorkAreaCategoryRequest,
   ParishDto,
   UpdateParishRequest,
+  UpdateWorkAreaCategoryRequest,
+  WorkAreaCategoryDto,
 } from '@/types/parish'
 import { toParish } from './mappers'
 import { useCurrentParishId } from './hooks'
@@ -273,9 +276,58 @@ export function useBackup() {
 
 export function useRoleLabel(): Record<Role, string> {
   return {
-    PARISH: 'Quáº£n trá»‹',
-    COMMUNITY: 'Ban hÃ nh giÃ¡o',
-    LEADER: 'TrÆ°á»Ÿng khu',
-    MATERIAL_OFFICER: 'TrÆ°á»Ÿng ban hÃ nh giÃ¡o',
+    PARISH: 'Quản trị',
+    COMMUNITY: 'Ban hành giáo',
+    LEADER: 'Trưởng khu',
+    MATERIAL_OFFICER: 'Trưởng ban hành giáo',
   }
 }
+
+// ---- Work Area Categories (B4..B6) ---------------------------------------
+
+export const workAreaCategoryKeys = {
+  all: ['workAreaCategories'] as const,
+  list: (status?: string) => ['workAreaCategories', { status }] as const,
+}
+
+/** GET /api/v1/work-area-categories — Lấy danh sách danh mục khu vực thi công (B4) */
+export function useWorkAreaCategories(status?: 'ACTIVE' | 'INACTIVE') {
+  return useQuery({
+    queryKey: workAreaCategoryKeys.list(status),
+    queryFn: () => {
+      const qs = status ? `?status=${status}` : ''
+      return api<WorkAreaCategoryDto[]>(`/api/v1/work-area-categories${qs}`)
+    },
+  })
+}
+
+/** POST /api/v1/work-area-categories — Tạo mới danh mục khu vực thi công (B5) */
+export function useCreateWorkAreaCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateWorkAreaCategoryRequest) =>
+      api<WorkAreaCategoryDto>('/api/v1/work-area-categories', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: workAreaCategoryKeys.all })
+    },
+  })
+}
+
+/** PATCH /api/v1/work-area-categories/{categoryId} — Cập nhật danh mục khu vực thi công (B6) */
+export function useUpdateWorkAreaCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: UpdateWorkAreaCategoryRequest & { id: string }) =>
+      api<WorkAreaCategoryDto>(`/api/v1/work-area-categories/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: workAreaCategoryKeys.all })
+    },
+  })
+}
+
