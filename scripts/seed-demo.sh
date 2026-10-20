@@ -40,6 +40,16 @@ MO_ID=$(echo "$USERS_JSON" | grep -o '{"id":"[^"]*","fullName":"[^"]*","email":"
 echo "LEADER_ID: $LEADER_ID, MO_ID: $MO_ID"
 
 # 2. Gan Leader & MO vao WorkArea va Kich hoat Season (neu can)
+echo "==> Tao danh muc khu vuc thi cong (work-area-categories)..."
+for wcat in "HANG_DA:Hang đá chính" "KHU_LE:Khu vực lễ đài" "KHU_DEN:Khu vực trang trí đèn" "KHU_CHO:Khu hội chợ Giáng sinh"; do
+  wcode="${wcat%%:*}"
+  wname="${wcat##*:}"
+  curl -s -X POST "$GATEWAY/api/v1/work-area-categories" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"code\":\"$wcode\",\"name\":\"$wname\"}" >/dev/null 2>&1 || true
+done
+
 echo "==> Gan leader & MO vao work area..."
 curl -s -X PUT "$GATEWAY/api/v1/work-areas/66666666-6666-6666-6666-666666666666/leader" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
