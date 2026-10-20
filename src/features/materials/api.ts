@@ -76,8 +76,7 @@ export function useMaterialCategories(status?: 'ACTIVE' | 'INACTIVE') {
     queryKey: materialKeys.categories(status),
     queryFn: async () => {
       const qs = status ? `?status=${status}` : ''
-      const res = await api<{ data: MaterialCategoryDto[] }>(`/api/v1/material-categories${qs}`)
-      return res.data
+      return api<MaterialCategoryDto[]>(`/api/v1/material-categories${qs}`)
     },
   })
 }
