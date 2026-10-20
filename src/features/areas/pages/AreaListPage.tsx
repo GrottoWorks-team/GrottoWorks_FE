@@ -189,7 +189,10 @@ export default function AreaListPage() {
               variant="ghost"
               size="icon"
               aria-label={t('features.areas.assign')}
-              onClick={() => setAssigning(a)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setAssigning(a)
+              }}
             >
               <UserPlus className="size-4" />
             </Button>
