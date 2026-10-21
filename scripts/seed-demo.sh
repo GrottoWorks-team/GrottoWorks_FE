@@ -20,17 +20,22 @@ if [ -z "$ADMIN_TOKEN" ]; then
 fi
 echo "==> Admin token OK"
 
-# 1. Tao Leader & MO neu chua co
-echo "==> Tao hoac kiem tra Leader & MO..."
+# 1. Tao Leader, MO & Parish neu chua co
+echo "==> Tao hoac kiem tra Leader, MO & Parish..."
 curl -s -X POST "$GATEWAY/api/v1/admin/users" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"fullName":"Truong Ban Thi Cong","email":"leader.demo@grottoworks.local","password":"ChangeMe!123456","role":"LEADER","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
+  -d '{"displayName":"Linh Muc Quan Xu","email":"parish.demo@grottoworks.local","password":"ChangeMe!123456","role":"PARISH","parishId":"11111111-1111-1111-1111-111111111111"}' >/dev/null 2>&1 || true
 
 curl -s -X POST "$GATEWAY/api/v1/admin/users" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"fullName":"Phu Trach Vat Tu","email":"mo.demo@grottoworks.local","password":"ChangeMe!123456","role":"MO","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
+  -d '{"displayName":"Truong Ban Thi Cong","email":"leader.demo@grottoworks.local","password":"ChangeMe!123456","role":"LEADER","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
+
+curl -s -X POST "$GATEWAY/api/v1/admin/users" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"displayName":"Phu Trach Vat Tu","email":"mo.demo@grottoworks.local","password":"ChangeMe!123456","role":"MO","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
 
 # Lay user ID
 USERS_JSON=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$GATEWAY/api/v1/admin/users?size=100")
