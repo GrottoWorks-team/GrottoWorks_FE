@@ -15,7 +15,6 @@ import {
   useAssignWorkAreaLeader,
   useAssignWorkAreaMaterialOfficer,
   useCommunities,
-  useUpdateArea,
 } from '../api'
 import { useUsers } from '@/features/users/api'
 import { SELECT_CLS } from './AreaFormDialog'
@@ -39,7 +38,7 @@ export function AreaAssignDialog({
   const toast = useToast()
   const { data: users = [] } = useUsers()
   const { data: communities = [] } = useCommunities()
-  const updateArea = useUpdateArea()
+
   const assignCommunity = useAssignWorkAreaCommunity()
   const assignLeader = useAssignWorkAreaLeader()
   const assignMO = useAssignWorkAreaMaterialOfficer()
@@ -101,8 +100,7 @@ export function AreaAssignDialog({
         }
       }
 
-      // Đồng thời cập nhật qua updateArea để đồng bộ mock/state cục bộ
-      await updateArea.mutateAsync({ id: area.id, ...data })
+
 
       toast(t('features.areas.assigned', { name: area.name }))
       onClose()

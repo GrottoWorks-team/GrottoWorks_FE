@@ -62,6 +62,7 @@ export interface WorkArea {
   description?: string
   mapX?: number
   mapY?: number
+  version?: number
 }
 
 /**

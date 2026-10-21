@@ -4,18 +4,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutGrid, Table2, Pencil, Trash2, Plus, UserPlus, FileImage } from 'lucide-react'
+import { LayoutGrid, Table2, Pencil, Plus, UserPlus, FileImage } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { useAreas, useDeleteArea, useSeasons, useUsers } from '../api'
+import { useAreas, useSeasons, useUsers } from '../api'
 import { AreaCard } from '../components/AreaCard'
 import { AreaDetailDialog } from '../components/AreaDetailDialog'
 import { AreaFormDialog, SELECT_CLS } from './AreaFormDialog'
@@ -26,7 +24,6 @@ type View = 'grid' | 'table'
 
 export default function AreaListPage() {
   const { t } = useTranslation()
-  const toast = useToast()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -49,7 +46,7 @@ export default function AreaListPage() {
   )
   const { data: rawAreas = [], isPending: isAreasPending } = useAreas(seasonIds)
   const { data: users = [] } = useUsers()
-  const deleteArea = useDeleteArea()
+
 
   // Đồng bộ URL param khi URL thay đổi từ ngoài
   useEffect(() => {
@@ -79,7 +76,7 @@ export default function AreaListPage() {
   const [view, setView] = useState<View>('grid')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<WorkArea | null>(null)
-  const [deleting, setDeleting] = useState<WorkArea | null>(null)
+
   const [assigning, setAssigning] = useState<WorkArea | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
@@ -207,14 +204,7 @@ export default function AreaListPage() {
             >
               <Pencil className="size-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.delete')}
-              onClick={() => setDeleting(a)}
-            >
-              <Trash2 className="size-4" />
-            </Button>
+
           </div>
         ),
       },
@@ -222,14 +212,7 @@ export default function AreaListPage() {
     [t, users, seasonMap, navigate, pathname, canViewDesign],
   )
 
-  const onDelete = async (a: WorkArea) => {
-    try {
-      await deleteArea.mutateAsync(a.id)
-      toast(t('features.areas.deleted', { name: a.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
+
 
   const isPending = isAreasPending || isSeasonsPending
 
@@ -366,15 +349,7 @@ export default function AreaListPage() {
         open={Boolean(detailAreaId)}
         onClose={() => setDetailAreaId(null)}
       />
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        title={t('features.areas.deleteTitle')}
-        description={deleting ? t('features.areas.deleteConfirm', { name: deleting.name }) : undefined}
-        confirmLabel={t('common.delete')}
-        tone="destructive"
-        onConfirm={() => deleting && onDelete(deleting)}
-        onClose={() => setDeleting(null)}
-      />
+
     </div>
   )
 }

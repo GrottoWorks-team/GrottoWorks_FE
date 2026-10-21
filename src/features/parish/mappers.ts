@@ -66,6 +66,7 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
     progress: 0,
     volunteerCount: 0,
     taskCount: 0,
+    version: dto.version,
   }
 }
 

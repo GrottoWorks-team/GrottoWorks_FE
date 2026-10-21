@@ -156,10 +156,10 @@ export function AreaFormDialog({
       if (editing && area) {
         await update.mutateAsync({
           id: area.id,
-          ...data,
-          communityId,
-          deadline: data.deadline || undefined,
-          description: data.description || undefined,
+          name: data.name,
+          description: data.description || null,
+          deadline: data.deadline || null,
+          version: area.version,
         })
         toast(t('features.areas.updated', { name: data.name }))
       } else {

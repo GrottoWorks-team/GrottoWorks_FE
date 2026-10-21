@@ -3,7 +3,6 @@
 // song song từng mùa rồi gộp.
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { WorkArea } from '@/types'
 import type { CreateWorkAreaRequest, WorkAreaDto } from '@/types/parish'
 import { toWorkArea } from '@/features/parish/mappers'
 import { useSeasons } from '@/features/season/api'
@@ -75,25 +74,45 @@ export function useCreateArea() {
   })
 }
 
-// ponytail: BE chưa có PATCH/DELETE /work-areas/{id} — sửa và xoá khu vực vẫn
-// đi MSW mock. Gắn khi ParishCoordination bổ sung endpoint.
 export function useUpdateArea() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, ...data }: Partial<Omit<WorkArea, 'communityId' | 'mapX' | 'mapY'>> & {
+    mutationFn: ({
+      id,
+      name,
+      description,
+      startDate,
+      deadline,
+      mapX: _mapX,
+      mapY: _mapY,
+      version,
+    }: {
       id: string
-      communityId?: string | null
+      name?: string
+      description?: string | null
+      startDate?: string | null
+      deadline?: string | null
       mapX?: number | null
       mapY?: number | null
-    }) => api<WorkArea>(`/areas/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
-  })
-}
+      version?: number
+    }) => {
+      const payload: Record<string, unknown> = {}
+      if (name !== undefined) payload.name = name.trim()
+      if (description !== undefined) payload.description = description ? description.trim() : null
+      if (startDate !== undefined) payload.startDate = startDate || null
+      if (deadline !== undefined) payload.deadline = deadline || null
 
-export function useDeleteArea() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) => api<void>(`/areas/${id}`, { method: 'DELETE' }),
+      const headers: Record<string, string> = {}
+      if (version !== undefined && version !== null) {
+        headers['If-Match'] = `"${version}"`
+      }
+
+      return api<WorkAreaDto>(`/api/v1/work-areas/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      })
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
   })
 }

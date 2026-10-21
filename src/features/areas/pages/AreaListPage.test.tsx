@@ -155,7 +155,6 @@ vi.mock('@/features/areas/api', () => ({
   useUsers: () => ({ data: mockUsers, isPending: false }),
   useCreateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a-new' }), isPending: false }),
   useUpdateArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({ id: 'a1' }), isPending: false }),
-  useDeleteArea: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useAssignWorkAreaCommunity: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useAssignWorkAreaLeader: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useAssignWorkAreaMaterialOfficer: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),

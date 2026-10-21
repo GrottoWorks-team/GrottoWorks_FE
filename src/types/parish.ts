@@ -59,6 +59,7 @@ export interface WorkAreaDto {
   startDate?: string | null
   deadline?: string | null
   status: WorkAreaStatus
+  version?: number
 }
 
 export interface CreateParishRequest {
