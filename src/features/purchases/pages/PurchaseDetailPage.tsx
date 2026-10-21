@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Clock, History, Send, CheckCircle2, XCircle, FileText, Package, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Clock, History, Send, CheckCircle2, XCircle, FileText, Package, AlertTriangle, Edit } from 'lucide-react'
+import { PurchaseFormDialog } from './PurchaseFormDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,7 @@ export default function PurchaseDetailPage() {
   const [rejectOpen, setRejectOpen] = useState(false)
   const [decisionNote, setDecisionNote] = useState('')
   const [rejectReason, setRejectReason] = useState('')
+  const [editOpen, setEditOpen] = useState(false)
 
   if (isLoading) {
     return <p className="lbl-mono p-6">{t('common.loading')}</p>
@@ -118,13 +120,24 @@ export default function PurchaseDetailPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {request.status === 'DRAFT' && isOfficer && (
-              <Button
-                disabled={send.isPending}
-                onClick={() => void handleSend()}
-              >
-                <Send className="size-4" />
-                <span>{t('features.purchases.actions.submit')}</span>
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  id="btn-edit-purchase-request"
+                  onClick={() => setEditOpen(true)}
+                >
+                  <Edit className="size-4" />
+                  <span>{t('features.purchases.actions.edit')}</span>
+                </Button>
+                <Button
+                  id="btn-submit-purchase-request"
+                  disabled={send.isPending}
+                  onClick={() => void handleSend()}
+                >
+                  <Send className="size-4" />
+                  <span>{t('features.purchases.actions.submit')}</span>
+                </Button>
+              </>
             )}
 
             {request.status === 'PENDING_APPROVAL' && isLeader && (
@@ -353,6 +366,14 @@ export default function PurchaseDetailPage() {
             </div>
           </div>
         </Dialog>
+      )}
+
+{/* Dialog Chỉnh sửa F4 */}
+      {editOpen && (
+        <PurchaseFormDialog
+          initialData={request}
+          onClose={() => setEditOpen(false)}
+        />
       )}
 
       {/* Dialog Từ chối F7 */}
