@@ -197,12 +197,6 @@ export function useCreatePurchaseRequest() {
   })
 }
 
-export function useMockCreatePurchaseRequest() {
-  return usePurchaseMutation((data: Omit<PurchaseRequest, 'id' | 'createdBy'> & { createdBy?: string }) =>
-    api<PurchaseRequest>('/purchaseRequests', { method: 'POST', body: JSON.stringify(data) }),
-  )
-}
-
 /**
  * F4: PATCH /api/v1/purchase-requests/{requestId} (chỉnh sửa khi DRAFT, items thay thế toàn bộ dòng)
  */
