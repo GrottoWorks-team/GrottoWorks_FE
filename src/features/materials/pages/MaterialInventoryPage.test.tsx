@@ -93,6 +93,10 @@ vi.mock('@/features/areas/api', () => ({
   useAreas: vi.fn(() => ({
     data: [{ id: 'area-1', name: 'Khu Hang Đá Bê-lem' }],
   })),
+  useArea: vi.fn(() => ({
+    data: { id: 'area-1', name: 'Khu Hang Đá Bê-lem', seasonId: 'season-1', type: 'GROTTO', status: 'IN_PROGRESS' },
+    isPending: false,
+  })),
 }))
 
 vi.mock('react-i18next', () => ({

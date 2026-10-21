@@ -27,6 +27,7 @@ import { useSeasons } from '@/features/season/api'
 import { useAreas } from '@/features/areas/api'
 import { OpeningStockDialog } from './OpeningStockDialog'
 import { MaterialHistoryDrawer } from './MaterialHistoryDrawer'
+import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
 
 const SELECT_CLS =
   'flex h-9 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -45,6 +46,7 @@ export default function MaterialInventoryPage() {
   // Sub-dialog & Drawer state
   const [openingStockOpen, setOpeningStockOpen] = useState(false)
   const [historyTarget, setHistoryTarget] = useState<InventoryBalanceDto | null>(null)
+  const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
   // Master data for filters
   const { data: seasons = [] } = useSeasons()
@@ -263,15 +265,26 @@ export default function MaterialInventoryPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setHistoryTarget(row)}
-                            className="h-8 gap-1.5 px-2 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary"
-                          >
-                            <History className="size-3.5" />
-                            {t('features.inventory.viewHistory')}
-                          </Button>
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setHistoryTarget(row)}
+                              className="h-8 gap-1.5 px-2 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary"
+                            >
+                              <History className="size-3.5" />
+                              {t('features.inventory.viewHistory')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDetailAreaId(row.workAreaId)}
+                              className="h-8 gap-1.5 px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <Layers className="size-3.5" />
+                              {t('features.inventory.viewRequirements')}
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )
@@ -338,6 +351,13 @@ export default function MaterialInventoryPage() {
         materialCode={historyTarget?.materialCode}
         materialName={historyTarget?.materialName}
         unit={historyTarget?.unit}
+      />
+
+      {/* Chi tiết khu vực & Nhu cầu vật tư (E1, E2, E3, E4) */}
+      <AreaDetailDialog
+        areaId={detailAreaId}
+        open={Boolean(detailAreaId)}
+        onClose={() => setDetailAreaId(null)}
       />
     </div>
   )
