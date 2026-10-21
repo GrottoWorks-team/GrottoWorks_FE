@@ -220,7 +220,7 @@ export default function PurchaseListPage() {
         </div>
       )}
 
-      {formOpen && <PurchaseFormDialog materials={[]} onClose={() => setFormOpen(false)} />}
+      {formOpen && <PurchaseFormDialog onClose={() => setFormOpen(false)} />}
     </div>
   )
 }
