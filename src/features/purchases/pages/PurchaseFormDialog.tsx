@@ -13,7 +13,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
 import { shortage } from '@/types'
 import type { Material } from '@/types'
-import { useCreatePurchaseRequest } from '../api'
+import { useMockCreatePurchaseRequest } from '../api'
 
 const CHECK_CLS = 'mt-1 size-4 rounded border border-border bg-card accent-primary'
 
@@ -40,7 +40,7 @@ export function PurchaseFormDialog({
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const create = useCreatePurchaseRequest()
+  const create = useMockCreatePurchaseRequest()
 
   const {
     register,

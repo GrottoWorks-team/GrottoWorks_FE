@@ -15,7 +15,7 @@ import { useMaterials } from '@/features/materials/api'
 import { useUsers } from '@/features/users/api'
 import { shortage } from '@/types'
 import type { PurchaseRequest } from '@/types'
-import { useApproveRequest, usePurchaseRequests, useRejectRequest } from '../api'
+import { useMockApproveRequest, useMockPurchaseRequests, useMockRejectRequest } from '../api'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -24,7 +24,7 @@ const TEXTAREA_CLS =
 function RejectDialog({ item, onClose }: { item: PurchaseRequest; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const reject = useRejectRequest()
+  const reject = useMockRejectRequest()
   const [reason, setReason] = useState('')
 
   // Trả về true khi thành công — dialog chỉ đóng khi thành công, giữ nguyên
@@ -84,10 +84,10 @@ function RejectDialog({ item, onClose }: { item: PurchaseRequest; onClose: () =>
 export default function CommitteeApprovalPage() {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data: requests = [], isPending } = usePurchaseRequests()
+  const { data: requests = [], isPending } = useMockPurchaseRequests()
   const { data: materials = [] } = useMaterials()
   const { data: users = [] } = useUsers()
-  const approve = useApproveRequest()
+  const approve = useMockApproveRequest()
 
   const [rejecting, setRejectting] = useState<PurchaseRequest | null>(null)
 

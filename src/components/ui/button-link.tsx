@@ -11,6 +11,7 @@ interface ButtonLinkBase {
   size?: Size
   className?: string
   children: React.ReactNode
+  title?: string
 }
 
 type ButtonLinkProps = ButtonLinkBase &
@@ -27,19 +28,20 @@ export function ButtonLink({
   size = 'default',
   className,
   children,
+  title,
   to,
   href,
 }: ButtonLinkProps) {
   const cls = cn(buttonBase, buttonVariants[variant], buttonSizes[size], className)
   if (to !== undefined) {
     return (
-      <Link to={to} className={cls}>
+      <Link to={to} className={cls} title={title}>
         {children}
       </Link>
     )
   }
   return (
-    <a href={href} className={cls}>
+    <a href={href} className={cls} title={title}>
       {children}
     </a>
   )

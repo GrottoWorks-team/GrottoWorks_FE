@@ -25,7 +25,7 @@ import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { shortage } from '@/types'
 import type { Material, PurchaseRecord, PurchaseRequest } from '@/types'
-import { useConfirmPurchase, useCreatePurchaseRecord, usePurchaseRecords, usePurchaseRequests } from '../api'
+import { useConfirmPurchase, useCreatePurchaseRecord, useMockPurchaseRequests, usePurchaseRecords } from '../api'
 
 const SELECT_CLS =
   'flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -186,7 +186,7 @@ export default function PurchaseConfirmPage() {
   const { data: areas = [], isPending: areasPending } = useAreas()
   const { data: materials = [] } = useMaterials()
   const { data: users = [] } = useUsers()
-  const { data: requests = [], isPending } = usePurchaseRequests()
+  const { data: requests = [] as PurchaseRequest[], isPending } = useMockPurchaseRequests()
   const { data: records = [] } = usePurchaseRecords()
   const confirmPurchase = useConfirmPurchase()
 
@@ -204,7 +204,7 @@ export default function PurchaseConfirmPage() {
     (r) =>
       r.status === 'APPROVED' &&
       !records.some((rec) => rec.requestId === r.id) &&
-      r.materialIds.some((id) => myMaterials.some((m) => m.id === id)),
+      r.materialIds.some((id: string) => myMaterials.some((m) => m.id === id)),
   )
   const myRecords = records
     .filter((r) => myMaterials.some((m) => m.id === r.materialId))

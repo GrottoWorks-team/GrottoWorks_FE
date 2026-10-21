@@ -18,6 +18,11 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   PLANNING: 'soft', PLANNED: 'soft', READY: 'ok', COMPLETED: 'ok', ARCHIVED: 'soft',
   READINESS_REVIEW: 'warn', NEEDS_CORRECTION: 'alert', INACTIVE: 'soft',
   DRAFT: 'soft',
+  PENDING_APPROVAL: 'warn',
+  BUYER_ASSIGNED: 'warn',
+  PURCHASED: 'warn',
+  PARTIALLY_RECEIVED: 'warn',
+  CANCELLED: 'alert',
 }
 
 // DESIGN_SYSTEM.md mục 12 — Status Badge: pastel background + dark text.
