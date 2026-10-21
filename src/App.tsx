@@ -1,4 +1,4 @@
-﻿import { Suspense, lazy, useEffect } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import type { ComponentType } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -33,6 +33,7 @@ const RegsApprovalPage = lazy(() => import('@/features/volunteerRegs/pages/RegsA
 const SupportListPage = lazy(() => import('@/features/support/pages/SupportListPage'))
 const MaterialCategoriesPage = lazy(() => import('@/features/materials/pages/MaterialCategoriesPage'))
 const MaterialListPage = lazy(() => import('@/features/materials/pages/MaterialListPage'))
+const MaterialInventoryPage = lazy(() => import('@/features/materials/pages/MaterialInventoryPage'))
 const PurchaseListPage = lazy(() => import('@/features/purchases/pages/PurchaseListPage'))
 const PurchaseConfirmPage = lazy(() => import('@/features/purchases/pages/PurchaseConfirmPage'))
 const CommitteeApprovalPage = lazy(() => import('@/features/purchases/pages/CommitteeApprovalPage'))
@@ -73,6 +74,7 @@ const PAGES: Record<string, ComponentType> = {
   '/community/support': SupportListPage,
   '/material-officer/categories': MaterialCategoriesPage,
   '/material-officer/materials': MaterialListPage,
+  '/material-officer/inventory': MaterialInventoryPage,
   '/material-officer/purchases': PurchaseListPage,
   '/material-officer/purchases-confirm': PurchaseConfirmPage,
   '/material-officer/donations': DonationListPage,

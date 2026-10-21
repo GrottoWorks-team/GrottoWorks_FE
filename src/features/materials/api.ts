@@ -64,10 +64,142 @@ export interface PagedResult<T> {
   }
 }
 
+export interface InventoryBalanceDto {
+  workAreaId: string
+  workAreaName: string
+  seasonId: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  required: number
+  confirmedAvailable: number
+  allocated: number
+  unallocated: number
+  shortage: number
+}
+
+export type TransactionType =
+  | 'OPENING_STOCK'
+  | 'PURCHASE_DELIVERY'
+  | 'DONATION_RECEIPT'
+  | 'TASK_RETURN'
+  | 'TRANSFER_IN'
+  | 'TRANSFER_OUT'
+  | 'ADJUSTMENT_DAMAGED'
+  | 'ADJUSTMENT_LOST'
+  | 'ADJUSTMENT_DISPOSED'
+
+export interface InventoryTransactionDto {
+  id: string
+  workAreaId: string
+  materialId: string
+  transactionType: TransactionType
+  quantity: number
+  transactionDate: string
+  referenceType: string | null
+  referenceId: string | null
+  createdByUserId: string | null
+  note: string | null
+}
+
+export interface OpeningStockPayload {
+  workAreaId: string
+  materialId: string
+  quantity: number
+  transactionDate?: string | null
+  note?: string | null
+}
+
 export const materialKeys = {
   all: ['materials'] as const,
   categories: (status?: string) => ['material-categories', status] as const,
   catalog: (params?: Record<string, unknown>) => ['materials-catalog', params] as const,
+  inventory: (params?: Record<string, unknown>) => ['inventory', params] as const,
+  history: (materialId: string, params?: Record<string, unknown>) => ['material-history', materialId, params] as const,
+}
+
+/** D2: GET /api/v1/inventory (PARISH, LEADER, MO) */
+export function useInventory(params?: {
+  page?: number
+  size?: number
+  seasonId?: string
+  workAreaId?: string
+  materialId?: string
+  onlyShortage?: boolean
+}) {
+  return useQuery({
+    queryKey: materialKeys.inventory(params as Record<string, unknown>),
+    queryFn: async () => {
+      const q = new URLSearchParams()
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.size) q.set('size', String(params.size))
+      if (params?.seasonId) q.set('seasonId', params.seasonId)
+      if (params?.workAreaId) q.set('workAreaId', params.workAreaId)
+      if (params?.materialId) q.set('materialId', params.materialId)
+      if (typeof params?.onlyShortage === 'boolean') {
+        q.set('onlyShortage', String(params.onlyShortage))
+      }
+      const qs = q.toString()
+      const res = await api<any>(`/api/v1/inventory${qs ? `?${qs}` : ''}`)
+      if (Array.isArray(res)) {
+        return {
+          data: res as InventoryBalanceDto[],
+          page: {
+            page: params?.page ?? 1,
+            size: params?.size ?? 20,
+            totalItems: res.length,
+            totalPages: Math.ceil(res.length / (params?.size ?? 20)) || 1,
+          },
+        }
+      }
+      return res as PagedResult<InventoryBalanceDto>
+    },
+  })
+}
+
+/** D3: GET /api/v1/materials/{materialId}/allocation-history (PARISH, LEADER, MO) */
+export function useMaterialHistory(
+  materialId?: string,
+  params?: {
+    from?: string
+    to?: string
+    workAreaId?: string
+  },
+) {
+  return useQuery({
+    queryKey: materialKeys.history(materialId || '', params as Record<string, unknown>),
+    queryFn: async () => {
+      if (!materialId) return []
+      const q = new URLSearchParams()
+      if (params?.from) q.set('from', params.from)
+      if (params?.to) q.set('to', params.to)
+      if (params?.workAreaId) q.set('workAreaId', params.workAreaId)
+      const qs = q.toString()
+      const res = await api<{ data?: InventoryTransactionDto[] } | InventoryTransactionDto[]>(
+        `/api/v1/materials/${materialId}/allocation-history${qs ? `?${qs}` : ''}`,
+      )
+      return Array.isArray(res) ? res : res.data || []
+    },
+    enabled: Boolean(materialId),
+  })
+}
+
+/** D1: POST /api/v1/inventory/opening-stock (MO) */
+export function useRecordOpeningStock() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: OpeningStockPayload) =>
+      api<{ data: InventoryTransactionDto }>('/api/v1/inventory/opening-stock', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory'] })
+      qc.invalidateQueries({ queryKey: ['material-history'] })
+      qc.invalidateQueries({ queryKey: materialKeys.all })
+    },
+  })
 }
 
 /** C1: GET /api/v1/material-categories */
