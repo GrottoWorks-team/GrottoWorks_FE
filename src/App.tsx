@@ -35,6 +35,7 @@ const MaterialCategoriesPage = lazy(() => import('@/features/materials/pages/Mat
 const MaterialListPage = lazy(() => import('@/features/materials/pages/MaterialListPage'))
 const MaterialInventoryPage = lazy(() => import('@/features/materials/pages/MaterialInventoryPage'))
 const SeasonMaterialNeedsPage = lazy(() => import('@/features/materials/pages/SeasonMaterialNeedsPage'))
+const PurchaseDetailPage = lazy(() => import('@/features/purchases/pages/PurchaseDetailPage'))
 const PurchaseListPage = lazy(() => import('@/features/purchases/pages/PurchaseListPage'))
 const PurchaseConfirmPage = lazy(() => import('@/features/purchases/pages/PurchaseConfirmPage'))
 const CommitteeApprovalPage = lazy(() => import('@/features/purchases/pages/CommitteeApprovalPage'))
@@ -99,7 +100,11 @@ const PAGES: Record<string, ComponentType> = {
 // Route cÃ³ param â€” nav-config khÃ´ng mÃ´ táº£ Ä‘Æ°á»£c, khai bÃ¡o tÆ°á»ng minh theo role
 // (page tá»± Ä‘á»c useParams/useLocation Ä‘á»ƒ biáº¿t ngá»¯ cáº£nh mount).
 const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = {
+  MATERIAL_OFFICER: [
+    { path: 'purchases/:id', Page: PurchaseDetailPage },
+  ],
   LEADER: [
+    { path: 'purchases/:id', Page: PurchaseDetailPage },
     { path: 'tasks/:id', Page: TaskDetailPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
@@ -111,6 +116,7 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
   ],
   PARISH: [
+    { path: 'purchases/:id', Page: PurchaseDetailPage },
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
