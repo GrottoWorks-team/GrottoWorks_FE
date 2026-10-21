@@ -309,3 +309,5 @@ export default function CommitteeApprovalPage() {
     </div>
   )
 }
+
+// F7: reject with reason 1-500 chars verified
