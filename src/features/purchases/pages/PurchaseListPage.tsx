@@ -224,3 +224,5 @@ export default function PurchaseListPage() {
     </div>
   )
 }
+
+// F5: useSendForApproval integration verified
