@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { useArea } from '../api'
-import { Calendar, Layers, ShieldCheck } from 'lucide-react'
+import { Calendar, Layers, ShieldCheck, Info, Package } from 'lucide-react'
+import { AreaMaterialsTab } from './AreaMaterialsTab'
 
 interface AreaDetailDialogProps {
   areaId: string | null
@@ -15,6 +17,7 @@ interface AreaDetailDialogProps {
 export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProps) {
   const { t } = useTranslation()
   const { data: area, isPending } = useArea(areaId ?? undefined)
+  const [activeTab, setActiveTab] = useState<'info' | 'materials'>('info')
 
   if (!open) return null
 
@@ -23,14 +26,43 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
       open={open}
       onClose={onClose}
       title={t('features.areas.detailTitle', { defaultValue: 'Chi tiết Phân khu thi công hang đá' })}
-      size="md"
+      size={activeTab === 'materials' ? 'lg' : 'md'}
       footer={
         <Button variant="outline" onClick={onClose}>
           {t('common.close', { defaultValue: 'Đóng' })}
         </Button>
       }
     >
-      {isPending ? (
+      <div className="flex border-b border-border mb-4">
+        <button
+          type="button"
+          onClick={() => setActiveTab('info')}
+          className={`flex items-center gap-2 px-4 py-2 border-b-2 text-sm font-semibold transition-colors ${
+            activeTab === 'info'
+              ? 'border-brand-pine text-brand-pine'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Info className="size-4" />
+          <span>{t('features.areas.tabs.info', { defaultValue: 'Thông tin chung' })}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('materials')}
+          className={`flex items-center gap-2 px-4 py-2 border-b-2 text-sm font-semibold transition-colors ${
+            activeTab === 'materials'
+              ? 'border-brand-pine text-brand-pine'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Package className="size-4" />
+          <span>{t('features.requirements.tabTitle', { defaultValue: 'Nhu cầu vật tư' })}</span>
+        </button>
+      </div>
+
+      {activeTab === 'materials' && areaId ? (
+        <AreaMaterialsTab workAreaId={areaId} />
+      ) : isPending ? (
         <p className="lbl-mono py-8 text-center">{t('common.loading')}</p>
       ) : !area ? (
         <p className="py-8 text-center text-sm text-muted-foreground">

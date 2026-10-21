@@ -111,12 +111,189 @@ export interface OpeningStockPayload {
   note?: string | null
 }
 
+export interface MaterialRequirementDto {
+  id: string
+  workAreaId: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  requiredQuantity: number
+  existingQuantity: number
+  status: 'ACTIVE' | 'CANCELLED'
+  note: string | null
+  version: number
+}
+
+export interface MaterialShortageDto {
+  workAreaId: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  required: number
+  confirmedAvailable: number
+  allocated: number
+  unallocated: number
+  shortage: number
+}
+
+export interface MaterialNeedDto {
+  workAreaId: string
+  workAreaName: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  required: number
+  shortage: number
+}
+
+export interface CreateMaterialRequirementPayload {
+  materialId: string
+  requiredQuantity: number
+  existingQuantity?: number | null
+  note?: string | null
+}
+
+export interface UpdateMaterialRequirementPayload {
+  version?: number | null
+  requiredQuantity?: number | null
+  existingQuantity?: number | null
+  note?: string | null
+  status?: 'ACTIVE' | 'CANCELLED' | null
+}
+
 export const materialKeys = {
   all: ['materials'] as const,
   categories: (status?: string) => ['material-categories', status] as const,
   catalog: (params?: Record<string, unknown>) => ['materials-catalog', params] as const,
   inventory: (params?: Record<string, unknown>) => ['inventory', params] as const,
   history: (materialId: string, params?: Record<string, unknown>) => ['material-history', materialId, params] as const,
+  requirements: (workAreaId: string, status?: string) => ['material-requirements', workAreaId, status] as const,
+  shortages: (workAreaId: string) => ['work-area-shortages', workAreaId] as const,
+  needs: (seasonId: string, params?: Record<string, unknown>) => ['season-material-needs', seasonId, params] as const,
+}
+
+/** E1: GET /api/v1/work-areas/{workAreaId}/material-requirements */
+export function useWorkAreaRequirements(workAreaId?: string, status?: 'ACTIVE' | 'CANCELLED') {
+  return useQuery({
+    queryKey: materialKeys.requirements(workAreaId || '', status),
+    queryFn: async () => {
+      if (!workAreaId) return []
+      const qs = status ? `?status=${status}` : ''
+      const res = await api<any>(`/api/v1/work-areas/${workAreaId}/material-requirements${qs}`)
+      return (Array.isArray(res) ? res : res?.data || []) as MaterialRequirementDto[]
+    },
+    enabled: Boolean(workAreaId),
+  })
+}
+
+/** E4: GET /api/v1/work-areas/{workAreaId}/shortages */
+export function useWorkAreaShortages(workAreaId?: string) {
+  return useQuery({
+    queryKey: materialKeys.shortages(workAreaId || ''),
+    queryFn: async () => {
+      if (!workAreaId) return []
+      const res = await api<any>(`/api/v1/work-areas/${workAreaId}/shortages`)
+      return (Array.isArray(res) ? res : res?.data || []) as MaterialShortageDto[]
+    },
+    enabled: Boolean(workAreaId),
+  })
+}
+
+/** E5: GET /api/v1/seasons/{seasonId}/material-needs */
+export function useSeasonMaterialNeeds(
+  seasonId?: string,
+  params?: {
+    page?: number
+    size?: number
+    workAreaId?: string
+    materialId?: string
+  },
+) {
+  return useQuery({
+    queryKey: materialKeys.needs(seasonId || '', params as Record<string, unknown>),
+    queryFn: async () => {
+      if (!seasonId) {
+        return {
+          data: [],
+          page: { page: 1, size: params?.size ?? 20, totalItems: 0, totalPages: 1 },
+        }
+      }
+      const q = new URLSearchParams()
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.size) q.set('size', String(params.size))
+      if (params?.workAreaId) q.set('workAreaId', params.workAreaId)
+      if (params?.materialId) q.set('materialId', params.materialId)
+      const qs = q.toString()
+      const res = await api<any>(`/api/v1/seasons/${seasonId}/material-needs${qs ? `?${qs}` : ''}`)
+      if (Array.isArray(res)) {
+        return {
+          data: res as MaterialNeedDto[],
+          page: {
+            page: params?.page ?? 1,
+            size: params?.size ?? 20,
+            totalItems: res.length,
+            totalPages: Math.ceil(res.length / (params?.size ?? 20)) || 1,
+          },
+        }
+      }
+      return res as PagedResult<MaterialNeedDto>
+    },
+    enabled: Boolean(seasonId),
+  })
+}
+
+/** E2: POST /api/v1/work-areas/{workAreaId}/material-requirements (MO) */
+export function useCreateMaterialRequirement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      workAreaId,
+      ...data
+    }: CreateMaterialRequirementPayload & { workAreaId: string }) =>
+      api<{ data: MaterialRequirementDto }>(
+        `/api/v1/work-areas/${workAreaId}/material-requirements`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        },
+      ),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['material-requirements', vars.workAreaId] })
+      qc.invalidateQueries({ queryKey: ['work-area-shortages', vars.workAreaId] })
+      qc.invalidateQueries({ queryKey: ['season-material-needs'] })
+      qc.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
+}
+
+/** E3: PATCH /api/v1/material-requirements/{requirementId} (MO) */
+export function useUpdateMaterialRequirement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      requirementId,
+      workAreaId: _waId,
+      ...data
+    }: UpdateMaterialRequirementPayload & { requirementId: string; workAreaId?: string }) =>
+      api<{ data: MaterialRequirementDto }>(
+        `/api/v1/material-requirements/${requirementId}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(data),
+        },
+      ),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['material-requirements'] })
+      if (vars.workAreaId) {
+        qc.invalidateQueries({ queryKey: ['work-area-shortages', vars.workAreaId] })
+      }
+      qc.invalidateQueries({ queryKey: ['season-material-needs'] })
+      qc.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
 }
 
 /** D2: GET /api/v1/inventory (PARISH, LEADER, MO) */
