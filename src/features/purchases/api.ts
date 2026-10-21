@@ -281,8 +281,8 @@ export function useCreatePurchaseRecord() {
       method: 'POST',
       body: JSON.stringify(vars),
     })
-    const m = await api<Material>(`/materials/${vars.materialId}`)
-    await api<Material>(`/materials/${vars.materialId}`, {
+    const m = await api<Material>(`/api/v1/materials/${vars.materialId}`)
+    await api<Material>(`/api/v1/materials/${vars.materialId}`, {
       method: 'PATCH',
       body: JSON.stringify({ purchased: m.purchased + vars.qty }),
     })

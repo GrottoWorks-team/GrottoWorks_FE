@@ -215,7 +215,7 @@ export function useUpdateCommunity() {
   return useAdminMutation(
     [[ 'communities' ], [ 'admin', 'parish' ]],
     ({ id, ...data }: Partial<Community> & { id: string }) =>
-      api<Community>(`/communities/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      api<Community>(`/api/v1/communities/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   )
 }
 

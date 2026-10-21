@@ -51,7 +51,7 @@ export function useCreateSeason() {
 // đi MSW mock. Gắn khi ParishCoordination bổ sung endpoint cập nhật mùa.
 export function useUpdateSeason() {
   return useSeasonMutation(({ id, ...data }: Partial<Season> & { id: string }) =>
-    api<Season>(`/seasons/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    api<Season>(`/api/v1/seasons/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   )
 }
 

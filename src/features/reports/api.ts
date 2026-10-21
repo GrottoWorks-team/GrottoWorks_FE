@@ -53,10 +53,10 @@ export function useReportData() {
           api<Donation[]>('/donations'),
           api<Timesheet[]>('/timesheets'),
           api<Task[]>('/tasks'),
-          api<User[]>('/users'),
+          api<User[]>('/api/v1/users'),
           api<Community[]>('/communities'),
           api<WorkArea[]>('/areas'),
-          api<Material[]>('/materials'),
+          api<Material[]>('/api/v1/materials'),
         ])
       return { purchaseRecords, donations, timesheets, tasks, users, communities, areas, materials }
     },

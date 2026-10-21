@@ -38,9 +38,9 @@ const patchReg = (id: string, patch: Partial<VolunteerReg>) =>
 export function useApproveReg() {
   return useRegMutation(async (reg) => {
     const approved = await patchReg(reg.id, { status: 'APPROVED' })
-    const task = await api<Task>(`/tasks/${reg.taskId}`)
+    const task = await api<Task>(`/api/v1/tasks/${reg.taskId}`)
     if (!task.assignees.includes(reg.volunteerId)) {
-      await api<Task>(`/tasks/${reg.taskId}`, {
+      await api<Task>(`/api/v1/tasks/${reg.taskId}`, {
         method: 'PATCH',
         body: JSON.stringify({ assignees: [...task.assignees, reg.volunteerId] }),
       })
