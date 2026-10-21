@@ -1348,5 +1348,7 @@
   "features.tasks.skillsRequiredTitle": "Kỹ năng yêu cầu",
   "features.tasks.skillsRequiredSub": "Các kỹ năng chuyên môn cần thiết để thực hiện công việc",
   "features.tasks.skillsUpdated": "Đã cập nhật kỹ năng yêu cầu",
-  "features.tasks.skillsEmpty": "Chưa chọn kỹ năng yêu cầu."
+  "features.tasks.skillsEmpty": "Chưa chọn kỹ năng yêu cầu.",
+  "features.tasks.noChangesToSave": "Không có thay đổi nào để lưu",
+  "features.tasks.concurrencyError": "Dữ liệu vừa thay đổi ở nơi khác. Vui lòng tải lại trang."
 }

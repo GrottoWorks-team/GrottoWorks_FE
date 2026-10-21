@@ -82,6 +82,7 @@ export interface Task {
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
   status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
   submittedPhotos: number; submittedNotes?: string;
+  version?: number;
 }
 
 export interface VolunteerReg { id: string; taskId: string; volunteerId: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' }

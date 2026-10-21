@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast'
 import { useAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useCreateTask, useSkills, useUpdateTask } from '../api'
+import { ApiError } from '@/lib/api'
 import type { Task } from '@/types'
 
 export const SELECT_CLS =
@@ -100,7 +101,24 @@ export function TaskFormDialog({
   const onSubmit = async (data: FormData) => {
     try {
       if (editing && task) {
-        await update.mutateAsync({ id: task.id, ...data })
+        // G4: Chặn gửi rỗng / không có thay đổi nào so với task hiện tại
+        const isUnchanged =
+          data.title.trim() === task.title.trim() &&
+          (data.description || '') === (task.description || '') &&
+          Number(data.estimateHours) === Number(task.estimateHours) &&
+          Number(data.volunteersNeeded) === Number(task.volunteersNeeded) &&
+          (data.dueDate || '') === (task.dueDate || '')
+
+        if (isUnchanged) {
+          toast(t('features.tasks.noChangesToSave', 'Không có thay đổi nào để lưu'), 'alert')
+          return
+        }
+
+        await update.mutateAsync({
+          id: task.id,
+          version: task.version,
+          ...data,
+        })
         toast(t('features.tasks.updated', { name: data.title }))
       } else {
         await create.mutateAsync({
@@ -112,7 +130,11 @@ export function TaskFormDialog({
         toast(t('features.tasks.created', { name: data.title }))
       }
       onClose()
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 412) {
+        toast(t('features.tasks.concurrencyError', 'Dữ liệu vừa thay đổi ở nơi khác. Vui lòng tải lại trang.'), 'alert')
+        return
+      }
       toast(t('common.error'), 'alert')
     }
   }

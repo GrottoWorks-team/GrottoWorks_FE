@@ -1348,5 +1348,7 @@
   "features.tasks.skillsRequiredTitle": "Required Skills",
   "features.tasks.skillsRequiredSub": "Technical skills needed to perform this task",
   "features.tasks.skillsUpdated": "Required skills updated",
-  "features.tasks.skillsEmpty": "No required skills selected."
+  "features.tasks.skillsEmpty": "No required skills selected.",
+  "features.tasks.noChangesToSave": "No changes to save",
+  "features.tasks.concurrencyError": "Data was modified elsewhere. Please reload the page."
 }

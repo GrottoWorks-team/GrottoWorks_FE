@@ -80,6 +80,7 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     dueDate: dto.deadline ? dto.deadline.split('T')[0] : '',
     submittedPhotos: 0,
     submittedNotes: dto.completionCriteria || undefined,
+    version: dto.version,
   }
 }
 
@@ -199,9 +200,14 @@ export function useUpdateTask() {
       if (data.dueDate !== undefined)
         payload.deadline = data.dueDate ? new Date(data.dueDate).toISOString() : null
 
+      const headers: Record<string, string> = {}
+      if (data.version !== undefined && data.version !== null) {
+        headers['If-Match'] = `"${data.version}"`
+      }
+
       return api<TaskDto>(`/api/v1/tasks/${id}`, {
         method: 'PATCH',
-        headers: data.version ? { 'If-Match': `"${data.version}"` } : { 'If-Match': '"1"' },
+        headers,
         body: JSON.stringify(payload),
       })
     },
