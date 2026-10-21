@@ -34,6 +34,7 @@ const SupportListPage = lazy(() => import('@/features/support/pages/SupportListP
 const MaterialCategoriesPage = lazy(() => import('@/features/materials/pages/MaterialCategoriesPage'))
 const MaterialListPage = lazy(() => import('@/features/materials/pages/MaterialListPage'))
 const MaterialInventoryPage = lazy(() => import('@/features/materials/pages/MaterialInventoryPage'))
+const SeasonMaterialNeedsPage = lazy(() => import('@/features/materials/pages/SeasonMaterialNeedsPage'))
 const PurchaseListPage = lazy(() => import('@/features/purchases/pages/PurchaseListPage'))
 const PurchaseConfirmPage = lazy(() => import('@/features/purchases/pages/PurchaseConfirmPage'))
 const CommitteeApprovalPage = lazy(() => import('@/features/purchases/pages/CommitteeApprovalPage'))
@@ -75,6 +76,7 @@ const PAGES: Record<string, ComponentType> = {
   '/material-officer/categories': MaterialCategoriesPage,
   '/material-officer/materials': MaterialListPage,
   '/material-officer/inventory': MaterialInventoryPage,
+  '/material-officer/material-needs': SeasonMaterialNeedsPage,
   '/material-officer/purchases': PurchaseListPage,
   '/material-officer/purchases-confirm': PurchaseConfirmPage,
   '/material-officer/donations': DonationListPage,
