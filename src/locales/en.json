@@ -1339,5 +1339,14 @@
   "features.needs.empty": "No procurement shortage items match the filters.",
   "features.needs.loadError": "Failed to load season material needs.",
   "features.needs.statTotalItems": "Shortage items",
-  "features.needs.statTotalAreas": "Work areas in need"
+  "features.needs.statTotalAreas": "Work areas in need",
+  "features.tasks.completionCriteriaTitle": "Completion Criteria",
+  "features.tasks.completionCriteriaSub": "Technical requirements and acceptance criteria",
+  "features.tasks.completionCriteriaPlaceholder": "Enter detailed acceptance criteria for the task...",
+  "features.tasks.completionCriteriaUpdated": "Completion criteria updated",
+  "features.tasks.completionCriteriaEmpty": "No specific completion criteria defined.",
+  "features.tasks.skillsRequiredTitle": "Required Skills",
+  "features.tasks.skillsRequiredSub": "Technical skills needed to perform this task",
+  "features.tasks.skillsUpdated": "Required skills updated",
+  "features.tasks.skillsEmpty": "No required skills selected."
 }

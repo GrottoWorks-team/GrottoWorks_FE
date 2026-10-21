@@ -108,6 +108,23 @@ export function useSkills() {
 }
 
 /**
+ * Danh sách kỹ năng đầy đủ DTO (id, code, name) cho G6 multi-select
+ */
+export function useSkillsCatalog() {
+  return useQuery({
+    queryKey: ['skills', 'catalog'],
+    queryFn: async () => {
+      try {
+        const res = await api<{ data?: SkillItemDto[] } | SkillItemDto[]>('/api/v1/skills')
+        return Array.isArray(res) ? res : (res.data ?? [])
+      } catch {
+        return []
+      }
+    },
+  })
+}
+
+/**
  * G1: GET /api/v1/work-areas/{workAreaId}/tasks
  */
 export function useTasks(areaId?: string) {
@@ -193,6 +210,56 @@ export function useUpdateTask() {
 
 export function useDeleteTask() {
   return useTaskMutation((id: string) => api<void>(`/api/v1/tasks/${id}`, { method: 'DELETE' }))
+}
+
+/**
+ * G5: PUT /api/v1/tasks/{taskId}/completion-criteria
+ */
+export function useReplaceCompletionCriteria() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      completionCriteria,
+      version = 1,
+    }: {
+      taskId: string
+      completionCriteria: string | null
+      version?: number
+    }) => {
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/completion-criteria`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ completionCriteria }),
+      })
+    },
+  )
+}
+
+/**
+ * G6: PUT /api/v1/tasks/{taskId}/skills
+ */
+export function useReplaceTaskSkills() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      skills,
+      version = 1,
+    }: {
+      taskId: string
+      skills: Array<{
+        skillId: string
+        requiredSkillLevel?: string | null
+        requiredVolunteerCount?: number | null
+      }>
+      version?: number
+    }) => {
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/skills`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify(skills),
+      })
+    },
+  )
 }
 
 export function useAssignVolunteer(taskId: string, volunteerId: string) {

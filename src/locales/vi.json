@@ -1339,5 +1339,14 @@
   "features.needs.empty": "Không có nhu cầu mua sắm thiếu hụt nào phù hợp với bộ lọc.",
   "features.needs.loadError": "Không thể tải danh sách tổng hợp nhu cầu mua vật tư.",
   "features.needs.statTotalItems": "Mặt hàng thiếu",
-  "features.needs.statTotalAreas": "Khu vực cần mua"
+  "features.needs.statTotalAreas": "Khu vực cần mua",
+  "features.tasks.completionCriteriaTitle": "Tiêu chí hoàn thành",
+  "features.tasks.completionCriteriaSub": "Yêu cầu kỹ thuật và tiêu chí nghiệm thu công việc",
+  "features.tasks.completionCriteriaPlaceholder": "Nhập tiêu chí nghiệm thu chi tiết cho nhiệm vụ...",
+  "features.tasks.completionCriteriaUpdated": "Đã cập nhật tiêu chí hoàn thành",
+  "features.tasks.completionCriteriaEmpty": "Chưa thiết lập tiêu chí hoàn thành cụ thể.",
+  "features.tasks.skillsRequiredTitle": "Kỹ năng yêu cầu",
+  "features.tasks.skillsRequiredSub": "Các kỹ năng chuyên môn cần thiết để thực hiện công việc",
+  "features.tasks.skillsUpdated": "Đã cập nhật kỹ năng yêu cầu",
+  "features.tasks.skillsEmpty": "Chưa chọn kỹ năng yêu cầu."
 }
