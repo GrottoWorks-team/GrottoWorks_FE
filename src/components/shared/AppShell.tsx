@@ -2,7 +2,6 @@ import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
 import {
   LogOut, LayoutDashboard, Calendar, MapPin, Users, ShoppingCart, LifeBuoy,
   ListChecks, FileText, ClipboardList, ClipboardCheck, UserPlus, Inbox, Clock,
@@ -10,15 +9,15 @@ import {
   MapPinned,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useSupportRequests } from '@/features/support/api'
+import { usePurchaseRequests } from '@/features/purchases/api'
 import { NAV } from './nav-config'
 import { NotificationsDropdown } from './NotificationsDropdown'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { PurchaseRequest, Role } from '@/types'
+import type { Role } from '@/types'
 
 // Icon lucide theo key `icon` trong nav-config.
 const ICONS: Record<string, LucideIcon> = {
@@ -40,14 +39,11 @@ export function AppShell({ role }: { role?: Role }) {
 
   // Badge: hỗ trợ khẩn cấp đang mở + đề nghị mua chờ duyệt (dùng chung cache key qua hook).
   const { data: support } = useSupportRequests()
-  const { data: purchases } = useQuery({
-    queryKey: ['purchaseRequests'],
-    queryFn: () => api<PurchaseRequest[]>('/purchaseRequests'),
-  })
+  const { data: purchases = [] } = usePurchaseRequests()
   const badgeCount = (kind: 'support' | 'purchases') =>
     kind === 'support'
       ? (support?.filter((x) => x.status === 'OPEN').length ?? 0)
-      : (purchases?.filter((x) => x.status === 'PENDING').length ?? 0)
+      : (purchases?.filter((x) => x.status === 'PENDING_APPROVAL').length ?? 0)
 
   // Crumb: mục nav khớp pathname dài nhất (prefix-match), không có → tên app.
   const crumb = useMemo(() => {
