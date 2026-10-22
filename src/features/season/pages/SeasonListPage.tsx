@@ -52,13 +52,21 @@ export default function SeasonListPage() {
     for (const c of communities) map[c.id] = c.name
     return map
   }, [communities])
+
+  const communityIdsOf = (s: Season) => [
+    ...new Set(
+      areas.filter((a) => a.seasonId === s.id).map((a) => a.communityId).filter(Boolean),
+    ),
+  ] as string[]
+
   const onActivateClick = (s: Season) => {
     const areasOfSeason = areas.filter((a) => a.seasonId === s.id)
-    const { canActivate } = validateSeasonActivation(s, areasOfSeason)
+    const effectiveSeason = { ...s, communityIds: communityIdsOf(s) }
+    const { canActivate } = validateSeasonActivation(effectiveSeason, areasOfSeason)
     if (canActivate) {
       setActivatingConfirm(s)
     } else {
-      setActivatingCheck(s)
+      setActivatingCheck(effectiveSeason)
     }
   }
 
@@ -102,7 +110,7 @@ export default function SeasonListPage() {
         key: 'communities',
         header: t('features.season.communities'),
         render: (s: Season) => {
-          const ids = s.communityIds ?? []
+          const ids = communityIdsOf(s)
           if (ids.length === 0) {
             return <span className="text-xs text-muted-foreground">—</span>
           }

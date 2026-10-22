@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
-import { useCommunities } from '@/features/communities/api'
 import { useCurrentParishId } from '@/features/parish/hooks'
 import { useCreateSeason, useSeason, useUpdateSeason } from '../api'
 import type { Season } from '@/types'
@@ -32,10 +31,6 @@ const schema = z
         .min(0, 'features.season.budgetInvalid'),
     ),
     description: z.string().max(500, 'common.required').optional(),
-    communityIds: z.preprocess(
-      (v) => (Array.isArray(v) ? v : v ? [v] : []),
-      z.array(z.string()).min(1, 'features.season.communityRequired'),
-    ),
   })
   .refine((d) => !d.startDate || !d.endDate || d.startDate < d.endDate, {
     path: ['endDate'],
@@ -56,7 +51,6 @@ export function SeasonFormDialog({
   const { parishId } = useCurrentParishId()
   const create = useCreateSeason()
   const update = useUpdateSeason()
-  const { data: communities = [] } = useCommunities()
   // GET /api/v1/seasons/{id} — gọi endpoint chi tiết mùa từ backend khi mở modal
   const { data: detailSeason } = useSeason(season?.id)
   const activeSeason = detailSeason ?? season
@@ -77,7 +71,6 @@ export function SeasonFormDialog({
           endDate: activeSeason.endDate,
           budget: activeSeason.budget,
           description: activeSeason.description ?? '',
-          communityIds: activeSeason.communityIds ?? [],
         }
       : {
           name: '',
@@ -86,7 +79,6 @@ export function SeasonFormDialog({
           endDate: '',
           budget: 0,
           description: '',
-          communityIds: [],
         },
   })
 
@@ -99,7 +91,6 @@ export function SeasonFormDialog({
         endDate: activeSeason.endDate,
         budget: activeSeason.budget,
         description: activeSeason.description ?? '',
-        communityIds: activeSeason.communityIds ?? [],
       })
     }
   }, [activeSeason, reset])
@@ -205,30 +196,6 @@ export function SeasonFormDialog({
             {...register('description')}
           />
           {err(errors.description?.message)}
-        </div>
-
-        <div>
-          {/* ponytail: BE không lưu cộng đoàn trên mùa (SeasonDto không có field
-              communityIds) — liên kết nằm ở WorkArea.CommunityId. Trường này chỉ
-              còn tác dụng với mock; gắn khi BE bổ sung. */}
-          <Label>{t('features.season.communityIds')}</Label>
-          <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {communities.map((c) => (
-              <label
-                key={c.id}
-                className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors hover:border-primary"
-              >
-                <input
-                  type="checkbox"
-                  value={c.id}
-                  className="size-4 rounded border-border text-primary accent-primary focus:ring-primary"
-                  {...register('communityIds')}
-                />
-                <span className="font-medium">{c.name}</span>
-              </label>
-            ))}
-          </div>
-          {err(errors.communityIds?.message)}
         </div>
       </form>
     </Dialog>

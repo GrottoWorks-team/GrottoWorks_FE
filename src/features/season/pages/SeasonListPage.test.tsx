@@ -53,8 +53,14 @@ vi.mock('@/features/communities/api', () => ({
   useCommunities: () => ({ data: mockCommunities, isPending: false }),
 }))
 
+const mockAreas = [
+  { id: 'a1', seasonId: 's1', communityId: 'c1' },
+  { id: 'a2', seasonId: 's1', communityId: 'c2' },
+  { id: 'a3', seasonId: 's1', communityId: 'c3' },
+]
+
 vi.mock('@/features/areas/api', () => ({
-  useAreas: () => ({ data: [], isPending: false }),
+  useAreas: () => ({ data: mockAreas, isPending: false }),
 }))
 
 const mockAuthUser = { current: { id: 'u1', role: 'PARISH', parishId: 'p1', name: 'Admin Giáo xứ' } }
