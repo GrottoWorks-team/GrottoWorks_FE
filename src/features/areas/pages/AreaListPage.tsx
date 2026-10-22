@@ -18,6 +18,7 @@ import { useAuth } from '@/lib/auth'
 import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas, useDeleteArea, useSeasons, useUsers } from '../api'
 import { AreaCard } from '../components/AreaCard'
+import { AreaDetailDialog } from '../components/AreaDetailDialog'
 import { AreaFormDialog, SELECT_CLS } from './AreaFormDialog'
 import { AreaAssignDialog } from './AreaAssignDialog'
 import type { WorkArea } from '@/types'
@@ -85,6 +86,7 @@ export default function AreaListPage() {
   const [editing, setEditing] = useState<WorkArea | null>(null)
   const [deleting, setDeleting] = useState<WorkArea | null>(null)
   const [assigning, setAssigning] = useState<WorkArea | null>(null)
+  const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
   const displayName = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
@@ -181,7 +183,7 @@ export default function AreaListPage() {
                 aria-label={t('features.design.openDesign')}
                 onClick={() =>
                   navigate(
-                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/design`,
+                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/designer`,
                   )
                 }
               >
@@ -192,7 +194,10 @@ export default function AreaListPage() {
               variant="ghost"
               size="icon"
               aria-label={t('features.areas.assign')}
-              onClick={() => setAssigning(a)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setAssigning(a)
+              }}
             >
               <UserPlus className="size-4" />
             </Button>
@@ -323,11 +328,12 @@ export default function AreaListPage() {
                     `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/tasks`,
                   )
                 }
+                onOpenDetail={(x) => setDetailAreaId(x.id)}
                 onOpenDesign={
                   canViewDesign
                     ? (x) =>
                         navigate(
-                          `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/design`,
+                          `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/designer`,
                         )
                     : undefined
                 }
@@ -360,6 +366,11 @@ export default function AreaListPage() {
         />
       )}
       {assigning && <AreaAssignDialog area={assigning} onClose={() => setAssigning(null)} />}
+      <AreaDetailDialog
+        areaId={detailAreaId}
+        open={Boolean(detailAreaId)}
+        onClose={() => setDetailAreaId(null)}
+      />
       <ConfirmDialog
         open={Boolean(deleting)}
         title={t('features.areas.deleteTitle')}

@@ -100,3 +100,24 @@ export interface CreateWorkAreaRequest {
   startDate?: string | null
   deadline?: string | null
 }
+
+export interface WorkAreaCategoryDto {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  status: 'ACTIVE' | 'INACTIVE'
+}
+
+export interface CreateWorkAreaCategoryRequest {
+  code: string
+  name: string
+  description?: string | null
+}
+
+export interface UpdateWorkAreaCategoryRequest {
+  name?: string
+  description?: string | null
+  status?: 'ACTIVE' | 'INACTIVE'
+}
+

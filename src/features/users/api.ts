@@ -9,6 +9,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ApiError, api } from '@/lib/api'
 import { normalizeRole } from '@/lib/auth'
 import type { User } from '@/types'
+import type { AdminUserDto } from '@/types/identity'
 
 interface UserSummaryDto {
   id: string
@@ -20,17 +21,6 @@ interface UserSummaryDto {
   parishId?: string | null
   communityId?: string | null
   skillIds?: string[]
-}
-
-interface AdminUserDto {
-  id: string
-  displayName: string
-  email: string
-  phone?: string | null
-  role: string
-  status: string
-  parishId?: string | null
-  communityId?: string | null
 }
 
 interface SkillDto {

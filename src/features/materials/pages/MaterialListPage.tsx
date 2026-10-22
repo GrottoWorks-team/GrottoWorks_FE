@@ -1,26 +1,23 @@
-// Sổ vật tư theo khu (route /material-officer/materials): officer xem khu mình phụ
-// trách (1 khu → khóa; nhiều khu → chọn), committee/parish chọn khu hoặc tất
-// cả. Ledger đúng demo đã duyệt + filter chips theo status, search, pagination.
-// Xuất CSV qua exportCsv (BOM + ';').
+// Sổ danh mục vật tư dùng chung (/material-officer/materials)
+// C4: GET /api/v1/materials (Catalog, phân trang, lọc nhóm danh mục)
+// C5: POST /api/v1/materials
+// C6: PATCH /api/v1/materials/{materialId}
 import { useMemo, useState } from 'react'
-import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download, Pencil, Plus } from 'lucide-react'
+import { Ban, CheckCircle2, ChevronLeft, ChevronRight, Download, Pencil, Plus, Search } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { StatCard } from '@/components/shared/StatCard'
-import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
-import { useScopedAreas } from '@/features/areas/api'
-import { useUsers } from '@/features/users/api'
-import { useAuth } from '@/lib/auth'
 import { exportCsv } from '@/lib/csv'
-import { useMaterials } from '../api'
-import { MaterialFormDialog } from './MaterialFormDialog'
-import { shortage } from '@/types'
-import type { Material } from '@/types'
+import {
+  useMaterialCatalog,
+  useMaterialCategories,
+  useUpdateMaterialCatalogItem,
+} from '../api'
+import type { MaterialCatalogItemDto } from '../api'
+import { MaterialCatalogFormDialog } from './MaterialCatalogFormDialog'
 
 const SELECT_CLS =
   'flex h-10 rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -28,200 +25,311 @@ const SELECT_CLS =
 export default function MaterialListPage() {
   const { t } = useTranslation()
   const toast = useToast()
-  const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useScopedAreas()
-  const { data: users = [] } = useUsers()
 
-  // Officer: khu mình phụ trách; committee/parish: mọi khu (chọn hoặc tất cả).
-  const myAreas =
-    user?.role === 'MATERIAL_OFFICER' ? areas.filter((a) => a.officerId === user.id) : areas
-  // 1 khu → khóa luôn (kể cả khi areas load xong sau render đầu); nhiều khu → chọn.
-  const fixed = myAreas.length === 1 ? myAreas[0] : null
-  const [picked, setPicked] = useState('')
-  const areaId = fixed ? fixed.id : picked
-  const { data: materials = [], isPending } = useMaterials(areaId || undefined)
+  const [page, setPage] = useState(1)
+  const pageSize = 10
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  const { data: categories = [] } = useMaterialCategories()
+  const { data: catalogResult, isPending, isError, error, refetch } = useMaterialCatalog({
+    page,
+    size: pageSize,
+    categoryId: selectedCategory || undefined,
+    q: debouncedSearch || undefined,
+  })
+
+  const updateItem = useUpdateMaterialCatalogItem()
 
   const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<Material | null>(null)
+  const [editingItem, setEditingItem] = useState<MaterialCatalogItemDto | null>(null)
 
-  const buyerName = (id?: string) => users.find((u) => u.id === id)?.name ?? '—'
-  const areaName = areas.find((a) => a.id === areaId)?.name
-
-  const columns = useMemo(
-    () => [
-      {
-        key: 'name',
-        header: t('features.materials.name'),
-        render: (m: Material) => (
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-foreground">{m.name}</span>
-              <span className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                {m.unit}
-              </span>
-            </div>
-          </div>
-        ),
-      },
-      { key: 'required', header: t('features.materials.required'), align: 'right' as const, render: (m: Material) => <span className="tabular font-medium">{m.required}</span> },
-      { key: 'existing', header: t('features.materials.existing'), align: 'right' as const, render: (m: Material) => <span className="tabular text-muted-foreground">{m.existing}</span> },
-      { key: 'purchased', header: t('features.materials.purchased'), align: 'right' as const, render: (m: Material) => <span className="tabular">{m.purchased}</span> },
-      { key: 'donatedReceived', header: t('features.materials.donated'), align: 'right' as const, render: (m: Material) => <span className="tabular">{m.donatedReceived}</span> },
-      {
-        key: 'received',
-        header: t('features.materials.received'),
-        align: 'right' as const,
-        render: (m: Material) => {
-          const ratio = Math.min(100, Math.round((m.received / (m.required || 1)) * 100))
-          return (
-            <div className="flex flex-col items-end gap-1">
-              <span className="tabular font-semibold text-foreground">{m.received}</span>
-              <div className="h-1.5 w-14 overflow-hidden rounded-full bg-border">
-                <div
-                  className="h-full rounded-full bg-brand-pine transition-all"
-                  style={{ width: `${ratio}%` }}
-                />
-              </div>
-            </div>
-          )
-        },
-      },
-      {
-        key: 'shortage',
-        header: t('features.materials.shortageCol'),
-        align: 'right' as const,
-        render: (m: Material) => {
-          const s = shortage(m)
-          return s > 0 ? (
-            <span className="tabular inline-flex items-center rounded-full bg-destructive/12 px-2.5 py-0.5 font-mono text-xs font-bold text-destructive">
-              ✕ {s}
-            </span>
-          ) : (
-            <span className="tabular inline-flex items-center rounded-full bg-brand-pine/12 px-2.5 py-0.5 font-mono text-xs font-bold text-brand-pine">
-              ✓ Đủ
-            </span>
-          )
-        },
-      },
-      { key: 'buyerId', header: t('features.materials.buyer'), render: (m: Material) => buyerName(m.buyerId) },
-      { key: 'status', header: t('common.status'), render: (m: Material) => <StatusTag status={m.status} /> },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (m: Material) => (
-          <div className="flex justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.edit')}
-              onClick={() => {
-                setEditing(m)
-                setFormOpen(true)
-              }}
-            >
-              <Pencil className="size-4" />
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    [t, users],
-  )
-
-  const onExport = () => {
-    exportCsv(
-      'grottoworks-vat-tu.csv',
-      materials.map((m) => ({
-        [t('features.materials.name')]: m.name,
-        [t('features.materials.unit')]: m.unit,
-        [t('features.materials.required')]: m.required,
-        [t('features.materials.existing')]: m.existing,
-        [t('features.materials.purchased')]: m.purchased,
-        [t('features.materials.donated')]: m.donatedReceived,
-        [t('features.materials.received')]: m.received,
-        [t('features.materials.shortageCol')]: Math.max(0, shortage(m)),
-        [t('features.materials.buyer')]: buyerName(m.buyerId),
-        [t('common.status')]: t(`status.${m.status}`),
-      })),
-    )
-    toast(t('features.materials.exported'))
+  const materials = catalogResult?.data || []
+  const pageInfo = catalogResult?.page || {
+    page: 1,
+    size: pageSize,
+    totalItems: 0,
+    totalPages: 1,
   }
 
-  if (areasPending) return <p className="lbl-mono">{t('common.loading')}</p>
-  if (!myAreas.length) return <EmptyState text={t('features.materials.noArea')} />
+  const categoryNameMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const c of categories) {
+      map.set(c.id, c.name)
+    }
+    return map
+  }, [categories])
 
-  const n = (st: string) => materials.filter((m) => m.status === st).length
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      setDebouncedSearch(searchTerm.trim())
+      setPage(1)
+    }
+  }
+
+  const onToggleStatus = async (item: MaterialCatalogItemDto) => {
+    const nextStatus = item.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+    try {
+      await updateItem.mutateAsync({
+        materialId: item.id,
+        status: nextStatus,
+      })
+      toast(
+        nextStatus === 'ACTIVE'
+          ? t('features.materials.catalog.statusActivated', { code: item.code })
+          : t('features.materials.catalog.statusDeactivated', { code: item.code }),
+      )
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t('features.materials.catalog.statusError')
+      toast(message)
+    }
+  }
+
+  const onExport = () => {
+    if (!materials.length) return
+    exportCsv(
+      'grottoworks-danh-muc-vat-tu.csv',
+      materials.map((m) => ({
+        [t('features.materials.catalog.code')]: m.code,
+        [t('features.materials.catalog.name')]: m.name,
+        [t('features.materials.catalog.category')]: categoryNameMap.get(m.categoryId) || '—',
+        [t('features.materials.catalog.unitFullName')]: m.unit,
+        [t('features.materials.catalog.desc')]: m.description || '',
+        [t('common.status')]: m.status === 'ACTIVE' ? t('features.materials.catalog.statusActive') : t('features.materials.catalog.statusInactive'),
+      })),
+    )
+    toast(t('features.materials.catalog.exported'))
+  }
 
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
-        title={t('features.materials.title')}
-        sub={t('features.materials.sub', { name: areaName ?? t('features.materials.allAreas') })}
+        title={t('features.materials.catalog.title')}
+        sub={t('features.materials.catalog.sub')}
         actions={
-          <>
-            {fixed ? null : (
-              <select
-                aria-label={t('features.materials.area')}
-                className={SELECT_CLS}
-                value={areaId}
-                onChange={(e) => setPicked(e.target.value)}
-              >
-                <option value="">{t('features.materials.allAreas')}</option>
-                {myAreas.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
-            )}
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" onClick={onExport} disabled={!materials.length}>
               <Download className="size-4" />
-              {t('features.materials.export')}
+              <span>{t('features.materials.catalog.exportCsv')}</span>
             </Button>
             <Button
               onClick={() => {
-                setEditing(null)
+                setEditingItem(null)
                 setFormOpen(true)
               }}
+              className="gap-2"
             >
               <Plus className="size-4" />
-              {t('features.materials.create')}
+              <span>{t('features.materials.catalog.create')}</span>
             </Button>
-          </>
+          </div>
         }
       />
 
-      <div className="stagger mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <div style={{ '--d': 0 } as CSSProperties}>
-          <StatCard label={t('features.materials.stats.total')} value={materials.length} tone="ok" />
+      {/* Filter and search */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            aria-label={t('features.materials.catalog.categorySelectLabel')}
+            className={SELECT_CLS}
+            value={selectedCategory}
+            onChange={(e) => {
+              setSelectedCategory(e.target.value)
+              setPage(1)
+            }}
+          >
+            <option value="">{t('features.materials.catalog.allCategories')}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.code})
+              </option>
+            ))}
+          </select>
         </div>
-        <div style={{ '--d': 1 } as CSSProperties}>
-          <StatCard label={t('features.materials.stats.shortage')} value={n('SHORTAGE')} tone="alert" />
-        </div>
-        <div style={{ '--d': 2 } as CSSProperties}>
-          <StatCard label={t('features.materials.stats.incoming')} value={n('INCOMING')} tone="warn" />
-        </div>
-        <div style={{ '--d': 3 } as CSSProperties}>
-          <StatCard label={t('features.materials.stats.enough')} value={n('ENOUGH')} tone="ok" />
+
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            placeholder={t('features.materials.catalog.searchPlaceholder')}
+            className="pl-9"
+          />
         </div>
       </div>
 
-      {isPending ? (
-        <p className="lbl-mono">{t('common.loading')}</p>
-      ) : (
-        <DataTable
-          rows={materials}
-          columns={columns}
-          searchKeys={['name']}
-          filters={[{ key: 'status', options: ['SHORTAGE', 'INCOMING', 'ENOUGH'] }]}
-          emptyText={t('features.materials.empty')}
+      {/* Loading Skeleton */}
+      {isPending && (
+        <div className="space-y-3">
+          <div className="h-10 w-full animate-pulse rounded-md bg-muted" />
+          <div className="h-14 w-full animate-pulse rounded-md bg-muted/60" />
+          <div className="h-14 w-full animate-pulse rounded-md bg-muted/60" />
+          <div className="h-14 w-full animate-pulse rounded-md bg-muted/60" />
+        </div>
+      )}
+
+      {/* Error state */}
+      {isError && (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
+          <p className="text-sm font-medium text-destructive">
+            {error instanceof Error ? error.message : t('features.materials.catalog.loadError')}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            {t('common.retry')}
+          </Button>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isPending && !isError && materials.length === 0 && (
+        <EmptyState
+          text={t('features.materials.catalog.empty')}
+          action={
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingItem(null)
+                setFormOpen(true)
+              }}
+              className="gap-2"
+            >
+              <Plus className="size-4" /> {t('features.materials.catalog.createFirst')}
+            </Button>
+          }
         />
       )}
 
+      {/* Data Table */}
+      {!isPending && !isError && materials.length > 0 && (
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border bg-muted/50 text-xs font-semibold text-muted-foreground uppercase">
+                <tr>
+                  <th className="px-4 py-3">{t('features.materials.catalog.code')}</th>
+                  <th className="px-4 py-3">{t('features.materials.catalog.name')}</th>
+                  <th className="px-4 py-3">{t('features.materials.catalog.category')}</th>
+                  <th className="px-4 py-3 text-center">{t('features.materials.catalog.unit')}</th>
+                  <th className="px-4 py-3">{t('common.status')}</th>
+                  <th className="px-4 py-3 text-right">{t('common.actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {materials.map((m) => (
+                  <tr key={m.id} className="transition-colors hover:bg-muted/30">
+                    <td className="px-4 py-3 font-mono text-xs font-semibold text-foreground">
+                      {m.code}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="font-medium text-foreground">{m.name}</div>
+                      {m.description && (
+                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                          {m.description}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      <span className="inline-flex items-center rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {categoryNameMap.get(m.categoryId) || '—'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="rounded bg-muted/80 px-2 py-0.5 text-xs font-medium text-foreground">
+                        {m.unit}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {m.status === 'ACTIVE' ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-brand-pine/12 px-2.5 py-0.5 text-xs font-medium text-brand-pine">
+                          <CheckCircle2 className="size-3.5" /> {t('features.materials.catalog.statusActive')}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                          <Ban className="size-3.5" /> {t('features.materials.catalog.statusInactive')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setEditingItem(m)
+                            setFormOpen(true)
+                          }}
+                          title={t('features.materials.catalog.editTitle')}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className={
+                            m.status === 'ACTIVE'
+                              ? 'text-destructive hover:text-destructive'
+                              : 'text-brand-pine'
+                          }
+                          onClick={() => onToggleStatus(m)}
+                          title={m.status === 'ACTIVE' ? t('features.materials.catalog.toggleInactive') : t('features.materials.catalog.toggleActive')}
+                        >
+                          {m.status === 'ACTIVE' ? (
+                            <Ban className="size-4" />
+                          ) : (
+                            <CheckCircle2 className="size-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex flex-col items-center justify-between gap-3 border-t border-border px-4 py-3 sm:flex-row">
+            <p className="text-xs text-muted-foreground">
+              {t('features.materials.catalog.paginationInfo', {
+                from: (page - 1) * pageSize + 1,
+                to: Math.min(page * pageSize, pageInfo.totalItems),
+                total: pageInfo.totalItems,
+              })}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="text-xs font-medium text-foreground">
+                {t('features.materials.catalog.pageCurrent', {
+                  current: page,
+                  total: Math.max(1, pageInfo.totalPages),
+                })}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(pageInfo.totalPages, p + 1))}
+                disabled={page >= pageInfo.totalPages}
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dialog create / edit material */}
       {formOpen && (
-        <MaterialFormDialog
-          material={editing}
-          areaId={areaId || myAreas[0].id}
+        <MaterialCatalogFormDialog
+          material={editingItem}
           onClose={() => setFormOpen(false)}
         />
       )}

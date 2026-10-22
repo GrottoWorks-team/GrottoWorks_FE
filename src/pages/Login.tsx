@@ -174,14 +174,13 @@ export default function Login() {
               <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
                 {t('login.password')}
               </Label>
-              <button
-                type="button"
-                onClick={() => toast('Vui lòng liên hệ Cha xứ hoặc Ban điều hành để cấp lại mật khẩu!', 'ok')}
+              <Link
+                to="/forgot-password"
                 className="text-xs font-medium text-brand-pine hover:underline flex items-center gap-1"
               >
                 <HelpCircle className="w-3 h-3" />
-                <span>Quên mật khẩu?</span>
-              </button>
+                <span>{t('login.forgotPassword', { defaultValue: 'Quên mật khẩu?' })}</span>
+              </Link>
             </div>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
@@ -246,13 +245,13 @@ export default function Login() {
           <div className="pt-2 text-center text-xs text-slate-600 space-y-1">
             <div>
               Chưa có tài khoản quản lý?{' '}
-              <Link to="/signup" className="font-semibold text-brand-pine hover:underline">
+              <Link to="/register-account" className="font-semibold text-brand-pine hover:underline">
                 Đăng ký tài khoản
               </Link>
             </div>
             <div>
               Hoặc tham gia thiện nguyện?{' '}
-              <Link to="/join" className="font-semibold text-brand-goldHover hover:underline">
+              <Link to="/register" className="font-semibold text-brand-goldHover hover:underline">
                 Đăng ký Đồng Hành
               </Link>
             </div>

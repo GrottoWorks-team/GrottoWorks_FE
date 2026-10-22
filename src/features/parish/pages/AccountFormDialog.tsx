@@ -11,7 +11,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useCommunities } from '@/features/communities/api'
-import { useAdminSkills, useCreateUser, useUpdateUser } from '../api'
+import { useAdminSkills, useAssignUserRole, useCreateUser, useRoles, useUpdateUser } from '../api'
+import { useCurrentParishId } from '../hooks'
 import type { User } from '@/types'
 
 export const SELECT_CLS =
@@ -19,7 +20,7 @@ export const SELECT_CLS =
 
 const CHECK_CLS = 'size-4 rounded border border-border bg-card accent-primary'
 
-const ROLES = ['PARISH', 'COMMUNITY', 'LEADER', 'MATERIAL_OFFICER'] as const
+const FALLBACK_ROLES = ['PARISH', 'COMMUNITY', 'LEADER', 'MATERIAL_OFFICER'] as const
 
 const schema = z
   .object({
@@ -29,23 +30,17 @@ const schema = z
       .trim()
       .min(1, 'features.parish.emailRequired')
       .email('features.parish.emailInvalid'),
-    role: z.enum(ROLES),
+    role: z.string().min(1),
     communityId: z.string(),
+    password: z.string().optional(),
     skills: z.array(z.string()),
   })
-  .refine((d) => d.role === 'PARISH' || d.communityId !== '', {
+  .refine((d) => d.role === 'PARISH' || d.role === 'ADMIN' || d.communityId !== '', {
     path: ['communityId'],
     message: 'features.parish.communityRequired',
   })
 
 type FormData = z.infer<typeof schema>
-
-// Email → hue ổn định (0–359): tài khoản mới có avatar màu deterministic.
-function hueOf(s: string): number {
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
-  return Math.abs(h) % 360
-}
 
 export function AccountFormDialog({
   onClose,
@@ -59,8 +54,15 @@ export function AccountFormDialog({
   const editing = Boolean(account)
   const create = useCreateUser()
   const update = useUpdateUser()
+  const assignRole = useAssignUserRole()
+  const { data: rolesData } = useRoles()
   const { data: communities = [] } = useCommunities()
   const { data: skills = [] } = useAdminSkills()
+  const { parishId } = useCurrentParishId()
+
+  const availableRoles = rolesData?.length
+    ? rolesData.map((r) => r.code)
+    : FALLBACK_ROLES
 
   const {
     register,
@@ -74,9 +76,10 @@ export function AccountFormDialog({
           email: account.email,
           role: account.role,
           communityId: account.communityId ?? '',
+          password: '',
           skills: account.skills,
         }
-      : { name: '', email: '', role: 'MATERIAL_OFFICER', communityId: '', skills: [] },
+      : { name: '', email: '', role: 'LEADER', communityId: '', password: '', skills: [] },
   })
 
   const onSubmit = async (data: FormData) => {
@@ -84,25 +87,24 @@ export function AccountFormDialog({
       if (editing && account) {
         await update.mutateAsync({
           id: account.id,
-          name: data.name,
+          displayName: data.name,
           email: data.email,
-          role: data.role,
-          // ADMIN không thuộc giáo khu — PATCH null để mock xoá field (shallow
-          // merge giữ key null, xem handlers.ts).
-          communityId: data.role === 'PARISH' ? null : data.communityId,
-          skills: data.skills,
         })
+        if (data.role !== account.role) {
+          await assignRole.mutateAsync({
+            id: account.id,
+            role: data.role,
+            parishId: data.role === 'ADMIN' ? null : parishId ?? null,
+          })
+        }
         toast(t('features.parish.updated', { name: data.name }))
       } else {
         await create.mutateAsync({
-          name: data.name,
+          displayName: data.name,
           email: data.email,
           role: data.role,
-          // PARISH: bỏ key (undefined khỏi JSON) thay vì gửi ''.
-          communityId: data.role === 'PARISH' ? undefined : data.communityId,
-          skills: data.skills,
-          points: 0,
-          avatarHue: hueOf(data.email),
+          parishId: data.role === 'ADMIN' ? null : parishId ?? null,
+          password: data.password && data.password.length >= 8 ? data.password : null,
         })
         toast(t('features.parish.created', { name: data.name }))
       }
@@ -143,13 +145,19 @@ export function AccountFormDialog({
           <Input id="account-email" type="email" {...register('email')} />
           {err(errors.email?.message)}
         </div>
+        {!editing && (
+          <div>
+            <Label htmlFor="account-password">{t('features.parish.password')}</Label>
+            <Input id="account-password" type="password" placeholder="Tối thiểu 8 ký tự (hoặc để trống)" {...register('password')} />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label htmlFor="account-role">{t('features.parish.role')}</Label>
             <select id="account-role" className={SELECT_CLS} {...register('role')}>
-              {ROLES.map((r) => (
+              {availableRoles.map((r) => (
                 <option key={r} value={r}>
-                  {t(`role.${r}`)}
+                  {t(`role.${r}`, { defaultValue: r })}
                 </option>
               ))}
             </select>

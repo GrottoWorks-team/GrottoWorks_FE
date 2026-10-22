@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils'
 import { getBlob } from '@/lib/blobStore'
 import { useAuth } from '@/lib/auth'
 import { relTime } from '@/lib/format'
-import { useAreas } from '@/features/areas/api'
+import { useArea, useAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import type { DesignComment } from '@/types'
 import {
@@ -86,11 +86,12 @@ export default function DesignReviewPage() {
       ? '/leader'
       : '/community'
 
+  const { data: areaFromSingle } = useArea(areaId)
   const { data: areas = [] } = useAreas()
   const { data: usersFromApi = [] } = useUsers()
   // Chưa tải được danh sách user (thiếu quyền / lỗi mạng) → dùng chính user đang đăng nhập.
   const users = usersFromApi.length ? usersFromApi : user ? [user] : []
-  const area = areas.find((a) => a.id === areaId)
+  const area = areaFromSingle ?? areas.find((a) => a.id === areaId)
 
   const { data: designs = [], isPending: designsPending } = useDesigns(areaId)
   const design = designs[0]

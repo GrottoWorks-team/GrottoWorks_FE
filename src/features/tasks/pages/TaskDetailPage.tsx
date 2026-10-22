@@ -6,7 +6,7 @@
 import { useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, Camera, Check, Clock, MapPin, Package, Plus, Sparkles, UserPlus, Users, X } from 'lucide-react'
+import { ArrowLeft, Calendar, Camera, Check, Clock, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -22,7 +22,10 @@ import { useUsers } from '@/features/users/api'
 import {
   useApproveCompletion,
   useAssignVolunteer,
+  useReplaceCompletionCriteria,
+  useReplaceTaskSkills,
   useRequestRevision,
+  useSkillsCatalog,
   useSubmitReview,
   useTask,
   useUnassign,
@@ -215,6 +218,13 @@ export default function TaskDetailPage() {
   const [reviewing, setReviewing] = useState(false)
   const [approving, setApproving] = useState(false)
   const [revising, setRevising] = useState(false)
+  const replaceCriteria = useReplaceCompletionCriteria()
+  const replaceSkills = useReplaceTaskSkills()
+  const { data: skillsCatalog = [] } = useSkillsCatalog()
+  const [editingCriteria, setEditingCriteria] = useState(false)
+  const [criteriaValue, setCriteriaValue] = useState('')
+  const [editingSkills, setEditingSkills] = useState(false)
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
   const run = async (fn: () => Promise<unknown>, msg: string) => {
     try {
@@ -288,10 +298,30 @@ export default function TaskDetailPage() {
 
             <div className="space-y-4 pt-2 border-t border-border/60">
               <div>
-                <p className="lbl-mono mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <Sparkles className="size-3.5 text-brand-gold" />
-                  {t('features.tasks.skills')}
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="lbl-mono flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Sparkles className="size-3.5 text-brand-gold" />
+                    {t('features.tasks.skillsRequiredTitle')}
+                  </p>
+                  {!readOnly && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs text-brand-pine hover:text-brand-pine hover:bg-brand-pine/10"
+                      onClick={() => {
+                        // Khởi tạo các skill đã chọn từ task
+                        const matchedIds = skillsCatalog
+                          .filter((sk) => task.skills.includes(sk.name) || task.skills.includes(sk.code))
+                          .map((sk) => sk.id)
+                        setSelectedSkills(matchedIds)
+                        setEditingSkills(true)
+                      }}
+                    >
+                      <Edit3 className="size-3 mr-1" />
+                      {t('common.edit')}
+                    </Button>
+                  )}
+                </div>
                 <div className="flex flex-wrap gap-1.5">
                   {task.skills.length ? (
                     task.skills.map((s) => (
@@ -361,6 +391,38 @@ export default function TaskDetailPage() {
                 </p>
               )}
             </div>
+          </Card>
+
+          {/* G5: Khối Tiêu chí hoàn thành (completionCriteria) */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="lbl-mono text-sm font-semibold text-foreground">{t('features.tasks.completionCriteriaTitle')}</p>
+                <p className="text-xs text-muted-foreground">{t('features.tasks.completionCriteriaSub')}</p>
+              </div>
+              {!readOnly && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setCriteriaValue(task.submittedNotes || '')
+                    setEditingCriteria(true)
+                  }}
+                >
+                  <Edit3 className="size-4 mr-1" />
+                  {t('common.edit')}
+                </Button>
+              )}
+            </div>
+            {task.submittedNotes ? (
+              <p className="rounded-md border border-border/60 bg-muted/20 p-3 text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                {task.submittedNotes}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                {t('features.tasks.completionCriteriaEmpty')}
+              </p>
+            )}
           </Card>
         </div>
 
@@ -441,6 +503,129 @@ export default function TaskDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Dialog G5: Sửa Tiêu chí hoàn thành */}
+      {editingCriteria && (
+        <Dialog
+          open
+          onClose={() => setEditingCriteria(false)}
+          title={t('features.tasks.completionCriteriaTitle')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setEditingCriteria(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    await replaceCriteria.mutateAsync({
+                      taskId: task.id,
+                      completionCriteria: criteriaValue.trim() || null,
+                      version: 1,
+                    })
+                    toast(t('features.tasks.completionCriteriaUpdated'))
+                    setEditingCriteria(false)
+                  } catch {
+                    toast(t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('common.save')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <Label htmlFor="task-completion-criteria">{t('features.tasks.completionCriteriaSub')}</Label>
+            <textarea
+              id="task-completion-criteria"
+              rows={4}
+              maxLength={4000}
+              placeholder={t('features.tasks.completionCriteriaPlaceholder')}
+              className={TEXTAREA_CLS}
+              value={criteriaValue}
+              onChange={(e) => setCriteriaValue(e.target.value)}
+            />
+          </div>
+        </Dialog>
+      )}
+
+      {/* Dialog G6: Chọn kỹ năng yêu cầu (multi-select) */}
+      {editingSkills && (
+        <Dialog
+          open
+          onClose={() => setEditingSkills(false)}
+          title={t('features.tasks.skillsRequiredTitle')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setEditingSkills(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    const reqSkills = selectedSkills.map(sId => ({
+                      skillId: sId,
+                      requiredSkillLevel: 'Standard',
+                      requiredVolunteerCount: 1,
+                    }))
+                    await replaceSkills.mutateAsync({
+                      taskId: task.id,
+                      skills: reqSkills,
+                      version: 1,
+                    })
+                    toast(t('features.tasks.skillsUpdated'))
+                    setEditingSkills(false)
+                  } catch {
+                    toast(t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('common.save')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{t('features.tasks.skillsRequiredSub')}</p>
+            <div className="grid grid-cols-1 gap-2">
+              {skillsCatalog.map((sk) => {
+                const checked = selectedSkills.includes(sk.id)
+                return (
+                  <label
+                    key={sk.id}
+                    className={`flex cursor-pointer items-center justify-between rounded-md border p-3 text-sm transition-all ${
+                      checked
+                        ? 'border-brand-pine bg-brand-pine/10 font-semibold text-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        value={sk.id}
+                        checked={checked}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedSkills(prev => [...prev, sk.id])
+                          } else {
+                            setSelectedSkills(prev => prev.filter(x => x !== sk.id))
+                          }
+                        }}
+                        className="rounded border-border text-brand-pine focus:ring-brand-pine"
+                      />
+                      <span>{sk.name}</span>
+                    </div>
+                    <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {sk.code}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        </Dialog>
+      )}
 
       {assigning && <AssignDialog task={task} onClose={() => setAssigning(false)} />}
       {reviewing && (

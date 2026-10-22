@@ -19,7 +19,13 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   READINESS_REVIEW: 'warn', NEEDS_CORRECTION: 'alert', INACTIVE: 'soft',
   DRAFT: 'soft',
   // Trạng thái TaskExecution (enum serialize SNAKE_CASE_UPPER).
-  NOT_STARTED: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert', CANCELLED: 'soft',
+  NOT_STARTED: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert',
+  // Trạng thái đơn mua (Resource).
+  PENDING_APPROVAL: 'warn',
+  BUYER_ASSIGNED: 'warn',
+  PURCHASED: 'warn',
+  PARTIALLY_RECEIVED: 'warn',
+  CANCELLED: 'alert',
 }
 
 // DESIGN_SYSTEM.md mục 12 — Status Badge: pastel background + dark text.

@@ -27,7 +27,7 @@ import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
 import { useArea } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
-import { useAreaTasks } from '@/features/tasks/api'
+import { useTasks } from '@/features/tasks/api'
 import { useAssetCatalog } from '../assets'
 import { syncSceneDesign } from '../designLink'
 import { AssetLibrary } from '../components/AssetLibrary'
@@ -54,10 +54,10 @@ export default function BuilderPage() {
   const { data: area } = useArea(areaId)
   const { assets, byId } = useAssetCatalog()
   const {
-    data: tasks,
+    data: tasks = [],
     isPending: tasksPending,
     error: tasksError,
-  } = useAreaTasks(areaId)
+  } = useTasks(areaId)
   const tasksNotFound = tasksError instanceof ApiError && tasksError.status === 404
 
   const builder = useBuilderScene({

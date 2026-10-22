@@ -1,12 +1,21 @@
-// Admin domain — quản trị tài khoản + danh mục + nhật ký hệ thống.
-// Query key tách domain: ['admin', <resource>]; không đụng key của feature khác
-// (useUsers/useCommunities giữ nguyên key ['users']/['communities'] gốc —
-// invalidate từ admin nhắm đúng key đó để cache người khác cũng mới).
+// Admin domain â€” quáº£n trá»‹ tÃ i khoáº£n + danh má»¥c + nháº­t kÃ½ há»‡ thá»‘ng.
+// Query key tÃ¡ch domain: ['admin', <resource>]; khÃ´ng Ä‘á»¥ng key cá»§a feature khÃ¡c
+// (useUsers/useCommunities giá»¯ nguyÃªn key ['users']/['communities'] gá»‘c â€”
+// invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { ActivityLog, Community, Role, User } from '@/types'
-import type { CommunityDto, CreateCommunityRequest, ParishDto, UpdateParishRequest } from '@/types/parish'
-import type { SkillDto } from '@/types/identity'
+import type { ActivityLog, Community, Role } from '@/types'
+import type { AdminUserDto, CreateAdminUserRequest, RoleDto } from '@/types/identity'
+import type {
+  CommunityDto,
+  CreateCommunityRequest,
+  CreateParishRequest,
+  CreateWorkAreaCategoryRequest,
+  ParishDto,
+  UpdateParishRequest,
+  UpdateWorkAreaCategoryRequest,
+  WorkAreaCategoryDto,
+} from '@/types/parish'
 import { toCommunity, toParish } from './mappers'
 import { useCurrentParishId } from './hooks'
 
@@ -15,14 +24,32 @@ export const parishKeys = {
   detail: (id: string) => ['parishes', id] as const,
 }
 
-/** GET /api/v1/parishes — ADMIN thấy mọi giáo xứ, PARISH chỉ thấy giáo xứ mình. */
+/** POST /api/v1/parishes â€” Táº¡o giÃ¡o xá»© má»›i (ADMIN). */
+export function useCreateParish() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateParishRequest) =>
+      api<ParishDto>('/api/v1/parishes', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: parishKeys.all })
+    },
+  })
+}
+
+/**
+ * GET /api/v1/parishes — ADMIN thấy mọi giáo xứ, PARISH chỉ thấy giáo xứ mình.
+ * `enabled: false` cho role không có quyền (LEADER/MO) để khỏi gọi mạng thừa.
+ */
 export function useParishes(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: parishKeys.all,
     enabled: options.enabled ?? true,
     queryFn: async () => {
-      // ponytail: api() unwrap mất `page`; size=100 lấy hết một lượt rồi để
-      // DataTable phân trang client. BE chặn size>100 bằng 400.
+      // ponytail: api() unwrap máº¥t `page`; size=100 láº¥y háº¿t má»™t lÆ°á»£t rá»“i Ä‘á»ƒ
+      // DataTable phÃ¢n trang client. BE cháº·n size>100 báº±ng 400.
       const list = await api<ParishDto[]>('/api/v1/parishes?size=100')
       return list.map(toParish)
     },
@@ -35,19 +62,19 @@ export const adminKeys = {
   skills: ['admin', 'skills'] as const,
 }
 
-// Communities CRUD dùng từ trang admin — re-export hook read của domain
-// communities cho trọn bộ import một chỗ.
+// Communities CRUD dÃ¹ng tá»« trang admin â€” re-export hook read cá»§a domain
+// communities cho trá»n bá»™ import má»™t chá»—.
 export { useCommunities } from '@/features/communities/api'
 
 export function useActivityLogs() {
   return useQuery({
     queryKey: adminKeys.activity,
-    // /api/activity = activityLogs 50 dòng mới nhất, mới nhất đứng đầu.
+    // /api/activity = activityLogs 50 dÃ²ng má»›i nháº¥t, má»›i nháº¥t Ä‘á»©ng Ä‘áº§u.
     queryFn: () => api<ActivityLog[]>('/activity'),
   })
 }
 
-/** GET /api/v1/parishes/{id} — giáo xứ đang thao tác. */
+/** GET /api/v1/parishes/{id} â€” giÃ¡o xá»© Ä‘ang thao tÃ¡c. */
 export function useParish() {
   const { parishId } = useCurrentParishId()
   return useQuery({
@@ -58,8 +85,8 @@ export function useParish() {
 }
 
 /**
- * PATCH /api/v1/parishes/{id} — BE dùng optimistic concurrency: gửi
- * If-Match: "<version>"; version cũ → 412 PARISH_VERSION_MISMATCH.
+ * PATCH /api/v1/parishes/{id} â€” BE dÃ¹ng optimistic concurrency: gá»­i
+ * If-Match: "<version>"; version cÅ© â†’ 412 PARISH_VERSION_MISMATCH.
  */
 export function useUpdateParish() {
   const qc = useQueryClient()
@@ -82,8 +109,15 @@ export function useAdminSkills() {
   return useQuery({
     queryKey: adminKeys.skills,
     queryFn: async () => {
-      const list = await api<SkillDto[]>('/api/v1/skills')
-      return list.map((skill) => skill.name)
+      try {
+        const skills = await api<Array<string | { name: string }>>('/api/v1/skills')
+        if (Array.isArray(skills)) {
+          return skills.map((s) => (typeof s === 'string' ? s : s.name))
+        }
+      } catch {
+        // BE lỗi/quyền không đủ → coi như chưa có danh mục
+      }
+      return []
     },
   })
 }
@@ -103,25 +137,66 @@ function useAdminMutation<TVars>(
 
 // ---- Users (CRUD generic /api/users) -------------------------------------
 
-// communityId: null = xoá field (mock PATCH shallow-merge giữ key null) —
-// pattern areas/api.ts.
-type UserPayload = Partial<Omit<User, 'id' | 'communityId'>> & {
-  communityId?: string | null
-}
-
 export function useCreateUser() {
-  return useAdminMutation([[ 'users' ]], (data: Omit<User, 'id'>) =>
-    api<User>('/users', { method: 'POST', body: JSON.stringify(data) }),
+  return useAdminMutation([['users']], (data: CreateAdminUserRequest) =>
+    api<AdminUserDto>('/api/v1/admin/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   )
 }
 
 export function useUpdateUser() {
-  // locked: null không cần (lock là boolean) — PATCH shallow-merge đủ dùng.
-  return useAdminMutation([[ 'users' ]], ({ id, ...data }: UserPayload & { id: string }) =>
-    api<User>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  return useAdminMutation([['users']], ({ id, version, ...data }: {
+    id: string
+    version?: number
+    displayName?: string
+    email?: string
+    phone?: string | null
+    parishId?: string | null
+    status?: 'ACTIVE' | 'INACTIVE'
+  }) =>
+    api<AdminUserDto>('/api/v1/admin/users/' + id, {
+      method: 'PATCH',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify(data),
+    }),
+  )
+}
+export function useLockUser() {
+  return useAdminMutation([['users']], ({ id, version, reason }: { id: string; version?: number; reason: string }) =>
+    api<AdminUserDto>('/api/v1/admin/users/' + id + '/lock', {
+      method: 'POST',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify({ reason, version }),
+    }),
   )
 }
 
+export function useUnlockUser() {
+  return useAdminMutation([['users']], ({ id, version, reason }: { id: string; version?: number; reason: string }) =>
+    api<AdminUserDto>('/api/v1/admin/users/' + id + '/unlock', {
+      method: 'POST',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify({ reason, version }),
+    }),
+  )
+}
+export function useAssignUserRole() {
+  return useAdminMutation([['users']], ({ id, version, role, parishId }: { id: string; version?: number; role: string; parishId?: string | null }) =>
+    api<AdminUserDto>('/api/v1/admin/users/' + id + '/role', {
+      method: 'PUT',
+      headers: version !== undefined ? { 'If-Match': '"' + version + '"' } : undefined,
+      body: JSON.stringify({ role, parishId, version }),
+    }),
+  )
+}
+export function useRoles() {
+  return useQuery({
+    queryKey: ['roles'],
+    queryFn: () => api<RoleDto[]>('/api/v1/roles'),
+  })
+}
 export function useDeleteUser() {
   return useAdminMutation([[ 'users' ]], (id: string) =>
     api<void>(`/users/${id}`, { method: 'DELETE' }),
@@ -172,18 +247,32 @@ export function useDeleteCommunity() {
   )
 }
 
-// ---- Parish (object đơn) + Skills (string[]) ------------------------------
+// ---- Parish (object Ä‘Æ¡n) + Skills (string[]) ------------------------------
 
 export function useCreateSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], (name: string) =>
-    api<string[]>('/skills', { method: 'POST', body: JSON.stringify({ name }) }),
-  )
+  return useAdminMutation([[ 'admin', 'skills' ]], async (name: string) => {
+    const code = name.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'SKL'
+    return api<any>('/api/v1/skills', {
+      method: 'POST',
+      body: JSON.stringify({ code: `${code}${Math.floor(Math.random() * 899 + 100)}`, name }),
+    })
+  })
 }
 
 export function useRenameSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], ({ index, name }: { index: number; name: string }) =>
-    api<string[]>(`/skills/${index}`, { method: 'PATCH', body: JSON.stringify({ name }) }),
-  )
+  return useAdminMutation([[ 'admin', 'skills' ]], async ({ index, name }: { index: number; name: string }) => {
+    try {
+      const skills = await api<any[]>('/api/v1/skills')
+      if (Array.isArray(skills) && skills[index]?.id) {
+        return api<any>(`/api/v1/skills/${skills[index].id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name }),
+        })
+      }
+    } catch {
+      // fallback
+    }
+  })
 }
 
 export function useDeleteSkill() {
@@ -208,3 +297,52 @@ export function useRoleLabel(): Record<Role, string> {
     MATERIAL_OFFICER: 'Trưởng ban hành giáo',
   }
 }
+
+// ---- Work Area Categories (B4..B6) ---------------------------------------
+
+export const workAreaCategoryKeys = {
+  all: ['workAreaCategories'] as const,
+  list: (status?: string) => ['workAreaCategories', { status }] as const,
+}
+
+/** GET /api/v1/work-area-categories — Lấy danh sách danh mục khu vực thi công (B4) */
+export function useWorkAreaCategories(status?: 'ACTIVE' | 'INACTIVE') {
+  return useQuery({
+    queryKey: workAreaCategoryKeys.list(status),
+    queryFn: () => {
+      const qs = status ? `?status=${status}` : ''
+      return api<WorkAreaCategoryDto[]>(`/api/v1/work-area-categories${qs}`)
+    },
+  })
+}
+
+/** POST /api/v1/work-area-categories — Tạo mới danh mục khu vực thi công (B5) */
+export function useCreateWorkAreaCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: CreateWorkAreaCategoryRequest) =>
+      api<WorkAreaCategoryDto>('/api/v1/work-area-categories', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: workAreaCategoryKeys.all })
+    },
+  })
+}
+
+/** PATCH /api/v1/work-area-categories/{categoryId} — Cập nhật danh mục khu vực thi công (B6) */
+export function useUpdateWorkAreaCategory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: UpdateWorkAreaCategoryRequest & { id: string }) =>
+      api<WorkAreaCategoryDto>(`/api/v1/work-area-categories/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: workAreaCategoryKeys.all })
+    },
+  })
+}
+

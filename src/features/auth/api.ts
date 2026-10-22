@@ -45,3 +45,26 @@ export function useLogoutMutation() {
       }),
   })
 }
+
+
+/** F-IDN-04: Yêu cầu đặt lại mật khẩu */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: (email: string) =>
+      api<void>('/api/v1/auth/password/forgot', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      }),
+  })
+}
+
+/** F-IDN-04: Đặt lại mật khẩu với token */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: (data: { token: string; newPassword: string }) =>
+      api<void>('/api/v1/auth/password/reset', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  })
+}

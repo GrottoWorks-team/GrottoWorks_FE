@@ -36,8 +36,8 @@ export function useCreateDonation() {
       body: JSON.stringify(data),
     })
     if (donation.materialId && donation.promisedQty) {
-      const m = await api<Material>(`/materials/${donation.materialId}`)
-      await api<Material>(`/materials/${donation.materialId}`, {
+      const m = await api<Material>(`/api/v1/materials/${donation.materialId}`)
+      await api<Material>(`/api/v1/materials/${donation.materialId}`, {
         method: 'PATCH',
         body: JSON.stringify({ donatedPledged: m.donatedPledged + donation.promisedQty }),
       })
@@ -75,8 +75,8 @@ export function useRecordReception(donationId: string) {
     })
     const delta = receivedQty - (donation.receivedQty ?? 0)
     if (donation.materialId && delta > 0) {
-      const m = await api<Material>(`/materials/${donation.materialId}`)
-      await api<Material>(`/materials/${donation.materialId}`, {
+      const m = await api<Material>(`/api/v1/materials/${donation.materialId}`)
+      await api<Material>(`/api/v1/materials/${donation.materialId}`, {
         method: 'PATCH',
         body: JSON.stringify({ donatedReceived: m.donatedReceived + delta }),
       })

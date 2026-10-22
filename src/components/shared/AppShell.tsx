@@ -10,8 +10,8 @@ import {
   MapPinned, Info, Bell,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { api } from '@/lib/api'
 import { roleHomePath } from '@/lib/roles'
 import { SeasonProvider, SeasonSelect } from '@/features/season/season-context'
 import { useNotificationFeed } from '@/features/notifications/api'
@@ -48,8 +48,10 @@ export function AppShell({ role }: { role?: Role }) {
   const showSeasonPicker = r === 'COMMUNITY' || r === 'LEADER' || r === 'MATERIAL_OFFICER'
 
   // Badge điều hướng:
-  // - purchases: endpoint THẬT (chỉ PARISH/LEADER/MO đọc được → ADMIN không bật).
-  // - support: BE chưa có API nên không gọi mạng (tránh 404 mọi trang).
+  // - purchases: endpoint THẬT (chỉ PARISH/LEADER/MO đọc được → ADMIN không bật,
+  //   tránh 403 mọi trang).
+  // - support: BE chưa có endpoint `/support-requests` → không gọi mạng (xem
+  //   BE-gap-requests-activity-flows.md), badge luôn 0.
   const canReadPurchases =
     r === 'COMMUNITY' || r === 'LEADER' || r === 'MATERIAL_OFFICER'
   const { data: pendingPurchases = [] } = useQuery({
@@ -59,8 +61,8 @@ export function AppShell({ role }: { role?: Role }) {
       api<{ id: string }[]>('/api/v1/purchase-requests?status=PENDING_APPROVAL&size=50'),
   })
 
-  // Badge "Thông báo" = số mục chưa đọc của feed suy ra từ dữ liệu thật
-  // (dùng chung store 'đã đọc' với chuông nên bấm "Đọc tất cả" là badge về 0).
+  // Badge "Thông báo" = số mục chưa đọc của feed (dùng chung store 'đã đọc'
+  // với chuông nên bấm "Đọc tất cả" là badge về 0).
   const { items: feedItems } = useNotificationFeed()
   const seenIds = useSeenIds()
   const unreadCount = feedItems.filter((i) => !seenIds.includes(i.id)).length

@@ -1,6 +1,5 @@
 // Trang tài khoản (route /parish/accounts): DataTable users + chip lọc role,
-// switch khoá/mở (user bị khoá → login 401, xem handlers.ts), sửa/xoá qua dialog.
-// Switch pattern ChecklistPage: role="switch" + knob transition-transform.
+// switch khoá/mở (user bị khoá → login 401), sửa/xoá qua dialog.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
@@ -12,11 +11,11 @@ import { useToast } from '@/components/ui/toast'
 import { useCommunities } from '@/features/communities/api'
 import { useUsers } from '@/features/users/api'
 import { cn } from '@/lib/utils'
-import { useDeleteUser, useUpdateUser } from '../api'
+import { useDeleteUser, useLockUser, useUnlockUser } from '../api'
 import { AccountFormDialog } from './AccountFormDialog'
 import type { User } from '@/types'
 
-// Switch khoá/mở — pattern trang Checklist (không có primitive switch).
+// Switch khoá/mở — pattern trang Checklist.
 function LockSwitch({
   checked,
   label,
@@ -54,7 +53,8 @@ export default function AccountsPage() {
   const toast = useToast()
   const { data: users = [], isPending } = useUsers()
   const { data: communities = [] } = useCommunities()
-  const updateUser = useUpdateUser()
+  const lockUser = useLockUser()
+  const unlockUser = useUnlockUser()
   const deleteUser = useDeleteUser()
 
   const [formOpen, setFormOpen] = useState(false)
@@ -63,12 +63,16 @@ export default function AccountsPage() {
 
   const communityName = (id?: string) => communities.find((c) => c.id === id)?.name ?? '—'
 
-  // Khoá/mở: PATCH locked — khoá xong user đó login sẽ 401 ngay (mock login
-  // lọc !x.locked). Không khoá chính mình (mất quyền vào trang này).
+  // Khoá/mở qua POST /api/v1/admin/users/{userId}/lock và /unlock
   const toggleLock = async (u: User) => {
     try {
-      await updateUser.mutateAsync({ id: u.id, locked: !u.locked })
-      toast(t(!u.locked ? 'features.parish.locked' : 'features.parish.unlocked', { name: u.name }))
+      if (u.locked) {
+        await unlockUser.mutateAsync({ id: u.id, reason: 'Mở khoá tài khoản từ trang quản trị' })
+        toast(t('features.parish.unlocked', { name: u.name }))
+      } else {
+        await lockUser.mutateAsync({ id: u.id, reason: 'Khoá tài khoản từ trang quản trị' })
+        toast(t('features.parish.locked', { name: u.name }))
+      }
     } catch {
       toast(t('common.error'), 'alert')
     }
@@ -128,7 +132,7 @@ export default function AccountsPage() {
         ),
       },
     ],
-    [t, communities, updateUser, toast],
+    [t, communities, lockUser, unlockUser, toast],
   )
 
   const onDelete = async (u: User) => {

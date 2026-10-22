@@ -77,6 +77,9 @@ export const NAV: Record<Role, NavGroup[]> = {
       section: '',
       items: [
         { label: 'nav.material-officer.dashboard', to: '/material-officer', icon: 'dashboard' },
+        { label: 'nav.material-officer.material-needs', to: '/material-officer/material-needs', icon: 'cart' },
+        { label: 'nav.material-officer.inventory', to: '/material-officer/inventory', icon: 'boxes' },
+        { label: 'nav.material-officer.categories', to: '/material-officer/categories', icon: 'tags' },
         { label: 'nav.material-officer.materials', to: '/material-officer/materials', icon: 'materials' },
         {
           label: 'nav.material-officer.purchases',

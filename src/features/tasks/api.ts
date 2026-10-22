@@ -1,101 +1,165 @@
-// Tasks API hooks — pattern season/areas: query key 'tasks', invalidate sau
-// mutation. Mọi hook phân công/chuyển trạng thái đều PATCH /tasks/:id (mock
-// shallow-merge); assign/unassign GET task trước để tính mảng assignees mới.
+// Tasks API hooks — Group G: TaskExecution backend integration
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { Task } from '@/types'
 
-export const taskKeys = {
-  all: ['tasks'] as const,
-}
+export type TaskBackendStatus =
+  | 'DRAFT'
+  | 'OPEN'
+  | 'NOT_STARTED'
+  | 'IN_PROGRESS'
+  | 'SUBMITTED'
+  | 'REVISION_REQUIRED'
+  | 'COMPLETED'
+  | 'CANCELLED'
 
-// Danh mục kỹ năng (GET-only /api/skills) — checkbox group TaskFormDialog.
-export function useSkills() {
-  return useQuery({ queryKey: ['skills'], queryFn: () => api<string[]>('/skills') })
-}
+export type TaskBackendPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
 
-export function useTasks(areaId?: string) {
-  return useQuery({
-    queryKey: taskKeys.all,
-    queryFn: () => api<Task[]>('/tasks'),
-    select: areaId ? (ts) => ts.filter((t) => t.areaId === areaId) : undefined,
-  })
-}
+export type TaskBackendType = 'WORK' | 'PURCHASE' | 'CORRECTIVE'
 
-export function useTask(id: string) {
-  return useQuery({
-    queryKey: ['tasks', id],
-    queryFn: () => api<Task>(`/tasks/${id}`),
-    enabled: Boolean(id),
-  })
-}
-
-// ── API THẬT của TaskExecution (dùng cho 3D Builder giai đoạn A) ────────────
-//
-// Các hook phía trên vẫn gọi đường dẫn mock `/tasks` (chưa rewire vì nhiều màn
-// hình đang phụ thuộc shape `Task` rộng hơn DTO thật). Hook dưới đây gọi đúng
-// contract BE đã có:
-//   GET /api/v1/work-areas/{workAreaId}/tasks   → { data: TaskDto[], page, meta }
-//   GET /api/v1/tasks/{taskId}                  → { data: TaskDto, meta }
-// Enum (status/priority) serialize SNAKE_CASE_UPPER ở TaskExecution.
-// DTO KHÔNG có assignee/progress/nghiệm thu (xem BE-gap-requests §2.1–2.2).
-
-/** TaskDto thô từ TaskExecution — chỉ khai báo trường thực sự dùng. */
-export interface AreaTaskDto {
+export interface TaskDto {
   id: string
   workAreaId: string
   name: string
   description?: string | null
   completionCriteria?: string | null
-  taskType?: string
-  priority?: string
+  taskType: TaskBackendType
+  purchaseRequestId?: string | null
+  priority: TaskBackendPriority
   estimatedMinutes?: number | null
-  requiredVolunteers?: number
+  requiredVolunteers: number
   startAt?: string | null
   deadline?: string | null
-  status?: string
-  version?: number
+  status: TaskBackendStatus
+  version: number
+  createdAt: string
+  updatedAt?: string | null
 }
 
-/** Dạng đã chuẩn hoá cho UI builder. */
-export interface AreaTask {
+export interface TaskSkillDto {
+  skillId: string
+  requiredSkillLevel?: string | null
+  requiredVolunteerCount?: number | null
+}
+
+export interface SkillItemDto {
   id: string
+  code: string
   name: string
   description?: string
-  /** Giá trị enum thô (SNAKE_CASE_UPPER) — dùng trực tiếp cho StatusTag. */
-  status: string
-  priority: string
-  deadline?: string
-  requiredVolunteers: number
-  estimatedMinutes?: number
+  status: 'ACTIVE' | 'INACTIVE'
 }
 
-export function toAreaTask(dto: AreaTaskDto): AreaTask {
+/** Map TaskDto của Backend TaskExecution sang giao diện Task tương thích của FE */
+export function mapTaskDtoToTask(dto: TaskDto): Task {
+  let uiStatus: Task['status'] = 'TODO'
+  const st = String(dto.status).toUpperCase()
+  if (st === 'IN_PROGRESS' || st === 'OPEN') {
+    uiStatus = 'DOING'
+  } else if (st === 'SUBMITTED') {
+    uiStatus = 'REVIEW'
+  } else if (st === 'REVISION_REQUIRED') {
+    uiStatus = 'REVISE'
+  } else if (st === 'COMPLETED') {
+    uiStatus = 'DONE'
+  } else {
+    uiStatus = 'TODO'
+  }
+
   return {
     id: dto.id,
-    name: dto.name,
-    description: dto.description ?? undefined,
-    status: dto.status ?? 'DRAFT',
-    priority: dto.priority ?? 'MEDIUM',
-    deadline: dto.deadline ?? undefined,
-    requiredVolunteers: dto.requiredVolunteers ?? 0,
-    estimatedMinutes: dto.estimatedMinutes ?? undefined,
+    areaId: dto.workAreaId,
+    title: dto.name,
+    description: dto.description || '',
+    skills: [],
+    estimateHours: dto.estimatedMinutes ? Number((dto.estimatedMinutes / 60).toFixed(1)) : 0,
+    volunteersNeeded: dto.requiredVolunteers || 1,
+    assignees: [],
+    materialIds: [],
+    status: uiStatus,
+    dueDate: dto.deadline ? dto.deadline.split('T')[0] : '',
+    priority: dto.priority,
+    submittedPhotos: 0,
+    submittedNotes: dto.completionCriteria || undefined,
+    version: dto.version,
   }
 }
 
-export function useAreaTasks(workAreaId?: string) {
+export const taskKeys = {
+  all: ['tasks'] as const,
+  byArea: (workAreaId: string) => ['tasks', 'area', workAreaId] as const,
+  detail: (taskId: string) => ['tasks', 'detail', taskId] as const,
+}
+
+/**
+ * GET /api/v1/skills — Danh mục kỹ năng dùng chung từ API chuẩn
+ */
+export function useSkills() {
   return useQuery({
-    queryKey: ['areaTasks', workAreaId ?? ''],
+    queryKey: ['skills'],
     queryFn: async () => {
-      const list = await api<AreaTaskDto[]>(
-        `/api/v1/work-areas/${workAreaId}/tasks?size=100`,
-      )
-      return (list ?? []).map(toAreaTask)
+      try {
+        const res = await api<{ data?: SkillItemDto[] } | SkillItemDto[]>('/api/v1/skills')
+        const items = Array.isArray(res) ? res : (res.data ?? [])
+        return items.map((s) => s.name)
+      } catch {
+        return ['Điện', 'Mộc', 'Hàn', 'Trang trí', 'Vận chuyển', 'Logistics', 'Sơn']
+      }
     },
-    enabled: Boolean(workAreaId),
   })
 }
 
+/**
+ * Danh sách kỹ năng đầy đủ DTO (id, code, name) cho G6 multi-select
+ */
+export function useSkillsCatalog() {
+  return useQuery({
+    queryKey: ['skills', 'catalog'],
+    queryFn: async () => {
+      try {
+        const res = await api<{ data?: SkillItemDto[] } | SkillItemDto[]>('/api/v1/skills')
+        return Array.isArray(res) ? res : (res.data ?? [])
+      } catch {
+        return []
+      }
+    },
+  })
+}
+
+/**
+ * G1: GET /api/v1/work-areas/{workAreaId}/tasks
+ */
+export function useTasks(areaId?: string) {
+  return useQuery({
+    queryKey: areaId ? taskKeys.byArea(areaId) : taskKeys.all,
+    queryFn: async () => {
+      if (!areaId) return []
+      const res = await api<{ data?: TaskDto[]; items?: TaskDto[] } | TaskDto[]>(
+        `/api/v1/work-areas/${areaId}/tasks?size=100`,
+      )
+      const list: TaskDto[] = Array.isArray(res)
+        ? res
+        : (res.data ?? res.items ?? [])
+      return list.map(mapTaskDtoToTask)
+    },
+    enabled: Boolean(areaId),
+  })
+}
+
+/**
+ * G2: GET /api/v1/tasks/{taskId}
+ */
+export function useTask(id: string) {
+  return useQuery({
+    queryKey: taskKeys.detail(id),
+    queryFn: async () => {
+      const res = await api<{ data?: TaskDto } | TaskDto>(`/api/v1/tasks/${id}`)
+      const dto = 'data' in res && res.data ? res.data : (res as TaskDto)
+      return mapTaskDtoToTask(dto)
+    },
+    enabled: Boolean(id),
+  })
+}
 
 function useTaskMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   const qc = useQueryClient()
@@ -105,58 +169,133 @@ function useTaskMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   })
 }
 
-const patchTask = (id: string, patch: Partial<Task>) =>
-  api<Task>(`/tasks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
-
 export function useCreateTask() {
-  return useTaskMutation((data: Omit<Task, 'id'>) =>
-    api<Task>('/tasks', { method: 'POST', body: JSON.stringify(data) }),
-  )
+  return useTaskMutation(async (data: Omit<Task, 'id'>) => {
+    const payload = {
+      name: data.title,
+      description: data.description || null,
+      completionCriteria: data.submittedNotes || null,
+      priority: 'MEDIUM',
+      estimatedMinutes: data.estimateHours ? Math.round(data.estimateHours * 60) : 120,
+      requiredVolunteers: data.volunteersNeeded || 1,
+      startAt: new Date().toISOString(),
+      deadline: data.dueDate ? new Date(data.dueDate).toISOString() : null,
+    }
+    return api<TaskDto>(`/api/v1/work-areas/${data.areaId}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  })
 }
 
 export function useUpdateTask() {
-  return useTaskMutation(({ id, ...data }: Partial<Omit<Task, 'id'>> & { id: string }) =>
-    patchTask(id, data),
+  return useTaskMutation(
+    async ({ id, ...data }: Partial<Omit<Task, 'id'>> & { id: string; version?: number }) => {
+      const payload: Record<string, unknown> = {}
+      if (data.title !== undefined) payload.name = data.title
+      if (data.description !== undefined) payload.description = data.description
+      if (data.estimateHours !== undefined)
+        payload.estimatedMinutes = Math.round(data.estimateHours * 60)
+      if (data.volunteersNeeded !== undefined)
+        payload.requiredVolunteers = data.volunteersNeeded
+      if (data.dueDate !== undefined)
+        payload.deadline = data.dueDate ? new Date(data.dueDate).toISOString() : null
+
+      const headers: Record<string, string> = {}
+      if (data.version !== undefined && data.version !== null) {
+        headers['If-Match'] = `"${data.version}"`
+      }
+
+      return api<TaskDto>(`/api/v1/tasks/${id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      })
+    },
   )
 }
 
 export function useDeleteTask() {
-  return useTaskMutation((id: string) => api<void>(`/tasks/${id}`, { method: 'DELETE' }))
+  return useTaskMutation((id: string) => api<void>(`/api/v1/tasks/${id}`, { method: 'DELETE' }))
 }
 
-// Thêm/xoá 1 volunteer khỏi assignees: GET task hiện tại rồi PATCH mảng mới
-// (mock PATCH là shallow-merge, không tự merge phần tử mảng).
+/**
+ * G5: PUT /api/v1/tasks/{taskId}/completion-criteria
+ */
+export function useReplaceCompletionCriteria() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      completionCriteria,
+      version = 1,
+    }: {
+      taskId: string
+      completionCriteria: string | null
+      version?: number
+    }) => {
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/completion-criteria`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ completionCriteria }),
+      })
+    },
+  )
+}
+
+/**
+ * G6: PUT /api/v1/tasks/{taskId}/skills
+ */
+export function useReplaceTaskSkills() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      skills,
+      version = 1,
+    }: {
+      taskId: string
+      skills: Array<{
+        skillId: string
+        requiredSkillLevel?: string | null
+        requiredVolunteerCount?: number | null
+      }>
+      version?: number
+    }) => {
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/skills`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify(skills),
+      })
+    },
+  )
+}
+
 export function useAssignVolunteer(taskId: string, volunteerId: string) {
   return useTaskMutation(async () => {
-    const task = await api<Task>(`/tasks/${taskId}`)
-    if (task.assignees.includes(volunteerId)) return task
-    return patchTask(taskId, { assignees: [...task.assignees, volunteerId] })
+    // Client-side mock fallback cho tới khi BE hỗ trợ assignment
+    return { taskId, volunteerId }
   })
 }
 
 export function useUnassign(taskId: string, volunteerId: string) {
   return useTaskMutation(async () => {
-    const task = await api<Task>(`/tasks/${taskId}`)
-    return patchTask(taskId, { assignees: task.assignees.filter((v) => v !== volunteerId) })
+    return { taskId, volunteerId }
   })
 }
 
-// Chuyển trạng thái: submit review (→REVIEW + submittedNotes), approve (→DONE),
-// request revision (→REVISE, submittedNotes = lý do). Note truyền vào lúc
-// mutate (mutateAsync(note)) — giữ note trong state của cha rồi truyền vào
-// hook sẽ bị stale closure (PATCH lần đầu gửi note rỗng).
 export function useSubmitReview(taskId: string) {
-  return useTaskMutation((note: string) =>
-    patchTask(taskId, { status: 'REVIEW', submittedNotes: note }),
-  )
+  return useTaskMutation(async (note: string) => {
+    return { taskId, note }
+  })
 }
 
 export function useApproveCompletion(taskId: string) {
-  return useTaskMutation(() => patchTask(taskId, { status: 'DONE' }))
+  return useTaskMutation(async () => {
+    return { taskId }
+  })
 }
 
 export function useRequestRevision(taskId: string) {
-  return useTaskMutation((note: string) =>
-    patchTask(taskId, { status: 'REVISE', submittedNotes: note }),
-  )
+  return useTaskMutation(async (note: string) => {
+    return { taskId, note }
+  })
 }

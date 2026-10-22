@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { cn } from '@/lib/utils'
 import { viDate } from '@/lib/format'
-import type { AreaTask } from '@/features/tasks/api'
+import type { Task } from '@/types'
 import { itemsOfLayer, sortedLayers } from '../scene'
 import type { ConstructionScene } from '../types'
 
@@ -49,7 +49,7 @@ export function LayerPanel({
   onToggleVisible: (layerId: string, visible: boolean) => void
   onToggleLocked: (layerId: string, locked: boolean) => void
   onDeleteLayer: (layerId: string) => void
-  tasks?: AreaTask[]
+  tasks?: Task[]
   tasksPending?: boolean
   tasksError?: boolean
   /** 404 = khu vực chưa được đồng bộ sang TaskExecution (scope chưa có). */
@@ -252,17 +252,19 @@ export function LayerPanel({
                         />
                         <span className="min-w-0 flex-1">
                           <span className="block truncate text-xs font-semibold text-foreground">
-                            {task.name}
+                            {task.title}
                           </span>
                           <span className="mt-1 flex flex-wrap items-center gap-1.5">
                             <StatusTag status={task.status} />
-                            <span className="text-[10px] text-muted-foreground">
-                              {t('builder.priority')}:{' '}
-                              {t(`priority.${task.priority}`, { defaultValue: task.priority })}
-                            </span>
-                            {task.deadline && (
+                            {task.priority && (
                               <span className="text-[10px] text-muted-foreground">
-                                {t('builder.deadline')}: {viDate(task.deadline)}
+                                {t('builder.priority')}:{' '}
+                                {t(`priority.${task.priority}`, { defaultValue: task.priority })}
+                              </span>
+                            )}
+                            {task.dueDate && (
+                              <span className="text-[10px] text-muted-foreground">
+                                {t('builder.deadline')}: {viDate(task.dueDate)}
                               </span>
                             )}
                           </span>

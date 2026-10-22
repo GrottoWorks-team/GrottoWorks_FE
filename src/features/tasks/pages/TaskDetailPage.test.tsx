@@ -52,6 +52,9 @@ vi.mock('../api', () => ({
   useRequestRevision: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAssignVolunteer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnassign: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useReplaceCompletionCriteria: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useReplaceTaskSkills: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSkillsCatalog: () => ({ data: [{ id: 's1', code: 'MOC', name: 'Thợ mộc', status: 'ACTIVE' }], isPending: false }),
 }))
 
 vi.mock('@/features/areas/api', () => ({

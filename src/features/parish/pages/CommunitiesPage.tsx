@@ -25,6 +25,7 @@ import { useUsers } from '@/features/users/api'
 import {
   useCommunities,
   useCreateCommunity,
+  useCreateParish,
   useDeleteCommunity,
   useParish,
   useUpdateParish,
@@ -101,6 +102,97 @@ function CommunityFormDialog({
           <Label htmlFor="community-name">{t('features.parish.communityName')}</Label>
           <Input id="community-name" {...register('name')} />
           {err(errors.name?.message)}
+        </div>
+      </form>
+    </Dialog>
+  )
+}
+
+const parishCreateSchema = z.object({
+  name: z.string().trim().min(1, 'Tên giáo xứ không được để trống'),
+  address: z.string().optional(),
+  description: z.string().optional(),
+})
+type ParishCreateFormData = z.infer<typeof parishCreateSchema>
+
+// Dialog tạo giáo xứ mới (POST /api/v1/parishes)
+function ParishCreateDialog({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const create = useCreateParish()
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<ParishCreateFormData>({
+    resolver: zodResolver(parishCreateSchema),
+    defaultValues: { name: '', address: '', description: '' },
+  })
+
+  const onSubmit = async (data: ParishCreateFormData) => {
+    try {
+      await create.mutateAsync({
+        name: data.name,
+        address: data.address || null,
+        description: data.description || null,
+      })
+      toast(t('features.parish.created', { name: data.name }))
+      onClose()
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('features.parish.createParish', { defaultValue: 'Tạo giáo xứ mới' })}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button type="submit" form="parish-create-form" disabled={isSubmitting}>
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <form id="parish-create-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <div>
+          <Label htmlFor="create-parish-name">
+            {t('features.parish.parishName', { defaultValue: 'Tên giáo xứ' })} *
+          </Label>
+          <Input
+            id="create-parish-name"
+            {...register('name')}
+            placeholder="Ví dụ: Giáo xứ Thánh Giuse"
+          />
+          {errors.name?.message && (
+            <p className="mt-1 text-xs font-semibold text-destructive">{errors.name.message}</p>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="create-parish-address">
+            {t('features.parish.address', { defaultValue: 'Địa chỉ' })}
+          </Label>
+          <Input
+            id="create-parish-address"
+            {...register('address')}
+            placeholder="Ví dụ: 123 Đường Hai Bà Trưng, Quận 1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="create-parish-desc">
+            {t('features.parish.parishDescription', { defaultValue: 'Mô tả' })}
+          </Label>
+          <Input
+            id="create-parish-desc"
+            {...register('description')}
+            placeholder="Ví dụ: Giáo phận Sài Gòn"
+          />
         </div>
       </form>
     </Dialog>
@@ -252,6 +344,7 @@ export default function CommunitiesPage() {
   const deleteCommunity = useDeleteCommunity()
 
   const [formOpen, setFormOpen] = useState(false)
+  const [parishCreateOpen, setParishCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Community | null>(null)
   const [deleting, setDeleting] = useState<Community | null>(null)
 
@@ -349,15 +442,25 @@ export default function CommunitiesPage() {
         title={t('features.parish.communitiesTitle')}
         sub={t('features.parish.communitiesSub')}
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-          >
-            <Plus className="size-4" />
-            {t('features.parish.createCommunity')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setParishCreateOpen(true)}
+              className="border-brand-pine/30 text-brand-pine hover:bg-brand-pine/10"
+            >
+              <Church className="size-4 mr-1.5" />
+              {t('features.parish.createParish', { defaultValue: 'Tạo giáo xứ mới' })}
+            </Button>
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+            >
+              <Plus className="size-4 mr-1.5" />
+              {t('features.parish.createCommunity')}
+            </Button>
+          </div>
         }
       />
 
@@ -378,6 +481,7 @@ export default function CommunitiesPage() {
         />
       )}
 
+      {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}
       {formOpen && <CommunityFormDialog community={editing} onClose={() => setFormOpen(false)} />}
       <ConfirmDialog
         open={Boolean(deleting)}

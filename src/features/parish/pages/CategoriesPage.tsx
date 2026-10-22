@@ -25,7 +25,15 @@ import { useMaterials } from '@/features/materials/api'
 import { useTasks } from '@/features/tasks/api'
 import { useUsers } from '@/features/users/api'
 import { cn } from '@/lib/utils'
-import { useAdminSkills, useCreateSkill, useDeleteSkill, useRenameSkill } from '../api'
+import {
+  useAdminSkills,
+  useCreateSkill,
+  useCreateWorkAreaCategory,
+  useDeleteSkill,
+  useRenameSkill,
+  useUpdateWorkAreaCategory,
+  useWorkAreaCategories,
+} from '../api'
 import type { WorkArea } from '@/types'
 
 const AREA_TYPES: WorkArea['type'][] = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE']
@@ -209,6 +217,9 @@ export default function CategoriesPage() {
   const { data: areas = [] } = useAreas()
   const { data: donations = [] } = useDonations()
   const { data: skills = [] } = useAdminSkills()
+  const { data: areaCategories = [] } = useWorkAreaCategories()
+  const createAreaCategory = useCreateWorkAreaCategory()
+  const updateAreaCategory = useUpdateWorkAreaCategory()
   const createSkill = useCreateSkill()
   const renameSkill = useRenameSkill()
   const deleteSkill = useDeleteSkill()
@@ -288,6 +299,32 @@ export default function CategoriesPage() {
     toast(t('features.parish.deleted', { name }))
   }
 
+  const addAreaCategory = async (name: string) => {
+    try {
+      const code = name
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^A-Z0-9]/g, '_')
+        .slice(0, 16) || 'CAT'
+      const finalCode = `${code}_${Math.floor(Math.random() * 899 + 100)}`
+      await createAreaCategory.mutateAsync({ code: finalCode, name })
+      toast(t('features.parish.created', { name }))
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      throw e
+    }
+  }
+
+  const renameAreaCategory = async (id: string, name: string) => {
+    try {
+      await updateAreaCategory.mutateAsync({ id, name })
+      toast(t('features.parish.updated', { name }))
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+    }
+  }
+
   return (
     <div>
       <PageHeader title={t('features.parish.categoriesTitle')} sub={t('features.parish.categoriesSub')} />
@@ -321,15 +358,26 @@ export default function CategoriesPage() {
           <>
             <p className="lbl-mono mb-2">{t('features.parish.catHint.areaType')}</p>
             <ul>
-              {AREA_TYPES.map((x) => (
-                <CategoryRow
-                  key={x}
-                  name={t(`features.areas.areaType.${x}`)}
-                  refCount={areas.filter((a) => a.type === x).length}
-                  refLabel={t('features.parish.refAreas')}
-                />
-              ))}
+              {areaCategories.length > 0
+                ? areaCategories.map((c) => (
+                    <CategoryRow
+                      key={c.id}
+                      name={c.name}
+                      refCount={areas.filter((a) => (a as any).categoryId === c.id).length}
+                      refLabel={t('features.parish.refAreas')}
+                      onRename={(next) => void renameAreaCategory(c.id, next)}
+                    />
+                  ))
+                : AREA_TYPES.map((x) => (
+                    <CategoryRow
+                      key={x}
+                      name={t(`features.areas.areaType.${x}`)}
+                      refCount={areas.filter((a) => a.type === x).length}
+                      refLabel={t('features.parish.refAreas')}
+                    />
+                  ))}
             </ul>
+            <AddCategoryForm onAdd={addAreaCategory} />
           </>
         )}
 

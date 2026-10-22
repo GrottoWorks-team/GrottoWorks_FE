@@ -24,6 +24,10 @@ vi.mock('../api', () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useSeason: () => ({
+    data: undefined,
+    isPending: false,
+  }),
 }))
 
 function setup() {

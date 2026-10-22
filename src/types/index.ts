@@ -87,6 +87,9 @@ export interface Task {
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
   status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
   submittedPhotos: number; submittedNotes?: string;
+  /** Ưu tiên từ TaskExecution (LOW|MEDIUM|HIGH|CRITICAL) — BE trả sẵn trong TaskDto. */
+  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  version?: number;
 }
 
 export interface VolunteerReg { id: string; taskId: string; volunteerId: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' }

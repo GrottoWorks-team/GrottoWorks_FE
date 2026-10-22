@@ -15,3 +15,11 @@ export function relTime(
   if (s < 86400) return t('notifications.hourAgo', { n: Math.floor(s / 3600) })
   return t('notifications.dayAgo', { n: Math.floor(s / 86400) })
 }
+
+export const viDateTime = (iso: string) => {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+}

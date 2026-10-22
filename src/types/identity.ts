@@ -92,3 +92,54 @@ export interface ApiResponse<T> {
     timestamp?: string
   }
 }
+
+
+export type UserStatus = 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'SUSPENDED'
+
+export interface AdminUserDto {
+  id: string
+  email: string
+  displayName: string
+  phone: string | null
+  status: UserStatus
+  parishId: string | null
+  role: string
+  communityId: string | null
+  hasPassword: boolean
+  createdAt: string
+  updatedAt: string | null
+  version: number
+}
+
+export interface RoleDto {
+  id: string
+  code: string
+  name: string
+  description: string | null
+}
+
+export interface CreateAdminUserRequest {
+  email: string
+  displayName: string
+  phone?: string | null
+  role: string
+  parishId?: string | null
+  password?: string | null
+}
+
+export interface UpdateAdminUserRequest {
+  email?: string
+  displayName?: string
+  phone?: string | null
+  parishId?: string | null
+  status?: UserStatus
+}
+
+export interface ReasonCommandRequest {
+  reason: string
+}
+
+export interface RoleAssignmentRequest {
+  role: string
+  parishId?: string | null
+}

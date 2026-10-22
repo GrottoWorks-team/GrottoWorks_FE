@@ -193,3 +193,69 @@ export function useDeleteArea() {
     onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
   })
 }
+
+/** PUT /api/v1/work-areas/{workAreaId}/community (B7) */
+export function useAssignWorkAreaCommunity() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      workAreaId,
+      communityId,
+      version,
+    }: {
+      workAreaId: string
+      communityId: string
+      version?: number
+    }) =>
+      api<WorkAreaDto>(`/api/v1/work-areas/${workAreaId}/community`, {
+        method: 'PUT',
+        headers: version ? { 'If-Match': String(version) } : undefined,
+        body: JSON.stringify({ communityId }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
+  })
+}
+
+/** PUT /api/v1/work-areas/{workAreaId}/leader (B8) */
+export function useAssignWorkAreaLeader() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      workAreaId,
+      userId,
+      version,
+    }: {
+      workAreaId: string
+      userId: string
+      version?: number
+    }) =>
+      api<WorkAreaDto>(`/api/v1/work-areas/${workAreaId}/leader`, {
+        method: 'PUT',
+        headers: version ? { 'If-Match': String(version) } : undefined,
+        body: JSON.stringify({ userId }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
+  })
+}
+
+/** PUT /api/v1/work-areas/{workAreaId}/material-officer (B9) */
+export function useAssignWorkAreaMaterialOfficer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      workAreaId,
+      userId,
+      version,
+    }: {
+      workAreaId: string
+      userId: string
+      version?: number
+    }) =>
+      api<WorkAreaDto>(`/api/v1/work-areas/${workAreaId}/material-officer`, {
+        method: 'PUT',
+        headers: version ? { 'If-Match': String(version) } : undefined,
+        body: JSON.stringify({ userId }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
+  })
+}
