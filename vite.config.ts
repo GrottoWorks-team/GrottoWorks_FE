@@ -10,6 +10,11 @@ export default defineConfig({
     },
   },
   server: {
+    // Cố định cổng: dữ liệu tạm (scene 3D Builder, designer, "đã đọc" thông báo)
+    // nằm trong localStorage — đổi cổng là đổi origin nên mất dữ liệu. Đặt
+    // VITE_DEV_PORT nếu máy đã chiếm cổng này.
+    port: Number(process.env.VITE_DEV_PORT ?? 5175),
+    strictPort: true,
     proxy: {
       '/api/v1': {
         // Mặc định là gateway trong docker-compose (6102). Chạy BE native

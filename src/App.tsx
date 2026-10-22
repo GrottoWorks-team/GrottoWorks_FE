@@ -80,10 +80,12 @@ const PAGES: Record<string, ComponentType> = {
   '/material-officer/material-needs': SeasonMaterialNeedsPage,
   '/material-officer/purchases': PurchaseListPage,
   '/material-officer/purchases-confirm': PurchaseConfirmPage,
+  // BE: POST /purchase-requests/{id}/approve|reject chỉ cho LEADER, và ADMIN
+  // không đọc được danh sách (403) → trang duyệt đặt ở nhánh /leader.
+  '/leader/purchases': CommitteeApprovalPage,
   '/material-officer/donations': DonationListPage,
   '/material-officer/borrowed': BorrowedListPage,
   '/material-officer/allocations': AllocationPage,
-  '/parish/purchases': CommitteeApprovalPage,
   '/leader/timesheets': TimesheetPage,
   '/leader/checklist': ChecklistPage,
   '/community/checklist': ChecklistPage,

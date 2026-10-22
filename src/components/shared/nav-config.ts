@@ -63,6 +63,13 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.leader.volunteers', to: '/leader/volunteers', icon: 'users' },
         { label: 'nav.leader.timesheets', to: '/leader/timesheets', icon: 'clock' },
         { label: 'nav.leader.checklist', to: '/leader/checklist', icon: 'checklist' },
+        // BE: approve/reject /purchase-requests chỉ cho LEADER → trang duyệt thuộc nhánh này.
+        {
+          label: 'nav.leader.purchases',
+          to: '/leader/purchases',
+          icon: 'cart',
+          badge: 'purchases',
+        },
         {
           label: 'nav.leader.notifications',
           to: '/leader/notifications',
@@ -108,12 +115,6 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.parish.seasons', to: '/parish/seasons', icon: 'calendar' },
         { label: 'nav.parish.areas', to: '/parish/areas', icon: 'areas' },
         { label: 'nav.parish.map', to: '/parish/map', icon: 'map' },
-        {
-          label: 'nav.parish.purchases',
-          to: '/parish/purchases',
-          icon: 'cart',
-          badge: 'purchases',
-        },
         { label: 'nav.parish.accounts', to: '/parish/accounts', icon: 'accounts' },
         { label: 'nav.parish.communities', to: '/parish/communities', icon: 'church' },
         { label: 'nav.parish.categories', to: '/parish/categories', icon: 'tags' },

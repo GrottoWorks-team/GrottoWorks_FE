@@ -4,9 +4,10 @@
 // `*.glb` trong repo, `public/` chỉ có ảnh). Vì vậy:
 //   1. Catalog mặc định chỉ gồm PRIMITIVE của three.js, gắn nhãn rõ là DEMO
 //      (`source: 'DEMO_PRIMITIVE'`) để không ai nhầm là model thật.
-//   2. Cơ chế manifest để bổ sung model thật đã có sẵn: thả file vào
-//      `public/models/*.glb` + tạo `public/models/manifest.json` theo mô tả ở
-//      `GlbManifestEntry`. Không có file → fetch 404 → catalog chỉ còn demo.
+//   2. Cơ chế manifest để bổ sung model thật: thả file vào `public/models/*.glb`
+//      rồi khai báo trong `public/models/manifest.json` (xem `GlbManifestEntry`).
+//      File manifest LUÔN tồn tại (mặc định `[]`) để không sinh 404 mỗi lần mở
+//      Builder; manifest rỗng → catalog chỉ còn demo.
 // Không tạo file .glb giả và không gọi nguồn ngoài.
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
