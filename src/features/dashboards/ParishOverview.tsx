@@ -4,14 +4,13 @@
 //   /api/v1/parishes/{id}/communities, /api/v1/users (ADMIN → /admin/users).
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useAreas } from '@/features/areas/api'
 import { useSeasons } from '@/features/season/api'
 import { useCommunities } from '@/features/communities/api'
 import { useUsers } from '@/features/users/api'
@@ -22,33 +21,11 @@ import type { Season } from '@/types'
 export default function ParishOverview() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const { data: parish } = useParish()
   const { data: seasons = [], isPending } = useSeasons()
   const { data: communities = [] } = useCommunities()
   // Chỉ cần đếm tài khoản → bỏ request danh mục kỹ năng.
   const { data: users = [] } = useUsers({ withSkills: false })
-
-  // Chỉ tải khu vực của MỘT mùa (mặc định mùa đang chạy / mới nhất) — trước đây
-  // useAreas() fan-out mỗi mùa 1 request (N+1).
-  const requestedSeasonId = searchParams.get('season')
-  const season =
-    seasons.find((s) => s.id === requestedSeasonId) ??
-    seasons.find((s) => s.status === 'ACTIVE') ??
-    seasons[0]
-  const { data: areas = [] } = useAreas(season ? [season.id] : [])
-
-  const selectSeason = (seasonId: string) => {
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev)
-        if (seasonId) next.set('season', seasonId)
-        else next.delete('season')
-        return next
-      },
-      { replace: true },
-    )
-  }
 
   const columns = useMemo(
     () => [
@@ -90,32 +67,15 @@ export default function ParishOverview() {
         title={t('features.dashboards.adminTitle')}
         sub={parish ? parish.name : t('features.dashboards.adminSub')}
         actions={
-          <div className="flex items-center gap-2">
-            {seasons.length > 1 && (
-              <select
-                aria-label={t('season.label')}
-                value={season?.id ?? ''}
-                onChange={(e) => selectSeason(e.target.value)}
-                className="h-10 max-w-56 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
-              >
-                {seasons.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.year} — {s.name}
-                  </option>
-                ))}
-              </select>
-            )}
-            <Button variant="outline" onClick={() => navigate('/parish/seasons')}>
-              {t('nav.parish.seasons')}
-            </Button>
-          </div>
+          <Button variant="outline" onClick={() => navigate('/parish/seasons')}>
+            {t('nav.parish.seasons')}
+          </Button>
         }
       />
 
       <div className="space-y-6">
-        <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <StatCard label={t('features.dashboards.seasonCount')} value={seasons.length} />
-          <StatCard label={t('features.dashboards.areasInSeason')} value={areas.length} />
           <StatCard label={t('features.dashboards.communityCount')} value={communities.length} />
           <StatCard label={t('features.dashboards.accountCount')} value={users.length} />
         </div>
@@ -123,9 +83,6 @@ export default function ParishOverview() {
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <p className="lbl-mono">{t('features.dashboards.seasonsList')}</p>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/parish/seasons')}>
-              {t('features.dashboards.viewAllAreas')}
-            </Button>
           </div>
           <DataTable
             rows={seasons}
