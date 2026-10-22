@@ -52,7 +52,7 @@ test('hiện 4 chip tài khoản demo', async () => {
   }
 })
 
-test('đăng nhập committee → vào shell với nav điều phối, hiện Mùa chuẩn bị & Khu vực công tác', async () => {
+test('đăng nhập committee → vào shell với nav điều phối, hiện Mùa Giáng sinh & Khu vực công tác', async () => {
   const user = userEvent.setup()
   render(<App />)
   await user.click(
@@ -62,7 +62,7 @@ test('đăng nhập committee → vào shell với nav điều phối, hiện M�
   expect(await screen.findByText('Điều phối', {}, { timeout: 10_000 })).toBeDefined()
   expect(await screen.findByText('Giuse Trần Văn Bình', {}, { timeout: 10_000 })).toBeDefined()
   expect(
-    await screen.findByRole('link', { name: /Mùa chuẩn bị/i }, { timeout: 10_000 }),
+    await screen.findByRole('link', { name: /Mùa Giáng sinh/i }, { timeout: 10_000 }),
   ).toBeDefined()
   expect(
     await screen.findByRole('link', { name: /Khu vực công tác/i }, { timeout: 10_000 }),
