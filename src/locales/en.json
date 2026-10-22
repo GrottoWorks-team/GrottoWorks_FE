@@ -351,6 +351,8 @@
   "features.volunteers.approved": "{{name}} approved",
   "features.volunteers.rejected": "{{name}} rejected",
   "features.volunteers.regsEmpty": "No registrations yet.",
+  "features.volunteer.mobileNoticeTitle": "Volunteer Account",
+  "features.volunteer.mobileNoticeDesc": "Volunteer accounts use the GrottoWorks mobile application to check in, take on tasks, and track service hours. The web management interface does not currently support this role.",
   "features.materials.title": "Materials ledger",
   "features.materials.sub": "Material tracking — {{name}}",
   "features.materials.area": "Area",

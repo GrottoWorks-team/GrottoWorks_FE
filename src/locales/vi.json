@@ -351,6 +351,8 @@
   "features.volunteers.approved": "Đã duyệt {{name}}",
   "features.volunteers.rejected": "Đã từ chối {{name}}",
   "features.volunteers.regsEmpty": "Chưa có đăng ký nào.",
+  "features.volunteer.mobileNoticeTitle": "Tài khoản Tình nguyện viên",
+  "features.volunteer.mobileNoticeDesc": "Tài khoản tình nguyện viên sử dụng ứng dụng di động GrottoWorks để điểm danh, nhận việc và đóng góp giờ công. Giao diện quản trị web hiện chưa hỗ trợ vai trò này.",
   "features.materials.title": "Sổ vật tư",
   "features.materials.sub": "Bảng theo dõi vật tư — {{name}}",
   "features.materials.area": "Khu vực",

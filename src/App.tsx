@@ -20,6 +20,7 @@ const Register = lazy(() => import('@/features/landing/RegisterPage'))
 const UserRegister = lazy(() => import('@/pages/Register'))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
+const VolunteerNotice = lazy(() => import('@/pages/VolunteerNotice'))
 const SeasonListPage = lazy(() => import('@/features/season/pages/SeasonListPage'))
 const AreaListPage = lazy(() => import('@/features/areas/pages/AreaListPage'))
 const TaskListPage = lazy(() => import('@/features/tasks/pages/TaskListPage'))
@@ -259,6 +260,7 @@ export default function App() {
                 {/* Trang công khai: landing ở "/", đăng ký đồng hành "/register", tạo tài khoản "/register-account". */}
                 <Route path="/register" element={<Register />} />
                 <Route path="/register-account" element={<UserRegister />} />
+                <Route path="/volunteer" element={<VolunteerNotice />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 {/* Alias tương thích link cũ (/join, /signup) ở landing + Login. */}

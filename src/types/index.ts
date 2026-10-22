@@ -27,6 +27,8 @@ export interface User {
   /** Giáo xứ của user — BE dùng để chặn truy cập chéo giáo xứ (403). */
   parishId?: string;
   locked?: boolean; skills: string[]; points: number; avatarHue: number;
+  /** Role gốc BE trả từ Identity service, ví dụ 'VOLUNTEER'. */
+  rawRole?: string;
 }
 
 export interface Season {
