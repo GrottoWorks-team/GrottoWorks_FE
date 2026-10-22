@@ -22,7 +22,7 @@ import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import { useTasks } from '@/features/tasks/api'
 import { useAuth } from '@/lib/auth'
@@ -38,7 +38,7 @@ type Row = Timesheet & { volunteerName: string }
 export default function TimesheetPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const { data: users = [] } = useUsers()
   const { data: tasks = [] } = useTasks()
   const { data: timesheets = [], isPending } = useTimesheets()

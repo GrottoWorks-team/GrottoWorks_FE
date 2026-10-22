@@ -9,7 +9,7 @@
 // không làm sập trang.
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RotateCcw } from 'lucide-react'
+import { RotateCcw, X } from 'lucide-react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -107,7 +107,11 @@ export function ModelReviewCanvas({
   const { t } = useTranslation()
   const hostRef = useRef<HTMLDivElement>(null)
   const refsRef = useRef<SceneRefs | null>(null)
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const cancelRef = useRef(false)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error' | 'cancelled'>('loading')
+  const [progress, setProgress] = useState<number | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
+  const [errorKind, setErrorKind] = useState<'model' | 'context'>('model')
   const [markerRadius, setMarkerRadius] = useState(0.05)
 
   // Giữ callback/addMode mới nhất mà không phải dựng lại scene mỗi lần render.
@@ -119,12 +123,15 @@ export function ModelReviewCanvas({
     const host = hostRef.current
     if (!host || !src) return
     let disposed = false
+    cancelRef.current = false
     setStatus('loading')
+    setProgress(null)
 
     let renderer: THREE.WebGLRenderer
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
     } catch {
+      setErrorKind('model')
       setStatus('error')
       liveRef.current.onLoadError?.()
       return
@@ -210,7 +217,7 @@ export function ModelReviewCanvas({
     loader.load(
       src,
       (gltf) => {
-        if (disposed) {
+        if (disposed || cancelRef.current) {
           disposeObject(gltf.scene)
           return
         }
@@ -221,11 +228,20 @@ export function ModelReviewCanvas({
           if (mesh.isMesh) refs.pickTargets.push(mesh)
         })
         refs.fit()
+        setProgress(null)
         setStatus('ready')
       },
-      undefined,
+      // onProgress chỉ phần đọc file (blob cục bộ nên rất nhanh); phần parse
+      // model nặng hơn xảy ra sau khi đã đạt 100%.
+      (e) => {
+        if (disposed || cancelRef.current) return
+        if (e.lengthComputable && e.total > 0) {
+          setProgress(Math.min(100, Math.round((e.loaded / e.total) * 100)))
+        }
+      },
       () => {
-        if (disposed) return
+        if (disposed || cancelRef.current) return
+        setErrorKind('model')
         setStatus('error')
         liveRef.current.onLoadError?.()
       },
@@ -263,6 +279,15 @@ export function ModelReviewCanvas({
       liveRef.current.onAddMarker?.({ x: hit.point.x, y: hit.point.y, z: hit.point.z })
     }
 
+    // Mất WebGL context (máy yếu / VRAM lớn) — hiện thông báo thay vì canvas trắng.
+    const onContextLost = (e: Event) => {
+      e.preventDefault()
+      if (disposed || cancelRef.current) return
+      setErrorKind('context')
+      setStatus('error')
+      liveRef.current.onLoadError?.()
+    }
+    canvas.addEventListener('webglcontextlost', onContextLost)
     canvas.addEventListener('pointerdown', onPointerDown)
     canvas.addEventListener('pointerup', onPointerUp)
 
@@ -280,6 +305,7 @@ export function ModelReviewCanvas({
       disposed = true
       cancelAnimationFrame(raf)
       ro?.disconnect()
+      canvas.removeEventListener('webglcontextlost', onContextLost)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointerup', onPointerUp)
       controls.dispose()
@@ -288,7 +314,7 @@ export function ModelReviewCanvas({
       canvas.remove()
       refsRef.current = null
     }
-  }, [src])
+  }, [src, reloadKey])
 
   // ── Đồng bộ marker khi danh sách thay đổi ────────────────────────────────
   useEffect(() => {
@@ -318,10 +344,25 @@ export function ModelReviewCanvas({
   }, [markers, status, markerRadius])
 
   const resetCamera = () => refsRef.current?.fit()
+  const cancelLoad = () => {
+    cancelRef.current = true
+    setProgress(null)
+    setStatus('cancelled')
+  }
+  const retry = () => {
+    setErrorKind('model')
+    setReloadKey((k) => k + 1)
+  }
 
   return (
     <div className={cn('space-y-2', className)}>
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end gap-2">
+        {status === 'loading' && (
+          <Button type="button" variant="outline" size="sm" onClick={cancelLoad}>
+            <X className="size-4" />
+            {t('features.design.cancelLoad')}
+          </Button>
+        )}
         <Button
           type="button"
           variant="outline"
@@ -343,13 +384,30 @@ export function ModelReviewCanvas({
       >
         {status === 'loading' && (
           <p className="lbl-mono absolute inset-0 grid place-items-center">
-            {t('features.design.modelLoading')}
+            {progress != null
+              ? t('features.design.progress', { n: progress })
+              : t('features.design.modelLoading')}
           </p>
         )}
+        {status === 'cancelled' && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+            <p className="lbl-mono">{t('features.design.loadCancelled')}</p>
+            <Button type="button" size="sm" variant="outline" onClick={retry}>
+              {t('features.design.retry')}
+            </Button>
+          </div>
+        )}
         {status === 'error' && (
-          <p className="absolute inset-0 grid place-items-center px-6 text-center text-sm font-semibold text-destructive">
-            {t('features.design.modelError')}
-          </p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+            <p className="text-sm font-semibold text-destructive">
+              {errorKind === 'context'
+                ? t('features.design.contextLost')
+                : t('features.design.modelError')}
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={retry}>
+              {t('features.design.retry')}
+            </Button>
+          </div>
         )}
       </div>
     </div>

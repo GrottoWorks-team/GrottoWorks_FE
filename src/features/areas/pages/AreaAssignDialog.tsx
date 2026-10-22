@@ -11,10 +11,8 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { viDate } from '@/lib/format'
 import {
-  useAssignWorkAreaCommunity,
-  useAssignWorkAreaLeader,
-  useAssignWorkAreaMaterialOfficer,
   useCommunities,
+  useUpdateArea,
 } from '../api'
 import { useUsers } from '@/features/users/api'
 import { SELECT_CLS } from './AreaFormDialog'
@@ -38,10 +36,7 @@ export function AreaAssignDialog({
   const toast = useToast()
   const { data: users = [] } = useUsers()
   const { data: communities = [] } = useCommunities()
-
-  const assignCommunity = useAssignWorkAreaCommunity()
-  const assignLeader = useAssignWorkAreaLeader()
-  const assignMO = useAssignWorkAreaMaterialOfficer()
+  const updateArea = useUpdateArea()
 
   const leaders = users.filter((u) => u.role === 'LEADER')
   const officers = users.filter((u) => u.role === 'MATERIAL_OFFICER')
@@ -61,47 +56,15 @@ export function AreaAssignDialog({
 
   const onSubmit = async (data: FormData) => {
     try {
-      // 1. Gán giáo khu (B7) nếu có thay đổi hoặc được chọn
-      if (data.communityId && data.communityId !== area.communityId) {
-        try {
-          await assignCommunity.mutateAsync({
-            workAreaId: area.id,
-            communityId: data.communityId,
-            version: (area as any).version,
-          })
-        } catch {
-          // fallback updateArea nếu mock
-        }
-      }
-
-      // 2. Gán trưởng ban / Leader (B8)
-      if (data.leaderId && data.leaderId !== area.leaderId) {
-        try {
-          await assignLeader.mutateAsync({
-            workAreaId: area.id,
-            userId: data.leaderId,
-            version: (area as any).version,
-          })
-        } catch {
-          // fallback updateArea
-        }
-      }
-
-      // 3. Gán phụ trách vật tư / Material Officer (B9)
-      if (data.officerId && data.officerId !== area.officerId) {
-        try {
-          await assignMO.mutateAsync({
-            workAreaId: area.id,
-            userId: data.officerId,
-            version: (area as any).version,
-          })
-        } catch {
-          // fallback updateArea
-        }
-      }
-
-
-
+      // BE tách 3 endpoint (community / leader / material-officer) → `useUpdateArea`
+      // tự gọi đúng thứ tự và chuyền version qua If-Match sau mỗi lần.
+      await updateArea.mutateAsync({
+        id: area.id,
+        version: area.version,
+        communityId: data.communityId || undefined,
+        leaderId: data.leaderId,
+        officerId: data.officerId,
+      })
       toast(t('features.areas.assigned', { name: area.name }))
       onClose()
     } catch (e) {

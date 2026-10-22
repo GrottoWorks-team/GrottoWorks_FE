@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import { useAuth } from '@/lib/auth'
 import {
@@ -37,7 +37,7 @@ import type { SupportReg, SupportRequest } from '@/types'
 function SupportDetailDialog({ item, onClose }: { item: SupportRequest; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const { data: users = [] } = useUsers()
   const update = useUpdateSupportRequest()
   const [volunteerId, setVolunteerId] = useState('')
@@ -177,7 +177,7 @@ function SupportRegsSection({
 }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const { data: users = [] } = useUsers()
   const approve = useApproveSupportReg()
   const reject = useRejectSupportReg()
@@ -294,7 +294,7 @@ function SupportRegsSection({
 export default function SupportListPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const { data: users = [] } = useUsers()
   const { data: requests = [], isPending } = useSupportRequests()
   const { data: regs = [] } = useSupportRegs()

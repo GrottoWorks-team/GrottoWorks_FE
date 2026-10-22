@@ -10,7 +10,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useTasks } from '@/features/tasks/api'
 import { useUsers } from '@/features/users/api'
 import { useAuth } from '@/lib/auth'
@@ -24,7 +24,7 @@ export default function RegsApprovalPage() {
   const { user } = useAuth()
   const { data: regs = [], isPending } = useVolunteerRegs()
   const { data: tasks = [] } = useTasks()
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const { data: users = [] } = useUsers()
   const approve = useApproveReg()
   const reject = useRejectReg()

@@ -1,63 +1,43 @@
-// Dropdown thông báo từ AppShell: chuông mở panel 10 activity mới nhất
-// (GET /api/activity). Dot đỏ khi có log mới hơn log mới nhất đã xem — so id
-// log ('grotto-notif-read' lưu lastSeenId, so số hậu tố 'log{N}') — mở panel
-// = đánh dấu đã đọc.
+// Chuông thông báo trên header.
+//
+// Nguồn dữ liệu: features/notifications/api.ts — suy ra từ dữ liệu THẬT (khu
+// được phân công, khu thiếu nhân sự, đơn mua chờ duyệt) vì BE chưa có service
+// Notification. Trạng thái đã đọc ở features/notifications/seen.ts (localStorage,
+// chia sẻ với trang Thông báo theo role).
+//
+// Hành vi: mở panel = đánh dấu đã đọc 10 mục đang thấy; nút "Đọc tất cả" đánh
+// dấu TOÀN BỘ feed (kể cả mục ngoài 10); link cuối panel mở trang đầy đủ.
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Activity as ActivityIcon, Bell, CheckCircle2, Plus, Trash2 } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import { relTime } from '@/lib/format'
-import { useActivity } from '@/features/dashboards/api'
-import { useUsers } from '@/features/users/api'
+import { Link } from 'react-router-dom'
+import { Bell } from 'lucide-react'
+import { useNotificationFeed } from '@/features/notifications/api'
+import { NotificationRow } from '@/features/notifications/NotificationRow'
+import { markSeen, useSeenIds } from '@/features/notifications/seen'
+import { useAuth } from '@/lib/auth'
+import { rolePrefix } from '@/lib/roles'
 import { EmptyState } from './EmptyState'
 
-const READ_KEY = 'grotto-notif-read'
-
-// Id log do nextId sinh tăng dần ('log41' > 'log40'...). Timestamp không so được:
-// seed có mốc tương lai còn log mới mang `at` = now (thực tế NHỎ hơn seed) —
-// nên so số hậu tố 'log{N}'; id lạ thì fallback so chuỗi.
-const logNum = (id: string): number | null => {
-  const m = /^log(\d+)$/.exec(id)
-  return m ? Number(m[1]) : null
-}
-const isNewer = (id: string, seen: string | null): boolean => {
-  if (!seen) return true
-  const a = logNum(id)
-  const b = logNum(seen)
-  return a != null && b != null ? a > b : id > seen
-}
-
-// Icon theo động từ trong action (seed/logMutation là chuỗi tiếng Việt).
-const ICON_RULES: [string, LucideIcon][] = [
-  ['hoàn thành', CheckCircle2],
-  ['tạo', Plus],
-  ['thêm', Plus],
-  ['đăng ký', Plus],
-  ['mở', Plus],
-  ['duyệt', CheckCircle2],
-  ['xoá', Trash2],
-  ['từ chối', Trash2],
-]
-const iconOf = (action: string) => ICON_RULES.find(([k]) => action.includes(k))?.[1] ?? ActivityIcon
+/** Số mục hiển thị tối đa trong panel. */
+const MAX_ITEMS = 10
 
 export function NotificationsDropdown() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const [open, setOpen] = useState(false)
-  // Id log mới nhất đã xem — so id (logNum) thay timestamp.
-  const [lastSeenId, setLastSeenId] = useState(() => localStorage.getItem(READ_KEY))
-  const { data: logs = [] } = useActivity()
-  const { data: users = [] } = useUsers()
+  const seen = useSeenIds()
+  const { items } = useNotificationFeed()
 
-  const items = logs.slice(0, 10)
-  const hasUnread = items.some((x) => isNewer(x.id, lastSeenId))
-  const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? id
+  const allHref = `/${rolePrefix(user?.role ?? 'COMMUNITY')}/notifications`
+  const visible = items.slice(0, MAX_ITEMS)
+  const unreadCount = items.filter((i) => !seen.includes(i.id)).length
+  const hasUnread = unreadCount > 0
 
   const toggle = () => {
-    if (!open && items.length) {
-      // Đánh dấu đã đọc lúc mở: lưu id của log mới nhất (đứng đầu list) —
-      // log sinh sau đó có id lớn hơn → dot sáng lại đúng, không lệ thuộc đồng hồ.
-      localStorage.setItem(READ_KEY, items[0].id)
-      setLastSeenId(items[0].id)
+    if (!open && visible.length) {
+      // Mở panel = đã xem 10 mục này; mục ngoài 10 vẫn "chưa đọc" cho tới khi
+      // bấm "Đọc tất cả" hoặc mở trang Thông báo.
+      markSeen(visible.map((i) => i.id))
     }
     setOpen(!open)
   }
@@ -88,30 +68,55 @@ export function NotificationsDropdown() {
           aria-label={t('shell.notifications')}
           className="absolute right-0 top-12 z-50 w-96 rounded-card border border-border bg-card shadow-hover"
         >
-          <p className="lbl-mono border-b border-border px-4 py-3">
-            {t('shell.notifications')}
-          </p>
-          {items.length ? (
-            <ul className="max-h-96 overflow-y-auto">
-              {items.map((x) => {
-                const Icon = iconOf(x.action)
-                return (
-                  <li
-                    key={x.id}
-                    className="flex items-start gap-3 border-b border-border/60 px-4 py-3 last:border-0"
-                  >
-                    <Icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
-                    <div className="min-w-0">
-                      <p className="text-sm text-foreground">
-                        <span className="font-semibold">{nameOf(x.actor)}</span> {x.action}{' '}
-                        <span className="font-semibold">{x.target}</span>
-                      </p>
-                      <p className="lbl-mono mt-0.5">{relTime(x.at, t)}</p>
-                    </div>
+          <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <p className="lbl-mono">
+              {t('shell.notifications')}
+              {unreadCount > 0 && (
+                <span className="ml-1.5 rounded-full bg-brand-gold px-1.5 py-0.5 text-[10px] text-foreground">
+                  {unreadCount}
+                </span>
+              )}
+            </p>
+            {items.length > 0 && (
+              <button
+                type="button"
+                onClick={() => markSeen(items.map((i) => i.id))}
+                disabled={!hasUnread}
+                className="text-xs font-semibold text-primary transition-opacity hover:underline disabled:cursor-default disabled:opacity-40 disabled:no-underline"
+              >
+                {t('notifications.markAllRead')}
+              </button>
+            )}
+          </div>
+          {visible.length ? (
+            <>
+              <ul className="max-h-96 overflow-y-auto">
+                {visible.map((item) => (
+                  <li key={item.id} className="border-b border-border/60 last:border-0">
+                    <NotificationRow
+                      item={item}
+                      unread={!seen.includes(item.id)}
+                      onActivate={() => {
+                        markSeen([item.id])
+                        setOpen(false)
+                      }}
+                    />
                   </li>
-                )
-              })}
-            </ul>
+                ))}
+              </ul>
+              <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2">
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  {t('shell.feed.hint')}
+                </p>
+                <Link
+                  to={allHref}
+                  onClick={() => setOpen(false)}
+                  className="shrink-0 text-[11px] font-semibold text-primary hover:underline"
+                >
+                  {t('notifications.viewAll')}
+                </Link>
+              </div>
+            </>
           ) : (
             <EmptyState text={t('notifications.empty')} />
           )}

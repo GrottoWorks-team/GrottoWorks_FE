@@ -78,6 +78,7 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     materialIds: [],
     status: uiStatus,
     dueDate: dto.deadline ? dto.deadline.split('T')[0] : '',
+    priority: dto.priority,
     submittedPhotos: 0,
     submittedNotes: dto.completionCriteria || undefined,
     version: dto.version,

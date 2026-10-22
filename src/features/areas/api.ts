@@ -6,6 +6,7 @@ import { api } from '@/lib/api'
 import type { CreateWorkAreaRequest, WorkAreaDto } from '@/types/parish'
 import { toWorkArea } from '@/features/parish/mappers'
 import { useSeasons } from '@/features/season/api'
+import { useSeasonContext } from '@/features/season/season-context'
 
 export { useUsers } from '@/features/users/api'
 export { useCommunities } from '@/features/communities/api'
@@ -53,6 +54,16 @@ export function useAreas(seasonIds?: string[]) {
   }
 }
 
+/**
+ * Khu vực trong phạm vi mùa đang chọn trên header — dùng cho các trang theo
+ * role (task, chấm công, vật tư, mua hàng…) để mọi phép "khu của tôi" chỉ còn
+ * tính trong mùa hiện tại. Role không có picker mùa (PARISH) → toàn bộ như cũ.
+ */
+export function useScopedAreas() {
+  const { seasonId } = useSeasonContext()
+  return useAreas(seasonId ? [seasonId] : undefined)
+}
+
 /** GET /api/v1/work-areas/{id} */
 export function useArea(id?: string) {
   return useQuery({
@@ -74,47 +85,101 @@ export function useCreateArea() {
   })
 }
 
+// Optimistic concurrency: BE bắt buộc If-Match cho PATCH/PUT (thiếu → 400
+// INVALID_IF_MATCH, lệch version → 412).
+const ifMatch = (version?: number): Record<string, string> =>
+  version === undefined ? {} : { 'If-Match': `"${version}"` }
+
+export interface AreaUpdateInput {
+  id: string
+  /** version hiện tại của khu — BE tăng sau mỗi lời gọi nên hook tự chuyền tiếp. */
+  version?: number
+  name?: string
+  description?: string
+  startDate?: string
+  deadline?: string
+  categoryId?: string
+  communityId?: string | null
+  leaderId?: string
+  officerId?: string
+}
+
+/**
+ * Cập nhật khu vực = nhiều lời gọi, vì BE tách endpoint theo nghiệp vụ:
+ *   PATCH /work-areas/{id}                    → tên / mô tả / hạng mục / ngày
+ *   PUT   /work-areas/{id}/community          → cộng đoàn phụ trách
+ *   PUT   /work-areas/{id}/leader             → trưởng khu (user role LEADER, đang Active)
+ *   PUT   /work-areas/{id}/material-officer   → trưởng nhóm vật tư (user role MO)
+ * Mỗi lời gọi trả WorkAreaDto với version mới → dùng làm If-Match cho lời gọi kế.
+ */
 export function useUpdateArea() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
+      version,
       name,
       description,
       startDate,
       deadline,
-      mapX: _mapX,
-      mapY: _mapY,
-      version,
-    }: {
-      id: string
-      name?: string
-      description?: string | null
-      startDate?: string | null
-      deadline?: string | null
-      mapX?: number | null
-      mapY?: number | null
-      version?: number
-    }) => {
-      const payload: Record<string, unknown> = {}
-      if (name !== undefined) payload.name = name.trim()
-      if (description !== undefined) payload.description = description ? description.trim() : null
-      if (startDate !== undefined) payload.startDate = startDate || null
-      if (deadline !== undefined) payload.deadline = deadline || null
+      categoryId,
+      communityId,
+      leaderId,
+      officerId,
+    }: AreaUpdateInput) => {
+      let current = version
+      let dto: WorkAreaDto | undefined
 
-      const headers: Record<string, string> = {}
-      if (version !== undefined && version !== null) {
-        headers['If-Match'] = `"${version}"`
+      const planning = { name, description, startDate, deadline, categoryId }
+      if (Object.values(planning).some((v) => v !== undefined)) {
+        dto = await api<WorkAreaDto>(`/api/v1/work-areas/${id}`, {
+          method: 'PATCH',
+          headers: ifMatch(current),
+          body: JSON.stringify(planning),
+        })
+        current = dto.version ?? current
       }
 
-      return api<WorkAreaDto>(`/api/v1/work-areas/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(payload),
-      })
+      if (communityId) {
+        dto = await api<WorkAreaDto>(`/api/v1/work-areas/${id}/community`, {
+          method: 'PUT',
+          headers: ifMatch(current),
+          body: JSON.stringify({ communityId }),
+        })
+        current = dto.version ?? current
+      }
+
+      if (leaderId) {
+        dto = await api<WorkAreaDto>(`/api/v1/work-areas/${id}/leader`, {
+          method: 'PUT',
+          headers: ifMatch(current),
+          body: JSON.stringify({ userId: leaderId }),
+        })
+        current = dto.version ?? current
+      }
+
+      if (officerId) {
+        dto = await api<WorkAreaDto>(`/api/v1/work-areas/${id}/material-officer`, {
+          method: 'PUT',
+          headers: ifMatch(current),
+          body: JSON.stringify({ userId: officerId }),
+        })
+      }
+
+      return dto ? toWorkArea(dto) : undefined
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
   })
+}
+
+/** Gán trưởng khu (PUT /work-areas/{id}/leader). */
+export function useAssignAreaLeader() {
+  return useUpdateArea()
+}
+
+/** Gán trưởng nhóm vật tư (PUT /work-areas/{id}/material-officer). */
+export function useAssignAreaOfficer() {
+  return useUpdateArea()
 }
 
 /** PUT /api/v1/work-areas/{workAreaId}/community (B7) */

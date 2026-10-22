@@ -20,7 +20,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useAuth } from '@/lib/auth'
 import { exportCsv } from '@/lib/csv'
@@ -113,7 +113,7 @@ export default function DonationListPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useAreas()
+  const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: materials = [] } = useMaterials()
   const { data: donations = [], isPending } = useDonations()
   const update = useUpdateDonation()

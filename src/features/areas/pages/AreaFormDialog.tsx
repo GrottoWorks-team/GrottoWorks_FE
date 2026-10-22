@@ -75,7 +75,9 @@ export function AreaFormDialog({
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const isCommunity = user?.role === 'COMMUNITY'
+  // BE chỉ gán cộng đoàn qua hồ sơ TNV; tài khoản ban hành giáo cấp giáo xứ
+  // không có communityId → xử lý như cấp giáo xứ (được chọn cộng đoàn tự do).
+  const isCommunity = user?.role === 'COMMUNITY' && Boolean(user?.communityId)
   const { data: users = [] } = useUsers()
   const { data: communities = [] } = useCommunities()
   const { data: seasons = [] } = useSeasons()
@@ -154,12 +156,17 @@ export function AreaFormDialog({
     const communityId = data.level === 'COMMUNITY' ? rawCommunityId : null
     try {
       if (editing && area) {
+        // BE không nhận leaderId/officerId/communityId trong PATCH — hook
+        // useUpdateArea tự gọi PUT /leader, /material-officer, /community.
         await update.mutateAsync({
           id: area.id,
-          name: data.name,
-          description: data.description || null,
-          deadline: data.deadline || null,
           version: area.version,
+          name: data.name,
+          description: data.description || undefined,
+          deadline: data.deadline || undefined,
+          communityId,
+          leaderId: data.leaderId || undefined,
+          officerId: data.officerId || undefined,
         })
         toast(t('features.areas.updated', { name: data.name }))
       } else {

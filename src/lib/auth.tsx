@@ -6,13 +6,23 @@ import { api } from './api'
 import type { Role, User } from '../types'
 import type { TokenPair } from '../types/identity'
 
+// Role code BE phát hành (Identity.Domain/RoleCodes): ADMIN | PARISH | LEADER | MO | VOLUNTEER.
+// Web có 4 nhánh giao diện, nên phải map 1-1 để admin và ban hành giáo KHÔNG dùng
+// chung một UI:
+//   ADMIN   → PARISH            (/parish/*  — quản trị giáo xứ: tài khoản, cộng đoàn,
+//                                danh mục, mùa, duyệt mua)
+//   PARISH  → COMMUNITY         (/community/* — ban hành giáo; spec v1.3 gọi PARISH = "Committee")
+//   LEADER  → LEADER            (/leader/*)
+//   MO      → MATERIAL_OFFICER  (/material-officer/*)
+// Lưu ý `MO` không chứa chữ "OFFICER" nên phải so khớp riêng.
 export function normalizeRole(roleStr?: string): Role {
   if (!roleStr) return 'COMMUNITY'
-  const upper = roleStr.toUpperCase()
-  if (upper.includes('PARISH') || upper.includes('ADMIN')) return 'PARISH'
-  if (upper.includes('MATERIAL') || upper.includes('OFFICER') || upper === 'MO') return 'MATERIAL_OFFICER'
-  if (upper.includes('LEADER')) return 'LEADER'
-  if (upper.includes('COMMUNITY')) return 'COMMUNITY'
+  const code = roleStr.trim().toUpperCase()
+  if (code === 'MO' || code.includes('MATERIAL') || code.includes('OFFICER')) return 'MATERIAL_OFFICER'
+  if (code === 'ADMIN') return 'PARISH'
+  if (code === 'PARISH' || code.includes('COMMUNITY')) return 'COMMUNITY'
+  if (code.includes('LEADER')) return 'LEADER'
+  // VOLUNTEER chưa có giao diện web (dùng app mobile) → xem BE-gap-requests-activity-flows.md
   return 'COMMUNITY'
 }
 

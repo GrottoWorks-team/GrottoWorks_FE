@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { useChecklist, useToggleItem } from '../api'
@@ -144,7 +144,7 @@ function AreaChecklistCard({
 export default function ChecklistPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const { data: items = [], isPending } = useChecklist()
 
   // Leader: các khu mình lãnh (được toggle); committee/parish: mọi khu read-only.

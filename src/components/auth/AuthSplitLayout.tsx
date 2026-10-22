@@ -128,7 +128,7 @@ export function AuthSplitLayout({ children, activeTab }: AuthSplitLayoutProps) {
             </Link>
 
             <Link
-              to="/register-account"
+              to="/signup"
               className={`relative w-1/2 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
                 activeTab === 'register'
                   ? 'bg-white text-brand-pine shadow-sm'
@@ -139,6 +139,14 @@ export function AuthSplitLayout({ children, activeTab }: AuthSplitLayoutProps) {
               <span>Đăng Ký</span>
             </Link>
           </div>
+
+          {/* Lối vào luồng khác: chỉ để lại thông tin, không cần tài khoản. */}
+          <p className="mb-6 text-center text-xs text-slate-500">
+            Chỉ muốn để lại thông tin đồng hành?{' '}
+            <Link to="/join" className="font-semibold text-brand-pine hover:underline">
+              Đăng ký đồng hành
+            </Link>
+          </p>
 
           {/* Nội dung form được truyền vào */}
           {children}

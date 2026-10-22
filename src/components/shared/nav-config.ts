@@ -6,7 +6,7 @@ import type { Role } from '@/types'
 export interface NavItem {
   label: string // i18n key
   to: string
-  badge?: 'support' | 'purchases'
+  badge?: 'support' | 'purchases' | 'notifications'
   icon?: string // key trong ICONS của AppShell
 }
 
@@ -43,6 +43,12 @@ export const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: 'nav.community.checklist', to: '/community/checklist', icon: 'checklist' },
         { label: 'nav.community.reports', to: '/community/reports', icon: 'reports' },
+        {
+          label: 'nav.community.notifications',
+          to: '/community/notifications',
+          icon: 'bell',
+          badge: 'notifications',
+        },
       ],
     },
   ],
@@ -57,6 +63,12 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.leader.volunteers', to: '/leader/volunteers', icon: 'users' },
         { label: 'nav.leader.timesheets', to: '/leader/timesheets', icon: 'clock' },
         { label: 'nav.leader.checklist', to: '/leader/checklist', icon: 'checklist' },
+        {
+          label: 'nav.leader.notifications',
+          to: '/leader/notifications',
+          icon: 'bell',
+          badge: 'notifications',
+        },
       ],
     },
   ],
@@ -79,6 +91,12 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.material-officer.donations', to: '/material-officer/donations', icon: 'gift' },
         { label: 'nav.material-officer.borrowed', to: '/material-officer/borrowed', icon: 'borrowed' },
         { label: 'nav.material-officer.allocations', to: '/material-officer/allocations', icon: 'boxes' },
+        {
+          label: 'nav.material-officer.notifications',
+          to: '/material-officer/notifications',
+          icon: 'bell',
+          badge: 'notifications',
+        },
       ],
     },
   ],

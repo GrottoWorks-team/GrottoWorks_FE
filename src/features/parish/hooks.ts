@@ -5,7 +5,10 @@ import { useParishes } from './api'
 
 export function useCurrentParishId() {
   const { user } = useAuth()
-  const { data: parishes = [], isPending } = useParishes()
+  // LEADER/MO/COMMUNITY đã có parishId trong token → không cần gọi
+  // GET /api/v1/parishes (endpoint này chỉ mở cho ADMIN/PARISH → 403).
+  const needsParishList = !user?.parishId
+  const { data: parishes = [], isPending } = useParishes({ enabled: needsParishList })
 
   if (user?.parishId) {
     return { parishId: user.parishId, isPending: false }

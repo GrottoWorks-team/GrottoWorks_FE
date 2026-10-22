@@ -1,5 +1,5 @@
 // Trang khu vực công tác (COMMITTEE/PARISH): filter mùa, grid AreaCard + DataTable (toggle),
-// tạo/sửa qua AreaFormDialog (prefill mùa), phân công qua AreaAssignDialog, xoá qua ConfirmDialog.
+// tạo/sửa qua AreaFormDialog (prefill mùa), phân công qua AreaAssignDialog.
 // Click card/row → /community/areas/:id/tasks hoặc /parish/areas/:id/tasks (TaskListPage).
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
@@ -10,9 +10,10 @@ import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
-import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
+import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas, useSeasons, useUsers } from '../api'
 import { AreaCard } from '../components/AreaCard'
 import { AreaDetailDialog } from '../components/AreaDetailDialog'
@@ -27,13 +28,15 @@ export default function AreaListPage() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user } = useAuth()
-
   // Ban hành giáo (COMMUNITY) chỉ quản lý/phân bổ khu vực — không mở bản thiết kế.
   // PARISH (quản trị) vẫn xem/duyệt bản thiết kế.
+  const { user } = useAuth()
   const canViewDesign = user?.role !== 'COMMUNITY'
 
-  const seasonParam = searchParams.get('season') ?? 'all'
+  // Mùa lấy từ header (SeasonProvider). URL vẫn là nguồn sự thật: dropdown của
+  // trang và khung chọn mùa trên header cùng ghi `?season=`.
+  const { seasonId: headerSeasonId } = useSeasonContext()
+  const seasonParam = searchParams.get('season') ?? headerSeasonId ?? 'all'
   const [selectedSeason, setSelectedSeason] = useState<string>(seasonParam)
 
   const { data: seasons = [], isPending: isSeasonsPending } = useSeasons()
@@ -46,7 +49,6 @@ export default function AreaListPage() {
   )
   const { data: rawAreas = [], isPending: isAreasPending } = useAreas(seasonIds)
   const { data: users = [] } = useUsers()
-
 
   // Đồng bộ URL param khi URL thay đổi từ ngoài
   useEffect(() => {
@@ -67,7 +69,9 @@ export default function AreaListPage() {
   const seasonMap = useMemo(() => new Map(seasons.map((s) => [s.id, s])), [seasons])
 
   const areas = useMemo(() => {
-    if (user?.role === 'COMMUNITY') {
+    // Chỉ lọc theo cộng đoàn khi tài khoản THỰC SỰ thuộc một cộng đoàn; tài khoản
+    // ban hành giáo cấp giáo xứ (không có communityId) thấy toàn bộ khu.
+    if (user?.role === 'COMMUNITY' && user.communityId) {
       return rawAreas.filter((a) => a.communityId === user.communityId)
     }
     return rawAreas
@@ -76,7 +80,6 @@ export default function AreaListPage() {
   const [view, setView] = useState<View>('grid')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<WorkArea | null>(null)
-
   const [assigning, setAssigning] = useState<WorkArea | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
@@ -204,14 +207,12 @@ export default function AreaListPage() {
             >
               <Pencil className="size-4" />
             </Button>
-
           </div>
         ),
       },
     ],
     [t, users, seasonMap, navigate, pathname, canViewDesign],
   )
-
 
 
   const isPending = isAreasPending || isSeasonsPending
@@ -349,7 +350,6 @@ export default function AreaListPage() {
         open={Boolean(detailAreaId)}
         onClose={() => setDetailAreaId(null)}
       />
-
     </div>
   )
 }

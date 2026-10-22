@@ -28,11 +28,27 @@ import type { DesignType } from '@/types'
 
 type FileError = 'none' | 'type' | 'size' | 'empty'
 
-const ERROR_KEY: Record<FileError, string> = {
+const IMAGE_ERROR_KEY: Record<FileError, string> = {
   none: 'features.design.errNone',
   type: 'features.design.errType',
   size: 'features.design.errSize',
   empty: 'features.design.errEmpty',
+}
+
+// Thông báo riêng cho mô hình 3D — tránh nhầm câu chữ "ảnh".
+const MODEL_ERROR_KEY: Record<FileError, string> = {
+  none: 'features.design.modelErrNone',
+  type: 'features.design.modelErrType',
+  size: 'features.design.modelErrSize',
+  empty: 'features.design.modelErrEmpty',
+}
+
+/** Lỗi hết dung lượng lưu trữ của trình duyệt (IndexedDB quota). */
+function isQuotaError(err: unknown): boolean {
+  if (typeof DOMException !== 'undefined' && err instanceof DOMException) {
+    return err.name === 'QuotaExceededError' || err.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+  }
+  return false
 }
 
 const TEXTAREA_CLS =
@@ -59,6 +75,7 @@ export function UploadVersionDialog({
   const updateDesign = useUpdateDesign()
   const inputRef = useRef<HTMLInputElement>(null)
   const is3d = designType === 'THREE_D'
+  const errorKey = is3d ? MODEL_ERROR_KEY : IMAGE_ERROR_KEY
 
   const [file, setFile] = useState<File | null>(null)
   const [note, setNote] = useState('')
@@ -106,10 +123,10 @@ export function UploadVersionDialog({
       toast(t('features.design.versionUploaded'))
       onUploaded(version.id)
       onClose()
-    } catch {
+    } catch (err) {
       // Không để lại blob mồ côi khi tạo bản ghi thất bại.
       await deleteBlob(key).catch(() => {})
-      toast(t('common.error'), 'alert')
+      toast(t(isQuotaError(err) ? 'features.design.errQuota' : 'common.error'), 'alert')
     } finally {
       setBusy(false)
     }
@@ -161,7 +178,7 @@ export function UploadVersionDialog({
                 })}
           </p>
           {error && (
-            <p className="mt-1 text-xs font-semibold text-destructive">{t(ERROR_KEY[error])}</p>
+            <p className="mt-1 text-xs font-semibold text-destructive">{t(errorKey[error])}</p>
           )}
           {file && (
             <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">

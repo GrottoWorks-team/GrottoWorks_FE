@@ -56,6 +56,10 @@ vi.mock('../api', () => ({
 
 vi.mock('@/features/areas/api', () => ({
   useAreas: () => ({ data: [{ id: 'a1', name: 'Hang đá Bê-lem', leaderId: 'u3' }], isPending: false }),
+  useScopedAreas: () => ({
+    data: [{ id: 'a1', name: 'Hang đá Bê-lem', leaderId: 'u3' }],
+    isPending: false,
+  }),
 }))
 
 vi.mock('@/features/users/api', () => ({

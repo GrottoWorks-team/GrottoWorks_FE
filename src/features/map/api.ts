@@ -1,39 +1,52 @@
 // API hooks cho Bản đồ mặt bằng giáo xứ.
 //
-// Mock: ảnh mặt bằng nằm ở IndexedDB (lib/blobStore), metadata (imageKey) đi
-// qua MSW dưới resource `parishMaps` (một bản ghi/giáo xứ). Toạ độ từng khu
-// lưu ngay trên WorkArea (mapX/mapY) — dùng useUpdateArea của domain areas.
+// ⚠️ TẠM THỜI (FE-only): BE chưa có endpoint `/parishMaps` và chưa có API cập
+// nhật toạ độ work area → metadata bản đồ + toạ độ ghim khu lưu ở localStorage
+// qua `localStore`. Ảnh mặt bằng vẫn nằm ở IndexedDB (`lib/blobStore.ts`).
+// Khi BE bổ sung endpoint: thay `mapStore.*` bằng `api(...)` (giữ hook surface).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
 import type { ParishMap } from '@/types'
+import { mapStore } from './localStore'
+import type { MapPin } from './localStore'
 
 export const mapKeys = {
   parish: ['parishMaps'] as const,
+  pins: ['parishMapPins'] as const,
 }
 
 /** Bản đồ mặt bằng hiện tại của giáo xứ (nếu đã tải lên). */
 export function useParishMap() {
   return useQuery({
     queryKey: mapKeys.parish,
-    queryFn: () => api<ParishMap[]>('/parishMaps'),
-    select: (list) => (list ?? [])[0],
+    // React Query v5 không nhận `undefined` → chưa có bản đồ thì trả `null`.
+    queryFn: async (): Promise<ParishMap | null> => mapStore.getMap() ?? null,
   })
 }
 
-/**
- * Lưu bản đồ: PATCH khi đã có bản ghi, POST khi tải lên lần đầu.
- * Trả về bản ghi ParishMap sau khi lưu.
- */
+/** Lưu ảnh mặt bằng (một bản ghi/giáo xứ). */
 export function useSaveParishMap() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { id?: string; imageKey: string; fileName?: string }) => {
-      const updatedAt = new Date().toISOString()
-      const body = JSON.stringify({ imageKey: data.imageKey, fileName: data.fileName, updatedAt })
-      return data.id
-        ? api<ParishMap>(`/parishMaps/${data.id}`, { method: 'PATCH', body })
-        : api<ParishMap>('/parishMaps', { method: 'POST', body })
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: mapKeys.parish }),
+    mutationFn: async (data: { id?: string; imageKey: string; fileName?: string }) =>
+      mapStore.saveMap({ imageKey: data.imageKey, fileName: data.fileName }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: mapKeys.parish }),
+  })
+}
+
+/** Toạ độ ghim khu trên bản đồ: `areaId → { x, y }`. */
+export function useMapPins() {
+  return useQuery({
+    queryKey: mapKeys.pins,
+    queryFn: async (): Promise<Record<string, MapPin>> => mapStore.listPins(),
+  })
+}
+
+/** Ghim (`{x,y}`) hoặc bỏ ghim (`null`) một khu. */
+export function useSetMapPin() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ areaId, pin }: { areaId: string; pin: MapPin | null }) =>
+      mapStore.setPin(areaId, pin),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: mapKeys.pins }),
   })
 }

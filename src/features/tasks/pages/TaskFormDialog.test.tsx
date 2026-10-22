@@ -6,6 +6,7 @@ import { TaskFormDialog } from './TaskFormDialog'
 
 vi.mock('@/features/areas/api', () => ({
   useAreas: () => ({ data: [{ id: 'a1', name: 'Hang đá Bê-lem' }], isPending: false }),
+  useScopedAreas: () => ({ data: [{ id: 'a1', name: 'Hang đá Bê-lem' }], isPending: false }),
 }))
 
 vi.mock('@/features/materials/api', () => ({
