@@ -22,7 +22,7 @@ describe('toCommunity', () => {
     })
     expect(c).toEqual({
       id: 'c1', parishId: 'p1', name: 'Giáo khu Bắc',
-      description: undefined, status: 'INACTIVE',
+      description: undefined, status: 'INACTIVE', version: 1,
     })
   })
 })

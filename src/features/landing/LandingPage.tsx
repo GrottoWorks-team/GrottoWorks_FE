@@ -16,6 +16,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { JoinOptions } from '@/components/auth/JoinOptions'
 import { ButtonLink } from '@/components/ui/button-link'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -103,7 +104,7 @@ export default function LandingPage() {
             <ButtonLink to="/login" variant="ghost" size="sm">
               {t('landing.login')}
             </ButtonLink>
-            <ButtonLink to="/register" size="sm" className="hidden sm:inline-flex">
+            <ButtonLink to="/join" size="sm" className="hidden sm:inline-flex">
               {t('landing.registerCta')}
             </ButtonLink>
           </div>
@@ -143,7 +144,7 @@ export default function LandingPage() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3" style={d(3)}>
               <ButtonLink
-                to="/register"
+                to="/join"
                 size="lg"
                 className="bg-brand-gold text-primary hover:bg-brand-gold/90"
               >
@@ -375,11 +376,9 @@ export default function LandingPage() {
             {t('landing.cta.title')}
           </h2>
           <p className="mt-4 leading-relaxed text-muted-foreground">{t('landing.cta.sub')}</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <ButtonLink to="/register" size="lg">
-              {t('landing.cta.button')}
-              <ArrowRight className="h-4 w-4" />
-            </ButtonLink>
+          {/* Hợp nhất lối vào: người dùng chọn đúng luồng tham gia (đồng hành vs tạo tài khoản). */}
+          <JoinOptions className="mx-auto mt-8 max-w-2xl" />
+          <div className="mt-4 flex justify-center">
             <ButtonLink to="/login" size="lg" variant="secondary">
               {t('landing.cta.login')}
             </ButtonLink>

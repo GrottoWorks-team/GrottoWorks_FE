@@ -30,6 +30,73 @@ export function useTask(id: string) {
   })
 }
 
+// ── API THẬT của TaskExecution (dùng cho 3D Builder giai đoạn A) ────────────
+//
+// Các hook phía trên vẫn gọi đường dẫn mock `/tasks` (chưa rewire vì nhiều màn
+// hình đang phụ thuộc shape `Task` rộng hơn DTO thật). Hook dưới đây gọi đúng
+// contract BE đã có:
+//   GET /api/v1/work-areas/{workAreaId}/tasks   → { data: TaskDto[], page, meta }
+//   GET /api/v1/tasks/{taskId}                  → { data: TaskDto, meta }
+// Enum (status/priority) serialize SNAKE_CASE_UPPER ở TaskExecution.
+// DTO KHÔNG có assignee/progress/nghiệm thu (xem BE-gap-requests §2.1–2.2).
+
+/** TaskDto thô từ TaskExecution — chỉ khai báo trường thực sự dùng. */
+export interface AreaTaskDto {
+  id: string
+  workAreaId: string
+  name: string
+  description?: string | null
+  completionCriteria?: string | null
+  taskType?: string
+  priority?: string
+  estimatedMinutes?: number | null
+  requiredVolunteers?: number
+  startAt?: string | null
+  deadline?: string | null
+  status?: string
+  version?: number
+}
+
+/** Dạng đã chuẩn hoá cho UI builder. */
+export interface AreaTask {
+  id: string
+  name: string
+  description?: string
+  /** Giá trị enum thô (SNAKE_CASE_UPPER) — dùng trực tiếp cho StatusTag. */
+  status: string
+  priority: string
+  deadline?: string
+  requiredVolunteers: number
+  estimatedMinutes?: number
+}
+
+export function toAreaTask(dto: AreaTaskDto): AreaTask {
+  return {
+    id: dto.id,
+    name: dto.name,
+    description: dto.description ?? undefined,
+    status: dto.status ?? 'DRAFT',
+    priority: dto.priority ?? 'MEDIUM',
+    deadline: dto.deadline ?? undefined,
+    requiredVolunteers: dto.requiredVolunteers ?? 0,
+    estimatedMinutes: dto.estimatedMinutes ?? undefined,
+  }
+}
+
+export function useAreaTasks(workAreaId?: string) {
+  return useQuery({
+    queryKey: ['areaTasks', workAreaId ?? ''],
+    queryFn: async () => {
+      const list = await api<AreaTaskDto[]>(
+        `/api/v1/work-areas/${workAreaId}/tasks?size=100`,
+      )
+      return (list ?? []).map(toAreaTask)
+    },
+    enabled: Boolean(workAreaId),
+  })
+}
+
+
 function useTaskMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   const qc = useQueryClient()
   return useMutation({

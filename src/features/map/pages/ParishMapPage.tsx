@@ -1,13 +1,14 @@
 // Bản đồ mặt bằng giáo xứ (route /community/map + /parish/map).
 //
 // Ban hành giáo (COMMUNITY) tải ảnh mặt bằng/sơ đồ giáo xứ rồi GHIM từng khu
-// vực công tác lên đó bằng toạ độ chuẩn hoá 0..1 (mapX/mapY trên WorkArea).
-// PARISH (quản trị) xem/duyệt được. Trang này KHÔNG liên quan tới bản thiết kế
-// công trình (design review) — theo yêu cầu nghiệp vụ committee không đụng design.
+// vực công tác lên đó bằng toạ độ chuẩn hoá 0..1. PARISH (quản trị) xem/duyệt
+// được. Trang này KHÔNG liên quan tới bản thiết kế công trình (design review) —
+// theo yêu cầu nghiệp vụ committee không đụng design.
 //
-// Phạm vi mock: ảnh nằm ở IndexedDB của trình duyệt này (lib/blobStore), chỉ
-// metadata + toạ độ đi qua MSW. Khung ảnh tái dùng ImageReviewCanvas (zoom/pan
-// + marker theo %), KHÔNG dùng thư viện bản đồ ngoài.
+// ⚠️ TẠM THỜI (FE-only): BE chưa có endpoint `/parishMaps` → metadata bản đồ +
+// toạ độ ghim lưu ở localStorage (features/map/localStore), ảnh ở IndexedDB
+// (lib/blobStore). Khung ảnh tái dùng ImageReviewCanvas (zoom/pan + marker theo
+// %), KHÔNG dùng thư viện bản đồ ngoài.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MapPin, Trash2, Upload } from 'lucide-react'
@@ -17,9 +18,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/lib/auth'
 import { getBlob, newBlobKey, putBlob } from '@/lib/blobStore'
-import { useAreas, useUpdateArea } from '@/features/areas/api'
+import { useAuth } from '@/lib/auth'
+import { useAreas } from '@/features/areas/api'
+import { useSeasonContext } from '@/features/season/season-context'
 import { AREA_ICONS } from '@/features/areas/components/AreaCard'
 import { ImageReviewCanvas } from '@/features/designs/components/ImageReviewCanvas'
 import type { CanvasMarker } from '@/features/designs/components/ImageReviewCanvas'
@@ -31,7 +33,7 @@ import {
   formatBytes,
   validateImageFile,
 } from '@/features/designs/config'
-import { useParishMap, useSaveParishMap } from '../api'
+import { useParishMap, useMapPins, useSaveParishMap, useSetMapPin } from '../api'
 
 const FILE_ERROR_KEY: Record<'type' | 'size' | 'empty', string> = {
   type: 'features.map.errType',
@@ -43,10 +45,14 @@ export default function ParishMapPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const { data: areas = [] } = useAreas()
+  // Bản đồ của một mùa: role có khung chọn mùa chỉ lấy khu vực của mùa đó;
+  // role không có picker (PARISH) vẫn xem toàn bộ như trước.
+  const { seasonId } = useSeasonContext()
+  const { data: areas = [] } = useAreas(seasonId ? [seasonId] : undefined)
   const { data: mapRecord, isPending: mapPending } = useParishMap()
   const saveMap = useSaveParishMap()
-  const updateArea = useUpdateArea()
+  const { data: pins = {} } = useMapPins()
+  const setPin = useSetMapPin()
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Ban hành giáo + quản trị được phân bổ; các vai trò khác (nếu tới được) chỉ xem.
@@ -55,7 +61,7 @@ export default function ParishMapPage() {
   // Ban hành giáo chỉ phân bổ khu vực mình quản lý — khớp bộ lọc AreaListPage.
   // Giữ nguyên thứ tự tạo: khu tạo trước ở trên, tạo sau ở dưới.
   const scopedAreas = useMemo(() => {
-    return user?.role === 'COMMUNITY'
+    return user?.role === 'COMMUNITY' && user.communityId
       ? areas.filter((a) => a.communityId === user.communityId)
       : areas
   }, [areas, user])
@@ -98,17 +104,15 @@ export default function ParishMapPage() {
   const markers = useMemo<CanvasMarker[]>(
     () =>
       numbered
-        .filter(
-          ({ area }) => typeof area.mapX === 'number' && typeof area.mapY === 'number',
-        )
+        .filter(({ area }) => Boolean(pins[area.id]))
         .map(({ area, n }) => ({
           id: area.id,
-          x: area.mapX as number,
-          y: area.mapY as number,
+          x: pins[area.id].x,
+          y: pins[area.id].y,
           label: n,
           active: area.id === activeAreaId,
         })),
-    [numbered, activeAreaId],
+    [numbered, pins, activeAreaId],
   )
 
   const onPickFile = async (file: File | null) => {
@@ -134,7 +138,7 @@ export default function ParishMapPage() {
   const placeAt = async (point: NormalizedPoint) => {
     if (!placingId) return
     try {
-      await updateArea.mutateAsync({ id: placingId, mapX: point.x, mapY: point.y })
+      await setPin.mutateAsync({ areaId: placingId, pin: { x: point.x, y: point.y } })
       toast(t('features.map.positionSaved'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -145,7 +149,7 @@ export default function ParishMapPage() {
 
   const clearPosition = async (id: string) => {
     try {
-      await updateArea.mutateAsync({ id, mapX: null, mapY: null })
+      await setPin.mutateAsync({ areaId: id, pin: null })
       toast(t('features.map.positionCleared'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -246,7 +250,7 @@ export default function ParishMapPage() {
               <ul className="space-y-3">
                 {numbered.map(({ area, n }) => {
                   const Icon = AREA_ICONS[area.type]
-                  const placed = typeof area.mapX === 'number' && typeof area.mapY === 'number'
+                  const placed = Boolean(pins[area.id])
                   const isPlacing = placingId === area.id
                   return (
                     <li key={area.id}>

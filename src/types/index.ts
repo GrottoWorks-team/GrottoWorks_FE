@@ -18,6 +18,8 @@ export interface Community {
   parishId: string
   description?: string
   status: 'ACTIVE' | 'INACTIVE'
+  /** Dùng cho If-Match khi PATCH — BE chặn ghi đè bằng 412. */
+  version?: number
 }
 
 export interface User {
@@ -39,6 +41,8 @@ export interface Season {
   description?: string
   /** BE không lưu cộng đoàn trên mùa — suy ra từ WorkArea.CommunityId. */
   communityIds?: string[]
+  /** Dùng cho If-Match khi PATCH/activate/complete — BE chặn ghi đè bằng 412. */
+  version?: number
 }
 
 export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'
@@ -61,6 +65,8 @@ export interface WorkArea {
   description?: string
   mapX?: number
   mapY?: number
+  /** Dùng cho If-Match khi PATCH/PUT — BE chặn ghi đè bằng 412. */
+  version?: number
 }
 
 /**
@@ -171,7 +177,7 @@ export type RegistrationKind = 'VOLUNTEER' | 'MATERIAL' | 'MONETARY';
 export type RegistrationStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 /**
- * Đăng ký đồng hành công khai (form trên trang /register) — KHÁC với
+ * Đăng ký đồng hành công khai (form trên trang /join) — KHÁC với
  * VolunteerReg/SupportReg (đăng ký vào một nhiệm vụ/yêu cầu cụ thể, cần đăng
  * nhập). Bản ghi này để ban điều hành liên hệ lại; `createdAt`/`status` do
  * server/mock sinh khi POST.

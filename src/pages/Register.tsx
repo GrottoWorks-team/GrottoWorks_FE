@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useRegister } from '@/features/auth/api'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
+import { JoinOptions } from '@/components/auth/JoinOptions'
 
 const schema = z.object({
   displayName: z.string().trim().min(2, 'Họ và tên tối thiểu 2 ký tự'),
@@ -297,6 +298,9 @@ export default function Register() {
           </Link>
         </div>
       </form>
+
+      {/* Hợp nhất lối vào: nhắc luồng còn lại là đăng ký đồng hành (không cần tài khoản). */}
+      <JoinOptions current="signup" className="mt-4" />
     </AuthSplitLayout>
   )
 }

@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { useBorrowedItems, useMarkReturned } from '../api'
@@ -100,7 +100,7 @@ const daysLate = (iso: string) =>
 export default function BorrowedListPage() {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useAreas()
+  const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: items = [], isPending } = useBorrowedItems()
 
   const isOfficer = user?.role === 'MATERIAL_OFFICER'

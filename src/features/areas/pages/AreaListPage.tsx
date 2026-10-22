@@ -12,9 +12,10 @@ import { StatusTag } from '@/components/shared/StatusTag'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
-import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
+import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas, useDeleteArea, useSeasons, useUsers } from '../api'
 import { AreaCard } from '../components/AreaCard'
 import { AreaFormDialog, SELECT_CLS } from './AreaFormDialog'
@@ -29,13 +30,15 @@ export default function AreaListPage() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
-  const { user } = useAuth()
-
   // Ban hành giáo (COMMUNITY) chỉ quản lý/phân bổ khu vực — không mở bản thiết kế.
   // PARISH (quản trị) vẫn xem/duyệt bản thiết kế.
+  const { user } = useAuth()
   const canViewDesign = user?.role !== 'COMMUNITY'
 
-  const seasonParam = searchParams.get('season') ?? 'all'
+  // Mùa lấy từ header (SeasonProvider). URL vẫn là nguồn sự thật: dropdown của
+  // trang và khung chọn mùa trên header cùng ghi `?season=`.
+  const { seasonId: headerSeasonId } = useSeasonContext()
+  const seasonParam = searchParams.get('season') ?? headerSeasonId ?? 'all'
   const [selectedSeason, setSelectedSeason] = useState<string>(seasonParam)
 
   const { data: seasons = [], isPending: isSeasonsPending } = useSeasons()
@@ -69,7 +72,9 @@ export default function AreaListPage() {
   const seasonMap = useMemo(() => new Map(seasons.map((s) => [s.id, s])), [seasons])
 
   const areas = useMemo(() => {
-    if (user?.role === 'COMMUNITY') {
+    // Chỉ lọc theo cộng đoàn khi tài khoản THỰC SỰ thuộc một cộng đoàn; tài khoản
+    // ban hành giáo cấp giáo xứ (không có communityId) thấy toàn bộ khu.
+    if (user?.role === 'COMMUNITY' && user.communityId) {
       return rawAreas.filter((a) => a.communityId === user.communityId)
     }
     return rawAreas

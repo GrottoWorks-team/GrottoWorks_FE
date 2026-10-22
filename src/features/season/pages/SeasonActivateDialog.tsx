@@ -86,7 +86,7 @@ export function SeasonActivateDialog({
 
   const onActivate = async () => {
     try {
-      await activateSeason.mutateAsync(season.id)
+      await activateSeason.mutateAsync({ id: season.id, version: season.version })
       toast(t('features.season.activateSuccess', { year: season.year }))
       onClose()
     } catch {

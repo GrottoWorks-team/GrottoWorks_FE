@@ -6,10 +6,11 @@
 // duyệt (chỉ máy này); metadata đi qua MSW. Phân quyền chỉ được kiểm ở UI —
 // backend thật phải kiểm lại (xem docs/AI_LOG.md).
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   ArrowLeft,
+  Boxes,
   CheckCircle2,
   FilePlus2,
   MapPin,
@@ -23,11 +24,16 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import {
+  buttonBase,
+  buttonSizes,
+  buttonVariants,
+  Button,
+} from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/lib/auth'
 import { getBlob } from '@/lib/blobStore'
+import { useAuth } from '@/lib/auth'
 import { relTime } from '@/lib/format'
 import { useAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
@@ -44,6 +50,8 @@ import { ImageReviewCanvas } from '../components/ImageReviewCanvas'
 import type { CanvasMarker } from '../components/ImageReviewCanvas'
 import { ModelReviewCanvas } from '../components/ModelReviewCanvas'
 import type { ModelMarker } from '../components/ModelReviewCanvas'
+import { ScenePreview } from '@/features/builder/components/ScenePreview'
+import { isSceneFileKey } from '@/features/builder/designLink'
 import { CommentFormDialog } from '../components/CommentFormDialog'
 import { NewDesignDialog } from '../components/NewDesignDialog'
 import { UploadVersionDialog } from '../components/UploadVersionDialog'
@@ -79,7 +87,9 @@ export default function DesignReviewPage() {
       : '/community'
 
   const { data: areas = [] } = useAreas()
-  const { data: users = [] } = useUsers()
+  const { data: usersFromApi = [] } = useUsers()
+  // Chưa tải được danh sách user (thiếu quyền / lỗi mạng) → dùng chính user đang đăng nhập.
+  const users = usersFromApi.length ? usersFromApi : user ? [user] : []
   const area = areas.find((a) => a.id === areaId)
 
   const { data: designs = [], isPending: designsPending } = useDesigns(areaId)
@@ -93,6 +103,10 @@ export default function DesignReviewPage() {
     versions.find((v) => v.id === pickedVersionId) ??
     versions.find((v) => v.id === design?.currentVersionId) ??
     versions[0]
+
+  // Phiên bản được tạo bởi trình dựng 3D (fileKey `scene:*`) — nội dung là
+  // scene trong SceneRepository, không phải blob .glb.
+  const isSceneVersion = isSceneFileKey(selectedVersion?.fileKey)
 
   const { data: comments = [] } = useDesignComments(selectedVersion?.id)
   const updateVersion = useUpdateDesignVersion()
@@ -121,7 +135,7 @@ export default function DesignReviewPage() {
     setImageError(false)
     setImageUrl('')
     void (async () => {
-      if (!selectedVersion) return
+      if (!selectedVersion || isSceneVersion) return
       const blob = await getBlob(selectedVersion.fileKey).catch(() => null)
       if (cancelled) return
       if (!blob) {
@@ -254,6 +268,15 @@ export default function DesignReviewPage() {
               <ArrowLeft className="size-4" />
               {t('common.back')}
             </Button>
+            {canCreate && (
+              <Link
+                to={`${prefix}/areas/${areaId}/builder`}
+                className={cn(buttonBase, buttonVariants.outline, buttonSizes.default)}
+              >
+                <Boxes className="size-4" />
+                {t('builder.open')}
+              </Link>
+            )}
             {canCreate && selectedVersion && (
               <Button variant="outline" onClick={() => setUploadOpen(true)}>
                 <Upload className="size-4" />
@@ -320,7 +343,12 @@ export default function DesignReviewPage() {
                 )}
               </div>
 
-              {!imageUrl ? (
+              {isSceneVersion ? (
+                <ScenePreview
+                  workAreaId={areaId}
+                  builderHref={`${prefix}/areas/${areaId}/builder`}
+                />
+              ) : !imageUrl ? (
                 <p className="grid h-[420px] place-items-center rounded-card border border-border bg-muted/30 px-6 text-center text-sm font-semibold text-muted-foreground sm:h-[520px]">
                   {imageError
                     ? is3d
@@ -359,7 +387,11 @@ export default function DesignReviewPage() {
               )}
 
               <p className="mt-3 text-xs text-muted-foreground">
-                {is3d ? t('features.design.modelHint') : t('features.design.canvasHint')}
+                {isSceneVersion
+                  ? t('builder.preview.hint')
+                  : is3d
+                    ? t('features.design.modelHint')
+                    : t('features.design.canvasHint')}
               </p>
             </Card>
 
@@ -424,7 +456,7 @@ export default function DesignReviewPage() {
                   size="sm"
                   variant={addMode ? 'default' : 'outline'}
                   onClick={() => setAddMode((v) => !v)}
-                  disabled={imageError || !imageUrl}
+                  disabled={isSceneVersion || imageError || !imageUrl}
                 >
                   <MapPin className="size-4" />
                   {addMode ? t('features.design.clickOnImage') : t('features.design.attachPosition')}

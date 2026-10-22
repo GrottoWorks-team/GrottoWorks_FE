@@ -19,6 +19,7 @@ import {
   HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { roleHomePath } from '@/lib/roles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,6 +47,11 @@ const DEMO: DemoRoleConfig[] = [
   { role: 'MATERIAL_OFFICER', email: 'officer@grottoworks.vn', icon: Package, color: 'text-indigo-700' },
 ]
 
+// Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md` (BE yêu cầu ≥ 8 ký tự,
+// có ít nhất 1 chữ và 1 số nên `grotto` không hợp lệ). Đổi bằng biến môi trường
+// VITE_DEMO_PASSWORD nếu seed ở máy bạn dùng mật khẩu khác.
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'grotto123'
+
 export default function Login() {
   const { t } = useTranslation()
   const { login } = useAuth()
@@ -71,7 +77,7 @@ export default function Login() {
 
   const fillDemo = (email: string) => {
     setValue('email', email)
-    setValue('password', 'grotto')
+    setValue('password', DEMO_PASSWORD)
     setServerError('')
     setActiveDemo(email)
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -82,7 +88,7 @@ export default function Login() {
     setServerError('')
     try {
       const user = await login(data.email, data.password)
-      navigate(`/${user.role === 'MATERIAL_OFFICER' ? 'material-officer' : user.role.toLowerCase()}`)
+      navigate(roleHomePath(user.role))
     } catch {
       const msg = t('login.invalid')
       setServerError(msg)
@@ -98,7 +104,7 @@ export default function Login() {
           <div className="flex items-center justify-between mb-2">
             <span className="lbl-mono flex items-center gap-1.5 font-bold text-slate-600">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
-              {t('login.demoAccounts')}
+              {t('login.demoAccounts', { password: DEMO_PASSWORD })}
             </span>
             <span className="text-[10px] text-slate-500 font-medium">Bấm để tự điền</span>
           </div>
@@ -240,13 +246,13 @@ export default function Login() {
           <div className="pt-2 text-center text-xs text-slate-600 space-y-1">
             <div>
               Chưa có tài khoản quản lý?{' '}
-              <Link to="/register-account" className="font-semibold text-brand-pine hover:underline">
+              <Link to="/signup" className="font-semibold text-brand-pine hover:underline">
                 Đăng ký tài khoản
               </Link>
             </div>
             <div>
               Hoặc tham gia thiện nguyện?{' '}
-              <Link to="/register" className="font-semibold text-brand-goldHover hover:underline">
+              <Link to="/join" className="font-semibold text-brand-goldHover hover:underline">
                 Đăng ký Đồng Hành
               </Link>
             </div>

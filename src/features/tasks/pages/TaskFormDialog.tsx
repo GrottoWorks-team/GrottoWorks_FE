@@ -11,7 +11,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useCreateTask, useSkills, useUpdateTask } from '../api'
 import type { Task } from '@/types'
@@ -57,7 +57,7 @@ export function TaskFormDialog({
 }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const { data: skills = [] } = useSkills()
   const create = useCreateTask()
   const update = useUpdateTask()

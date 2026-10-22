@@ -4,9 +4,13 @@
 // Luồng: Design (hồ sơ theo khu vực) → DesignVersion (phiên bản file)
 // → DesignComment (yêu cầu chỉnh sửa, gắn theo MỘT phiên bản).
 // File blob nằm ở IndexedDB (xem lib/blobStore.ts) — metadata đi qua mock API.
+//
+// ⚠️ TẠM THỜI (FE-only): BE chưa có endpoint `/designs`, `/designVersions`,
+// `/designComments` → metadata lưu ở localStorage qua `localStore`. Khi BE bổ
+// sung endpoint: thay `designStore.*` bằng `api(...)` (giữ nguyên hook surface).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
 import type { Design, DesignComment, DesignVersion } from '@/types'
+import { designStore } from './localStore'
 
 export const designKeys = {
   all: ['designs'] as const,
@@ -19,7 +23,7 @@ export const designKeys = {
 export function useDesigns(areaId?: string) {
   return useQuery({
     queryKey: designKeys.all,
-    queryFn: () => api<Design[]>('/designs'),
+    queryFn: async () => designStore.listDesigns(),
     select: areaId ? (list) => list.filter((d) => d.areaId === areaId) : undefined,
   })
 }
@@ -27,7 +31,7 @@ export function useDesigns(areaId?: string) {
 export function useDesignVersions(designId?: string) {
   return useQuery({
     queryKey: designKeys.versions,
-    queryFn: () => api<DesignVersion[]>('/designVersions'),
+    queryFn: async () => designStore.listVersions(),
     select: designId
       ? (list) =>
           list
@@ -40,7 +44,7 @@ export function useDesignVersions(designId?: string) {
 export function useDesignComments(versionId?: string) {
   return useQuery({
     queryKey: designKeys.comments,
-    queryFn: () => api<DesignComment[]>('/designComments'),
+    queryFn: async () => designStore.listComments(),
     select: versionId ? (list) => list.filter((c) => c.designVersionId === versionId) : undefined,
   })
 }
@@ -62,23 +66,20 @@ function useDesignMutation<TVars, TResult>(
 }
 
 export function useCreateDesign() {
-  return useDesignMutation((data: Omit<Design, 'id'>) =>
-    api<Design>('/designs', { method: 'POST', body: JSON.stringify(data) }),
-  )
+  return useDesignMutation(async (data: Omit<Design, 'id'>) => designStore.createDesign(data))
 }
 
 export function useUpdateDesign() {
   return useDesignMutation(
-    ({ id, ...data }: Partial<Omit<Design, 'id'>> & { id: string }) =>
-      api<Design>(`/designs/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    async ({ id, ...data }: Partial<Omit<Design, 'id'>> & { id: string }) =>
+      designStore.updateDesign(id, data),
   )
 }
 
 /** Tạo phiên bản mới. KHÔNG ghi đè phiên bản cũ (lịch sử vẫn xem được). */
 export function useCreateDesignVersion() {
   return useDesignMutation(
-    (data: Omit<DesignVersion, 'id'>) =>
-      api<DesignVersion>('/designVersions', { method: 'POST', body: JSON.stringify(data) }),
+    async (data: Omit<DesignVersion, 'id'>) => designStore.createVersion(data),
     [designKeys.versions],
   )
 }
@@ -86,34 +87,30 @@ export function useCreateDesignVersion() {
 /** Duyệt / yêu cầu chỉnh sửa / đổi trạng thái phiên bản. */
 export function useUpdateDesignVersion() {
   return useDesignMutation(
-    ({ id, ...data }: Partial<Omit<DesignVersion, 'id'>> & { id: string }) =>
-      api<DesignVersion>(`/designVersions/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    async ({ id, ...data }: Partial<Omit<DesignVersion, 'id'>> & { id: string }) =>
+      designStore.updateVersion(id, data),
     [designKeys.versions],
   )
 }
 
 export function useCreateDesignComment() {
   return useDesignMutation(
-    (data: Omit<DesignComment, 'id'>) =>
-      api<DesignComment>('/designComments', { method: 'POST', body: JSON.stringify(data) }),
+    async (data: Omit<DesignComment, 'id'>) => designStore.createComment(data),
     [designKeys.comments],
   )
 }
 
 export function useUpdateDesignComment() {
   return useDesignMutation(
-    ({ id, ...data }: Partial<Omit<DesignComment, 'id'>> & { id: string }) =>
-      api<DesignComment>(`/designComments/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
+    async ({ id, ...data }: Partial<Omit<DesignComment, 'id'>> & { id: string }) =>
+      designStore.updateComment(id, data),
     [designKeys.comments],
   )
 }
 
 export function useDeleteDesignComment() {
   return useDesignMutation(
-    (id: string) => api<void>(`/designComments/${id}`, { method: 'DELETE' }),
+    async (id: string) => designStore.deleteComment(id),
     [designKeys.comments],
   )
 }

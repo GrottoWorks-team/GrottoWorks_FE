@@ -18,6 +18,8 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   PLANNING: 'soft', PLANNED: 'soft', READY: 'ok', COMPLETED: 'ok', ARCHIVED: 'soft',
   READINESS_REVIEW: 'warn', NEEDS_CORRECTION: 'alert', INACTIVE: 'soft',
   DRAFT: 'soft',
+  // Trạng thái TaskExecution (enum serialize SNAKE_CASE_UPPER).
+  NOT_STARTED: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert', CANCELLED: 'soft',
 }
 
 // DESIGN_SYSTEM.md mục 12 — Status Badge: pastel background + dark text.

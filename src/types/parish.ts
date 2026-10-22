@@ -45,6 +45,8 @@ export interface SeasonDto {
   estimatedBudget: number | null
   createdAt: string
   updatedAt: string | null
+  /** Optimistic concurrency — BE bắt buộc gửi lại qua header If-Match khi PATCH. */
+  version?: number
 }
 
 export interface WorkAreaDto {
@@ -58,6 +60,8 @@ export interface WorkAreaDto {
   startDate?: string | null
   deadline?: string | null
   status: WorkAreaStatus
+  /** Optimistic concurrency — BE bắt buộc gửi lại qua header If-Match khi PATCH/PUT. */
+  version?: number
 }
 
 export interface CreateParishRequest {

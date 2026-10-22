@@ -7,20 +7,17 @@ import { AppShell } from '@/components/shared/AppShell'
 import { NAV } from '@/components/shared/nav-config'
 import { RequireRole } from '@/routes/RequireRole'
 import { AuthProvider, useAuth } from '@/lib/auth'
+import { roleHomePath, rolePrefix } from '@/lib/roles'
 import { ToastProvider } from '@/components/ui/toast'
 import { Card } from '@/components/ui/card'
 import type { Role } from '@/types'
-
-function rolePrefix(role: Role): string {
-  return role === 'MATERIAL_OFFICER' ? 'material-officer' : role.toLowerCase()
-}
 
 const Login = lazy(() => import('@/pages/Login'))
 const NotFound = lazy(() => import('@/pages/NotFound'))
 const Profile = lazy(() => import('@/pages/Profile'))
 const Landing = lazy(() => import('@/features/landing/LandingPage'))
-const Register = lazy(() => import('@/features/landing/RegisterPage'))
-const UserRegister = lazy(() => import('@/pages/Register'))
+const JoinPage = lazy(() => import('@/features/landing/RegisterPage'))
+const SignUpPage = lazy(() => import('@/pages/Register'))
 const SeasonListPage = lazy(() => import('@/features/season/pages/SeasonListPage'))
 const AreaListPage = lazy(() => import('@/features/areas/pages/AreaListPage'))
 const TaskListPage = lazy(() => import('@/features/tasks/pages/TaskListPage'))
@@ -39,17 +36,20 @@ const AllocationPage = lazy(() => import('@/features/allocations/pages/Allocatio
 const TimesheetPage = lazy(() => import('@/features/timesheets/pages/TimesheetPage'))
 const ChecklistPage = lazy(() => import('@/features/checklist/pages/ChecklistPage'))
 const ReportPage = lazy(() => import('@/features/reports/pages/ReportPage'))
-const CommitteeDashboard = lazy(() => import('@/features/dashboards/CommitteeDashboard'))
-const LeaderDashboard = lazy(() => import('@/features/dashboards/LeaderDashboard'))
-const OfficerDashboard = lazy(() => import('@/features/dashboards/OfficerDashboard'))
+const CommitteeOverview = lazy(() => import('@/features/dashboards/CommitteeOverview'))
+const LeaderOverview = lazy(() => import('@/features/dashboards/LeaderOverview'))
+const OfficerOverview = lazy(() => import('@/features/dashboards/OfficerOverview'))
+const ParishOverview = lazy(() => import('@/features/dashboards/ParishOverview'))
 const AccountsPage = lazy(() => import('@/features/parish/pages/AccountsPage'))
 const CommunitiesPage = lazy(() => import('@/features/parish/pages/CommunitiesPage'))
 const CategoriesPage = lazy(() => import('@/features/parish/pages/CategoriesPage'))
 const PointRulesPage = lazy(() => import('@/features/parish/pages/PointRulesPage'))
 const NotificationsPage = lazy(() => import('@/features/parish/pages/NotificationsPage'))
+const RoleNotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'))
 const ActivityPage = lazy(() => import('@/features/parish/pages/ActivityPage'))
 const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
 const DesignReviewPage = lazy(() => import('@/features/designs/pages/DesignReviewPage'))
+const BuilderPage = lazy(() => import('@/features/builder/pages/BuilderPage'))
 const ParishMapPage = lazy(() => import('@/features/map/pages/ParishMapPage'))
 
 // Trang thật theo route `to` của nav-config; mục chưa có → Placeholder.
@@ -83,6 +83,9 @@ const PAGES: Record<string, ComponentType> = {
   '/parish/categories': CategoriesPage,
   '/parish/point-rules': PointRulesPage,
   '/parish/notifications': NotificationsPage,
+  '/community/notifications': RoleNotificationsPage,
+  '/leader/notifications': RoleNotificationsPage,
+  '/material-officer/notifications': RoleNotificationsPage,
   '/parish/activity': ActivityPage,
   '/parish/backup': BackupPage,
 }
@@ -94,6 +97,9 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'tasks/:id', Page: TaskDetailPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
+    // 3D Layer Builder (giai đoạn A): chỉ LEADER — giữ nguyên chính sách
+    // quyền hiện có (LEADER tạo/sửa thiết kế, PARISH chỉ duyệt).
+    { path: 'areas/:id/builder', Page: BuilderPage },
   ],
   COMMUNITY: [
     { path: 'areas/:id/tasks', Page: TaskListPage },
@@ -105,7 +111,19 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
   ],
 }
 
-const queryClient = new QueryClient()
+// Retry mặc định của React Query là 3 lần + backoff (~7s): khi BE chưa chạy
+// trang sẽ treo ở "Đang tải…" rất lâu. Giảm còn 1 lần, delay ngắn.
+// staleTime 30s: điều hướng qua lại giữa các trang dùng chung dữ liệu danh mục
+// (seasons / areas / users / communities) không phải gọi lại BE.
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      retryDelay: 300,
+      staleTime: 30_000,
+    },
+  },
+})
 const ROLES: Role[] = ['COMMUNITY', 'LEADER', 'MATERIAL_OFFICER', 'PARISH']
 
 // Placeholder lazy cho mọi route con — Task 4+ thay bằng page thật.
@@ -124,14 +142,14 @@ function Placeholder({ label }: { label: string }) {
 function RootRedirect() {
   const { user, isPending } = useAuth()
   if (isPending) return null
-  return user ? <Navigate to={`/${rolePrefix(user.role)}`} replace /> : <Landing />
+  return user ? <Navigate to={roleHomePath(user.role)} replace /> : <Landing />
 }
 
 // /login khi đã có phiên → thẳng dashboard role, không hiện form lần nữa.
 function LoginGate() {
   const { user, isPending } = useAuth()
   if (isPending) return null
-  if (user) return <Navigate to={`/${rolePrefix(user.role)}`} replace />
+  if (user) return <Navigate to={roleHomePath(user.role)} replace />
   return <Login />
 }
 
@@ -173,18 +191,20 @@ function roleRoutes(role: Role) {
         element={
           role === 'COMMUNITY' ? (
             <Suspense fallback={null}>
-              <CommitteeDashboard />
+              <CommitteeOverview />
             </Suspense>
           ) : role === 'LEADER' ? (
             <Suspense fallback={null}>
-              <LeaderDashboard />
+              <LeaderOverview />
             </Suspense>
           ) : role === 'MATERIAL_OFFICER' ? (
             <Suspense fallback={null}>
-              <OfficerDashboard />
+              <OfficerOverview />
             </Suspense>
           ) : (
-            <Placeholder label={items[0].label} />
+            <Suspense fallback={null}>
+              <ParishOverview />
+            </Suspense>
           )
         }
       />
@@ -218,9 +238,9 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<RootRedirect />} />
                 <Route path="/login" element={<LoginGate />} />
-                {/* Trang công khai: landing ở "/", đăng ký đồng hành ở "/register". */}
-                <Route path="/register" element={<Register />} />
-                <Route path="/register-account" element={<UserRegister />} />
+                {/* Trang công khai: landing ở "/", đăng ký đồng hành ở "/join", tạo tài khoản ở "/signup". */}
+                <Route path="/join" element={<JoinPage />} />
+                <Route path="/signup" element={<SignUpPage />} />
                 <Route
                   path="/profile"
                   element={

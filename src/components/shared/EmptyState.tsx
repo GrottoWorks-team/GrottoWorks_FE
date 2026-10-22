@@ -5,10 +5,13 @@ import { cn } from '@/lib/utils'
 export function EmptyState({
   text,
   action,
+  icon,
   className,
 }: {
   text: string
   action?: ReactNode
+  /** Icon thay cho hộp thư mặc định (tuỳ ngữ cảnh: đã đọc hết, chưa có dữ liệu…). */
+  icon?: ReactNode
   className?: string
 }) {
   return (
@@ -18,7 +21,13 @@ export function EmptyState({
         className,
       )}
     >
-      <Inbox className="size-8 text-muted-foreground" aria-hidden />
+      {icon ? (
+        <span className="text-muted-foreground [&_svg]:size-8" aria-hidden>
+          {icon}
+        </span>
+      ) : (
+        <Inbox className="size-8 text-muted-foreground" aria-hidden />
+      )}
       <p className="text-sm text-muted-foreground">{text}</p>
       {action}
     </div>

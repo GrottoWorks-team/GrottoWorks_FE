@@ -17,7 +17,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useTasks } from '@/features/tasks/api'
 import { useUsers } from '@/features/users/api'
@@ -46,7 +46,7 @@ export default function AllocationPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useAreas()
+  const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: users = [] } = useUsers()
   const { data: allTasks = [] } = useTasks()
   const { data: allMaterials = [] } = useMaterials()

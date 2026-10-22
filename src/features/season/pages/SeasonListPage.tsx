@@ -59,7 +59,7 @@ export default function SeasonListPage() {
 
   const onConfirmActivate = async (s: Season) => {
     try {
-      await activateSeason.mutateAsync(s.id)
+      await activateSeason.mutateAsync({ id: s.id, version: s.version })
       toast(t('features.season.activateSuccess', { year: s.year }))
       setActivatingConfirm(null)
     } catch {
@@ -191,7 +191,7 @@ export default function SeasonListPage() {
 
   const onCloseSeason = async (s: Season) => {
     try {
-      await closeSeason.mutateAsync(s.id)
+      await closeSeason.mutateAsync({ id: s.id, version: s.version })
       toast(t('features.season.closed', { year: s.year }))
     } catch {
       toast(t('common.error'), 'alert')

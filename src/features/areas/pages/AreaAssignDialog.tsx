@@ -47,7 +47,14 @@ export function AreaAssignDialog({
 
   const onSubmit = async (data: FormData) => {
     try {
-      await update.mutateAsync({ id: area.id, ...data })
+      // BE tách 2 endpoint (leader / material-officer) → hook useUpdateArea tự
+      // gọi đúng thứ tự và chuyền version qua If-Match.
+      await update.mutateAsync({
+        id: area.id,
+        version: area.version,
+        leaderId: data.leaderId,
+        officerId: data.officerId,
+      })
       toast(t('features.areas.assigned', { name: area.name }))
       onClose()
     } catch {

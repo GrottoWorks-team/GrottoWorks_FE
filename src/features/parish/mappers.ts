@@ -25,6 +25,7 @@ export function toCommunity(dto: CommunityDto): Community {
     name: dto.name,
     description: opt(dto.description),
     status: dto.status,
+    version: dto.version,
   }
 }
 
@@ -41,6 +42,7 @@ export function toSeason(dto: SeasonDto): Season {
     description: opt(dto.description),
     // BE không lưu cộng đoàn trên mùa; trang Mùa suy ra từ work-areas.
     communityIds: [],
+    version: dto.version,
   }
 }
 
@@ -56,6 +58,7 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
     startDate: opt(dto.startDate),
     deadline: opt(dto.deadline),
     status: dto.status,
+    version: dto.version,
     // ponytail: BE chưa trả type/level/progress/volunteerCount/taskCount
     // (những số này thuộc service Task/Volunteer, chưa gắn). Mặc định để UI
     // render được; gắn service tương ứng thì bỏ các dòng này.

@@ -34,7 +34,7 @@ function renderPage() {
   return render(
     <QueryClientProvider client={qc}>
       <ToastProvider>
-        <MemoryRouter initialEntries={['/register']}>
+        <MemoryRouter initialEntries={['/join']}>
           <RegisterPage />
         </MemoryRouter>
       </ToastProvider>

@@ -11,7 +11,7 @@ import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useAuth } from '@/lib/auth'
 import { shortage } from '@/types'
@@ -23,7 +23,7 @@ export default function PurchaseListPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useAreas()
+  const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: materials = [] } = useMaterials()
   const { data: requests = [], isPending } = usePurchaseRequests()
   const send = useSendForApproval()
@@ -111,7 +111,8 @@ export default function PurchaseListPage() {
     .filter((m) => myAreas.some((a) => a.id === m.areaId))
     .filter((m) => shortage(m) > 0)
 
-  if (areasPending) return <p className="lbl-mono">{t('common.loading')}</p>
+  // Hook phải đứng TRƯỚC mọi early return (nếu không → "Rendered fewer hooks
+  // than expected" khi areas chuyển từ pending → có dữ liệu).
   const stats = useMemo(() => {
     const total = rows.length
     const draft = rows.filter((r) => r.status === 'DRAFT').length
@@ -119,6 +120,8 @@ export default function PurchaseListPage() {
     const approved = rows.filter((r) => r.status === 'APPROVED').length
     return { total, draft, pending, approved }
   }, [rows])
+
+  if (areasPending) return <p className="lbl-mono">{t('common.loading')}</p>
 
   return (
     <div className="space-y-6">

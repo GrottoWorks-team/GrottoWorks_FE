@@ -13,7 +13,7 @@ import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import { useAuth } from '@/lib/auth'
 import { exportCsv } from '@/lib/csv'
@@ -29,7 +29,7 @@ export default function MaterialListPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useAreas()
+  const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: users = [] } = useUsers()
 
   // Officer: khu mình phụ trách; committee/parish: mọi khu (chọn hoặc tất cả).

@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/lib/auth'
+import { roleHomePath } from '@/lib/roles'
 import { Button } from '@/components/ui/button'
 
 const d = (n: number) => ({ '--d': n }) as CSSProperties
@@ -23,7 +24,7 @@ export function Forbidden() {
           {t('error.forbiddenSub')}
         </p>
         <div className="mt-6" style={d(3)}>
-          <Button onClick={() => navigate(user ? `/${user.role.toLowerCase()}` : '/login')}>
+          <Button onClick={() => navigate(user ? roleHomePath(user.role) : '/login')}>
             {t('error.backHome')}
           </Button>
         </div>
