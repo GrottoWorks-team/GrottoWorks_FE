@@ -66,7 +66,7 @@ function CommunityFormDialog({
   const onSubmit = async (data: FormData) => {
     try {
       if (editing && community) {
-        await update.mutateAsync({ id: community.id, name: data.name })
+        await update.mutateAsync({ id: community.id, version: community.version, name: data.name })
         toast(t('features.parish.updated', { name: data.name }))
       } else {
         await create.mutateAsync({ name: data.name, parishId: parishId! })

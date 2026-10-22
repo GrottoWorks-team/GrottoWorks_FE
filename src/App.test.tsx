@@ -17,7 +17,7 @@ describe('App', () => {
     expect(screen.getByText('Đăng nhập')).toBeDefined()
     // Landing có liên kết tới trang đăng ký đồng hành.
     expect(
-      screen.getAllByRole('link').some((a) => a.getAttribute('href') === '/register'),
+      screen.getAllByRole('link').some((a) => a.getAttribute('href') === '/join'),
     ).toBe(true)
   })
 

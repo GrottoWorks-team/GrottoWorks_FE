@@ -7,7 +7,7 @@ import { toCommunity } from '@/features/parish/mappers'
 import { useCurrentParishId } from '@/features/parish/hooks'
 
 /** GET /api/v1/parishes/{parishId}/communities — BE trả mảng thẳng, không phân trang. */
-export function useCommunities() {
+export function useCommunities(options: { enabled?: boolean } = {}) {
   const { parishId, isPending } = useCurrentParishId()
   return useQuery({
     queryKey: ['communities', parishId ?? ''],
@@ -15,6 +15,6 @@ export function useCommunities() {
       const list = await api<CommunityDto[]>(`/api/v1/parishes/${parishId}/communities`)
       return list.map(toCommunity)
     },
-    enabled: Boolean(parishId) && !isPending,
+    enabled: (options.enabled ?? true) && Boolean(parishId) && !isPending,
   })
 }

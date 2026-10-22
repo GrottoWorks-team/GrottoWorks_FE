@@ -16,7 +16,7 @@ import type {
   UpdateWorkAreaCategoryRequest,
   WorkAreaCategoryDto,
 } from '@/types/parish'
-import { toParish } from './mappers'
+import { toCommunity, toParish } from './mappers'
 import { useCurrentParishId } from './hooks'
 
 export const parishKeys = {
@@ -39,10 +39,14 @@ export function useCreateParish() {
   })
 }
 
-/** GET /api/v1/parishes â€” ADMIN tháº¥y má»i giÃ¡o xá»©, PARISH chá»‰ tháº¥y giÃ¡o xá»© mÃ¬nh. */
-export function useParishes() {
+/**
+ * GET /api/v1/parishes — ADMIN thấy mọi giáo xứ, PARISH chỉ thấy giáo xứ mình.
+ * `enabled: false` cho role không có quyền (LEADER/MO) để khỏi gọi mạng thừa.
+ */
+export function useParishes(options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: parishKeys.all,
+    enabled: options.enabled ?? true,
     queryFn: async () => {
       // ponytail: api() unwrap máº¥t `page`; size=100 láº¥y háº¿t má»™t lÆ°á»£t rá»“i Ä‘á»ƒ
       // DataTable phÃ¢n trang client. BE cháº·n size>100 báº±ng 400.
@@ -100,17 +104,18 @@ export function useUpdateParish() {
   })
 }
 
+/** Danh mục kỹ năng — BE trả SkillDto (id/code/name); UI chỉ cần tên. */
 export function useAdminSkills() {
   return useQuery({
     queryKey: adminKeys.skills,
     queryFn: async () => {
       try {
-        const skills = await api<any[]>('/api/v1/skills')
+        const skills = await api<Array<string | { name: string }>>('/api/v1/skills')
         if (Array.isArray(skills)) {
           return skills.map((s) => (typeof s === 'string' ? s : s.name))
         }
       } catch {
-        // fallback
+        // BE lỗi/quyền không đủ → coi như chưa có danh mục
       }
       return []
     },
@@ -209,20 +214,36 @@ export function useCreateCommunity() {
   )
 }
 
-// ponytail: BE chÆ°a cÃ³ PATCH /communities/{id} â€” giá»¯ mock /api/communities/{id}
-// (MSW). Gáº¯n khi service bá»• sung endpoint.
+/**
+ * PATCH /api/v1/communities/{id} — BE tách endpoint riêng cho cộng đoàn và bắt
+ * buộc If-Match (thiếu → 400 INVALID_IF_MATCH, lệch version → 412).
+ */
 export function useUpdateCommunity() {
   return useAdminMutation(
-    [[ 'communities' ], [ 'admin', 'parish' ]],
-    ({ id, ...data }: Partial<Community> & { id: string }) =>
-      api<Community>(`/api/v1/communities/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    [['communities'], ['admin', 'parish']],
+    async ({ id, version, ...data }: {
+      id: string
+      version?: number
+      name?: string
+      description?: string
+      status?: Community['status']
+    }) => {
+      const dto = await api<CommunityDto>(`/api/v1/communities/${id}`, {
+        method: 'PATCH',
+        headers: version === undefined ? {} : { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ name: data.name, description: data.description, status: data.status }),
+      })
+      return toCommunity(dto)
+    },
   )
 }
 
-// ponytail: BE chÆ°a cÃ³ DELETE /communities/{id} â€” giá»¯ mock.
+// BE hiện CHƯA có DELETE /api/v1/communities/{id} (xem
+// BE-gap-requests-activity-flows.md) — gọi đúng đường dẫn chuẩn để khi BE bổ
+// sung là chạy, thay vì endpoint mock đã bị xoá.
 export function useDeleteCommunity() {
-  return useAdminMutation([[ 'communities' ]], (id: string) =>
-    api<void>(`/communities/${id}`, { method: 'DELETE' }),
+  return useAdminMutation([['communities']], (id: string) =>
+    api<void>(`/api/v1/communities/${id}`, { method: 'DELETE' }),
   )
 }
 

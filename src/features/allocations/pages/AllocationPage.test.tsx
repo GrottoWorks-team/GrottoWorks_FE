@@ -88,6 +88,7 @@ vi.mock('@/features/materials/api', () => ({
 
 vi.mock('@/features/areas/api', () => ({
   useAreas: () => ({ data: mockAreas, isPending: false }),
+  useScopedAreas: () => ({ data: mockAreas, isPending: false }),
 }))
 
 vi.mock('@/features/tasks/api', () => ({

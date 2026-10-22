@@ -110,7 +110,16 @@ export function SeasonFormDialog({
   const onSubmit = async (data: FormData) => {
     try {
       if (editing && season) {
-        await update.mutateAsync({ id: season.id, ...data })
+        await update.mutateAsync({
+          id: season.id,
+          version: season.version,
+          name: data.name,
+          year: data.year,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          budget: data.budget,
+          description: data.description || undefined,
+        })
         toast(t('features.season.updated', { year: data.year }))
       } else {
         await create.mutateAsync({

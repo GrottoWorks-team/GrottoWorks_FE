@@ -18,7 +18,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useUsers } from '@/features/users/api'
 import { useAuth } from '@/lib/auth'
@@ -183,7 +183,7 @@ export default function PurchaseConfirmPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useAreas()
+  const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: materials = [] } = useMaterials()
   const { data: users = [] } = useUsers()
   const { data: requests = [] as PurchaseRequest[], isPending } = useMockPurchaseRequests()

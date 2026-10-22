@@ -16,7 +16,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button, buttonBase, buttonSizes, buttonVariants } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { useDeleteTask, useTasks } from '../api'
@@ -33,7 +33,7 @@ export default function TaskListPage() {
 
     const readOnly = pathname.startsWith('/community/') || pathname.startsWith('/parish/')
 
-  const { data: areas = [] } = useAreas()
+  const { data: areas = [] } = useScopedAreas()
   const deleteTask = useDeleteTask()
 
   // Khu của leader: 1 khu → cố định; nhiều khu → select (default khu đầu).

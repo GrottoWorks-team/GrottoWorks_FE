@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
 import { Snowfall } from '@/components/shared/Snowfall'
 import { WinterBackdrop } from '@/components/shared/WinterBackdrop'
+import { JoinOptions } from '@/components/auth/JoinOptions'
 import { cn } from '@/lib/utils'
 import { useCommunities } from '@/features/communities/api'
 import { useSkills } from '@/features/tasks/api'
@@ -110,6 +111,9 @@ export default function RegisterPage() {
         <ArrowLeft className="h-4 w-4" />
         {t('landing.nav.backHome')}
       </Link>
+
+      {/* Hợp nhất lối vào: nhắc luồng còn lại là tạo tài khoản. */}
+      <JoinOptions current="join" className="relative z-10 mb-4 w-full max-w-4xl" />
 
       <Card className="g-item relative z-10 w-full max-w-4xl overflow-hidden shadow-xl ring-1 ring-black/5">
         {/* Logo + tiêu đề: cùng khối header của Card trang Login. */}

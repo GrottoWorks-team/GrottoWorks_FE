@@ -27,7 +27,7 @@ describe('LandingPage', () => {
     expect(screen.getByAltText('Mã QR tải ứng dụng GrottoWorks')).toBeDefined()
     expect(screen.getByText('Quét mã để tải ứng dụng')).toBeDefined()
     expect(
-      screen.getAllByRole('link').some((a) => a.getAttribute('href') === '/register'),
+      screen.getAllByRole('link').some((a) => a.getAttribute('href') === '/join'),
     ).toBe(true)
   })
 })

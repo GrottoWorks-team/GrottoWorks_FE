@@ -2,16 +2,20 @@ import { useMemo } from 'react'
 import type { CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import { useQuery } from '@tanstack/react-query'
 import {
   LogOut, LayoutDashboard, Calendar, MapPin, Users, ShoppingCart, LifeBuoy,
   ListChecks, FileText, ClipboardList, ClipboardCheck, UserPlus, Inbox, Clock,
   Package, Gift, Backpack, Boxes, UserCog, Church, Tags, Star, History, Database,
-  MapPinned,
+  MapPinned, Info, Bell,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
-import { useSupportRequests } from '@/features/support/api'
-import { usePurchaseRequests } from '@/features/purchases/api'
+import { api } from '@/lib/api'
+import { roleHomePath } from '@/lib/roles'
+import { SeasonProvider, SeasonSelect } from '@/features/season/season-context'
+import { useNotificationFeed } from '@/features/notifications/api'
+import { useSeenIds } from '@/features/notifications/seen'
 import { NAV } from './nav-config'
 import { NotificationsDropdown } from './NotificationsDropdown'
 import { Avatar } from '@/components/ui/avatar'
@@ -26,7 +30,7 @@ const ICONS: Record<string, LucideIcon> = {
   tasks: ClipboardList, inbox: Inbox, clock: Clock, materials: Package,
   gift: Gift, borrowed: Backpack, boxes: Boxes, accounts: UserCog,
   church: Church, tags: Tags, star: Star, history: History, backup: Database,
-  assign: UserPlus, confirm: ClipboardCheck, map: MapPinned,
+  assign: UserPlus, confirm: ClipboardCheck, map: MapPinned, bell: Bell,
 }
 
 export function AppShell({ role }: { role?: Role }) {
@@ -36,14 +40,39 @@ export function AppShell({ role }: { role?: Role }) {
   const { pathname } = useLocation()
   const r: Role = role ?? user?.role ?? 'COMMUNITY'
   const groups = NAV[r]
+  // Dashboard là mục duy nhất dùng khớp CHÍNH XÁC; các mục còn lại so prefix.
+  const homePath = roleHomePath(r)
 
-  // Badge: hỗ trợ khẩn cấp đang mở + đề nghị mua chờ duyệt (dùng chung cache key qua hook).
-  const { data: support } = useSupportRequests()
-  const { data: purchases = [] } = usePurchaseRequests()
-  const badgeCount = (kind: 'support' | 'purchases') =>
-    kind === 'support'
-      ? (support?.filter((x) => x.status === 'OPEN').length ?? 0)
-      : (purchases?.filter((x) => x.status === 'PENDING_APPROVAL').length ?? 0)
+  // Khung chọn mùa chỉ đặt ở 3 role vận hành theo mùa; PARISH quản lý mùa ở
+  // trang "Mùa Giáng sinh" nên không cần.
+  const showSeasonPicker = r === 'COMMUNITY' || r === 'LEADER' || r === 'MATERIAL_OFFICER'
+
+  // Badge điều hướng:
+  // - purchases: endpoint THẬT (chỉ PARISH/LEADER/MO đọc được → ADMIN không bật,
+  //   tránh 403 mọi trang).
+  // - support: BE chưa có endpoint `/support-requests` → không gọi mạng (xem
+  //   BE-gap-requests-activity-flows.md), badge luôn 0.
+  const canReadPurchases =
+    r === 'COMMUNITY' || r === 'LEADER' || r === 'MATERIAL_OFFICER'
+  const { data: pendingPurchases = [] } = useQuery({
+    queryKey: ['purchaseRequests', 'pendingApproval'],
+    enabled: canReadPurchases,
+    queryFn: () =>
+      api<{ id: string }[]>('/api/v1/purchase-requests?status=PENDING_APPROVAL&size=50'),
+  })
+
+  // Badge "Thông báo" = số mục chưa đọc của feed (dùng chung store 'đã đọc'
+  // với chuông nên bấm "Đọc tất cả" là badge về 0).
+  const { items: feedItems } = useNotificationFeed()
+  const seenIds = useSeenIds()
+  const unreadCount = feedItems.filter((i) => !seenIds.includes(i.id)).length
+
+  const badgeCount = (kind?: 'support' | 'purchases' | 'notifications') =>
+    kind === 'purchases'
+      ? pendingPurchases.length
+      : kind === 'notifications'
+        ? unreadCount
+        : 0
 
   // Crumb: mục nav khớp pathname dài nhất (prefix-match), không có → tên app.
   const crumb = useMemo(() => {
@@ -58,7 +87,8 @@ export function AppShell({ role }: { role?: Role }) {
   const delayOf = (to: string) => Math.min(flat.findIndex((i) => i.to === to), 14)
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <SeasonProvider scoped={showSeasonPicker}>
+      <div className="flex h-screen overflow-hidden">
       <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
         <div className="flex items-center gap-3 border-b border-border px-5 py-5">
           <div className="grid size-11 shrink-0 place-items-center rounded-card bg-primary text-lg font-extrabold text-primary-foreground">
@@ -85,7 +115,7 @@ export function AppShell({ role }: { role?: Role }) {
                     <NavLink
                       key={item.to}
                       to={item.to}
-                      end={item.to === `/${r.toLowerCase()}`}
+                      end={item.to === homePath}
                       style={{ '--d': delayOf(item.to) } as CSSProperties}
                       className={({ isActive }) =>
                         cn(
@@ -110,6 +140,19 @@ export function AppShell({ role }: { role?: Role }) {
             </div>
           ))}
         </nav>
+
+        {/* Ghi chú cuối sidebar: mục đích của role đang đăng nhập. */}
+        <div className="shrink-0 border-t border-border p-3">
+          <div className="rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-pine">
+              <Info className="size-3.5 shrink-0" aria-hidden />
+              <span className="truncate">{t(`role.${r}`)}</span>
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-brand-pine/80">
+              {t(`shell.roleNote.${r}`)}
+            </p>
+          </div>
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -120,6 +163,7 @@ export function AppShell({ role }: { role?: Role }) {
             <span>{crumb}</span>
           </div>
           <div className="flex items-center gap-2">
+            {showSeasonPicker && <SeasonSelect />}
             <NotificationsDropdown />
             <Link
               to="/profile"
@@ -153,6 +197,7 @@ export function AppShell({ role }: { role?: Role }) {
           <Outlet />
         </main>
       </div>
-    </div>
+      </div>
+    </SeasonProvider>
   )
 }
