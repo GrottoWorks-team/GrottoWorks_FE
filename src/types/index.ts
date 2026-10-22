@@ -43,6 +43,7 @@ export interface Season {
   communityIds?: string[]
   /** Dùng cho If-Match khi PATCH/activate/complete — BE chặn ghi đè bằng 412. */
   version?: number
+  createdAt?: string
 }
 
 export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'

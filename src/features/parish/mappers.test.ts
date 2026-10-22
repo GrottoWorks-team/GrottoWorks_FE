@@ -39,6 +39,7 @@ describe('toSeason', () => {
       id: 's1', parishId: 'p1', name: 'Mùa Giáng sinh 2026', year: 2026,
       startDate: '2026-10-01', endDate: '2027-01-15', status: 'PLANNING',
       budget: 0, description: undefined, communityIds: [],
+      createdAt: '2026-10-01T00:00:00Z', version: undefined,
     })
   })
 
