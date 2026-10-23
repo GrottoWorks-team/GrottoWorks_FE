@@ -1,7 +1,7 @@
 // Trang khu vực công tác (COMMITTEE/PARISH): filter mùa, grid AreaCard + DataTable (toggle),
 // tạo/sửa qua AreaFormDialog (prefill mùa), phân công qua AreaAssignDialog, xoá qua ConfirmDialog.
 // Click card/row → /community/areas/:id/tasks hoặc /parish/areas/:id/tasks (TaskListPage).
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { LayoutGrid, Table2, Pencil, Trash2, Plus, UserPlus, FileImage } from 'lucide-react'
@@ -39,8 +39,12 @@ export default function AreaListPage() {
   // Mùa lấy từ header (SeasonProvider). URL vẫn là nguồn sự thật: dropdown của
   // trang và khung chọn mùa trên header cùng ghi `?season=`.
   const { seasonId: headerSeasonId } = useSeasonContext()
-  const seasonParam = searchParams.get('season') ?? headerSeasonId ?? 'all'
-  const [selectedSeason, setSelectedSeason] = useState<string>(seasonParam)
+  const [selectedSeason, setSelectedSeason] = useState<string>(
+    searchParams.get('season') ?? headerSeasonId ?? 'all',
+  )
+  // Mùa header của lần render trước — chỉ reset dropdown khi người dùng THẬT SỰ
+  // đổi mùa ở header, không reset theo URL (xem effect bên dưới).
+  const headerSeasonRef = useRef(headerSeasonId)
 
   const { data: seasons = [], isPending: isSeasonsPending } = useSeasons()
 
@@ -54,10 +58,21 @@ export default function AreaListPage() {
   const { data: users = [] } = useUsers()
   const deleteArea = useDeleteArea()
 
-  // Đồng bộ URL param khi URL thay đổi từ ngoài
+  // Đồng bộ khi URL đổi từ ngoài (link có `?season=`, back/forward). Không xử lý
+  // trường hợp URL MẤT param: đó chính là lúc người dùng chọn "Tất cả mùa".
   useEffect(() => {
-    setSelectedSeason(seasonParam)
-  }, [seasonParam])
+    const fromUrl = searchParams.get('season')
+    if (fromUrl) setSelectedSeason(fromUrl)
+  }, [searchParams])
+
+  // Đổi mùa ở header → trang đi theo. Trước đây effect này phụ thuộc `seasonParam`
+  // (= headerSeasonId khi URL không có param) nên chọn "Tất cả mùa" bị bật lại
+  // về mùa header ngay lập tức — đó là bug "không giữ nguyên lựa chọn".
+  useEffect(() => {
+    if (headerSeasonRef.current === headerSeasonId) return
+    headerSeasonRef.current = headerSeasonId
+    setSelectedSeason(headerSeasonId ?? 'all')
+  }, [headerSeasonId])
 
   const handleSeasonChange = (seasonId: string) => {
     setSelectedSeason(seasonId)

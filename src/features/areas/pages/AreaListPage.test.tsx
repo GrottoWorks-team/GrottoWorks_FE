@@ -166,6 +166,19 @@ vi.mock('@/features/season/api', () => ({
   useSeasons: () => ({ data: mockSeasons, isPending: false }),
 }))
 
+// Mô phỏng mùa đang chọn trên header (SeasonProvider thật). Đổi `seasonCtx.seasonId`
+// rồi `rerender` để mô phỏng người dùng đổi mùa ở header.
+const seasonCtx = vi.hoisted(() => ({ seasonId: 's1' as string | undefined }))
+vi.mock('@/features/season/season-context', () => ({
+  useSeasonContext: () => ({
+    seasonId: seasonCtx.seasonId,
+    seasons: [],
+    season: null,
+    selectSeason: () => undefined,
+    isPending: false,
+  }),
+}))
+
 vi.mock('@/features/communities/api', () => ({
   useCommunities: () => ({ data: mockCommunities, isPending: false }),
 }))
@@ -176,6 +189,7 @@ vi.mock('@/features/users/api', () => ({
 
 beforeEach(() => {
   localStorage.removeItem('grotto-token')
+  seasonCtx.seasonId = 's1'
 })
 
 test('hiện 5 thẻ khu vực (grid mặc định) từ seed khi chưa đăng nhập', async () => {
@@ -241,6 +255,36 @@ test('Lọc khu vực theo mùa: chọn mùa 2025 thì không có khu nào, ch�
 
   await userEvent.selectOptions(seasonSelect, 's1')
   expect(await screen.findByText('Hang đá Bê-lem')).toBeDefined()
+})
+
+test('Bộ lọc mùa của trang: đi theo mùa header và chọn "Tất cả mùa" thì giữ nguyên', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  // Hàm tạo element mới mỗi lần — React bail out nếu rerender cùng tham chiếu.
+  const tree = () => (
+    <QueryClientProvider client={client}>
+      <ToastProvider>
+        <MemoryRouter>
+          <AreaListPage />
+        </MemoryRouter>
+      </ToastProvider>
+    </QueryClientProvider>
+  )
+  const { rerender } = render(tree())
+
+  const seasonSelect = (await screen.findByLabelText(/Lọc theo mùa/i)) as HTMLSelectElement
+  await screen.findByRole('option', { name: /2025/i })
+  // Mặc định bám mùa đang chọn trên header
+  await waitFor(() => expect(seasonSelect.value).toBe('s1'))
+
+  // Bug 23/10/2026: chọn "Tất cả" xoá `?season` khỏi URL, effect cũ lại bật về mùa header.
+  await userEvent.selectOptions(seasonSelect, 'all')
+  expect(seasonSelect.value).toBe('all')
+  expect(await screen.findByText('Hang đá Bê-lem')).toBeDefined()
+
+  // Đổi mùa ở header → trang đi theo
+  seasonCtx.seasonId = 's0'
+  rerender(tree())
+  await waitFor(() => expect(seasonSelect.value).toBe('s0'))
 })
 
 test('AreaFormDialog: COMMUNITY khóa select communityId', async () => {

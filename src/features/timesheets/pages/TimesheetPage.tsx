@@ -202,7 +202,7 @@ export default function TimesheetPage() {
               tone="ok"
             />
             <StatCard
-              label="Số ca chấm công"
+              label="Số ca đóng góp"
               value={rows.length}
               unit="ca"
             />

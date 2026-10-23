@@ -18,7 +18,7 @@ const RULES_KEY = 'grotto-point-rules'
 const DEFAULT_RULES: { action: string; points: number }[] = [
   { action: 'Tham gia nhiệm vụ hoàn thành', points: 10 },
   { action: 'Nộp ảnh hiện trường đạt yêu cầu', points: 2 },
-  { action: 'Chấm công đủ ca', points: 3 },
+  { action: 'Đóng góp đủ ca', points: 3 },
   { action: 'Quyên góp vật tư được nhận', points: 5 },
   { action: 'Quyên góp tiền (mỗi 500.000đ)', points: 5 },
   { action: 'Mua hộ vật tư được xác nhận', points: 4 },

@@ -1,13 +1,14 @@
 // Mùa đang thao tác — nguồn duy nhất cho khung chọn mùa trên header và cho các
 // trang có lọc theo mùa.
 //
-// Mùa được chọn ghi lên URL `?season=<id>` nên refresh / chia sẻ link vẫn giữ
-// đúng mùa, và những trang đã đọc `searchParams.get('season')` (vd AreaListPage)
-// tự động đi theo mà không cần đồng bộ thêm.
+// Thứ tự ưu tiên khi resolve mùa hiệu lực:
+//   1. `?season=<id>` trên URL (deep link / refresh, và các trang tự đọc param).
+//   2. Mùa đã chọn lần trước — lưu ở `localStorage['grotto-season']`.
+//   3. Mặc định: ACTIVE → READY → PLANNING → COMPLETED → ARCHIVED, cùng nhóm thì mùa mới nhất.
 //
-// Khi URL chưa có (hoặc id không còn tồn tại) → chọn mặc định theo thứ tự
-// ACTIVE → READY → PLANNING → COMPLETED → ARCHIVED, cùng nhóm thì mùa mới nhất.
-import { createContext, useCallback, useContext, useMemo } from 'react'
+// Bước 2 là bắt buộc: link sidebar (`/leader/tasks`, `/material-officer/inventory`…)
+// KHÔNG mang theo query, nên nếu chỉ dựa vào URL thì chuyển trang là mất mùa đang chọn.
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,25 @@ import { Calendar } from 'lucide-react'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { useSeasons } from './api'
 import type { Season } from '@/types'
+
+const SEASON_STORAGE_KEY = 'grotto-season'
+
+function readStoredSeasonId(): string | undefined {
+  try {
+    return localStorage.getItem(SEASON_STORAGE_KEY) ?? undefined
+  } catch {
+    return undefined
+  }
+}
+
+function writeStoredSeasonId(seasonId?: string) {
+  try {
+    if (seasonId) localStorage.setItem(SEASON_STORAGE_KEY, seasonId)
+    else localStorage.removeItem(SEASON_STORAGE_KEY)
+  } catch {
+    // localStorage bị chặn (chế độ riêng tư) → chỉ mất khả năng nhớ mùa, không lỗi trang.
+  }
+}
 
 const STATUS_PRIORITY: Record<Season['status'], number> = {
   ACTIVE: 0,
@@ -34,10 +54,10 @@ const EMPTY: SeasonContextValue = {
 
 interface SeasonContextValue {
   seasons: Season[]
-  /** Mùa hiệu lực đã resolve từ URL (hoặc mặc định) — null khi chưa có mùa nào. */
+  /** Mùa hiệu lực: URL `?season=` → mùa đã chọn lần trước (localStorage) → mặc định. */
   season: Season | null
   seasonId?: string
-  /** Đổi mùa: ghi `?season=` lên URL (`undefined` = bỏ chọn). */
+  /** Đổi mùa: ghi `?season=` lên URL **và** nhớ cho các trang sau (`undefined` = bỏ chọn). */
   selectSeason: (seasonId?: string) => void
   isPending: boolean
 }
@@ -55,7 +75,11 @@ export function SeasonProvider({
 }) {
   const { data: seasons = [], isPending } = useSeasons()
   const [searchParams, setSearchParams] = useSearchParams()
-  const requestedId = searchParams.get('season') ?? undefined
+  const urlSeasonId = searchParams.get('season') ?? undefined
+  const [storedSeasonId, setStoredSeasonId] = useState<string | undefined>(readStoredSeasonId)
+
+  // URL thắng; nếu link không mang query thì dùng mùa đã chọn lần trước.
+  const requestedId = urlSeasonId ?? storedSeasonId
 
   const season = useMemo(() => {
     if (!seasons.length) return null
@@ -66,8 +90,24 @@ export function SeasonProvider({
     )[0]
   }, [seasons, requestedId])
 
+  // Giữ localStorage khớp với mùa đang hiệu lực: mùa chọn từ URL/deep link được
+  // nhớ luôn, còn id cũ (mùa đã xoá, hoặc của giáo xứ khác) bị thay bằng mặc định.
+  // Role không có khung chọn mùa (PARISH/ADMIN) thì không ghi — tránh việc admin
+  // xem "tất cả giáo xứ" ghi đè lựa chọn mùa của trưởng khu/material officer.
+  useEffect(() => {
+    if (!scoped) return
+    const currentId = season?.id
+    if (!currentId || currentId === storedSeasonId) return
+    setStoredSeasonId(currentId)
+    writeStoredSeasonId(currentId)
+  }, [season, storedSeasonId, scoped])
+
   const selectSeason = useCallback(
     (seasonId?: string) => {
+      if (scoped) {
+        setStoredSeasonId(seasonId)
+        writeStoredSeasonId(seasonId)
+      }
       setSearchParams(
         (prev) => {
           const next = new URLSearchParams(prev)
@@ -78,7 +118,7 @@ export function SeasonProvider({
         { replace: true },
       )
     },
-    [setSearchParams],
+    [setSearchParams, scoped],
   )
 
   const value = useMemo<SeasonContextValue>(
