@@ -85,13 +85,16 @@ export interface ParishMap {
   updatedAt: string;
 }
 
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export interface Task {
   id: string; areaId: string; title: string; description: string; skills: string[];
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
   status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
   submittedPhotos: number; submittedNotes?: string;
   /** Ưu tiên từ TaskExecution (LOW|MEDIUM|HIGH|CRITICAL) — BE trả sẵn trong TaskDto. */
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority?: TaskPriority;
+  startAt?: string;
   version?: number;
 }
 

@@ -31,3 +31,23 @@ test('submit thiếu title → hiện lỗi zod "Vui lòng nhập tên việc"',
   fireEvent.submit(document.getElementById('task-form')!)
   expect(await screen.findByText('Vui lòng nhập tên việc')).toBeDefined()
 })
+
+test('TaskFormDialog có ô chọn priority và datetime-local startAt', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={client}>
+      <ToastProvider>
+        <TaskFormDialog onClose={() => {}} />
+      </ToastProvider>
+    </QueryClientProvider>,
+  )
+
+  const prioritySelect = screen.getByLabelText(/Mức độ ưu tiên|Priority/i) as HTMLSelectElement
+  expect(prioritySelect).toBeDefined()
+  expect(prioritySelect.value).toBe('MEDIUM')
+
+  const startAtInput = screen.getByLabelText(/Thời gian bắt đầu|Start time/i) as HTMLInputElement
+  expect(startAtInput).toBeDefined()
+  expect(startAtInput.type).toBe('datetime-local')
+  expect(startAtInput.value).toBeTruthy()
+})
