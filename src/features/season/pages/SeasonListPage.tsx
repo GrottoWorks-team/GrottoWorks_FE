@@ -19,6 +19,7 @@ import { useSeasons, useCompleteSeason, useActivateSeason, useArchiveSeason } fr
 import { SeasonFormDialog } from './SeasonFormDialog'
 import { SeasonActivateDialog, validateSeasonActivation } from './SeasonActivateDialog'
 import type { Season } from '@/types'
+import { useAuth } from '@/lib/auth'
 import i18n from '@/lib/i18n'
 import { viDate } from '@/lib/format'
 
@@ -27,6 +28,8 @@ const d = (n: number) => ({ '--d': n }) as CSSProperties
 export default function SeasonListPage() {
   const { t } = useTranslation()
   const toast = useToast()
+  const { user } = useAuth()
+  const canManage = user?.role === 'PARISH'
   const { data: seasons = [], isPending } = useSeasons()
   const { data: communities = [] } = useCommunities()
   const { data: areas = [] } = useAreas()
@@ -49,13 +52,21 @@ export default function SeasonListPage() {
     for (const c of communities) map[c.id] = c.name
     return map
   }, [communities])
+
+  const communityIdsOf = (s: Season) => [
+    ...new Set(
+      areas.filter((a) => a.seasonId === s.id).map((a) => a.communityId).filter(Boolean),
+    ),
+  ] as string[]
+
   const onActivateClick = (s: Season) => {
     const areasOfSeason = areas.filter((a) => a.seasonId === s.id)
-    const { canActivate } = validateSeasonActivation(s, areasOfSeason)
+    const effectiveSeason = { ...s, communityIds: communityIdsOf(s) }
+    const { canActivate } = validateSeasonActivation(effectiveSeason, areasOfSeason)
     if (canActivate) {
       setActivatingConfirm(s)
     } else {
-      setActivatingCheck(s)
+      setActivatingCheck(effectiveSeason)
     }
   }
 
@@ -99,7 +110,7 @@ export default function SeasonListPage() {
         key: 'communities',
         header: t('features.season.communities'),
         render: (s: Season) => {
-          const ids = s.communityIds ?? []
+          const ids = communityIdsOf(s)
           if (ids.length === 0) {
             return <span className="text-xs text-muted-foreground">—</span>
           }
@@ -147,59 +158,63 @@ export default function SeasonListPage() {
           )
         },
       },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (s: Season) => (
-          <div className="flex justify-end gap-1">
-            {s.status === 'PLANNING' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.season.activate')}
-                className="text-primary hover:bg-primary/10 hover:text-primary"
-                onClick={() => onActivateClick(s)}
-              >
-                <Rocket className="size-4" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.edit')}
-              onClick={() => {
-                setEditing(s)
-                setFormOpen(true)
-              }}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            {s.status === 'COMPLETED' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.season.archive')}
-                className="text-amber-600 hover:bg-amber-50"
-                onClick={() => setArchiving(s)}
-              >
-                <Archive className="size-4" />
-              </Button>
-            )}
-            {s.status !== 'COMPLETED' && s.status !== 'ARCHIVED' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.season.close')}
-                onClick={() => setClosing(s)}
-              >
-                <LockKeyhole className="size-4" />
-              </Button>
-            )}
-          </div>
-        ),
-      },
+      ...(canManage
+        ? [
+            {
+              key: 'actions',
+              header: t('common.actions'),
+              render: (s: Season) => (
+                <div className="flex justify-end gap-1">
+                  {s.status === 'PLANNING' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('features.season.activate')}
+                      className="text-primary hover:bg-primary/10 hover:text-primary"
+                      onClick={() => onActivateClick(s)}
+                    >
+                      <Rocket className="size-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('common.edit')}
+                    onClick={() => {
+                      setEditing(s)
+                      setFormOpen(true)
+                    }}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  {s.status === 'COMPLETED' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('features.season.archive')}
+                      className="text-amber-600 hover:bg-amber-50"
+                      onClick={() => setArchiving(s)}
+                    >
+                      <Archive className="size-4" />
+                    </Button>
+                  )}
+                  {s.status !== 'COMPLETED' && s.status !== 'ARCHIVED' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('features.season.close')}
+                      onClick={() => setClosing(s)}
+                    >
+                      <LockKeyhole className="size-4" />
+                    </Button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
-    [t, locale, communityMap, areas],
+    [t, locale, communityMap, areas, canManage],
   )
 
   const onCloseSeason = async (s: Season) => {
@@ -228,15 +243,17 @@ export default function SeasonListPage() {
         title={t('features.season.title')}
         sub={t('features.season.sub')}
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-          >
-            <CalendarPlus className="size-4" />
-            {t('features.season.create')}
-          </Button>
+          canManage ? (
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+            >
+              <CalendarPlus className="size-4" />
+              {t('features.season.create')}
+            </Button>
+          ) : undefined
         }
       />
 

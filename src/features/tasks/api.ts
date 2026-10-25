@@ -79,6 +79,7 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     status: uiStatus,
     dueDate: dto.deadline ? dto.deadline.split('T')[0] : '',
     priority: dto.priority,
+    startAt: dto.startAt ?? undefined,
     submittedPhotos: 0,
     submittedNotes: dto.completionCriteria || undefined,
     version: dto.version,
@@ -175,10 +176,10 @@ export function useCreateTask() {
       name: data.title,
       description: data.description || null,
       completionCriteria: data.submittedNotes || null,
-      priority: 'MEDIUM',
-      estimatedMinutes: data.estimateHours ? Math.round(data.estimateHours * 60) : 120,
-      requiredVolunteers: data.volunteersNeeded || 1,
-      startAt: new Date().toISOString(),
+      priority: data.priority ?? 'MEDIUM',
+      estimatedMinutes: Math.round(data.estimateHours * 60),
+      requiredVolunteers: data.volunteersNeeded,
+      startAt: data.startAt ? new Date(data.startAt).toISOString() : null,
       deadline: data.dueDate ? new Date(data.dueDate).toISOString() : null,
     }
     return api<TaskDto>(`/api/v1/work-areas/${data.areaId}/tasks`, {
@@ -194,10 +195,13 @@ export function useUpdateTask() {
       const payload: Record<string, unknown> = {}
       if (data.title !== undefined) payload.name = data.title
       if (data.description !== undefined) payload.description = data.description
+      if (data.priority !== undefined) payload.priority = data.priority
       if (data.estimateHours !== undefined)
         payload.estimatedMinutes = Math.round(data.estimateHours * 60)
       if (data.volunteersNeeded !== undefined)
         payload.requiredVolunteers = data.volunteersNeeded
+      if (data.startAt !== undefined)
+        payload.startAt = data.startAt ? new Date(data.startAt).toISOString() : null
       if (data.dueDate !== undefined)
         payload.deadline = data.dueDate ? new Date(data.dueDate).toISOString() : null
 
@@ -213,10 +217,6 @@ export function useUpdateTask() {
       })
     },
   )
-}
-
-export function useDeleteTask() {
-  return useTaskMutation((id: string) => api<void>(`/api/v1/tasks/${id}`, { method: 'DELETE' }))
 }
 
 /**

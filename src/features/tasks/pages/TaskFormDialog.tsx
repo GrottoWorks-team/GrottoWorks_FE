@@ -25,15 +25,31 @@ export const SELECT_CLS =
 const num = (inner: z.ZodNumber) =>
   z.preprocess((v) => (v === '' || v == null ? undefined : v), inner)
 
+function toLocalDatetimeString(date: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
+function formatInitialStartAt(isoOrDateStr?: string | null): string {
+  if (!isoOrDateStr) return toLocalDatetimeString()
+  const d = new Date(isoOrDateStr)
+  return isNaN(d.getTime()) ? toLocalDatetimeString() : toLocalDatetimeString(d)
+}
+
 const schema = z.object({
   title: z.string().trim().min(1, 'features.tasks.nameRequired'),
   description: z.string(),
   areaId: z.string().min(1, 'features.tasks.areaRequired'),
   skills: z.array(z.string()),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], {
+    errorMap: () => ({ message: 'features.tasks.priorityRequired' }),
+  }),
+  startAt: z.string().min(1, 'features.tasks.startAtRequired'),
   estimateHours: num(
     z.coerce
       .number({ invalid_type_error: 'features.tasks.hoursInvalid' })
-      .min(0, 'features.tasks.hoursInvalid'),
+      // BE CreateTaskRequest: EstimatedMinutes Range(1, 599999) → 0 giờ = 400.
+      .min(0.1, 'features.tasks.hoursInvalid'),
   ),
   volunteersNeeded: num(
     z.coerce
@@ -78,6 +94,8 @@ export function TaskFormDialog({
           description: task.description,
           areaId: task.areaId,
           skills: task.skills,
+          priority: task.priority ?? 'MEDIUM',
+          startAt: formatInitialStartAt(task.startAt),
           estimateHours: task.estimateHours,
           volunteersNeeded: task.volunteersNeeded,
           materialIds: task.materialIds,
@@ -88,7 +106,9 @@ export function TaskFormDialog({
           description: '',
           areaId: fixedAreaId ?? '',
           skills: [],
-          estimateHours: 0,
+          priority: 'MEDIUM',
+          startAt: toLocalDatetimeString(),
+          estimateHours: 1,
           volunteersNeeded: 1,
           materialIds: [],
           dueDate: '',
@@ -105,6 +125,8 @@ export function TaskFormDialog({
         const isUnchanged =
           data.title.trim() === task.title.trim() &&
           (data.description || '') === (task.description || '') &&
+          (data.priority || 'MEDIUM') === (task.priority || 'MEDIUM') &&
+          (data.startAt || '') === formatInitialStartAt(task.startAt) &&
           Number(data.estimateHours) === Number(task.estimateHours) &&
           Number(data.volunteersNeeded) === Number(task.volunteersNeeded) &&
           (data.dueDate || '') === (task.dueDate || '')
@@ -209,6 +231,23 @@ export function TaskFormDialog({
                 </label>
               )
             })}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="task-priority">{t('features.tasks.priority')}</Label>
+            <select id="task-priority" className={SELECT_CLS} {...register('priority')}>
+              <option value="LOW">{t('priority.LOW')}</option>
+              <option value="MEDIUM">{t('priority.MEDIUM')}</option>
+              <option value="HIGH">{t('priority.HIGH')}</option>
+              <option value="CRITICAL">{t('priority.CRITICAL')}</option>
+            </select>
+            {err(errors.priority?.message)}
+          </div>
+          <div>
+            <Label htmlFor="task-start">{t('features.tasks.startAt')}</Label>
+            <Input id="task-start" type="datetime-local" className="tabular" {...register('startAt')} />
+            {err(errors.startAt?.message)}
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

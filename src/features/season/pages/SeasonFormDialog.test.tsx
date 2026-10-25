@@ -66,23 +66,13 @@ describe('SeasonFormDialog validation', () => {
     expect(await screen.findByText('Ngày kết thúc phải sau ngày mở')).toBeDefined()
   })
 
-  it('chưa chọn cộng đoàn → hiện lỗi "Chọn ít nhất 1 cộng đoàn tham gia"', async () => {
-    setup()
-    setDate('Ngày mở', '2026-09-15')
-    setDate('Ngày kết thúc', '2026-12-24')
-    submit()
-    expect(await screen.findByText('Chọn ít nhất 1 cộng đoàn tham gia')).toBeDefined()
-  })
-
-  it('end sau start và đã chọn cộng đoàn → submit thành công', async () => {
+  it('end sau start → submit thành công', async () => {
     setup()
     const nameInput = screen.queryByLabelText(/Tên mùa/i)
     if (nameInput) fireEvent.change(nameInput, { target: { value: 'Mùa 2026' } })
 
     setDate('Ngày mở', '2026-09-15')
     setDate('Ngày kết thúc', '2026-12-24')
-    const checkbox = await screen.findByRole('checkbox', { name: 'Giáo khu Thánh Tâm' })
-    fireEvent.click(checkbox)
     submit()
     await waitFor(() =>
       expect((screen.getByRole('button', { name: 'Lưu' }) as HTMLButtonElement).disabled).toBe(
@@ -90,6 +80,5 @@ describe('SeasonFormDialog validation', () => {
       ),
     )
     expect(screen.queryByText('Ngày kết thúc phải sau ngày mở')).toBeNull()
-    expect(screen.queryByText('Chọn ít nhất 1 cộng đoàn tham gia')).toBeNull()
   })
 })

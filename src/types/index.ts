@@ -27,6 +27,8 @@ export interface User {
   /** Giáo xứ của user — BE dùng để chặn truy cập chéo giáo xứ (403). */
   parishId?: string;
   locked?: boolean; skills: string[]; points: number; avatarHue: number;
+  /** Role gốc BE trả từ Identity service, ví dụ 'VOLUNTEER'. */
+  rawRole?: string;
 }
 
 export interface Season {
@@ -43,6 +45,7 @@ export interface Season {
   communityIds?: string[]
   /** Dùng cho If-Match khi PATCH/activate/complete — BE chặn ghi đè bằng 412. */
   version?: number
+  createdAt?: string
 }
 
 export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'
@@ -60,6 +63,7 @@ export interface WorkArea {
   taskCount: number
   status: WorkAreaStatus
   seasonId?: string
+  categoryId?: string
   startDate?: string
   deadline?: string
   description?: string
@@ -82,13 +86,16 @@ export interface ParishMap {
   updatedAt: string;
 }
 
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export interface Task {
   id: string; areaId: string; title: string; description: string; skills: string[];
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
   status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
   submittedPhotos: number; submittedNotes?: string;
   /** Ưu tiên từ TaskExecution (LOW|MEDIUM|HIGH|CRITICAL) — BE trả sẵn trong TaskDto. */
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority?: TaskPriority;
+  startAt?: string;
   version?: number;
 }
 

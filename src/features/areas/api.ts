@@ -182,18 +182,6 @@ export function useAssignAreaOfficer() {
   return useUpdateArea()
 }
 
-// BE hiện CHƯA có DELETE /api/v1/work-areas/{id} (đã ghi trong
-// BE-gap-requests-activity-flows.md) — giữ đường dẫn đúng chuẩn để khi BE bổ
-// sung là chạy, thay vì gọi endpoint mock đã bị xoá.
-export function useDeleteArea() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (id: string) =>
-      api<void>(`/api/v1/work-areas/${id}`, { method: 'DELETE' }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
-  })
-}
-
 /** PUT /api/v1/work-areas/{workAreaId}/community (B7) */
 export function useAssignWorkAreaCommunity() {
   const qc = useQueryClient()

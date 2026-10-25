@@ -44,6 +44,7 @@ export function toSeason(dto: SeasonDto): Season {
     // BE không lưu cộng đoàn trên mùa; trang Mùa suy ra từ work-areas.
     communityIds: [],
     version: dto.version,
+    createdAt: dto.createdAt,
   }
 }
 
@@ -58,6 +59,7 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
     officerId: dto.materialOfficerId ?? '',
     startDate: opt(dto.startDate),
     deadline: opt(dto.deadline),
+    categoryId: opt(dto.categoryId),
     status: dto.status,
     version: dto.version,
     // ponytail: BE chưa trả type/level/progress/volunteerCount/taskCount

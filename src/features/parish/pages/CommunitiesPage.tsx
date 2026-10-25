@@ -7,11 +7,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, Trash2, Church, MapPin, Info, Check, ShieldCheck } from 'lucide-react'
+import { Pencil, Plus, Church, MapPin, Info, Check, ShieldCheck } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -26,7 +25,6 @@ import {
   useCommunities,
   useCreateCommunity,
   useCreateParish,
-  useDeleteCommunity,
   useParish,
   useUpdateParish,
   useUpdateCommunity,
@@ -36,6 +34,7 @@ import type { Community } from '@/types'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -60,13 +59,21 @@ function CommunityFormDialog({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: community?.name ?? '' },
+    defaultValues: {
+      name: community?.name ?? '',
+      status: community?.status ?? 'ACTIVE',
+    },
   })
 
   const onSubmit = async (data: FormData) => {
     try {
       if (editing && community) {
-        await update.mutateAsync({ id: community.id, version: community.version, name: data.name })
+        await update.mutateAsync({
+          id: community.id,
+          version: community.version,
+          name: data.name,
+          status: data.status,
+        })
         toast(t('features.parish.updated', { name: data.name }))
       } else {
         await create.mutateAsync({ name: data.name, parishId: parishId! })
@@ -103,6 +110,19 @@ function CommunityFormDialog({
           <Input id="community-name" {...register('name')} />
           {err(errors.name?.message)}
         </div>
+        {editing && (
+          <div>
+            <Label htmlFor="community-status">{t('common.status')}</Label>
+            <select
+              id="community-status"
+              {...register('status')}
+              className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="ACTIVE">{t('status.ACTIVE')}</option>
+              <option value="INACTIVE">{t('status.INACTIVE')}</option>
+            </select>
+          </div>
+        )}
       </form>
     </Dialog>
   )
@@ -337,32 +357,13 @@ function ParishCard() {
 
 export default function CommunitiesPage() {
   const { t } = useTranslation()
-  const toast = useToast()
   const { data: communities = [], isPending } = useCommunities()
   const { data: users = [] } = useUsers()
   const { data: areas = [] } = useAreas()
-  const deleteCommunity = useDeleteCommunity()
 
   const [formOpen, setFormOpen] = useState(false)
   const [parishCreateOpen, setParishCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Community | null>(null)
-  const [deleting, setDeleting] = useState<Community | null>(null)
-
-  // Xoá chặn khi còn tham chiếu: user.communityId hoặc area.communityId.
-  const onDelete = async (c: Community) => {
-    const used =
-      users.some((u) => u.communityId === c.id) || areas.some((a) => a.communityId === c.id)
-    if (used) {
-      toast(t('features.parish.communityInUse', { name: c.name }), 'alert')
-      return
-    }
-    try {
-      await deleteCommunity.mutateAsync(c.id)
-      toast(t('features.parish.deleted', { name: c.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
 
   const columns = useMemo(
     () => [
@@ -414,20 +415,13 @@ export default function CommunitiesPage() {
               variant="ghost"
               size="icon"
               aria-label={t('common.edit')}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 setEditing(c)
                 setFormOpen(true)
               }}
             >
               <Pencil className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.delete')}
-              onClick={() => setDeleting(c)}
-            >
-              <Trash2 className="size-4" />
             </Button>
           </div>
         ),
@@ -483,15 +477,6 @@ export default function CommunitiesPage() {
 
       {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}
       {formOpen && <CommunityFormDialog community={editing} onClose={() => setFormOpen(false)} />}
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        title={t('features.parish.deleteTitle')}
-        description={deleting ? t('features.parish.deleteConfirm', { name: deleting.name }) : undefined}
-        confirmLabel={t('common.delete')}
-        tone="destructive"
-        onConfirm={() => deleting && onDelete(deleting)}
-        onClose={() => setDeleting(null)}
-      />
     </div>
   )
 }

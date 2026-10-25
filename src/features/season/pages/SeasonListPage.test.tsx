@@ -53,8 +53,21 @@ vi.mock('@/features/communities/api', () => ({
   useCommunities: () => ({ data: mockCommunities, isPending: false }),
 }))
 
+const mockAreas = [
+  { id: 'a1', seasonId: 's1', communityId: 'c1' },
+  { id: 'a2', seasonId: 's1', communityId: 'c2' },
+  { id: 'a3', seasonId: 's1', communityId: 'c3' },
+]
+
 vi.mock('@/features/areas/api', () => ({
-  useAreas: () => ({ data: [], isPending: false }),
+  useAreas: () => ({ data: mockAreas, isPending: false }),
+}))
+
+const mockAuthUser = { current: { id: 'u1', role: 'PARISH', parishId: 'p1', name: 'Admin Giáo xứ' } }
+vi.mock('@/lib/auth', () => ({
+  useAuth: () => ({
+    user: mockAuthUser.current,
+  }),
 }))
 
 function setup() {
@@ -91,5 +104,13 @@ describe('SeasonListPage (Flow 4 + Flow 6)', () => {
     fireEvent.click(activateBtn)
     expect(await screen.findByText('Kiểm tra điều kiện kích hoạt')).toBeDefined()
     expect(await screen.findByText('Chưa đủ điều kiện kích hoạt mùa')).toBeDefined()
+  })
+
+  it('COMMUNITY chỉ xem: ẩn nút Tạo mùa và cột thao tác', async () => {
+    mockAuthUser.current = { id: 'u2', role: 'COMMUNITY', parishId: 'p1', name: 'Ban hành giáo' }
+    setup()
+    expect(screen.queryByRole('button', { name: 'Tạo mùa' })).toBeNull()
+    expect(screen.queryByText('Thao tác')).toBeNull()
+    mockAuthUser.current = { id: 'u1', role: 'PARISH', parishId: 'p1', name: 'Admin Giáo xứ' }
   })
 })
