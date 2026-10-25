@@ -54,7 +54,11 @@ export interface SkillItemDto {
 export function mapTaskDtoToTask(dto: TaskDto): Task {
   let uiStatus: Task['status'] = 'TODO'
   const st = String(dto.status).toUpperCase()
-  if (st === 'IN_PROGRESS' || st === 'OPEN') {
+  if (st === 'OPEN') {
+    uiStatus = 'TODO' // chưa ai nhận
+  } else if (st === 'NOT_STARTED') {
+    uiStatus = 'READY' // đã chốt tuyển, chờ bắt đầu
+  } else if (st === 'IN_PROGRESS') {
     uiStatus = 'DOING'
   } else if (st === 'SUBMITTED') {
     uiStatus = 'REVIEW'

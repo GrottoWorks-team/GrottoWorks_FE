@@ -136,7 +136,7 @@
   "status.IN_PROGRESS": "In progress",
   "status.INACTIVE": "Inactive",
   "status.PLANNING": "Planning",
-  "status.READY": "Ready",
+  "status.READY": "Ready to start",
   "status.COMPLETED": "Completed",
   "status.ARCHIVED": "Archived",
   "status.READINESS_REVIEW": "Readiness review",

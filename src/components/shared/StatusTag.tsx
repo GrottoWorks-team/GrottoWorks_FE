@@ -15,11 +15,11 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   IN_REVIEW: 'warn', // phiên bản thiết kế đang review
   IN_PROGRESS: 'warn', // yêu cầu chỉnh sửa đang xử lý
   CHANGES_REQUESTED: 'alert', // phiên bản thiết kế bị yêu cầu chỉnh sửa
-  PLANNING: 'soft', PLANNED: 'soft', READY: 'ok', COMPLETED: 'ok', ARCHIVED: 'soft',
+  PLANNING: 'soft', PLANNED: 'soft', COMPLETED: 'ok', ARCHIVED: 'soft',
   READINESS_REVIEW: 'warn', NEEDS_CORRECTION: 'alert', INACTIVE: 'soft',
   DRAFT: 'soft',
   // Trạng thái TaskExecution (enum serialize SNAKE_CASE_UPPER).
-  NOT_STARTED: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert',
+  NOT_STARTED: 'soft', READY: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert',
   // Trạng thái đơn mua (Resource).
   PENDING_APPROVAL: 'warn',
   BUYER_ASSIGNED: 'warn',

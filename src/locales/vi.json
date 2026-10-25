@@ -136,7 +136,7 @@
   "status.IN_PROGRESS": "Đang xử lý",
   "status.INACTIVE": "Ngừng hoạt động",
   "status.PLANNING": "Đang chuẩn bị",
-  "status.READY": "Sẵn sàng",
+  "status.READY": "Đã chốt tuyển",
   "status.COMPLETED": "Đã hoàn thành",
   "status.ARCHIVED": "Đã lưu trữ",
   "status.READINESS_REVIEW": "Chờ nghiệm thu",
