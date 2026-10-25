@@ -160,10 +160,10 @@ export default function ReportPage() {
       .filter((u) => u.role !== 'PARISH' && u.role !== 'COMMUNITY')
       .map((u) => ({
         id: u.id,
-        name: u.name,
-        avatarHue: u.avatarHue,
+        name: (u as any).displayName || u.name || u.email || 'Người dùng',
+        avatarHue: u.avatarHue ?? 45,
         communityName: u.communityId ? lookups.community.get(u.communityId) ?? '—' : '—',
-        points: u.points,
+        points: u.points ?? 0,
         hours: hours.get(u.id) ?? 0,
         contributions: contributionsById.get(u.id) ?? 0,
         tasksDone: tasksDone.get(u.id) ?? 0,
