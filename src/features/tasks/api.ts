@@ -299,21 +299,3 @@ export function useUnassign(taskId: string, volunteerId: string) {
     return { taskId, volunteerId }
   })
 }
-
-export function useSubmitReview(taskId: string) {
-  return useTaskMutation(async (note: string) => {
-    return { taskId, note }
-  })
-}
-
-export function useApproveCompletion(taskId: string) {
-  return useTaskMutation(async () => {
-    return { taskId }
-  })
-}
-
-export function useRequestRevision(taskId: string) {
-  return useTaskMutation(async (note: string) => {
-    return { taskId, note }
-  })
-}

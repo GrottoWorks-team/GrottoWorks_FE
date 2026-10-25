@@ -10,7 +10,6 @@ import { ArrowLeft, Calendar, Camera, Check, Clock, Edit3, MapPin, Package, Plus
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
@@ -20,14 +19,11 @@ import { useAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useUsers } from '@/features/users/api'
 import {
-  useApproveCompletion,
   useAssignVolunteer,
   useMarkTaskReady,
   useReplaceCompletionCriteria,
   useReplaceTaskSkills,
-  useRequestRevision,
   useSkillsCatalog,
-  useSubmitReview,
   useTask,
   useUnassign,
   useUpdateTask,
@@ -135,68 +131,6 @@ function AssigneeChip({ taskId, user, readOnly }: { taskId: string; user: User; 
   )
 }
 
-// Dialog 1 textarea (note nộp duyệt / lý do sửa) — controlled state, không
-// cần RHF cho 1 field.
-function NoteDialog({
-  title,
-  label,
-  requiredMsg,
-  submitLabel,
-  onSubmit,
-  onClose,
-}: {
-  title: string
-  label: string
-  requiredMsg: string
-  submitLabel: string
-  onSubmit: (note: string) => void
-  onClose: () => void
-}) {
-  const { t } = useTranslation()
-  const [note, setNote] = useState('')
-  const [error, setError] = useState(false)
-  return (
-    <Dialog
-      open
-      onClose={onClose}
-      title={title}
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            onClick={() => {
-              if (!note.trim()) {
-                setError(true)
-                return
-              }
-              onSubmit(note.trim())
-            }}
-          >
-            {submitLabel}
-          </Button>
-        </>
-      }
-    >
-      <div>
-        <Label htmlFor="task-note">{label}</Label>
-        <textarea
-          id="task-note"
-          rows={3}
-          className={TEXTAREA_CLS}
-          value={note}
-          onChange={(e) => {
-            setNote(e.target.value)
-            setError(false)
-          }}
-        />
-        {error && <p className="mt-1 text-xs font-semibold text-destructive">{requiredMsg}</p>}
-      </div>
-    </Dialog>
-  )
-}
-
 export default function TaskDetailPage() {
   const { t } = useTranslation()
   const toast = useToast()
@@ -212,14 +146,8 @@ export default function TaskDetailPage() {
 
   const update = useUpdateTask()
   const markReady = useMarkTaskReady()
-  const submitReview = useSubmitReview(id)
-  const requestRevision = useRequestRevision(id)
-  const approve = useApproveCompletion(id)
 
   const [assigning, setAssigning] = useState(false)
-  const [reviewing, setReviewing] = useState(false)
-  const [approving, setApproving] = useState(false)
-  const [revising, setRevising] = useState(false)
   const replaceCriteria = useReplaceCompletionCriteria()
   const replaceSkills = useReplaceTaskSkills()
   const { data: skillsCatalog = [] } = useSkillsCatalog()
@@ -479,20 +407,24 @@ export default function TaskDetailPage() {
                 </Button>
               )}
               {task.status === 'DOING' && (
-                <Button className="w-full" onClick={() => setReviewing(true)}>
-                  {t('features.tasks.submitReview')}
-                </Button>
+                <div className="space-y-2">
+                  <Button className="w-full" disabled>
+                    {t('features.tasks.submitReview')}
+                  </Button>
+                  <p className="text-xs text-muted">{t('features.tasks.pendingBackend')}</p>
+                </div>
               )}
               {task.status === 'REVIEW' && (
-                <>
-                  <Button className="w-full" onClick={() => setApproving(true)}>
+                <div className="space-y-2">
+                  <Button className="w-full" disabled>
                     <Check className="size-4" />
                     {t('features.tasks.approve')}
                   </Button>
-                  <Button variant="outline" className="w-full" onClick={() => setRevising(true)}>
+                  <Button variant="outline" className="w-full" disabled>
                     {t('features.tasks.requestRevision')}
                   </Button>
-                </>
+                  <p className="text-xs text-muted">{t('features.tasks.pendingBackend')}</p>
+                </div>
               )}
               {task.status === 'REVISE' && (
                 <Button
@@ -636,48 +568,6 @@ export default function TaskDetailPage() {
       )}
 
       {assigning && <AssignDialog task={task} onClose={() => setAssigning(false)} />}
-      {reviewing && (
-        <NoteDialog
-          title={t('features.tasks.reviewTitle')}
-          label={t('features.tasks.reviewNote')}
-          requiredMsg={t('features.tasks.noteRequired')}
-          submitLabel={t('features.tasks.submitReview')}
-          onSubmit={(n) => {
-            void run(
-              () => submitReview.mutateAsync(n),
-              t('features.tasks.reviewSubmitted', { name: task.title }),
-            )
-            setReviewing(false)
-          }}
-          onClose={() => setReviewing(false)}
-        />
-      )}
-      {revising && (
-        <NoteDialog
-          title={t('features.tasks.revisionTitle')}
-          label={t('features.tasks.revisionNote')}
-          requiredMsg={t('features.tasks.reasonRequired')}
-          submitLabel={t('features.tasks.requestRevision')}
-          onSubmit={(n) => {
-            void run(
-              () => requestRevision.mutateAsync(n),
-              t('features.tasks.revisionRequested', { name: task.title }),
-            )
-            setRevising(false)
-          }}
-          onClose={() => setRevising(false)}
-        />
-      )}
-      <ConfirmDialog
-        open={approving}
-        title={t('features.tasks.approveTitle')}
-        description={t('features.tasks.approveConfirm', { name: task.title })}
-        confirmLabel={t('features.tasks.approve')}
-        onConfirm={() =>
-          run(() => approve.mutateAsync(), t('features.tasks.approved', { name: task.title }))
-        }
-        onClose={() => setApproving(false)}
-      />
     </div>
   )
 }

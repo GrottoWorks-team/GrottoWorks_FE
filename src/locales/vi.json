@@ -289,6 +289,7 @@
   "features.tasks.markReady": "Chốt tuyển",
   "features.tasks.readyDone": "Đã chốt tuyển việc {{name}}",
   "features.tasks.waitingStart": "Đã chốt tuyển — chờ bắt đầu",
+  "features.tasks.pendingBackend": "Chức năng này đang chờ Backend bổ sung API.",
   "features.tasks.start": "Bắt đầu làm",
   "features.tasks.submitReview": "Gửi duyệt hoàn thành",
   "features.tasks.reviewTitle": "Gửi duyệt hoàn thành",
