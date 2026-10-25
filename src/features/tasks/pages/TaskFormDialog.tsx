@@ -48,7 +48,8 @@ const schema = z.object({
   estimateHours: num(
     z.coerce
       .number({ invalid_type_error: 'features.tasks.hoursInvalid' })
-      .min(0, 'features.tasks.hoursInvalid'),
+      // BE CreateTaskRequest: EstimatedMinutes Range(1, 599999) → 0 giờ = 400.
+      .min(0.1, 'features.tasks.hoursInvalid'),
   ),
   volunteersNeeded: num(
     z.coerce
@@ -107,7 +108,7 @@ export function TaskFormDialog({
           skills: [],
           priority: 'MEDIUM',
           startAt: toLocalDatetimeString(),
-          estimateHours: 0,
+          estimateHours: 1,
           volunteersNeeded: 1,
           materialIds: [],
           dueDate: '',
