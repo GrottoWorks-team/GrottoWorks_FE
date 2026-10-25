@@ -15,11 +15,11 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   IN_REVIEW: 'warn', // phiên bản thiết kế đang review
   IN_PROGRESS: 'warn', // yêu cầu chỉnh sửa đang xử lý
   CHANGES_REQUESTED: 'alert', // phiên bản thiết kế bị yêu cầu chỉnh sửa
-  PLANNING: 'soft', PLANNED: 'soft', READY: 'ok', COMPLETED: 'ok', ARCHIVED: 'soft',
+  PLANNING: 'soft', PLANNED: 'soft', COMPLETED: 'ok', ARCHIVED: 'soft',
   READINESS_REVIEW: 'warn', NEEDS_CORRECTION: 'alert', INACTIVE: 'soft',
   DRAFT: 'soft',
   // Trạng thái TaskExecution (enum serialize SNAKE_CASE_UPPER).
-  NOT_STARTED: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert',
+  NOT_STARTED: 'soft', READY: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert',
   // Trạng thái đơn mua (Resource).
   PENDING_APPROVAL: 'warn',
   BUYER_ASSIGNED: 'warn',
@@ -38,13 +38,21 @@ const STYLE = {
 
 const GLYPH = { ok: '✓', warn: '◐', alert: '✕', soft: '◇' } as const
 
+/**
+ * Task dùng chung union status với khu vực (cả hai đều có 'READY') nhưng nghĩa
+ * khác nhau: khu vực READY = "Sẵn sàng", task READY = "Đã chốt tuyển". Truyền
+ * scope="task" để lấy key i18n riêng thay vì đè nhãn dùng chung.
+ */
 export function StatusTag({
   status,
+  scope,
   glyph,
   tone,
   className,
 }: {
   status: string
+  /** Ngữ cảnh hẹp hơn — hiện chỉ 'task' cần tách nhãn khỏi khu vực. */
+  scope?: 'task'
   /** Override glyph/tone theo ngữ cảnh (vd TimesheetPage) — mặc định lấy map theo status. */
   glyph?: string
   tone?: keyof typeof STYLE
@@ -52,6 +60,7 @@ export function StatusTag({
 }) {
   const { t } = useTranslation()
   const activeTone = tone ?? TONE[status] ?? 'soft'
+  const key = scope === 'task' ? `status.TASK_${status}` : `status.${status}`
   return (
     <span
       className={cn(
@@ -61,7 +70,7 @@ export function StatusTag({
       )}
     >
       <span aria-hidden>{glyph ?? GLYPH[activeTone]}</span>
-      {t(`status.${status}`, { defaultValue: status })}
+      {t(key, { defaultValue: t(`status.${status}`, { defaultValue: status }) })}
     </span>
   )
 }

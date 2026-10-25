@@ -71,12 +71,22 @@ describe('toWorkArea', () => {
     })
   })
 
-  it('fallback tên khi BE không trả name', () => {
-    const a = toWorkArea({
-      id: '66666666-6666-6666-6666-666666666666', seasonId: 's1', communityId: null, leaderId: null,
-      materialOfficerId: null, status: 'PLANNED',
-    })
-    expect(a.name).toBe('Khu vực #66666666')
+  it('toWorkArea lay ten that tu BE, khong bia "Khu vuc #"', () => {
+    const dto = {
+      id: '66666666-6666-6666-6666-666666666666',
+      seasonId: 's1',
+      communityId: null,
+      leaderId: null,
+      materialOfficerId: null,
+      name: 'Hang đá số 3',
+      description: null,
+      categoryId: null,
+      startDate: null,
+      deadline: null,
+      status: 'PLANNED' as const,
+      version: 1,
+    }
+    expect(toWorkArea(dto).name).toBe('Hang đá số 3')
   })
 
   it('giữ communityId khi có', () => {

@@ -54,7 +54,11 @@ export interface SkillItemDto {
 export function mapTaskDtoToTask(dto: TaskDto): Task {
   let uiStatus: Task['status'] = 'TODO'
   const st = String(dto.status).toUpperCase()
-  if (st === 'IN_PROGRESS' || st === 'OPEN') {
+  if (st === 'OPEN') {
+    uiStatus = 'TODO' // chưa ai nhận
+  } else if (st === 'NOT_STARTED') {
+    uiStatus = 'READY' // đã chốt tuyển, chờ bắt đầu
+  } else if (st === 'IN_PROGRESS') {
     uiStatus = 'DOING'
   } else if (st === 'SUBMITTED') {
     uiStatus = 'REVIEW'
@@ -220,6 +224,20 @@ export function useUpdateTask() {
 }
 
 /**
+ * POST /api/v1/tasks/{id}/ready — Leader chốt tuyển, BE chuyển OPEN -> NOT_STARTED.
+ * BE bắt buộc If-Match (thiếu → 400 INVALID_IF_MATCH, lệch version → 412).
+ */
+export function useMarkTaskReady() {
+  return useTaskMutation(async ({ id, version }: { id: string; version?: number }) => {
+    const headers: Record<string, string> = {}
+    if (version !== undefined && version !== null) {
+      headers['If-Match'] = `"${version}"`
+    }
+    return api<TaskDto>(`/api/v1/tasks/${id}/ready`, { method: 'POST', headers })
+  })
+}
+
+/**
  * G5: PUT /api/v1/tasks/{taskId}/completion-criteria
  */
 export function useReplaceCompletionCriteria() {
@@ -279,23 +297,5 @@ export function useAssignVolunteer(taskId: string, volunteerId: string) {
 export function useUnassign(taskId: string, volunteerId: string) {
   return useTaskMutation(async () => {
     return { taskId, volunteerId }
-  })
-}
-
-export function useSubmitReview(taskId: string) {
-  return useTaskMutation(async (note: string) => {
-    return { taskId, note }
-  })
-}
-
-export function useApproveCompletion(taskId: string) {
-  return useTaskMutation(async () => {
-    return { taskId }
-  })
-}
-
-export function useRequestRevision(taskId: string) {
-  return useTaskMutation(async (note: string) => {
-    return { taskId, note }
   })
 }

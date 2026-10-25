@@ -164,7 +164,7 @@ export default function SeasonListPage() {
               key: 'actions',
               header: t('common.actions'),
               render: (s: Season) => (
-                <div className="flex justify-end gap-1">
+                <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                   {s.status === 'PLANNING' && (
                     <Button
                       variant="ghost"

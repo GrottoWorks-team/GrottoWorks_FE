@@ -52,7 +52,8 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
   return {
     id: dto.id,
     seasonId: dto.seasonId,
-    name: dto.name ? dto.name : `Khu vực #${dto.id.slice(0, 8)}`,
+    // BE WorkAreaDto (27ed9c8) bat buoc tra Name — khong con can fallback bia ten.
+    name: dto.name,
     description: opt(dto.description),
     communityId: opt(dto.communityId),
     leaderId: dto.leaderId ?? '',
