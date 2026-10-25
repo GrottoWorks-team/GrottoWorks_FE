@@ -21,7 +21,7 @@ const MEDAL = [
 export function RecognitionBoard({ rows }: { rows: ContributorRow[] }) {
   const { t } = useTranslation()
 
-  const sorted = useMemo(() => [...rows].sort((a, b) => b.points - a.points), [rows])
+  const sorted = useMemo(() => [...rows].sort((a, b) => (b.points ?? 0) - (a.points ?? 0)), [rows])
 
   if (!sorted.length) return <EmptyState text={t('features.reports.recognitionEmpty')} />
 
@@ -79,9 +79,9 @@ export function RecognitionBoard({ rows }: { rows: ContributorRow[] }) {
               </td>
               <td className="px-4 py-3 text-muted-foreground">{u.communityName}</td>
               <td className="tabular px-4 py-3 text-right font-extrabold text-foreground">
-                {u.points.toLocaleString()}
+                {(u.points ?? 0).toLocaleString()}
               </td>
-              <td className="tabular px-4 py-3 text-right">{u.hours.toFixed(1)}</td>
+              <td className="tabular px-4 py-3 text-right">{(u.hours ?? 0).toFixed(1)}</td>
               <td className="tabular px-4 py-3 text-right">{u.contributions || '—'}</td>
               <td className="tabular px-4 py-3 text-right">{u.tasksDone || '—'}</td>
             </tr>

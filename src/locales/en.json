@@ -1476,6 +1476,8 @@
   "status.REVISION_REQUIRED": "Revision required",
   "features.dashboards.leaderSubMulti": "You lead {{count}} work areas this season",
   "features.dashboards.pendingApi": "The statistics API for this page is not available yet (pending Backend)",
+  "features.pendingBackend.title": "Feature waiting for Backend",
+  "features.pendingBackend.desc": "This screen needs a server API that the Backend has not implemented yet. Data will appear as soon as the API is available.",
   "features.dashboards.noSeason": "No season yet",
   "features.dashboards.areasInSeason": "Work areas this season",
   "features.dashboards.missingLeader": "Areas without a leader",

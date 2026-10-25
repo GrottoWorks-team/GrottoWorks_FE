@@ -1476,6 +1476,8 @@
   "status.REVISION_REQUIRED": "Cần làm lại",
   "features.dashboards.leaderSubMulti": "Bạn đang phụ trách {{count}} khu vực trong mùa này",
   "features.dashboards.pendingApi": "Chưa có API thống kê cho trang này (đang chờ Backend)",
+  "features.pendingBackend.title": "Tính năng đang chờ Backend",
+  "features.pendingBackend.desc": "Màn hình này cần API từ máy chủ nhưng Backend chưa triển khai. Dữ liệu sẽ hiển thị ngay khi API sẵn sàng.",
   "features.dashboards.noSeason": "Chưa có mùa nào",
   "features.dashboards.areasInSeason": "Khu vực trong mùa",
   "features.dashboards.missingLeader": "Khu thiếu trưởng khu",

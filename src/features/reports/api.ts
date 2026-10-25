@@ -41,24 +41,30 @@ export interface ContributorRow {
   tasksDone: number
 }
 
-// 1 query duy nhất cho cả trang — mọi bảng tổng kết + RecognitionBoard ăn
-// chung 1 request batch (Promise.all), tránh waterfall 8 query riêng lẻ.
+// 1 query duy nhất cho cả trang — chỉ lấy các resource Backend đã có
+// (/api/v1/users, /api/v1/materials) phục vụ Bảng vinh danh và lookup vật tư.
+// Bỏ 6 route chết (/purchaseRecords, /donations, /timesheets, /tasks, /communities, /areas)
+// để tránh làm hỏng toàn bộ batch Promise.all.
 export function useReportData() {
   return useQuery({
     queryKey: reportKeys.all,
     queryFn: async (): Promise<ReportData> => {
-      const [purchaseRecords, donations, timesheets, tasks, users, communities, areas, materials] =
-        await Promise.all([
-          api<PurchaseRecord[]>('/purchaseRecords'),
-          api<Donation[]>('/donations'),
-          api<Timesheet[]>('/timesheets'),
-          api<Task[]>('/tasks'),
-          api<User[]>('/api/v1/users'),
-          api<Community[]>('/communities'),
-          api<WorkArea[]>('/areas'),
-          api<Material[]>('/api/v1/materials'),
-        ])
-      return { purchaseRecords, donations, timesheets, tasks, users, communities, areas, materials }
+      const [usersRes, materialsRes] = await Promise.allSettled([
+        api<User[]>('/api/v1/users'),
+        api<Material[]>('/api/v1/materials'),
+      ])
+      const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : []
+      const materials = materialsRes.status === 'fulfilled' && Array.isArray(materialsRes.value) ? materialsRes.value : []
+      return {
+        purchaseRecords: [],
+        donations: [],
+        timesheets: [],
+        tasks: [],
+        users,
+        communities: [],
+        areas: [],
+        materials,
+      }
     },
   })
 }

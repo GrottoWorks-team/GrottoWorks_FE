@@ -69,16 +69,13 @@ const blobBytes = (b: Blob) =>
     fr.readAsArrayBuffer(b)
   })
 
-test('render aggregates đúng seed: tổng chi phí, nhiệm vụ DONE, giờ công, quyên góp', async () => {
+test('render aggregates đúng seed: tổng chi phí, nhiệm vụ DONE, và thông báo chờ backend', async () => {
   mount()
 
   expect(await screen.findByText('6.760.000', {}, { timeout: 5000 })).toBeDefined()
   expect(await screen.findByText('Xây nền hang đá')).toBeDefined()
-  expect(await screen.findByText('Bà Anna Võ Kim Ngân')).toBeDefined()
-  const hoursRow = (await screen.findAllByText('Antôn Trương Minh Nhật')).find((el) =>
-    el.closest('tr')?.textContent?.includes('28.0'),
-  )
-  expect(hoursRow).toBeDefined()
+  const pendingNotices = await screen.findAllByText(/Tính năng đang chờ Backend/i)
+  expect(pendingNotices.length).toBe(3)
 })
 
 test('RecognitionBoard sort điểm giảm dần — top 1 huy chương vàng (u11, 130 điểm)', async () => {
@@ -89,13 +86,14 @@ test('RecognitionBoard sort điểm giảm dần — top 1 huy chương vàng (u
   expect(screen.getAllByLabelText('Hạng 1')).toHaveLength(1)
 })
 
-test('Xuất CSV bảng chi phí: đúng tên file + BOM UTF-8', async () => {
+test('Xuất CSV bảng nhiệm vụ hoàn thành: đúng tên file + BOM UTF-8', async () => {
   mount()
   const user = userEvent.setup()
 
-  await screen.findAllByText('Xi măng PCB40')
+  await screen.findByText('Xây nền hang đá')
   const exportButtons = await screen.findAllByRole('button', { name: 'Xuất CSV' })
-  expect(exportButtons.length).toBe(4)
+  const enabledExport = exportButtons.find((btn) => !btn.hasAttribute('disabled'))
+  expect(enabledExport).toBeDefined()
 
   let captured: Blob | null = null
   let filename = ''
@@ -112,9 +110,9 @@ test('Xuất CSV bảng chi phí: đúng tên file + BOM UTF-8', async () => {
     filename = this.download
   })
 
-  await user.click(exportButtons[0])
+  await user.click(enabledExport!)
 
-  expect(filename).toBe('grottoworks-bao-cao-chi-phi.csv')
+  expect(filename).toBe('grottoworks-bao-cao-nhiem-vu.csv')
   const bytes = await blobBytes(captured!)
   expect([bytes[0], bytes[1], bytes[2]]).toEqual([0xef, 0xbb, 0xbf])
   vi.unstubAllGlobals()
