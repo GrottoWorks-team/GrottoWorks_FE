@@ -7,6 +7,8 @@ import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Download } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { EmptyState } from '@/components/shared/EmptyState'
+import { Card } from '@/components/ui/card'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
@@ -176,38 +178,7 @@ export default function ReportPage() {
     [data],
   )
 
-  const purchaseColumns = useMemo(
-    () => [
-      { key: 'material', header: t('features.purchases.material') },
-      { key: 'qty', header: t('features.purchases.qty'), align: 'right' as const, render: (r: (typeof purchaseRows)[number]) => <span className="tabular">{r.qty}</span> },
-      { key: 'cost', header: t('features.purchases.cost'), align: 'right' as const, render: (r: (typeof purchaseRows)[number]) => <span className="tabular">{r.cost.toLocaleString()} ₫</span> },
-      { key: 'supplier', header: t('features.purchases.supplier') },
-      { key: 'date', header: t('features.purchases.date'), render: (r: (typeof purchaseRows)[number]) => <span className="tabular">{viDate(r.date)}</span> },
-      { key: 'buyer', header: t('features.purchases.buyer') },
-      { key: 'confirmed', header: t('features.purchases.confirmed'), align: 'center' as const, render: (r: (typeof purchaseRows)[number]) => (r.confirmed ? '✓' : '·') },
-    ],
-    [t],
-  )
 
-  const donationColumns = useMemo(
-    () => [
-      { key: 'donor', header: t('features.donations.donor'), render: (r: (typeof donationRows)[number]) => <span className="font-semibold">{r.donor}</span> },
-      { key: 'material', header: t('features.donations.material') },
-      { key: 'promised', header: t('features.donations.promised'), align: 'right' as const, render: (r: (typeof donationRows)[number]) => <span className="tabular">{r.promised || '—'}</span> },
-      { key: 'received', header: t('features.donations.receivedCol'), align: 'right' as const, render: (r: (typeof donationRows)[number]) => <span className="tabular">{r.received || '—'}</span> },
-      { key: 'monetary', header: t('features.donations.money'), align: 'right' as const, render: (r: (typeof donationRows)[number]) => <span className="tabular">{r.monetary ? `${r.monetary.toLocaleString()} ₫` : '—'}</span> },
-    ],
-    [t],
-  )
-
-  const hourColumns = useMemo(
-    () => [
-      { key: 'volunteer', header: t('features.timesheets.volunteer'), render: (r: (typeof hourRows)[number]) => <span className="font-semibold">{r.volunteer}</span> },
-      { key: 'sessions', header: t('features.reports.sessions'), align: 'right' as const, render: (r: (typeof hourRows)[number]) => <span className="tabular">{r.sessions}</span> },
-      { key: 'hours', header: t('features.timesheets.hours'), align: 'right' as const, render: (r: (typeof hourRows)[number]) => <span className="tabular font-semibold">{r.hours.toFixed(1)}</span> },
-    ],
-    [t],
-  )
 
   const doneColumns = useMemo(
     () => [
@@ -303,44 +274,41 @@ export default function ReportPage() {
 
       <Section
         title={t('features.reports.purchasesTitle')}
-        count={purchaseRows.length}
+        count={0}
         onExport={exportPurchases}
         index={0}
       >
-        <DataTable
-          rows={purchaseRows}
-          columns={purchaseColumns}
-          searchKeys={['material', 'supplier']}
-          emptyText={t('features.reports.emptyPurchases')}
-        />
+        <Card>
+          <EmptyState
+            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
+          />
+        </Card>
       </Section>
 
       <Section
         title={t('features.reports.donationsTitle')}
-        count={donationRows.length}
+        count={0}
         onExport={exportDonations}
         index={1}
       >
-        <DataTable
-          rows={donationRows}
-          columns={donationColumns}
-          searchKeys={['donor', 'material']}
-          emptyText={t('features.reports.emptyDonations')}
-        />
+        <Card>
+          <EmptyState
+            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
+          />
+        </Card>
       </Section>
 
       <Section
         title={t('features.reports.hoursTitle')}
-        count={hourRows.length}
+        count={0}
         onExport={exportHours}
         index={2}
       >
-        <DataTable
-          rows={hourRows}
-          columns={hourColumns}
-          searchKeys={['volunteer']}
-          emptyText={t('features.reports.emptyHours')}
-        />
+        <Card>
+          <EmptyState
+            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
+          />
+        </Card>
       </Section>
 
       <Section
