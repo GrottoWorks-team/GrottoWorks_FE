@@ -196,6 +196,8 @@
   "features.areas.edit": "Edit area",
   "features.areas.seasonInvalidState": "Season is active — cannot add new area",
   "features.areas.startDate": "Start date",
+  "features.areas.startDateInvalid": "Start date cannot be after deadline",
+  "features.areas.category": "Category",
   "features.areas.areaFallback": "Area #{{id}}",
   "features.areas.assign": "Assign",
   "features.areas.assignTitle": "Assign {{name}}",

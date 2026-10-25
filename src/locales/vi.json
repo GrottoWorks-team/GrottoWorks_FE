@@ -196,6 +196,8 @@
   "features.areas.edit": "Sửa khu vực",
   "features.areas.seasonInvalidState": "Mùa đã kích hoạt — không thể thêm khu vực mới",
   "features.areas.startDate": "Ngày bắt đầu",
+  "features.areas.startDateInvalid": "Ngày bắt đầu không được sau hạn hoàn thành",
+  "features.areas.category": "Danh mục khu vực",
   "features.areas.areaFallback": "Khu vực #{{id}}",
   "features.areas.assign": "Phân công",
   "features.areas.assignTitle": "Phân công khu vực {{name}}",

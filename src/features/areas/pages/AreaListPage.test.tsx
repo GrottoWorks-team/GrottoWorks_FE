@@ -173,6 +173,16 @@ vi.mock('@/features/users/api', () => ({
   useUsers: () => ({ data: mockUsers, isPending: false }),
 }))
 
+vi.mock('@/features/parish/api', () => ({
+  useWorkAreaCategories: () => ({
+    data: [
+      { id: 'cat1', name: 'Hang đá', code: 'GROTTO', status: 'ACTIVE' },
+      { id: 'cat2', name: 'Cây thông', code: 'TREE', status: 'ACTIVE' },
+    ],
+    isPending: false,
+  }),
+}))
+
 beforeEach(() => {
   localStorage.removeItem('grotto-token')
 })
@@ -300,6 +310,43 @@ test('AreaFormDialog: validate deadline trước ngày bắt đầu mùa', async
   await userEvent.click(saveBtn)
 
   expect(await screen.findByText(/Hạn hoàn thành phải từ ngày bắt đầu mùa trở đi/i)).toBeDefined()
+})
+
+test('AreaFormDialog: hiển thị ô startDate, categoryId và validate startDate sau deadline', async () => {
+  localStorage.setItem('grotto-token', 'demo-u1')
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={client}>
+      <ToastProvider>
+        <AreaFormDialog onClose={() => {}} />
+      </ToastProvider>
+    </QueryClientProvider>,
+  )
+
+  const catSelect = (await screen.findByLabelText(/Danh mục khu vực|Category/i)) as HTMLSelectElement
+  expect(catSelect).toBeDefined()
+  expect(catSelect.querySelector('option[value="cat1"]')).toBeDefined()
+
+  const startDateInput = (await screen.findByLabelText(/Ngày bắt đầu|Start date/i)) as HTMLInputElement
+  expect(startDateInput).toBeDefined()
+
+  const nameInput = await screen.findByLabelText(/Tên khu vực/i)
+  await userEvent.type(nameInput, 'Khu ngày lỗi')
+
+  const leaderSelect = await screen.findByLabelText(/^Trưởng khu/i)
+  await userEvent.selectOptions(leaderSelect, 'u3')
+
+  const officerSelect = await screen.findByLabelText(/^Trưởng ban hành giáo/i)
+  await userEvent.selectOptions(officerSelect, 'u4')
+
+  await userEvent.type(startDateInput, '2026-12-25')
+  const deadlineInput = await screen.findByLabelText(/Hạn hoàn thành/i)
+  await userEvent.type(deadlineInput, '2026-12-20')
+
+  const saveBtn = screen.getByRole('button', { name: /Lưu/i })
+  await userEvent.click(saveBtn)
+
+  expect(await screen.findByText(/Ngày bắt đầu không được sau hạn hoàn thành/i)).toBeDefined()
 })
 
 test('AreaAssignDialog: hiển thị thông tin thời hạn và phân công thành công', async () => {

@@ -63,6 +63,7 @@ export interface WorkArea {
   taskCount: number
   status: WorkAreaStatus
   seasonId?: string
+  categoryId?: string
   startDate?: string
   deadline?: string
   description?: string

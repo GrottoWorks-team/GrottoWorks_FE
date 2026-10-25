@@ -59,6 +59,7 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
     officerId: dto.materialOfficerId ?? '',
     startDate: opt(dto.startDate),
     deadline: opt(dto.deadline),
+    categoryId: opt(dto.categoryId),
     status: dto.status,
     version: dto.version,
     // ponytail: BE chưa trả type/level/progress/volunteerCount/taskCount

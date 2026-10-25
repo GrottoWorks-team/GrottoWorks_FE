@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
+import { useWorkAreaCategories } from '@/features/parish/api'
 import type { Season, WorkArea } from '@/types'
 
 const AREA_TYPES = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE'] as const
@@ -27,8 +28,10 @@ const createSchema = (seasons: Season[]) =>
       type: z.enum(AREA_TYPES),
       level: z.enum(LEVELS),
       communityId: z.string(),
+      categoryId: z.string().optional(),
       leaderId: z.string().min(1, 'features.areas.leaderRequired'),
       officerId: z.string().min(1, 'features.areas.officerRequired'),
+      startDate: z.string().optional(),
       deadline: z.string().optional(),
       description: z.string().max(300, 'features.areas.descriptionMax').optional(),
     })
@@ -38,6 +41,13 @@ const createSchema = (seasons: Season[]) =>
           code: z.ZodIssueCode.custom,
           path: ['communityId'],
           message: 'features.areas.communityRequired',
+        })
+      }
+      if (data.startDate && data.deadline && data.startDate > data.deadline) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['startDate'],
+          message: 'features.areas.startDateInvalid',
         })
       }
       if (data.deadline && data.seasonId) {
@@ -81,6 +91,7 @@ export function AreaFormDialog({
   const { data: users = [] } = useUsers()
   const { data: communities = [] } = useCommunities()
   const { data: seasons = [] } = useSeasons()
+  const { data: categories = [] } = useWorkAreaCategories()
   const create = useCreateArea()
   const update = useUpdateArea()
   const editing = Boolean(area)
@@ -115,8 +126,10 @@ export function AreaFormDialog({
           type: area.type,
           level: area.level,
           communityId: area.communityId ?? (isCommunity ? (user?.communityId ?? '') : ''),
+          categoryId: area.categoryId ?? '',
           leaderId: area.leaderId,
           officerId: area.officerId,
+          startDate: area.startDate ?? '',
           deadline: area.deadline ?? '',
           description: area.description ?? '',
         }
@@ -126,8 +139,10 @@ export function AreaFormDialog({
           type: 'GROTTO',
           level: isCommunity ? 'COMMUNITY' : 'PARISH',
           communityId: isCommunity ? (user?.communityId ?? '') : '',
+          categoryId: '',
           leaderId: '',
           officerId: '',
+          startDate: '',
           deadline: '',
           description: '',
         },
@@ -163,7 +178,9 @@ export function AreaFormDialog({
           version: area.version,
           name: data.name,
           description: data.description || undefined,
+          startDate: data.startDate || undefined,
           deadline: data.deadline || undefined,
+          categoryId: data.categoryId || undefined,
           communityId,
           leaderId: data.leaderId || undefined,
           officerId: data.officerId || undefined,
@@ -174,8 +191,9 @@ export function AreaFormDialog({
           seasonId: data.seasonId,
           name: data.name,
           description: data.description || null,
+          categoryId: data.categoryId || null,
           communityId: data.level === 'COMMUNITY' ? (communityId ?? null) : null,
-          startDate: null,
+          startDate: data.startDate || null,
           deadline: data.deadline || null,
         })
         toast(t('features.areas.created', { name: data.name }))
@@ -232,7 +250,7 @@ export function AreaFormDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <Label htmlFor="area-type">{t('features.areas.type')}</Label>
             <select id="area-type" className={SELECT_CLS} {...register('type')}>
@@ -252,6 +270,18 @@ export function AreaFormDialog({
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <Label htmlFor="area-category">{t('features.areas.category')}</Label>
+            <select id="area-category" className={SELECT_CLS} {...register('categoryId')}>
+              <option value="">{t('features.areas.selectPlaceholder')}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            {err(errors.categoryId?.message)}
           </div>
         </div>
 
@@ -308,22 +338,27 @@ export function AreaFormDialog({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
+            <Label htmlFor="area-start-date">{t('features.areas.startDate')}</Label>
+            <Input id="area-start-date" type="date" {...register('startDate')} />
+            {err(errors.startDate?.message)}
+          </div>
+          <div>
             <Label htmlFor="area-deadline">{t('features.areas.deadline')}</Label>
             <Input id="area-deadline" type="date" {...register('deadline')} />
             {err(errors.deadline?.message)}
           </div>
+        </div>
 
-          <div>
-            <Label htmlFor="area-description">{t('features.areas.description')}</Label>
-            <textarea
-              id="area-description"
-              rows={2}
-              placeholder={t('features.areas.descriptionPlaceholder')}
-              className={TEXTAREA_CLS}
-              {...register('description')}
-            />
-            {err(errors.description?.message)}
-          </div>
+        <div>
+          <Label htmlFor="area-description">{t('features.areas.description')}</Label>
+          <textarea
+            id="area-description"
+            rows={2}
+            placeholder={t('features.areas.descriptionPlaceholder')}
+            className={TEXTAREA_CLS}
+            {...register('description')}
+          />
+          {err(errors.description?.message)}
         </div>
       </form>
     </Dialog>
