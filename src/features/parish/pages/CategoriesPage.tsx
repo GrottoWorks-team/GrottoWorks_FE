@@ -29,7 +29,6 @@ import {
   useAdminSkills,
   useCreateSkill,
   useCreateWorkAreaCategory,
-  useDeleteSkill,
   useRenameSkill,
   useUpdateWorkAreaCategory,
   useWorkAreaCategories,
@@ -222,7 +221,6 @@ export default function CategoriesPage() {
   const updateAreaCategory = useUpdateWorkAreaCategory()
   const createSkill = useCreateSkill()
   const renameSkill = useRenameSkill()
-  const deleteSkill = useDeleteSkill()
 
   const [unitsDelta, setUnitsDelta] = useState<UnitsDelta>(loadUnits)
   const units = useMemo(() => applyUnits(unitsDelta), [unitsDelta])
@@ -253,15 +251,6 @@ export default function CategoriesPage() {
       await renameSkill.mutateAsync({ index, name })
       toast(t('features.parish.updated', { name }))
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
-    }
-  }
-  const deleteSkillAt = async (index: number) => {
-    try {
-      await deleteSkill.mutateAsync(index)
-      toast(t('features.parish.deleted', { name: skills[index] }))
-    } catch (e) {
-      // 409: mock trả "Kỹ năng … đang được dùng — không thể xoá" hiện nguyên văn.
       toast(e instanceof Error ? e.message : t('common.error'), 'alert')
     }
   }
@@ -391,7 +380,6 @@ export default function CategoriesPage() {
                   refCount={skillUses(s)}
                   refLabel={t('features.parish.refUses')}
                   onRename={(next) => void renameSkillAt(i, next)}
-                  onDelete={() => void deleteSkillAt(i)}
                 />
               ))}
             </ul>

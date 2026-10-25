@@ -2,16 +2,15 @@
 // switch khoá/mở (user bị khoá → login 401), sửa/xoá qua dialog.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { useCommunities } from '@/features/communities/api'
 import { useUsers } from '@/features/users/api'
 import { cn } from '@/lib/utils'
-import { useDeleteUser, useLockUser, useUnlockUser } from '../api'
+import { useLockUser, useUnlockUser } from '../api'
 import { AccountFormDialog } from './AccountFormDialog'
 import type { User } from '@/types'
 
@@ -55,11 +54,9 @@ export default function AccountsPage() {
   const { data: communities = [] } = useCommunities()
   const lockUser = useLockUser()
   const unlockUser = useUnlockUser()
-  const deleteUser = useDeleteUser()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<User | null>(null)
-  const [deleting, setDeleting] = useState<User | null>(null)
 
   const communityName = (id?: string) => communities.find((c) => c.id === id)?.name ?? '—'
 
@@ -120,29 +117,12 @@ export default function AccountsPage() {
             >
               <Pencil className="size-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.delete')}
-              onClick={() => setDeleting(u)}
-            >
-              <Trash2 className="size-4" />
-            </Button>
           </div>
         ),
       },
     ],
     [t, communities, lockUser, unlockUser, toast],
   )
-
-  const onDelete = async (u: User) => {
-    try {
-      await deleteUser.mutateAsync(u.id)
-      toast(t('features.parish.deleted', { name: u.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
 
   return (
     <div>
@@ -175,15 +155,6 @@ export default function AccountsPage() {
       )}
 
       {formOpen && <AccountFormDialog account={editing} onClose={() => setFormOpen(false)} />}
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        title={t('features.parish.deleteTitle')}
-        description={deleting ? t('features.parish.deleteConfirm', { name: deleting.name }) : undefined}
-        confirmLabel={t('common.delete')}
-        tone="destructive"
-        onConfirm={() => deleting && onDelete(deleting)}
-        onClose={() => setDeleting(null)}
-      />
     </div>
   )
 }

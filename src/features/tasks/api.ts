@@ -219,10 +219,6 @@ export function useUpdateTask() {
   )
 }
 
-export function useDeleteTask() {
-  return useTaskMutation((id: string) => api<void>(`/api/v1/tasks/${id}`, { method: 'DELETE' }))
-}
-
 /**
  * G5: PUT /api/v1/tasks/{taskId}/completion-criteria
  */

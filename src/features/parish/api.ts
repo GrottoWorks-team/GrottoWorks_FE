@@ -197,11 +197,6 @@ export function useRoles() {
     queryFn: () => api<RoleDto[]>('/api/v1/roles'),
   })
 }
-export function useDeleteUser() {
-  return useAdminMutation([[ 'users' ]], (id: string) =>
-    api<void>(`/users/${id}`, { method: 'DELETE' }),
-  )
-}
 
 // ---- Communities (CRUD) --------------------------------------------------
 
@@ -238,15 +233,6 @@ export function useUpdateCommunity() {
   )
 }
 
-// BE hiện CHƯA có DELETE /api/v1/communities/{id} (xem
-// BE-gap-requests-activity-flows.md) — gọi đúng đường dẫn chuẩn để khi BE bổ
-// sung là chạy, thay vì endpoint mock đã bị xoá.
-export function useDeleteCommunity() {
-  return useAdminMutation([['communities']], (id: string) =>
-    api<void>(`/api/v1/communities/${id}`, { method: 'DELETE' }),
-  )
-}
-
 // ---- Parish (object Ä‘Æ¡n) + Skills (string[]) ------------------------------
 
 export function useCreateSkill() {
@@ -273,12 +259,6 @@ export function useRenameSkill() {
       // fallback
     }
   })
-}
-
-export function useDeleteSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], (index: number) =>
-    api<void>(`/skills/${index}`, { method: 'DELETE' }),
-  )
 }
 
 // ---- Backup ----------------------------------------------------------------
