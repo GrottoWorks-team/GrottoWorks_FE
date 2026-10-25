@@ -224,6 +224,20 @@ export function useUpdateTask() {
 }
 
 /**
+ * POST /api/v1/tasks/{id}/ready — Leader chốt tuyển, BE chuyển OPEN -> NOT_STARTED.
+ * BE bắt buộc If-Match (thiếu → 400 INVALID_IF_MATCH, lệch version → 412).
+ */
+export function useMarkTaskReady() {
+  return useTaskMutation(async ({ id, version }: { id: string; version?: number }) => {
+    const headers: Record<string, string> = {}
+    if (version !== undefined && version !== null) {
+      headers['If-Match'] = `"${version}"`
+    }
+    return api<TaskDto>(`/api/v1/tasks/${id}/ready`, { method: 'POST', headers })
+  })
+}
+
+/**
  * G5: PUT /api/v1/tasks/{taskId}/completion-criteria
  */
 export function useReplaceCompletionCriteria() {

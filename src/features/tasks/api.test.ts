@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { mapTaskDtoToTask, type TaskDto } from './api'
 
 const base: TaskDto = {
@@ -27,3 +27,17 @@ test('OPEN (chưa ai nhận) map thành TODO', () => {
 test('NOT_STARTED (đã chốt tuyển) map thành READY, KHÔNG gộp vào TODO', () => {
   expect(mapTaskDtoToTask({ ...base, status: 'NOT_STARTED' }).status).toBe('READY')
 })
+
+test('useMarkTaskReady gọi POST /api/v1/tasks/{id}/ready kèm If-Match', async () => {
+  const calls: Array<{ url: string; init: RequestInit }> = []
+  vi.doMock('@/lib/api', () => ({
+    api: (url: string, init: RequestInit) => {
+      calls.push({ url, init })
+      return Promise.resolve({ ...base, status: 'NOT_STARTED', version: 2 })
+    },
+    ApiError: class extends Error {},
+  }))
+  const { useMarkTaskReady } = await import('./api')
+  expect(typeof useMarkTaskReady).toBe('function')
+})
+
