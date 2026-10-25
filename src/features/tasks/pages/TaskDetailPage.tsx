@@ -22,6 +22,7 @@ import { useUsers } from '@/features/users/api'
 import {
   useApproveCompletion,
   useAssignVolunteer,
+  useMarkTaskReady,
   useReplaceCompletionCriteria,
   useReplaceTaskSkills,
   useRequestRevision,
@@ -210,6 +211,7 @@ export default function TaskDetailPage() {
   const { data: materials = [] } = useMaterials(task?.areaId)
 
   const update = useUpdateTask()
+  const markReady = useMarkTaskReady()
   const submitReview = useSubmitReview(id)
   const requestRevision = useRequestRevision(id)
   const approve = useApproveCompletion(id)
@@ -462,12 +464,18 @@ export default function TaskDetailPage() {
                   className="w-full"
                   onClick={() =>
                     run(
-                      () => update.mutateAsync({ id: task.id, status: 'DOING' }),
-                      t('features.tasks.started', { name: task.title }),
+                      () => markReady.mutateAsync({ id: task.id, version: task.version }),
+                      t('features.tasks.readyDone', { name: task.title }),
                     )
                   }
                 >
-                  {t('features.tasks.start')}
+                  <Check className="size-4" />
+                  {t('features.tasks.markReady')}
+                </Button>
+              )}
+              {task.status === 'READY' && (
+                <Button className="w-full" disabled>
+                  {t('features.tasks.waitingStart')}
                 </Button>
               )}
               {task.status === 'DOING' && (

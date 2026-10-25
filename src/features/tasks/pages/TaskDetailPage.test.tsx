@@ -47,6 +47,7 @@ vi.mock('../api', () => ({
     }),
     isPending: false,
   }),
+  useMarkTaskReady: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSubmitReview: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useApproveCompletion: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRequestRevision: () => ({ mutateAsync: vi.fn(), isPending: false }),
