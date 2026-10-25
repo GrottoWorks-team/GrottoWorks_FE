@@ -38,13 +38,21 @@ const STYLE = {
 
 const GLYPH = { ok: '✓', warn: '◐', alert: '✕', soft: '◇' } as const
 
+/**
+ * Task dùng chung union status với khu vực (cả hai đều có 'READY') nhưng nghĩa
+ * khác nhau: khu vực READY = "Sẵn sàng", task READY = "Đã chốt tuyển". Truyền
+ * scope="task" để lấy key i18n riêng thay vì đè nhãn dùng chung.
+ */
 export function StatusTag({
   status,
+  scope,
   glyph,
   tone,
   className,
 }: {
   status: string
+  /** Ngữ cảnh hẹp hơn — hiện chỉ 'task' cần tách nhãn khỏi khu vực. */
+  scope?: 'task'
   /** Override glyph/tone theo ngữ cảnh (vd TimesheetPage) — mặc định lấy map theo status. */
   glyph?: string
   tone?: keyof typeof STYLE
@@ -52,6 +60,7 @@ export function StatusTag({
 }) {
   const { t } = useTranslation()
   const activeTone = tone ?? TONE[status] ?? 'soft'
+  const key = scope === 'task' ? `status.TASK_${status}` : `status.${status}`
   return (
     <span
       className={cn(
@@ -61,7 +70,7 @@ export function StatusTag({
       )}
     >
       <span aria-hidden>{glyph ?? GLYPH[activeTone]}</span>
-      {t(`status.${status}`, { defaultValue: status })}
+      {t(key, { defaultValue: t(`status.${status}`, { defaultValue: status }) })}
     </span>
   )
 }

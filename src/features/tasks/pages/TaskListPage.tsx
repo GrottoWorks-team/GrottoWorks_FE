@@ -116,7 +116,7 @@ export default function TaskListPage() {
           )
         },
       },
-      { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} /> },
+      { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} scope="task" /> },
       ...(readOnly
         ? []
         : [
