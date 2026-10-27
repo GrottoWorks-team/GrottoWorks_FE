@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event'
 import App from '@/App'
 
 vi.mock('@/lib/api', () => ({
+  ApiError: class ApiError extends Error {
+    status: number
+    constructor(status: number, message: string) {
+      super(message)
+      this.status = status
+    }
+  },
   api: vi.fn(async (url: string) => {
     if (url === '/api/v1/auth/login') {
       return {
@@ -18,8 +25,8 @@ vi.mock('@/lib/api', () => ({
         id: 'u2',
         displayName: 'Giuse Trần Văn Bình',
         name: 'Giuse Trần Văn Bình',
-        email: 'committee@grottoworks.vn',
-        role: 'COMMUNITY',
+        email: 'leader.demo@grottoworks.local',
+        role: 'LEADER',
         communityId: 'c1',
         points: 0,
         skills: [],
@@ -43,28 +50,25 @@ beforeEach(() => {
   window.history.pushState({}, '', '/login')
 })
 
-test('hiện 4 chip tài khoản demo', async () => {
+test('hiện chip tài khoản demo khớp seed thật của BE', async () => {
   render(<App />)
-  for (const local of ['admin', 'committee', 'leader', 'officer']) {
+  // Ba tài khoản seed thật trong scripts/seed-demo.sh — không còn email bịa.
+  for (const local of ['parish.demo', 'leader.demo', 'mo.demo']) {
     expect(
       await screen.findByRole('button', { name: new RegExp(local) }, { timeout: 10_000 }),
     ).toBeDefined()
   }
 })
 
-test('đăng nhập committee → vào shell với nav điều phối, hiện Mùa Giáng sinh & Khu vực công tác', async () => {
+test('đăng nhập bằng form → vào shell với nav Trưởng khu', async () => {
   const user = userEvent.setup()
   render(<App />)
-  await user.click(
-    await screen.findByRole('button', { name: /committee/ }, { timeout: 10_000 }),
-  )
+  await user.type(await screen.findByLabelText(/Email/i), 'leader.demo@grottoworks.local')
+  await user.type(screen.getByLabelText(/^Mật khẩu/i), 'ChangeMe!123456')
   await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
-  expect(await screen.findByText('Điều phối', {}, { timeout: 10_000 })).toBeDefined()
   expect(await screen.findByText('Giuse Trần Văn Bình', {}, { timeout: 10_000 })).toBeDefined()
+  // LEADER không có mục "Khu vực công tác"; nav của họ bắt đầu bằng Nhiệm vụ.
   expect(
-    await screen.findByRole('link', { name: /Mùa Giáng sinh/i }, { timeout: 10_000 }),
-  ).toBeDefined()
-  expect(
-    await screen.findByRole('link', { name: /Khu vực công tác/i }, { timeout: 10_000 }),
+    await screen.findByRole('link', { name: /Nhiệm vụ/i }, { timeout: 10_000 }),
   ).toBeDefined()
 })

@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useRegister } from '@/features/auth/api'
+import { useParishes } from '@/features/parish/api'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 import { JoinOptions } from '@/components/auth/JoinOptions'
 import { errorMessage } from '@/lib/errorMessage'
@@ -39,6 +40,8 @@ export default function Register() {
   const navigate = useNavigate()
   const toast = useToast()
   const registerMutation = useRegister()
+  // Danh sách giáo xứ lấy từ BE — trước đây form ghim cứng 2 UUID.
+  const { data: parishes = [], isPending: parishesPending } = useParishes()
   const [serverError, setServerError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [passwordValue, setPasswordValue] = useState('')
@@ -244,14 +247,17 @@ export default function Register() {
               <select
                 id="parishId"
                 className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white/90 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-pine/30 focus:border-brand-pine transition-all"
+                disabled={parishesPending}
                 {...register('parishId')}
               >
-                <option value="11111111-1111-1111-1111-111111111111">
-                  Giáo xứ Chính Tòa
+                <option value="">
+                  {parishesPending ? 'Đang tải danh sách giáo xứ…' : '— Chọn giáo xứ —'}
                 </option>
-                <option value="22222222-2222-2222-2222-222222222222">
-                  Giáo xứ Tân Định
-                </option>
+                {parishes.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
             </div>
             {errors.parishId && (

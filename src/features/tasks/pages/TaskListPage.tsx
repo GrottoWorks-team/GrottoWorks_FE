@@ -12,7 +12,7 @@ import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { Button, buttonBase, buttonSizes, buttonVariants } from '@/components/ui/button'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useScopedAreas } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
@@ -207,12 +207,11 @@ export default function TaskListPage() {
         <EmptyState
           text={t('features.tasks.noArea')}
           action={
-            <a
-              href="mailto:committee@grottoworks.vn"
-              className={cn(buttonBase, buttonVariants.default, buttonSizes.default)}
-            >
+            // Không còn mailto cứng: địa chỉ committee@grottoworks.vn là địa chỉ
+            // bịa, không phải hộp thư thật của giáo xứ nào. Chờ BE có API liên hệ.
+            <span className="text-xs text-muted-foreground">
               {t('features.tasks.contactCommittee')}
-            </a>
+            </span>
           }
         />
       ) : (

@@ -6,7 +6,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Crown,
-  Users,
   Hammer,
   Package,
   Mail,
@@ -42,17 +41,19 @@ interface DemoRoleConfig {
   color: string
 }
 
+// Tài khoản seed thật của BE (xem scripts/seed-demo.sh). Đây là danh sách
+// CHỈ DÙNG CHO NÚT ĐIỀN NHANH ở màn đăng nhập — không phải nguồn dữ liệu
+// nghiệp vụ. Tên/mật khẩu khớp đúng seed; sai thì nút điền nhanh vô dụng.
 const DEMO: DemoRoleConfig[] = [
-  { role: 'PARISH', email: 'admin@grottoworks.vn', icon: Crown, color: 'text-amber-600' },
-  { role: 'COMMUNITY', email: 'committee@grottoworks.vn', icon: Users, color: 'text-emerald-700' },
-  { role: 'LEADER', email: 'leader@grottoworks.vn', icon: Hammer, color: 'text-blue-700' },
-  { role: 'MATERIAL_OFFICER', email: 'officer@grottoworks.vn', icon: Package, color: 'text-indigo-700' },
+  { role: 'PARISH', email: 'parish.demo@grottoworks.local', icon: Crown, color: 'text-amber-600' },
+  { role: 'LEADER', email: 'leader.demo@grottoworks.local', icon: Hammer, color: 'text-blue-700' },
+  { role: 'MATERIAL_OFFICER', email: 'mo.demo@grottoworks.local', icon: Package, color: 'text-indigo-700' },
 ]
 
 // Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md` (BE yêu cầu ≥ 8 ký tự,
 // có ít nhất 1 chữ và 1 số nên `grotto` không hợp lệ). Đổi bằng biến môi trường
 // VITE_DEMO_PASSWORD nếu seed ở máy bạn dùng mật khẩu khác.
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'grotto123'
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'ChangeMe!123456'
 
 export default function Login() {
   const { t } = useTranslation()
