@@ -49,9 +49,6 @@ export default function Register() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      parishId: '11111111-1111-1111-1111-111111111111',
-    },
   })
 
   // Tính toán độ mạnh mật khẩu chuẩn UI/UX Pro Max

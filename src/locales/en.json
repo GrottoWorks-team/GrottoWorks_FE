@@ -1519,5 +1519,7 @@
   "error.notFound": "Data not found — it may have been deleted or the link is wrong.",
   "error.conflict": "Someone else changed this data. Reload the page and try again.",
   "error.server": "The server ran into a problem. Please try again in a moment.",
-  "error.loadFailed": "Could not load data"
+  "error.loadFailed": "Could not load data",
+  "features.pointRules.title": "Point rules",
+  "features.pointRules.sub": "Scoring rules for volunteers"
 }

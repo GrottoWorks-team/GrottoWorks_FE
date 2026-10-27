@@ -33,11 +33,28 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const DEFAULT_SLOTS = [
-  { id: 'weekend_morn', labelKey: 'profile.slotWeekendMorning', from: '2026-10-24T08:00:00Z', to: '2026-10-24T12:00:00Z' },
-  { id: 'weekend_after', labelKey: 'profile.slotWeekendAfternoon', from: '2026-10-24T13:30:00Z', to: '2026-10-24T17:30:00Z' },
-  { id: 'weekday_eve', labelKey: 'profile.slotWeekdayEvening', from: '2026-10-21T18:30:00Z', to: '2026-10-21T21:30:00Z' },
+/** Ba khung giờ rảnh mẫu — chỉ là BỐ CỤC chọn, giờ thật lấy từ BE
+ *  (`GET /api/v1/users/me` → availability). Ngày không còn ghim cứng: mỗi lần
+ *  lưu, khung giờ được neo vào thứ Bảy/Chủ nhật của TUẦN HIỆN TẠI. */
+const SLOT_TEMPLATES = [
+  { id: 'weekend_morn', labelKey: 'profile.slotWeekendMorning', day: 6, fromH: 8, toH: 12 },
+  { id: 'weekend_after', labelKey: 'profile.slotWeekendAfternoon', day: 6, fromH: 13.5, toH: 17.5 },
+  { id: 'weekday_eve', labelKey: 'profile.slotWeekdayEvening', day: 3, fromH: 18.5, toH: 21.5 },
 ]
+
+/** Neo khung giờ mẫu vào tuần hiện tại (thứ Hai là mốc đầu tuần). */
+function slotRange(t: (typeof SLOT_TEMPLATES)[number], base = new Date()) {
+  const monday = new Date(base)
+  const dow = (monday.getDay() + 6) % 7 // 0 = thứ Hai
+  monday.setDate(monday.getDate() - dow)
+  monday.setHours(0, 0, 0, 0)
+  const start = new Date(monday)
+  start.setDate(monday.getDate() + t.day)
+  const end = new Date(start)
+  start.setHours(Math.floor(t.fromH), (t.fromH % 1) * 60, 0, 0)
+  end.setHours(Math.floor(t.toH), (t.toH % 1) * 60, 0, 0)
+  return { from: start.toISOString(), to: end.toISOString() }
+}
 
 function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unknown> }) {
   const { t } = useTranslation()
@@ -47,7 +64,19 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
   const replaceSkills = useReplaceMySkills()
   const replaceAvailability = useReplaceMyAvailability()
   const { data: allSkills = [] } = useSkills()
-  const [selectedSlots, setSelectedSlots] = useState<string[]>([])
+  // Khung giờ đang chọn: đọc từ BE (`user.availability`) thay vì luôn rỗng.
+  // Khớp theo "thứ + giờ bắt đầu" vì BE trả ngày cụ thể của tuần đã lưu.
+  const [selectedSlots, setSelectedSlots] = useState<string[]>(() => {
+    const saved = user.availability ?? []
+    if (!saved.length) return []
+    return SLOT_TEMPLATES.filter((tpl) =>
+      saved.some((a) => {
+        const d = new Date(a.availableFrom)
+        const dow = (d.getDay() + 6) % 7
+        return dow === tpl.day && d.getHours() + d.getMinutes() / 60 === tpl.fromH
+      }),
+    ).map((tpl) => tpl.id)
+  })
 
   const {
     register,
@@ -77,13 +106,12 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
 
       // A11: PUT /api/v1/users/me/availability
       try {
-        const slotsToSubmit = DEFAULT_SLOTS
+        const slotsToSubmit = SLOT_TEMPLATES
           .filter((s) => selectedSlots.includes(s.id))
-          .map((s) => ({
-            availableFrom: s.from,
-            availableTo: s.to,
-            note: t(s.labelKey),
-          }))
+          .map((s) => {
+            const r = slotRange(s)
+            return { availableFrom: r.from, availableTo: r.to, note: t(s.labelKey) }
+          })
         if (slotsToSubmit.length > 0) {
           await replaceAvailability.mutateAsync(slotsToSubmit)
         }
@@ -168,7 +196,7 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
           <Label>{t('profile.availability')}</Label>
           <p className="mb-2 text-xs text-muted-foreground">{t('profile.availabilityHint')}</p>
           <div className="space-y-2">
-            {DEFAULT_SLOTS.map((s) => {
+            {SLOT_TEMPLATES.map((s) => {
               const active = selectedSlots.includes(s.id)
               return (
                 <button

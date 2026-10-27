@@ -1519,5 +1519,7 @@
   "error.notFound": "Không tìm thấy dữ liệu — có thể đã bị xoá hoặc bạn mở sai đường dẫn.",
   "error.conflict": "Dữ liệu đã bị người khác thay đổi. Tải lại trang rồi thử lại.",
   "error.server": "Máy chủ gặp sự cố. Vui lòng thử lại sau ít phút.",
-  "error.loadFailed": "Không tải được dữ liệu"
+  "error.loadFailed": "Không tải được dữ liệu",
+  "features.pointRules.title": "Quy tắc điểm",
+  "features.pointRules.sub": "Quy tắc cộng điểm cho tình nguyện viên"
 }

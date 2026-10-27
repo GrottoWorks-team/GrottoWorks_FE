@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       parishId: p.parishId,
       skills: p.skillIds ?? p.skills ?? [],
       points: p.points ?? 0,
+      availability: p.availability ?? [],
       avatarHue: 45,
     }
     setUser(u)

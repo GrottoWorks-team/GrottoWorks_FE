@@ -17,9 +17,9 @@ export function seasonElapsedPercent(s: Season, now: Date): number {
 
 export function AdventProgress({ season }: { season: Season }) {
   const { t } = useTranslation()
-  // Mốc chạy demo = cuối dữ liệu chấm công (2026-11-28), không lấy now() thật
-  // để % luôn khớp seed bất kể ngày hệ thống.
-  const now = new Date('2026-11-28T12:00:00Z')
+  // Dùng đồng hồ thật. Trước đây ghim 2026-11-28 để khớp seed demo — nghĩa là
+  // thanh tiến độ đứng im mãi mãi và người dùng không bao giờ thấy tiến độ thật.
+  const now = new Date()
   const percent = seasonElapsedPercent(season, now)
 
   return (

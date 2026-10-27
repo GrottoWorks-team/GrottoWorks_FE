@@ -29,6 +29,8 @@ export interface User {
   locked?: boolean; skills: string[]; points: number; avatarHue: number;
   /** Role gốc BE trả từ Identity service, ví dụ 'VOLUNTEER'. */
   rawRole?: string;
+  /** Khung giờ rảnh — BE `UserProfileDto.Availability`. Chỉ TNV mới có. */
+  availability?: { availableFrom: string; availableTo: string; note?: string | null }[];
 }
 
 export interface Season {
@@ -278,5 +280,3 @@ export interface DesignComment {
   updatedAt: string;
 }
 
-// Danh mục kỹ năng dùng chung (Admin — Task 12 quản trị danh mục).
-export const SKILLS = ['Điện', 'Mộc', 'Hàn', 'Trang trí', 'Vận chuyển', 'Logistics', 'Sơn'] as const;
