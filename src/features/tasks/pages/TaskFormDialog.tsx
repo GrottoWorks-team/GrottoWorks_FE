@@ -15,6 +15,7 @@ import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useCreateTask, useSkills, useUpdateTask } from '../api'
 import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errorMessage'
 import type { Task } from '@/types'
 
 export const SELECT_CLS =
@@ -157,7 +158,7 @@ export function TaskFormDialog({
         toast(t('features.tasks.concurrencyError', 'Dữ liệu vừa thay đổi ở nơi khác. Vui lòng tải lại trang.'), 'alert')
         return
       }
-      toast(t('common.error'), 'alert')
+      toast(errorMessage(err), 'alert')
     }
   }
 

@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAreas } from '@/features/areas/api'
 import { useMaterialCatalog, useWorkAreaShortages, type MaterialCatalogItemDto } from '@/features/materials/api'
+import { errorMessage } from '@/lib/errorMessage'
 import {
   useCreatePurchaseRequest,
   useUpdatePurchaseRequest,
@@ -163,8 +164,8 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
         toast(t('features.purchases.created'))
       }
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

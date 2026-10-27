@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/components/ui/toast'
 import { exportCsv } from '@/lib/csv'
+import { errorMessage } from '@/lib/errorMessage'
 import {
   useMaterialCatalog,
   useMaterialCategories,
@@ -81,8 +82,7 @@ export default function MaterialListPage() {
           : t('features.materials.catalog.statusDeactivated', { code: item.code }),
       )
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('features.materials.catalog.statusError')
-      toast(message)
+      toast(errorMessage(err))
     }
   }
 
@@ -174,7 +174,7 @@ export default function MaterialListPage() {
       {isError && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-6 text-center">
           <p className="text-sm font-medium text-destructive">
-            {error instanceof Error ? error.message : t('features.materials.catalog.loadError')}
+            {errorMessage(error)}
           </p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             {t('common.retry')}

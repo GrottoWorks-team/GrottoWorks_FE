@@ -25,6 +25,7 @@ import {
 } from '../config'
 import { useCreateDesignVersion, useUpdateDesign } from '../api'
 import type { DesignType } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 type FileError = 'none' | 'type' | 'size' | 'empty'
 
@@ -126,7 +127,7 @@ export function UploadVersionDialog({
     } catch (err) {
       // Không để lại blob mồ côi khi tạo bản ghi thất bại.
       await deleteBlob(key).catch(() => {})
-      toast(t(isQuotaError(err) ? 'features.design.errQuota' : 'common.error'), 'alert')
+      toast(isQuotaError(err) ? t('features.design.errQuota') : errorMessage(err), 'alert')
     } finally {
       setBusy(false)
     }

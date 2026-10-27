@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useCreateTimesheet } from '../api'
 import type { User } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 export const SELECT_CLS =
   'flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -71,8 +72,8 @@ export function TimesheetFormDialog({
         }),
       )
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

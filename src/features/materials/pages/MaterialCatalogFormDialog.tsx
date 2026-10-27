@@ -22,6 +22,7 @@ import {
 } from '../api'
 import type { MaterialCatalogItemDto } from '../api'
 import { api } from '@/lib/api'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z.object({
   categoryId: z.string().min(1, 'features.materials.catalog.categoryRequired'),
@@ -126,8 +127,7 @@ export function MaterialCatalogFormDialog({
       }
       onClose()
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('features.materials.catalog.saveError')
-      toast(message)
+      toast(errorMessage(err))
     }
   }
 

@@ -31,6 +31,7 @@ import {
 } from '../api'
 import { useCurrentParishId } from '../hooks'
 import type { Community } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
@@ -80,8 +81,8 @@ function CommunityFormDialog({
         toast(t('features.parish.created', { name: data.name }))
       }
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 
@@ -159,8 +160,8 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
       })
       toast(t('features.parish.created', { name: data.name }))
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 
@@ -236,12 +237,12 @@ function ParishCard() {
       await updateParish.mutateAsync({ id: parish.id, version: parish.version, name: v })
       toast(t('features.parish.updated', { name: v }))
       setName(null)
-    } catch (e) {
+    } catch (err) {
       // 412 = ai đó vừa sửa trước; tải lại để lấy version mới.
       toast(
-        e instanceof ApiError && e.status === 412
+        err instanceof ApiError && err.status === 412
           ? t('features.parish.versionConflict')
-          : t('common.error'),
+          : errorMessage(err),
         'alert',
       )
     }

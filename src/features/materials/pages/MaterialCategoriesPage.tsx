@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
+import { errorMessage } from '@/lib/errorMessage'
 import {
   useCreateMaterialCategory,
   useMaterialCategories,
@@ -107,8 +108,7 @@ export default function MaterialCategoriesPage() {
       }
       setDialogOpen(false)
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('features.materials.categories.error')
-      toast(message)
+      toast(errorMessage(err))
     }
   }
 
@@ -125,8 +125,7 @@ export default function MaterialCategoriesPage() {
           : t('features.materials.categories.deactivated'),
       )
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : t('features.materials.categories.statusError')
-      toast(message)
+      toast(errorMessage(err))
     }
   }
 

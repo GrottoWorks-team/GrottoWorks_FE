@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 import { useForgotPassword } from '@/features/auth/api'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z.object({
   email: z.string().min(1, 'login.emailRequired').email('features.parish.emailInvalid'),
@@ -34,8 +35,8 @@ export default function ForgotPasswordPage() {
     try {
       await forgotPassword.mutateAsync(data.email)
       setSuccess(true)
-    } catch {
-      setErrorMsg(t('common.error'))
+    } catch (err) {
+      setErrorMsg(errorMessage(err))
     }
   }
 

@@ -30,6 +30,7 @@ import {
 } from '../api'
 import type { Task, User } from '@/types'
 import { viDate } from '@/lib/format'
+import { errorMessage } from '@/lib/errorMessage'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -45,8 +46,8 @@ function VolunteerRow({ task, user }: { task: Task; user: User }) {
     try {
       await assign.mutateAsync()
       toast(t('features.tasks.assigned', { name: user.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
   return (
@@ -107,8 +108,8 @@ function AssigneeChip({ taskId, user, readOnly }: { taskId: string; user: User; 
     try {
       await unassign.mutateAsync()
       toast(t('features.tasks.unassigned', { name: user.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
   return (
@@ -160,8 +161,8 @@ export default function TaskDetailPage() {
     try {
       await fn()
       toast(msg)
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 
@@ -465,8 +466,8 @@ export default function TaskDetailPage() {
                     })
                     toast(t('features.tasks.completionCriteriaUpdated'))
                     setEditingCriteria(false)
-                  } catch {
-                    toast(t('common.error'), 'alert')
+                  } catch (err) {
+                    toast(errorMessage(err), 'alert')
                   }
                 }}
               >
@@ -516,8 +517,8 @@ export default function TaskDetailPage() {
                     })
                     toast(t('features.tasks.skillsUpdated'))
                     setEditingSkills(false)
-                  } catch {
-                    toast(t('common.error'), 'alert')
+                  } catch (err) {
+                    toast(errorMessage(err), 'alert')
                   }
                 }}
               >

@@ -19,6 +19,8 @@ import {
   HelpCircle,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
+import { ApiError } from '@/lib/api'
+import { errorMessage } from '@/lib/errorMessage'
 import { roleHomePath } from '@/lib/roles'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -93,8 +95,13 @@ export default function Login() {
       } else {
         navigate(roleHomePath(user.role))
       }
-    } catch {
-      const msg = t('login.invalid')
+    } catch (err) {
+      // Không gộp mọi lỗi thành "sai mật khẩu": mất mạng / máy chủ tắt phải
+      // báo đúng là không kết nối được, nếu không người dùng đi đổi mật khẩu
+      // trong khi lỗi thật nằm ở máy chủ.
+      const msg = err instanceof ApiError && err.status === 401
+        ? t('login.invalid')
+        : errorMessage(err)
       setServerError(msg)
       toast(msg, 'alert')
     }

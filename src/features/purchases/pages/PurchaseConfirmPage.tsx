@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { shortage } from '@/types'
 import type { Material, PurchaseRecord, PurchaseRequest } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 import { useConfirmPurchase, useCreatePurchaseRecord, useMockPurchaseRequests, usePurchaseRecords } from '../api'
 
 const SELECT_CLS =
@@ -85,8 +86,8 @@ function RecordDialog({ request, materials, onClose }: {
       await create.mutateAsync({ requestId: request.id, ...data, receiptPhoto: photo || undefined, confirmed: false })
       toast(t('features.purchases.recordCreated'))
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

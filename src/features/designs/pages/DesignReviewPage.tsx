@@ -52,6 +52,7 @@ import { ModelReviewCanvas } from '../components/ModelReviewCanvas'
 import type { ModelMarker } from '../components/ModelReviewCanvas'
 import { ScenePreview } from '@/features/builder/components/ScenePreview'
 import { isSceneFileKey } from '@/features/builder/designLink'
+import { errorMessage } from '@/lib/errorMessage'
 import { CommentFormDialog } from '../components/CommentFormDialog'
 import { NewDesignDialog } from '../components/NewDesignDialog'
 import { UploadVersionDialog } from '../components/UploadVersionDialog'
@@ -211,8 +212,8 @@ export default function DesignReviewPage() {
     try {
       await fn()
       toast(msg)
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

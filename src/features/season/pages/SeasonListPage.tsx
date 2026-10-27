@@ -22,6 +22,7 @@ import type { Season } from '@/types'
 import { useAuth } from '@/lib/auth'
 import i18n from '@/lib/i18n'
 import { viDate } from '@/lib/format'
+import { errorMessage } from '@/lib/errorMessage'
 
 const d = (n: number) => ({ '--d': n }) as CSSProperties
 
@@ -76,7 +77,7 @@ export default function SeasonListPage() {
       toast(t('features.season.activateSuccess', { year: s.year }))
       setActivatingConfirm(null)
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
     }
   }
 
@@ -223,7 +224,7 @@ export default function SeasonListPage() {
       toast(t('features.season.closed', { year: s.year }))
       setClosing(null)
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
     }
   }
 
@@ -233,7 +234,7 @@ export default function SeasonListPage() {
       toast(t('features.season.archived', { year: s.year }))
       setArchiving(null)
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
     }
   }
 

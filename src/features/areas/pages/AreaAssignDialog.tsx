@@ -17,6 +17,7 @@ import {
 import { useUsers } from '@/features/users/api'
 import { SELECT_CLS } from './AreaFormDialog'
 import type { WorkArea } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z.object({
   communityId: z.string().optional(),
@@ -68,7 +69,7 @@ export function AreaAssignDialog({
       toast(t('features.areas.assigned', { name: area.name }))
       onClose()
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
     }
   }
 

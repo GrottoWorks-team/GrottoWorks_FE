@@ -10,6 +10,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
 import { useActivateSeason } from '../api'
 import type { Season, WorkArea } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 export interface SeasonValidationItem {
   key: string
@@ -90,7 +91,7 @@ export function SeasonActivateDialog({
       toast(t('features.season.activateSuccess', { year: season.year }))
       onClose()
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
     }
   }
 

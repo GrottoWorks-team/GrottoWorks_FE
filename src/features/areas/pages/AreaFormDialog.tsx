@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
 import { useWorkAreaCategories } from '@/features/parish/api'
 import type { Season, WorkArea } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 const AREA_TYPES = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE'] as const
 const LEVELS = ['PARISH', 'COMMUNITY'] as const
@@ -203,7 +204,7 @@ export function AreaFormDialog({
       toast(
         e instanceof ApiError && e.code === 'SEASON_INVALID_STATE'
           ? t('features.areas.seasonInvalidState')
-          : t('common.error'),
+          : errorMessage(e),
         'alert',
       )
     }

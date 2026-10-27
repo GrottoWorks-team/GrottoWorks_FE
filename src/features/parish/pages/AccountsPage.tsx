@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useLockUser, useUnlockUser } from '../api'
 import { AccountFormDialog } from './AccountFormDialog'
 import type { User } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 // Switch khoá/mở — pattern trang Checklist.
 function LockSwitch({
@@ -70,8 +71,8 @@ export default function AccountsPage() {
         await lockUser.mutateAsync({ id: u.id, reason: 'Khoá tài khoản từ trang quản trị' })
         toast(t('features.parish.locked', { name: u.name }))
       }
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

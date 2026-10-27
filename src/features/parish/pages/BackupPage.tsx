@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
+import { errorMessage } from '@/lib/errorMessage'
 import { useBackup } from '../api'
 import { useState } from 'react'
 
@@ -31,8 +32,8 @@ export default function BackupPage() {
       a.click()
       URL.revokeObjectURL(url)
       toast(t('features.parish.backupDone'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

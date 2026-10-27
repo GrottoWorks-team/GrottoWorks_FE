@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
 import { viDateTime } from '@/lib/format'
+import { errorMessage } from '@/lib/errorMessage'
 import {
   usePurchaseRequest,
   usePurchaseRequestHistory,
@@ -69,8 +70,8 @@ export default function PurchaseDetailPage() {
     try {
       await send.mutateAsync({ requestId: request.id, version: request.version })
       toast(t('features.purchases.sent', { code: request.id.slice(0, 8) }))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 
@@ -84,8 +85,8 @@ export default function PurchaseDetailPage() {
       toast(t('features.purchases.approved', { code: request.id.slice(0, 8) }))
       setApproveOpen(false)
       setDecisionNote('')
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 
@@ -100,8 +101,8 @@ export default function PurchaseDetailPage() {
       toast(t('features.purchases.rejected', { code: request.id.slice(0, 8) }))
       setRejectOpen(false)
       setRejectReason('')
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/toast'
 import { useRegister } from '@/features/auth/api'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 import { JoinOptions } from '@/components/auth/JoinOptions'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z.object({
   displayName: z.string().trim().min(2, 'Họ và tên tối thiểu 2 ký tự'),
@@ -83,7 +84,7 @@ export default function Register() {
       toast('Đăng ký tài khoản thành công! Vui lòng đăng nhập.')
       navigate('/login')
     } catch (err: any) {
-      const msg = err.message || 'Đăng ký thất bại. Vui lòng thử lại.'
+      const msg = errorMessage(err)
       setServerError(msg)
       toast(msg, 'alert')
     }

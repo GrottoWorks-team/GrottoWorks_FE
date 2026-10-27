@@ -34,6 +34,7 @@ import {
   useWorkAreaCategories,
 } from '../api'
 import type { WorkArea } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 const AREA_TYPES: WorkArea['type'][] = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE']
 const DONATION_KINDS = ['MATERIAL', 'MONETARY'] as const
@@ -242,7 +243,7 @@ export default function CategoriesPage() {
       await createSkill.mutateAsync(name)
       toast(t('features.parish.created', { name }))
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
       throw e
     }
   }
@@ -251,7 +252,7 @@ export default function CategoriesPage() {
       await renameSkill.mutateAsync({ index, name })
       toast(t('features.parish.updated', { name }))
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
     }
   }
 
@@ -300,7 +301,7 @@ export default function CategoriesPage() {
       await createAreaCategory.mutateAsync({ code: finalCode, name })
       toast(t('features.parish.created', { name }))
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
       throw e
     }
   }
@@ -310,7 +311,7 @@ export default function CategoriesPage() {
       await updateAreaCategory.mutateAsync({ id, name })
       toast(t('features.parish.updated', { name }))
     } catch (e) {
-      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
     }
   }
 

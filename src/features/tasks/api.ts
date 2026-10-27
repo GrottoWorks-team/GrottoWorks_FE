@@ -103,13 +103,9 @@ export function useSkills() {
   return useQuery({
     queryKey: ['skills'],
     queryFn: async () => {
-      try {
-        const res = await api<{ data?: SkillItemDto[] } | SkillItemDto[]>('/api/v1/skills')
-        const items = Array.isArray(res) ? res : (res.data ?? [])
-        return items.map((s) => s.name)
-      } catch {
-        return ['Điện', 'Mộc', 'Hàn', 'Trang trí', 'Vận chuyển', 'Logistics', 'Sơn']
-      }
+      const res = await api<{ data?: SkillItemDto[] } | SkillItemDto[]>('/api/v1/skills')
+      const items = Array.isArray(res) ? res : (res.data ?? [])
+      return items.map((s) => s.name)
     },
   })
 }
@@ -121,12 +117,8 @@ export function useSkillsCatalog() {
   return useQuery({
     queryKey: ['skills', 'catalog'],
     queryFn: async () => {
-      try {
-        const res = await api<{ data?: SkillItemDto[] } | SkillItemDto[]>('/api/v1/skills')
-        return Array.isArray(res) ? res : (res.data ?? [])
-      } catch {
-        return []
-      }
+      const res = await api<{ data?: SkillItemDto[] } | SkillItemDto[]>('/api/v1/skills')
+      return Array.isArray(res) ? res : (res.data ?? [])
     },
   })
 }

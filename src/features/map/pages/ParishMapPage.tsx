@@ -26,6 +26,7 @@ import { AREA_ICONS } from '@/features/areas/components/AreaCard'
 import { ImageReviewCanvas } from '@/features/designs/components/ImageReviewCanvas'
 import type { CanvasMarker } from '@/features/designs/components/ImageReviewCanvas'
 import type { NormalizedPoint } from '@/features/designs/coords'
+import { errorMessage } from '@/lib/errorMessage'
 import {
   ACCEPTED_IMAGE_TYPES,
   IMAGE_ACCEPT_ATTR,
@@ -128,8 +129,8 @@ export default function ParishMapPage() {
       await putBlob(key, file)
       await saveMap.mutateAsync({ id: mapRecord?.id, imageKey: key, fileName: file.name })
       toast(t('features.map.mapSaved'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     } finally {
       if (fileRef.current) fileRef.current.value = ''
     }
@@ -140,8 +141,8 @@ export default function ParishMapPage() {
     try {
       await setPin.mutateAsync({ areaId: placingId, pin: { x: point.x, y: point.y } })
       toast(t('features.map.positionSaved'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     } finally {
       setPlacingId(null)
     }
@@ -151,8 +152,8 @@ export default function ParishMapPage() {
     try {
       await setPin.mutateAsync({ areaId: id, pin: null })
       toast(t('features.map.positionCleared'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

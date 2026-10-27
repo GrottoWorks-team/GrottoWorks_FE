@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 import { useResetPassword } from '@/features/auth/api'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z
   .object({
@@ -58,8 +59,8 @@ export default function ResetPasswordPage() {
         newPassword: data.newPassword,
       })
       setSuccess(true)
-    } catch {
-      setErrorMsg(t('common.error'))
+    } catch (err) {
+      setErrorMsg(errorMessage(err))
     }
   }
 

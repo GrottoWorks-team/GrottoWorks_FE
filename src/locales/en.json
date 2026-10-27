@@ -1511,5 +1511,13 @@
   "features.design.cancelLoad": "Cancel load",
   "features.design.loadCancelled": "Model load cancelled.",
   "features.design.retry": "Retry",
-  "features.design.contextLost": "Graphics connection lost (WebGL). Reload the page if it does not recover."
+  "features.design.contextLost": "Graphics connection lost (WebGL). Reload the page if it does not recover.",
+  "error.network": "Cannot reach the server. Check that it is running, then try again.",
+  "error.timeout": "The server took too long to respond. Please try again.",
+  "error.unauthorized": "Your session has expired. Please sign in again.",
+  "error.forbidden": "Your account does not have permission for this action.",
+  "error.notFound": "Data not found — it may have been deleted or the link is wrong.",
+  "error.conflict": "Someone else changed this data. Reload the page and try again.",
+  "error.server": "The server ran into a problem. Please try again in a moment.",
+  "error.loadFailed": "Could not load data"
 }

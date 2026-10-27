@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useUsers } from '@/features/users/api'
 import type { DesignComment, DesignCommentPriority, DesignCommentStatus } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 import { useCreateDesignComment, useUpdateDesignComment } from '../api'
 import type { ReviewPoint } from '../position'
 
@@ -110,8 +111,8 @@ export function CommentFormDialog({
         toast(t('features.design.commentCreated'))
       }
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

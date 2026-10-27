@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
+import { errorMessage } from '@/lib/errorMessage'
 import { useCreateDesign } from '../api'
 
 const schema = z.object({
@@ -62,8 +63,8 @@ export function NewDesignDialog({
       toast(t('features.design.designCreated'))
       onCreated(design.id)
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

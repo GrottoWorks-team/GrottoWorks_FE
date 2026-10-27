@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/toast'
 import { viDate } from '@/lib/format'
 import { useApproveCorrection, useRejectCorrection } from '../api'
 import type { Timesheet } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 export function CorrectionDialog({
   item,
@@ -39,8 +40,8 @@ export function CorrectionDialog({
       await approve.mutateAsync({ id: item.id, correctedHours: n })
       toast(t('features.timesheets.approved', { name: volunteerName, n }))
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 
@@ -49,8 +50,8 @@ export function CorrectionDialog({
       await reject.mutateAsync(item.id)
       toast(t('features.timesheets.rejected', { name: volunteerName }))
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

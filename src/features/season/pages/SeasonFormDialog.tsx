@@ -12,6 +12,7 @@ import { ApiError } from '@/lib/api'
 import { useCurrentParishId } from '@/features/parish/hooks'
 import { useCreateSeason, useSeason, useUpdateSeason } from '../api'
 import type { Season } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z
   .object({
@@ -131,7 +132,7 @@ export function SeasonFormDialog({
           ? t('features.season.yearConflict')
           : e instanceof ApiError && e.code === 'SEASON_NAME_CONFLICT'
             ? t('features.season.nameConflict')
-            : t('common.error'),
+            : errorMessage(e),
         'alert',
       )
     }

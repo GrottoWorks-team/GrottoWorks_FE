@@ -109,15 +109,10 @@ export function useAdminSkills() {
   return useQuery({
     queryKey: adminKeys.skills,
     queryFn: async () => {
-      try {
-        const skills = await api<Array<string | { name: string }>>('/api/v1/skills')
-        if (Array.isArray(skills)) {
-          return skills.map((s) => (typeof s === 'string' ? s : s.name))
-        }
-      } catch {
-        // BE lỗi/quyền không đủ → coi như chưa có danh mục
-      }
-      return []
+      const skills = await api<Array<string | { name: string }>>('/api/v1/skills')
+      return Array.isArray(skills)
+        ? skills.map((s) => (typeof s === 'string' ? s : s.name))
+        : []
     },
   })
 }

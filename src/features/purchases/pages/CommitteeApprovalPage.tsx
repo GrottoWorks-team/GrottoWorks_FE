@@ -14,6 +14,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { viDateTime } from '@/lib/format'
+import { errorMessage } from '@/lib/errorMessage'
 import {
   useApproveRequest,
   usePurchaseRequests,
@@ -49,8 +50,8 @@ function RejectDialog({
       })
       toast(t('features.purchases.rejected', { code: item.id.slice(0, 8) }))
       return true
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
       return false
     }
   }
@@ -124,8 +125,8 @@ function ApproveDialog({
       })
       toast(t('features.purchases.approved', { code: item.id.slice(0, 8) }))
       return true
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
       return false
     }
   }

@@ -14,6 +14,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
 import { useRecordOpeningStock, useMaterialCatalog } from '../api'
 import { useAreas } from '@/features/areas/api'
+import { errorMessage } from '@/lib/errorMessage'
+import { ApiError } from '@/lib/api'
 
 const openingStockSchema = z.object({
   workAreaId: z.string().min(1, 'features.inventory.dialog.workAreaRequired'),
@@ -98,15 +100,16 @@ export function OpeningStockDialog({
       )
       onClose()
     } catch (err: unknown) {
-      const errorObj = err as { code?: string; status?: number; message?: string }
-      if (
-        errorObj?.code === 'OPENING_STOCK_ALREADY_RECORDED' ||
-        errorObj?.status === 409 ||
-        errorObj?.message?.includes('OPENING_STOCK_ALREADY_RECORDED')
-      ) {
+      // 409 = khu vực đã có tồn đầu kỳ. Các lỗi khác để errorMessage nói rõ
+      // nguyên nhân thật (mất mạng, máy chủ tắt, không đủ quyền...).
+      const conflict =
+        err instanceof ApiError
+          ? err.status === 409 || err.code === 'OPENING_STOCK_ALREADY_RECORDED'
+          : false
+      if (conflict) {
         setConflictError(t('features.inventory.dialog.errorConflict'))
       } else {
-        toast(t('features.inventory.dialog.errorGeneric'), 'alert')
+        toast(errorMessage(err), 'alert')
       }
     }
   }

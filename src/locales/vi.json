@@ -1511,5 +1511,13 @@
   "features.design.cancelLoad": "Huỷ tải",
   "features.design.loadCancelled": "Đã huỷ tải mô hình.",
   "features.design.retry": "Thử lại",
-  "features.design.contextLost": "Mất kết nối đồ hoạ (WebGL). Hãy tải lại trang nếu không tự phục hồi."
+  "features.design.contextLost": "Mất kết nối đồ hoạ (WebGL). Hãy tải lại trang nếu không tự phục hồi.",
+  "error.network": "Không kết nối được máy chủ. Kiểm tra máy chủ đã chạy chưa rồi thử lại.",
+  "error.timeout": "Máy chủ phản hồi quá lâu. Vui lòng thử lại.",
+  "error.unauthorized": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+  "error.forbidden": "Tài khoản của bạn không có quyền thực hiện thao tác này.",
+  "error.notFound": "Không tìm thấy dữ liệu — có thể đã bị xoá hoặc bạn mở sai đường dẫn.",
+  "error.conflict": "Dữ liệu đã bị người khác thay đổi. Tải lại trang rồi thử lại.",
+  "error.server": "Máy chủ gặp sự cố. Vui lòng thử lại sau ít phút.",
+  "error.loadFailed": "Không tải được dữ liệu"
 }

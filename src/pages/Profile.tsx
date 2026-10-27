@@ -25,6 +25,7 @@ import {
   useUpdateProfile,
 } from '@/features/profile/api'
 import type { User } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'common.required'),
@@ -89,8 +90,8 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
       } catch {
         // Volunteer only in BE policy
       }
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
       return
     }
 

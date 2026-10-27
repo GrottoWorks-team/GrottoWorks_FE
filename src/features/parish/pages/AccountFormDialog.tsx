@@ -14,6 +14,7 @@ import { useCommunities } from '@/features/communities/api'
 import { useAdminSkills, useAssignUserRole, useCreateUser, useRoles, useUpdateUser } from '../api'
 import { useCurrentParishId } from '../hooks'
 import type { User } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 export const SELECT_CLS =
   'flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -109,8 +110,8 @@ export function AccountFormDialog({
         toast(t('features.parish.created', { name: data.name }))
       }
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

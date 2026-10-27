@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useCreateSkill, useUpdateSkill } from '@/features/skills/api'
 import type { SkillDto } from '@/types/identity'
+import { errorMessage } from '@/lib/errorMessage'
 
 const schema = z.object({
   code: z.string().trim().min(2, 'Mã kỹ năng tối thiểu 2 ký tự').toUpperCase(),
@@ -73,7 +74,7 @@ export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
       reset()
       onOpenChange(false)
     } catch (err: any) {
-      toast(err.message || 'Thao tác không thành công', 'alert')
+      toast(errorMessage(err), 'alert')
     }
   }
 

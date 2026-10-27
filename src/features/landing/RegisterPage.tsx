@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { useCommunities } from '@/features/communities/api'
 import { useSkills } from '@/features/tasks/api'
 import type { AreaType, RegistrationKind } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 import { useCreateRegistration } from './api'
 
 const AREA_TYPES: AreaType[] = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE']
@@ -92,8 +93,8 @@ export default function RegisterPage() {
       })
       setDone(true)
       toast(t('register.successToast'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 

@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
 import { useApproveReg, useRejectReg, useVolunteerRegs } from '../../volunteers/api'
 import type { VolunteerReg } from '@/types'
+import { errorMessage } from '@/lib/errorMessage'
 
 export default function RegsApprovalPage() {
   const { t } = useTranslation()
@@ -43,8 +44,8 @@ export default function RegsApprovalPage() {
     try {
       await fn.mutateAsync(reg)
       toast(msg)
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (err) {
+      toast(errorMessage(err), 'alert')
     }
   }
 
