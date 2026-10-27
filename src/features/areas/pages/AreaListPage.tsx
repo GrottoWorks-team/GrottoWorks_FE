@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutGrid, Table2, Pencil, Plus, UserPlus, FileImage } from 'lucide-react'
+import { LayoutGrid, Table2, Pencil, Plus, UserPlus } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -171,20 +171,8 @@ export default function AreaListPage() {
         header: t('common.actions'),
         render: (a: WorkArea) => (
           <div className="flex justify-end gap-1">
-            {canViewDesign && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.design.openDesign')}
-                onClick={() =>
-                  navigate(
-                    `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${a.id}/designer`,
-                  )
-                }
-              >
-                <FileImage className="size-4" />
-              </Button>
-            )}
+            {/* Nút mở bản thiết kế đã gỡ: BE chưa có endpoint /designs nên
+                trang chỉ hiển thị dữ liệu trong localStorage của máy này. */}
             <Button
               variant="ghost"
               size="icon"
@@ -308,14 +296,6 @@ export default function AreaListPage() {
                   )
                 }
                 onOpenDetail={(x) => setDetailAreaId(x.id)}
-                onOpenDesign={
-                  canViewDesign
-                    ? (x) =>
-                        navigate(
-                          `${pathname.startsWith('/parish') ? '/parish' : '/community'}/areas/${x.id}/designer`,
-                        )
-                    : undefined
-                }
               />
             ))}
           </div>
