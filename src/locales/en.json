@@ -107,6 +107,10 @@
   "status.LATE": "Late",
   "status.REVISE": "Rework",
   "status.REJECTED": "Rejected",
+  "status.STAFFING": "Staffing",
+  "status.MIXED": "Mixed",
+  "status.PUBLISHED": "Published",
+  "status.PARTIALLY_FULFILLED": "Partially fulfilled",
   "status.ACCEPTED": "Accepted",
   "status.RETURNED": "Returned",
   "status.ISSUED": "Issued",
@@ -515,6 +519,12 @@
   "status.PARTIALLY_RECEIVED": "Partially received",
   "status.CANCELLED": "Cancelled",
   "features.support.title": "Urgent support",
+  "features.support.statTotal": "Total requests",
+  "features.support.statStaffing": "Staffing",
+  "features.support.statMaterial": "Material support",
+  "features.support.statFulfilled": "Fulfilled",
+  "features.support.positions": "Positions needed",
+  "features.support.deadline": "Deadline",
   "features.support.sub": "Request people, skills or materials when an area falls short",
   "features.support.create": "New support request",
   "features.support.createTitle": "New support request",
@@ -1548,5 +1558,7 @@
   "error.server": "The server ran into a problem. Please try again in a moment.",
   "error.loadFailed": "Could not load data",
   "features.pointRules.title": "Point rules",
-  "features.pointRules.sub": "Scoring rules for volunteers"
+  "features.pointRules.sub": "Scoring rules for volunteers",
+  "features.support.exportCsv": "Export CSV",
+  "features.support.date": "Created date"
 }

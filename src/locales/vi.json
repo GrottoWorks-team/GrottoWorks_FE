@@ -107,6 +107,10 @@
   "status.LATE": "Trễ",
   "status.REVISE": "Làm lại",
   "status.REJECTED": "Từ chối",
+  "status.STAFFING": "Nhân lực",
+  "status.MIXED": "Kết hợp",
+  "status.PUBLISHED": "Đã phát động",
+  "status.PARTIALLY_FULFILLED": "Đáp ứng một phần",
   "status.ACCEPTED": "Đã tiếp nhận",
   "status.RETURNED": "Đã hoàn trả",
   "status.ISSUED": "Đã bàn giao",
@@ -515,6 +519,12 @@
   "status.PARTIALLY_RECEIVED": "Đã nhận một phần",
   "status.CANCELLED": "Đã hủy",
   "features.support.title": "Hỗ trợ khẩn cấp",
+  "features.support.statTotal": "Tổng yêu cầu",
+  "features.support.statStaffing": "Huy động nhân lực",
+  "features.support.statMaterial": "Hỗ trợ vật tư",
+  "features.support.statFulfilled": "Đã đáp ứng",
+  "features.support.positions": "Vị trí cần",
+  "features.support.deadline": "Hạn chót",
   "features.support.sub": "Yêu cầu người, kỹ năng, vật tư khi khu gặp thiếu hụt",
   "features.support.create": "Tạo yêu cầu hỗ trợ",
   "features.support.createTitle": "Tạo yêu cầu hỗ trợ",
@@ -1548,5 +1558,7 @@
   "error.server": "Máy chủ gặp sự cố. Vui lòng thử lại sau ít phút.",
   "error.loadFailed": "Không tải được dữ liệu",
   "features.pointRules.title": "Quy tắc điểm",
-  "features.pointRules.sub": "Quy tắc cộng điểm cho tình nguyện viên"
+  "features.pointRules.sub": "Quy tắc cộng điểm cho tình nguyện viên",
+  "features.support.exportCsv": "Xuất CSV",
+  "features.support.date": "Ngày tạo"
 }

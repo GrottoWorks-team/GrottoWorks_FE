@@ -280,21 +280,56 @@ export interface Timesheet {
 /** Mức đáp ứng nhân lực: 0 người → OPEN; < cần → PARTIAL; ≥ cần → FULFILLED. */
 export type SupportFulfill = 'OPEN' | 'PARTIAL' | 'FULFILLED';
 
+export type SupportType = 'STAFFING' | 'MATERIAL' | 'MIXED'
+export type SupportRequestStatus = 'PLANNING' | 'PUBLISHED' | 'PARTIALLY_FULFILLED' | 'FULFILLED' | 'CLOSED' | 'CANCELLED'
+
+export interface SupportSkill {
+  skillId: string
+  requiredSkillLevel?: string | null
+}
+
+export interface SupportPosition {
+  id: string
+  name: string
+  requiredVolunteerCount: number
+  note?: string | null
+  skills: SupportSkill[]
+}
+
+export interface SupportMaterial {
+  id: string
+  materialId: string
+  requiredQuantity: number
+  note?: string | null
+}
+
 export interface SupportRequest {
-  id: string; areaId: string; kind: 'PEOPLE' | 'SKILL' | 'MATERIAL';
-  detail: string; status: 'OPEN' | 'COORDINATED' | 'RESOLVED'; assigneeId?: string;
-  /** Cộng đoàn của khu cần hỗ trợ — TNV cộng đoàn KHÁC thấy để đăng ký. */
-  communityId?: string;
-  /** Số TNV cần huy động (0 với kind MATERIAL). */
-  volunteersNeeded?: number;
-  /** Kỹ năng cần có (kind SKILL) — lọc TNV phù hợp. */
-  skills?: string[];
-  /** Thời gian hỗ trợ dự kiến (label tự do). */
-  supportTime?: string;
-  /** Khu nhiệm vụ đích để gán TNV được duyệt (thường trùng areaId). */
-  taskAreaId?: string;
-  /** Mức đáp ứng theo số người đã xác nhận. */
-  fulfill?: SupportFulfill;
+  id: string
+  seasonId: string
+  workAreaId: string
+  requestedBy: string
+  supportType: SupportType
+  description?: string | null
+  deadline?: string | null
+  status: SupportRequestStatus | 'OPEN' | 'COORDINATED' | 'RESOLVED'
+  createdAt: string
+  updatedAt?: string | null
+  version: number
+  positions: SupportPosition[]
+  materials: SupportMaterial[]
+  responses?: unknown[]
+
+  // Legacy fields for backward compatibility
+  areaId?: string
+  kind?: 'PEOPLE' | 'SKILL' | 'MATERIAL'
+  detail?: string
+  assigneeId?: string
+  communityId?: string
+  volunteersNeeded?: number
+  skills?: string[]
+  supportTime?: string
+  taskAreaId?: string
+  fulfill?: SupportFulfill
 }
 
 /** Đơn TNV (cộng đoàn khác) đăng ký tham gia yêu cầu hỗ trợ. */
