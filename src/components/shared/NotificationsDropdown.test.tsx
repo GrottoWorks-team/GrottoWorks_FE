@@ -26,6 +26,8 @@ let currentItems: FeedItem[] = twoAreas()
 
 vi.mock('@/features/notifications/api', () => ({
   useNotificationFeed: () => ({ items: currentItems, isPending: false }),
+  useMarkNotificationRead: () => ({ mutate: vi.fn() }),
+  useMarkAllNotificationsRead: () => ({ mutate: vi.fn() }),
 }))
 
 beforeEach(() => {

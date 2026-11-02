@@ -2,24 +2,28 @@
 // theo role, để nhãn/icon/trạng thái luôn giống nhau.
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { CircleAlert, PackageCheck, ShoppingCart, UserCheck } from 'lucide-react'
+import { Bell, CircleAlert, PackageCheck, ShoppingCart, Sparkles, UserCheck } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { cn } from '@/lib/utils'
 import type { FeedItem } from './api'
 
-const ICONS: Record<FeedItem['kind'], LucideIcon> = {
+const ICONS: Record<string, LucideIcon> = {
   ASSIGNED_LEADER: UserCheck,
   ASSIGNED_OFFICER: PackageCheck,
   AREA_MISSING_LEADER: CircleAlert,
   AREA_MISSING_OFFICER: CircleAlert,
   PURCHASE_PENDING: ShoppingCart,
+  TASK_ASSIGNED: UserCheck,
+  MATERIAL_ALLOCATED: PackageCheck,
+  SEASON_READY: Sparkles,
 }
 
 /** Nhãn theo loại sự kiện (đã dịch). */
 export function useNotificationLabel() {
   const { t } = useTranslation()
   return (item: FeedItem): string => {
+    if (item.title) return item.title
     switch (item.kind) {
       case 'ASSIGNED_LEADER':
         return t('shell.feed.assignedLeader', { area: item.areaName ?? '' })
@@ -31,6 +35,8 @@ export function useNotificationLabel() {
         return t('shell.feed.missingOfficer', { area: item.areaName ?? '' })
       case 'PURCHASE_PENDING':
         return t('shell.feed.pendingPurchases', { n: item.count ?? 0 })
+      default:
+        return item.kind
     }
   }
 }
@@ -48,7 +54,7 @@ export function NotificationRow({
   className?: string
 }) {
   const label = useNotificationLabel()(item)
-  const Icon = ICONS[item.kind]
+  const Icon = ICONS[item.kind] ?? Bell
 
   const content = (
     <>
@@ -61,7 +67,17 @@ export function NotificationRow({
       />
       <Icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className={cn('text-sm text-foreground', unread && 'font-semibold')}>{label}</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className={cn('text-sm text-foreground', unread && 'font-semibold')}>{label}</p>
+          {item.source === 'BE' && (
+            <span className="shrink-0 rounded bg-brand-pineLight/60 px-1.5 py-0.5 text-[9px] font-mono font-medium text-primary">
+              API
+            </span>
+          )}
+        </div>
+        {item.body && (
+          <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{item.body}</p>
+        )}
         {item.areaStatus && (
           <div className="mt-1">
             <StatusTag status={item.areaStatus} />

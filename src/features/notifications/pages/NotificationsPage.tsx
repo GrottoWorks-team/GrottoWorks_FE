@@ -1,9 +1,8 @@
 // Trang Thông báo đầy đủ cho các role vận hành:
 //   /community/notifications | /leader/notifications | /material-officer/notifications
 //
-// Cùng nguồn với chuông trên header (features/notifications/api.ts) nhưng hiển
-// thị TOÀN BỘ feed thay vì 10 mục, có lọc "Chưa đọc" và nút "Đọc tất cả".
-// Trạng thái đã đọc dùng chung store seen.ts nên mở chuông là trang này cũng cập nhật.
+// Kết nối trực tiếp NotificationAudit qua useNotificationFeed và useMarkNotificationRead.
+// Hỗ trợ lọc Chưa đọc và Đọc tất cả.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CheckCheck, Inbox } from 'lucide-react'
@@ -13,7 +12,11 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { useNotificationFeed } from '../api'
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotificationFeed,
+} from '../api'
 import { NotificationRow } from '../NotificationRow'
 import { markSeen, useSeenIds } from '../seen'
 
@@ -22,16 +25,24 @@ type Filter = 'ALL' | 'UNREAD'
 export default function RoleNotificationsPage() {
   const { t } = useTranslation()
   const toast = useToast()
-  const { items, isPending } = useNotificationFeed()
+  const { items, isPending, source } = useNotificationFeed()
   const seen = useSeenIds()
   const [filter, setFilter] = useState<Filter>('ALL')
+  const markReadMut = useMarkNotificationRead()
+  const markAllMut = useMarkAllNotificationsRead()
 
   const unread = useMemo(() => items.filter((i) => !seen.includes(i.id)), [items, seen])
   const shown = filter === 'UNREAD' ? unread : items
 
   const markAll = () => {
     markSeen(items.map((i) => i.id))
+    markAllMut.mutate(items.map((i) => i.id))
     toast(t('notifications.allRead'))
+  }
+
+  const handleActivate = (id: string) => {
+    markSeen([id])
+    markReadMut.mutate(id)
   }
 
   return (
@@ -76,7 +87,7 @@ export default function RoleNotificationsPage() {
                 <NotificationRow
                   item={item}
                   unread={!seen.includes(item.id)}
-                  onActivate={() => markSeen([item.id])}
+                  onActivate={() => handleActivate(item.id)}
                   className={cn(!seen.includes(item.id) && 'bg-brand-pineLight/40')}
                 />
               </li>
@@ -97,7 +108,9 @@ export default function RoleNotificationsPage() {
       </Card>
 
       <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-        {t('notifications.derivedHint')}
+        {source === 'BE'
+          ? 'Dữ liệu thông báo trực tiếp từ NotificationAudit service (/api/v1/notifications).'
+          : t('notifications.derivedHint')}
       </p>
     </>
   )

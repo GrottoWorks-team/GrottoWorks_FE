@@ -1,17 +1,17 @@
 // Chuông thông báo trên header.
 //
-// Nguồn dữ liệu: features/notifications/api.ts — suy ra từ dữ liệu THẬT (khu
-// được phân công, khu thiếu nhân sự, đơn mua chờ duyệt) vì BE chưa có service
-// Notification. Trạng thái đã đọc ở features/notifications/seen.ts (localStorage,
-// chia sẻ với trang Thông báo theo role).
-//
-// Hành vi: mở panel = đánh dấu đã đọc 10 mục đang thấy; nút "Đọc tất cả" đánh
-// dấu TOÀN BỘ feed (kể cả mục ngoài 10); link cuối panel mở trang đầy đủ.
+// Nguồn dữ liệu: features/notifications/api.ts — kết nối GET /api/v1/notifications
+// (NotificationAudit) và fallback sang feed suy ra từ khu vực/đơn mua.
+// Trạng thái đã đọc chia sẻ qua features/notifications/seen.ts (localStorage + BE sync).
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Bell } from 'lucide-react'
-import { useNotificationFeed } from '@/features/notifications/api'
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotificationFeed,
+} from '@/features/notifications/api'
 import { NotificationRow } from '@/features/notifications/NotificationRow'
 import { markSeen, useSeenIds } from '@/features/notifications/seen'
 import { useAuth } from '@/lib/auth'
@@ -27,6 +27,8 @@ export function NotificationsDropdown() {
   const [open, setOpen] = useState(false)
   const seen = useSeenIds()
   const { items } = useNotificationFeed()
+  const markReadMut = useMarkNotificationRead()
+  const markAllMut = useMarkAllNotificationsRead()
 
   const allHref = `/${rolePrefix(user?.role ?? 'COMMUNITY')}/notifications`
   const visible = items.slice(0, MAX_ITEMS)
@@ -35,11 +37,21 @@ export function NotificationsDropdown() {
 
   const toggle = () => {
     if (!open && visible.length) {
-      // Mở panel = đã xem 10 mục này; mục ngoài 10 vẫn "chưa đọc" cho tới khi
-      // bấm "Đọc tất cả" hoặc mở trang Thông báo.
+      // Mở panel = đã xem các mục hiển thị; lưu local ngay
       markSeen(visible.map((i) => i.id))
     }
     setOpen(!open)
+  }
+
+  const handleMarkAll = () => {
+    markSeen(items.map((i) => i.id))
+    markAllMut.mutate(items.map((i) => i.id))
+  }
+
+  const handleActivate = (id: string) => {
+    markSeen([id])
+    markReadMut.mutate(id)
+    setOpen(false)
   }
 
   return (
@@ -80,7 +92,7 @@ export function NotificationsDropdown() {
             {items.length > 0 && (
               <button
                 type="button"
-                onClick={() => markSeen(items.map((i) => i.id))}
+                onClick={handleMarkAll}
                 disabled={!hasUnread}
                 className="text-xs font-semibold text-primary transition-opacity hover:underline disabled:cursor-default disabled:opacity-40 disabled:no-underline"
               >
@@ -96,10 +108,7 @@ export function NotificationsDropdown() {
                     <NotificationRow
                       item={item}
                       unread={!seen.includes(item.id)}
-                      onActivate={() => {
-                        markSeen([item.id])
-                        setOpen(false)
-                      }}
+                      onActivate={() => handleActivate(item.id)}
                     />
                   </li>
                 ))}

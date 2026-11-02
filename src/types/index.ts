@@ -464,3 +464,15 @@ export interface DesignComment {
   updatedAt: string;
 }
 
+export interface NotificationDto {
+  id: string;
+  eventType: string;
+  title: string;
+  body: string;
+  referenceType?: string | null;
+  referenceId?: string | null;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string | null;
+}
+
