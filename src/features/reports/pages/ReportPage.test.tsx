@@ -69,13 +69,14 @@ const blobBytes = (b: Blob) =>
     fr.readAsArrayBuffer(b)
   })
 
-test('render aggregates đúng seed: tổng chi phí, nhiệm vụ DONE, và thông báo chờ backend', async () => {
+test('render aggregates đúng seed: tổng chi phí và nhiệm vụ DONE', async () => {
   mount()
 
   expect(await screen.findByText('6.760.000', {}, { timeout: 5000 })).toBeDefined()
   expect(await screen.findByText('Xây nền hang đá')).toBeDefined()
-  const pendingNotices = await screen.findAllByText(/Tính năng đang chờ Backend/i)
-  expect(pendingNotices.length).toBe(3)
+  // Báo cáo đã nối GET /api/v1/reports/* nên không còn ô "chờ Backend" nào;
+  // khẳng định ngược lại để test bắt được nếu ai đó đưa trạng thái cũ trở lại.
+  expect(screen.queryByText(/Tính năng đang chờ Backend/i)).toBeNull()
 })
 
 test('RecognitionBoard sort điểm giảm dần — top 1 huy chương vàng (u11, 130 điểm)', async () => {

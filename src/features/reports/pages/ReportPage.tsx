@@ -323,10 +323,10 @@ export default function ReportPage() {
             </Card>
           )
         ) : (
+          // Báo cáo lấy từ GET /api/v1/reports/* — chỉ trống khi chưa chọn mùa
+          // hoặc mùa chưa có số liệu, không còn là "chờ Backend".
           <Card>
-            <EmptyState
-              text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-            />
+            <EmptyState text={t('common.empty')} />
           </Card>
         )}
       </Section>
@@ -346,10 +346,10 @@ export default function ReportPage() {
             </Card>
           )
         ) : (
+          // Báo cáo lấy từ GET /api/v1/reports/* — chỉ trống khi chưa chọn mùa
+          // hoặc mùa chưa có số liệu, không còn là "chờ Backend".
           <Card>
-            <EmptyState
-              text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-            />
+            <EmptyState text={t('common.empty')} />
           </Card>
         )}
       </Section>
@@ -369,10 +369,10 @@ export default function ReportPage() {
             </Card>
           )
         ) : (
+          // Báo cáo lấy từ GET /api/v1/reports/* — chỉ trống khi chưa chọn mùa
+          // hoặc mùa chưa có số liệu, không còn là "chờ Backend".
           <Card>
-            <EmptyState
-              text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-            />
+            <EmptyState text={t('common.empty')} />
           </Card>
         )}
       </Section>
