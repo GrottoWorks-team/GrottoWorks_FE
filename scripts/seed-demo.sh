@@ -37,6 +37,14 @@ curl -s -X POST "$GATEWAY/api/v1/admin/users" \
   -H "Content-Type: application/json" \
   -d '{"displayName":"Phu Trach Vat Tu","email":"mo.demo@grottoworks.local","password":"ChangeMe!123456","role":"MO","parishId":"11111111-1111-1111-1111-111111111111","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
 
+# Tài khoản VOLUNTEER: nhiều endpoint chỉ mở cho VOLUNTEER (chấm công, việc của
+# tôi, đóng góp của tôi, điểm của tôi) nên thiếu tài khoản này thì các màn
+# tương ứng luôn 403 dù BE đã có API.
+curl -s -X POST "$GATEWAY/api/v1/admin/users" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"displayName":"Gioan Nguyen Van Vol","email":"volunteer.demo@grottoworks.local","password":"ChangeMe!123456","role":"VOLUNTEER","parishId":"11111111-1111-1111-1111-111111111111","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
+
 # Lay user ID
 USERS_JSON=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$GATEWAY/api/v1/admin/users?size=100")
 # Doc id that tu JSON (truong la displayName, khong phai fullName) — khong dung
@@ -147,6 +155,29 @@ if [ -n "$LIGHTING_ID" ]; then
       -H "Authorization: Bearer $MO_TOKEN" \
       -H "Content-Type: application/json" \
       -d "{\"workAreaId\":\"66666666-6666-6666-6666-666666666666\",\"reason\":\"De xuat mua bo sung day LED\",\"items\":[{\"materialId\":\"$MAT_ID\",\"requestedQuantity\":15,\"estimatedCost\":750000}]}" >/dev/null 2>&1 || true
+
+    echo "==> Tao nguoi quyen gop & quyen gop mau..."
+    DONOR_RES=$(curl -s -X POST "$GATEWAY/api/v1/donors" \
+      -H "Authorization: Bearer $MO_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d '{"donorName":"Nguyen Van A","phone":"0901234567","note":"An nhan giao xu"}')
+    DONOR_ID=$(echo "$DONOR_RES" | grep -o '"id":"[^"]*' | head -n1 | cut -d'"' -f4 || true)
+    if [ -z "$DONOR_ID" ]; then
+      DONORS_JSON=$(curl -s -H "Authorization: Bearer $MO_TOKEN" "$GATEWAY/api/v1/donors?size=50")
+      DONOR_ID=$(echo "$DONORS_JSON" | grep -o '"id":"[^"]*' | head -n1 | cut -d'"' -f4 || true)
+    fi
+
+    if [ -n "$DONOR_ID" ]; then
+      curl -s -X POST "$GATEWAY/api/v1/donations" \
+        -H "Authorization: Bearer $MO_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"donorId\":\"$DONOR_ID\",\"type\":\"MONEY\",\"seasonId\":\"44444444-4444-4444-4444-444444444444\",\"amount\":5000000,\"note\":\"Ung ho mua Giang Sinh 2026\"}" >/dev/null 2>&1 || true
+
+      curl -s -X POST "$GATEWAY/api/v1/donations" \
+        -H "Authorization: Bearer $MO_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "{\"donorId\":\"$DONOR_ID\",\"type\":\"MATERIAL\",\"workAreaId\":\"66666666-6666-6666-6666-666666666666\",\"items\":[{\"materialId\":\"$MAT_ID\",\"receivedQuantity\":20,\"unusableQuantity\":0,\"note\":\"Hang moi 100%\"}],\"note\":\"Quyen gop day den LED\"}" >/dev/null 2>&1 || true
+    fi
   fi
 fi
 

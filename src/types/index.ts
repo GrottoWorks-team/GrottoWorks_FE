@@ -131,10 +131,67 @@ export interface PurchaseRecord {
   supplier: string; date: string; receiptPhoto?: string; confirmed: boolean; buyerId: string;
 }
 
+export type DonationType = 'MONEY' | 'MATERIAL'
+export type DonationStatus = 'PLEDGED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED' | 'CANCELED'
+export type DonationItemStatus = 'PLEDGED' | 'PARTIALLY_RECEIVED' | 'FULLY_RECEIVED' | 'UNUSABLE' | 'CANCELLED'
+
+export interface DonationItem {
+  id: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  pledgedQuantity?: number | null
+  receivedQuantity: number
+  unusableQuantity: number
+  usableQuantity: number
+  status: DonationItemStatus
+  note?: string | null
+}
+
+export interface DonationReceiptItem {
+  id: string
+  donationItemId: string
+  materialId: string
+  receivedQuantity: number
+  unusableQuantity: number
+  usableQuantity: number
+}
+
+export interface DonationReceipt {
+  id: string
+  receivedAt: string
+  receivedBy: string
+  receivedAmount?: { amount: number; currency: string } | null
+  note?: string | null
+  items: DonationReceiptItem[]
+}
+
 export interface Donation {
-  id: string; materialId?: string; monetary?: number; donorName: string;
-  status: 'PLEDGED' | 'RECEIVED_FULL' | 'RECEIVED_PARTIAL' | 'UNUSABLE' | 'CANCELED';
-  promisedQty?: number; receivedQty?: number; note?: string;
+  id: string
+  donorId: string
+  donorName: string
+  seasonId: string
+  workAreaId?: string | null
+  type: DonationType
+  status: DonationStatus
+  pledgedAmount?: { amount: number; currency: string } | null
+  receivedAmount?: { amount: number; currency: string } | null
+  donationDate: string
+  items: DonationItem[]
+  receipts?: DonationReceipt[] | null
+  note?: string | null
+  cancelReason?: string | null
+  createdBy: string
+  createdAt: string
+  updatedAt?: string | null
+  version: number
+
+  // Legacy optional fields for backward compatibility
+  materialId?: string
+  monetary?: number
+  promisedQty?: number
+  receivedQty?: number
 }
 
 export interface BorrowedItem {

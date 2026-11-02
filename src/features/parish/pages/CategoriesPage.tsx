@@ -415,7 +415,7 @@ export default function CategoriesPage() {
                 <CategoryRow
                   key={x}
                   name={t(`features.donations.kind.${x}`)}
-                  refCount={donations.filter((d) => (x === 'MATERIAL' ? d.materialId : d.monetary)).length}
+                  refCount={donations.filter((d) => (x === 'MATERIAL' ? (d.type === 'MATERIAL' || !!d.materialId) : (d.type === 'MONEY' || !!d.monetary))).length}
                   refLabel={t('features.parish.refUses')}
                 />
               ))}

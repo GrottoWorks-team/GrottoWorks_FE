@@ -140,7 +140,7 @@ export default function ReportPage() {
     const hours = new Map(hourRows.map((r) => [r.id, r.hours]))
     const contributions = new Map<string, number>()
     for (const d of data?.donations ?? []) {
-      if (d.status === 'CANCELED') continue
+      if (d.status === 'CANCELLED' || d.status === 'CANCELED') continue
       contributions.set(d.donorName, (contributions.get(d.donorName) ?? 0) + 1)
     }
     // Donor là tên tự do (không phải user id) — đếm đơn giản theo tên xuất hiện
