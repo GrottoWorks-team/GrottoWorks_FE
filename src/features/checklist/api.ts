@@ -12,7 +12,7 @@ export const checklistKeys = {
 export function useChecklist(areaId?: string) {
   return useQuery({
     queryKey: checklistKeys.all,
-    queryFn: () => api<ChecklistItem[]>('/checklists'),
+    queryFn: () => api<ChecklistItem[]>('/api/v1/checklists'),
     select: areaId ? (xs) => xs.filter((x) => x.areaId === areaId) : undefined,
   })
 }
@@ -21,7 +21,7 @@ export function useToggleItem() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, done }: { id: string; done: boolean }) =>
-      api<ChecklistItem>(`/checklists/${id}`, {
+      api<ChecklistItem>(`/api/v1/checklists/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ done }),
       }),

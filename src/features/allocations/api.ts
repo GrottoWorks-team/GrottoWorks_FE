@@ -9,7 +9,7 @@ export const allocationKeys = { all: ['allocations'] as const }
 export function useAllocations() {
   return useQuery({
     queryKey: allocationKeys.all,
-    queryFn: () => api<Allocation[]>('/allocations'),
+    queryFn: () => api<Allocation[]>('/api/v1/material-allocations'),
   })
 }
 
@@ -31,7 +31,7 @@ export function useCreateAllocation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: Omit<Allocation, 'id' | 'byUserId'> & { byUserId?: string }) =>
-      api<Allocation>('/allocations', { method: 'POST', body: JSON.stringify(data) }),
+      api<Allocation>('/api/v1/material-allocations', { method: 'POST', body: JSON.stringify(data) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: allocationKeys.all }),
   })
 }

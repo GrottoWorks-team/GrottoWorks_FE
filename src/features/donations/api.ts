@@ -12,7 +12,7 @@ export const donationKeys = { all: ['donations'] as const }
 export function useDonations() {
   return useQuery({
     queryKey: donationKeys.all,
-    queryFn: () => api<Donation[]>('/donations'),
+    queryFn: () => api<Donation[]>('/api/v1/donations'),
   })
 }
 
@@ -31,7 +31,7 @@ function useDonationMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
 // (GET material rồi PATCH tổng mới — handler tính lại status INCOMING).
 export function useCreateDonation() {
   return useDonationMutation(async (data: Omit<Donation, 'id' | 'receivedQty'>) => {
-    const donation = await api<Donation>('/donations', {
+    const donation = await api<Donation>('/api/v1/donations', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -50,7 +50,7 @@ export function useCreateDonation() {
 export function useUpdateDonation() {
   return useDonationMutation(
     ({ id, ...data }: Partial<Omit<Donation, 'id'>> & { id: string }) =>
-      api<Donation>(`/donations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+      api<Donation>(`/api/v1/donations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   )
 }
 
@@ -61,7 +61,7 @@ export function useUpdateDonation() {
 // — demo không có luồng trả lại vật tư.
 export function useRecordReception(donationId: string) {
   return useDonationMutation(async (receivedQty: number) => {
-    const donation = await api<Donation>(`/donations/${donationId}`)
+    const donation = await api<Donation>(`/api/v1/donations/${donationId}`)
     const promisedQty = donation.promisedQty ?? 0
     const status: Donation['status'] =
       receivedQty === 0
@@ -69,7 +69,7 @@ export function useRecordReception(donationId: string) {
         : promisedQty && receivedQty < promisedQty
           ? 'RECEIVED_PARTIAL'
           : 'RECEIVED_FULL'
-    const patched = await api<Donation>(`/donations/${donationId}`, {
+    const patched = await api<Donation>(`/api/v1/donations/${donationId}`, {
       method: 'PATCH',
       body: JSON.stringify({ receivedQty, status }),
     })

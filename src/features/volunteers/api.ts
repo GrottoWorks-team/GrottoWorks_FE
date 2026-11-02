@@ -1,5 +1,5 @@
 // Đăng ký tình nguyện: useVolunteerRegs + duyệt/từ chối qua PATCH
-// /volunteerRegs/:id. Duyệt phải đồng thời thêm volunteerId vào
+// /api/v1/volunteer-regs/:id. Duyệt phải đồng thời thêm volunteerId vào
 // task.assignees — mock PATCH là shallow-merge nên phải GET task rồi PATCH
 // cả mảng mới (pattern useAssignVolunteer, 2 bước trong mutationFn).
 // Lệch chữ ký brief có chủ đích: reg truyền vào lúc mutateAsync(reg) (payload
@@ -14,7 +14,7 @@ export const volunteerRegKeys = { all: ['volunteerRegs'] as const }
 export function useVolunteerRegs() {
   return useQuery({
     queryKey: volunteerRegKeys.all,
-    queryFn: () => api<VolunteerReg[]>('/volunteerRegs'),
+    queryFn: () => api<VolunteerReg[]>('/api/v1/volunteer-regs'),
   })
 }
 
@@ -32,7 +32,7 @@ function useRegMutation(fn: (reg: VolunteerReg) => Promise<unknown>) {
 }
 
 const patchReg = (id: string, patch: Partial<VolunteerReg>) =>
-  api<VolunteerReg>(`/volunteerRegs/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+  api<VolunteerReg>(`/api/v1/volunteer-regs/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
 
 // Duyệt: PATCH reg APPROVED rồi thêm volunteerId vào assignees (idempotent).
 export function useApproveReg() {

@@ -23,7 +23,11 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const fullPath = path.startsWith('/api') ? path : `/api${path.startsWith('/') ? path : '/' + path}`
+  const fullPath = path.startsWith('/api/')
+    ? path
+    : path === '/api'
+      ? '/api'
+      : `/api/v1${path.startsWith('/') ? path : '/' + path}`
   const url = location.origin + fullPath
 
   const res = await fetch(url, { ...init, headers })

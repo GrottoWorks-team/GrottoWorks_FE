@@ -127,7 +127,7 @@ export function usePurchaseRequests(filter?: PurchaseRequestFilterParams) {
 export function useMockPurchaseRequests() {
   return useQuery({
     queryKey: ['mockPurchaseRequests'] as const,
-    queryFn: () => api<any[]>('/purchaseRequests'),
+    queryFn: () => api<any[]>('/api/v1/purchase-requests'),
   })
 }
 
@@ -169,7 +169,7 @@ export function usePurchaseRequestHistory(requestId?: string) {
 export function usePurchaseRecords() {
   return useQuery({
     queryKey: purchaseRecordKeys.all,
-    queryFn: () => api<PurchaseRecord[]>('/purchaseRecords'),
+    queryFn: () => api<PurchaseRecord[]>('/api/v1/purchase-records'),
   })
 }
 
@@ -239,7 +239,7 @@ export function useApproveRequest() {
 
 export function useMockApproveRequest() {
   return usePurchaseMutation((id: string) =>
-    api<PurchaseRequest>(`/purchaseRequests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'APPROVED' }) }),
+    api<PurchaseRequest>(`/api/v1/purchase-requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'APPROVED' }) }),
   )
 }
 
@@ -256,7 +256,7 @@ export function useRejectRequest() {
 
 export function useMockRejectRequest() {
   return usePurchaseMutation(({ id, reason }: { id: string; reason: string }) =>
-    api<PurchaseRequest>(`/purchaseRequests/${id}`, {
+    api<PurchaseRequest>(`/api/v1/purchase-requests/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'REJECTED', rejectReason: reason }),
     }),
@@ -277,7 +277,7 @@ export interface NewPurchaseRecord {
 
 export function useCreatePurchaseRecord() {
   return usePurchaseMutation(async (vars: NewPurchaseRecord) => {
-    const record = await api<PurchaseRecord>('/purchaseRecords', {
+    const record = await api<PurchaseRecord>('/api/v1/purchase-records', {
       method: 'POST',
       body: JSON.stringify(vars),
     })
@@ -292,7 +292,7 @@ export function useCreatePurchaseRecord() {
 
 export function useConfirmPurchase() {
   return usePurchaseMutation((recordId: string) =>
-    api<PurchaseRecord>(`/purchaseRecords/${recordId}`, {
+    api<PurchaseRecord>(`/api/v1/purchase-records/${recordId}`, {
       method: 'PATCH',
       body: JSON.stringify({ confirmed: true }),
     }),

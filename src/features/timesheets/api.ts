@@ -12,7 +12,7 @@ export const timesheetKeys = {
 export function useTimesheets(volunteerId?: string) {
   return useQuery({
     queryKey: timesheetKeys.all,
-    queryFn: () => api<Timesheet[]>('/timesheets'),
+    queryFn: () => api<Timesheet[]>('/api/v1/timesheets'),
     select: volunteerId ? (ts) => ts.filter((x) => x.volunteerId === volunteerId) : undefined,
   })
 }
@@ -31,11 +31,11 @@ function useTimesheetMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
 }
 
 const patch = (id: string, body: TimesheetPatch) =>
-  api<Timesheet>(`/timesheets/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
+  api<Timesheet>(`/api/v1/timesheets/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
 
 export function useCreateTimesheet() {
   return useTimesheetMutation((data: Omit<Timesheet, 'id'>) =>
-    api<Timesheet>('/timesheets', { method: 'POST', body: JSON.stringify(data) }),
+    api<Timesheet>('/api/v1/timesheets', { method: 'POST', body: JSON.stringify(data) }),
   )
 }
 

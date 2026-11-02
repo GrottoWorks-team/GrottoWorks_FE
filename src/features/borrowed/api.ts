@@ -9,7 +9,7 @@ export const borrowedKeys = { all: ['borrowedItems'] as const }
 export function useBorrowedItems() {
   return useQuery({
     queryKey: borrowedKeys.all,
-    queryFn: () => api<BorrowedItem[]>('/borrowedItems'),
+    queryFn: () => api<BorrowedItem[]>('/api/v1/borrowed-items'),
   })
 }
 
@@ -23,7 +23,7 @@ function useBorrowedMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
 
 export function useCreateBorrowed() {
   return useBorrowedMutation((data: Omit<BorrowedItem, 'id' | 'returnedCondition'>) =>
-    api<BorrowedItem>('/borrowedItems', { method: 'POST', body: JSON.stringify(data) }),
+    api<BorrowedItem>('/api/v1/borrowed-items', { method: 'POST', body: JSON.stringify(data) }),
   )
 }
 
@@ -31,7 +31,7 @@ export function useCreateBorrowed() {
 // item), condition truyền vào lúc mutate.
 export function useMarkReturned(itemId: string) {
   return useBorrowedMutation((condition: NonNullable<BorrowedItem['returnedCondition']>) =>
-    api<BorrowedItem>(`/borrowedItems/${itemId}`, {
+    api<BorrowedItem>(`/api/v1/borrowed-items/${itemId}`, {
       method: 'PATCH',
       body: JSON.stringify({ returnedCondition: condition }),
     }),

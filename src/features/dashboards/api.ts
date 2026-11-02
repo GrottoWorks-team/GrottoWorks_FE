@@ -29,7 +29,7 @@ export function useActivity() {
   return useQuery({
     queryKey: dashboardKeys.activity,
     enabled: ACTIVITY_API_AVAILABLE,
-    queryFn: () => api<ActivityLog[]>('/activity'),
+    queryFn: () => api<ActivityLog[]>('/api/v1/activity-logs'),
   })
 }
 

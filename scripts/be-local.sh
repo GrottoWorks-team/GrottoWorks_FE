@@ -79,7 +79,7 @@ start_pg() {
 
 start_pg
 
-for db in identity_db parish_db resource_db task_db; do
+for db in identity_db parish_db resource_db task_db readiness_db reporting_db notify_db; do
   "$PG/psql.exe" -h 127.0.0.1 -p "$PGPORT" -U postgres -tAc \
     "SELECT 1 FROM pg_database WHERE datname='$db'" | grep -q 1 \
     || "$PG/psql.exe" -h 127.0.0.1 -p "$PGPORT" -U postgres -c "CREATE DATABASE $db"
@@ -112,13 +112,23 @@ start_service resource Services/Resource/Resource.Api http://localhost:5183 \
 start_service task Services/TaskExecution/TaskExecution.Api http://localhost:5184 \
   "ConnectionStrings__TaskExecutionDatabase=Host=127.0.0.1;Port=$PGPORT;Database=task_db;Username=postgres;Password=postgres"
 
-echo "[be] đợi 4 service migrate + seed..."
+start_service readiness Services/Readiness/Readiness.Api http://localhost:5185 \
+  "ConnectionStrings__ReadinessDatabase=Host=127.0.0.1;Port=$PGPORT;Database=readiness_db;Username=postgres;Password=postgres"
+
+start_service reporting Services/Reporting/Reporting.Api http://localhost:5186 \
+  "ConnectionStrings__ReportingDatabase=Host=127.0.0.1;Port=$PGPORT;Database=reporting_db;Username=postgres;Password=postgres" \
+  "IdentityClient__BaseAddress=http://localhost:5180/"
+
+start_service notify Services/NotificationAudit/NotificationAudit.Api http://localhost:5187 \
+  "ConnectionStrings__NotificationAuditDatabase=Host=127.0.0.1;Port=$PGPORT;Database=notify_db;Username=postgres;Password=postgres"
+
+echo "[be] đợi 7 service migrate + seed..."
 for _ in $(seq 1 60); do
   ok=1
-  for port in 5180 5178 5183 5184; do
+  for port in 5180 5178 5183 5184 5185 5186 5187; do
     curl -s -o /dev/null "http://localhost:$port/health/ready" || ok=0
   done
-  [ "$ok" = 1 ] && { echo "[be] 4 service đã sẵn sàng"; break; }
+  [ "$ok" = 1 ] && { echo "[be] 7 service đã sẵn sàng"; break; }
   sleep 2
 done
 
@@ -130,6 +140,6 @@ for _ in $(seq 1 30); do
   sleep 2
 done
 
-echo "[be] xong. Log: $WORK_DIR/{identity,parish,resource,task,gateway}.log"
+echo "[be] xong. Log: $WORK_DIR/{identity,parish,resource,task,readiness,reporting,notify,gateway}.log"
 echo "[be] Frontend: cd \"$FE_DIR\" && npm run dev   (đã có .env.local trỏ 5190)"
 wait

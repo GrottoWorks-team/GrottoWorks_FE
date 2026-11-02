@@ -16,14 +16,14 @@ export const supportKeys = {
 export function useSupportRequests() {
   return useQuery({
     queryKey: supportKeys.all,
-    queryFn: () => api<SupportRequest[]>('/supportRequests'),
+    queryFn: () => api<SupportRequest[]>('/api/v1/support-requests'),
   })
 }
 
 export function useSupportRegs() {
   return useQuery({
     queryKey: supportKeys.regs,
-    queryFn: () => api<SupportReg[]>('/supportRegs'),
+    queryFn: () => api<SupportReg[]>('/api/v1/support-regs'),
   })
 }
 
@@ -40,13 +40,13 @@ function useSupportMutation<TVars>(fn: (vars: TVars) => Promise<unknown>, invali
 
 export function useCreateSupportRequest() {
   return useSupportMutation((data: Omit<SupportRequest, 'id'>) =>
-    api<SupportRequest>('/supportRequests', { method: 'POST', body: JSON.stringify(data) }))
+    api<SupportRequest>('/api/v1/support-requests', { method: 'POST', body: JSON.stringify(data) }))
 }
 
 export function useUpdateSupportRequest() {
   return useSupportMutation(
     ({ id, ...data }: Partial<Omit<SupportRequest, 'id'>> & { id: string }) =>
-      api<SupportRequest>(`/supportRequests/${id}`, {
+      api<SupportRequest>(`/api/v1/support-requests/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
@@ -62,21 +62,21 @@ export function fulfillOf(needed: number, approved: number): SupportFulfill {
 }
 
 const patchReg = (id: string, patch: Partial<SupportReg>) =>
-  api<SupportReg>(`/supportRegs/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
+  api<SupportReg>(`/api/v1/support-regs/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
 
 // Duyệt 2 bước: PATCH reg APPROVED → tính lại fulfill + (đủ người → COORDINATED).
 export function useApproveSupportReg() {
   return useSupportMutation(async (reg: SupportReg) => {
     const approved = await patchReg(reg.id, { status: 'APPROVED' })
-    const req = await api<SupportRequest>(`/supportRequests/${reg.requestId}`)
-    const regs = await api<SupportReg[]>('/supportRegs')
+    const req = await api<SupportRequest>(`/api/v1/support-requests/${reg.requestId}`)
+    const regs = await api<SupportReg[]>('/api/v1/support-regs')
     const approvedCount = regs.filter(
       (g) => g.requestId === reg.requestId && g.status === 'APPROVED',
     ).length
     const fulfill = fulfillOf(req.volunteersNeeded ?? 0, approvedCount)
     const status: SupportRequest['status'] =
       fulfill === 'FULFILLED' ? 'COORDINATED' : req.status === 'RESOLVED' ? 'RESOLVED' : 'OPEN'
-    await api<SupportRequest>(`/supportRequests/${reg.requestId}`, {
+    await api<SupportRequest>(`/api/v1/support-requests/${reg.requestId}`, {
       method: 'PATCH',
       body: JSON.stringify({ fulfill, status }),
     })
