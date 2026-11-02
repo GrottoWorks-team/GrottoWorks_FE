@@ -1560,5 +1560,15 @@
   "features.pointRules.title": "Point rules",
   "features.pointRules.sub": "Scoring rules for volunteers",
   "features.support.exportCsv": "Export CSV",
-  "features.support.date": "Created date"
+  "features.support.date": "Created date",
+  "status.CORRECTED": "Corrected",
+  "features.timesheets.statTotalVolunteers": "Total volunteers",
+  "features.timesheets.statTotalHours": "Total hours",
+  "features.timesheets.statTotalMinutes": "Total minutes",
+  "features.timesheets.statAvgHours": "Avg hours/person",
+  "features.timesheets.exportCsv": "Export CSV",
+  "features.timesheets.tabSummary": "Area Working Hours Summary",
+  "features.timesheets.tabPersonal": "Personal Attendance",
+  "features.timesheets.minutes": "Approved minutes",
+  "features.timesheets.approvedHours": "Approved hours"
 }

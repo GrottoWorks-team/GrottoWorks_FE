@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 // Map status → tone; nhóm ngoài brief mặc định ◇ soft (label vẫn dịch đúng).
 const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
-  DONE: 'ok', ENOUGH: 'ok', APPROVED: 'ok', RESOLVED: 'ok', CLOSED: 'ok',
+  DONE: 'ok', ENOUGH: 'ok', APPROVED: 'ok', RESOLVED: 'ok', CLOSED: 'ok', CORRECTED: 'soft',
   ON_TRACK: 'ok', RECEIVED_FULL: 'ok', RECEIVED: 'ok', ACCEPTED: 'ok', RETURNED: 'ok', FULFILLED: 'ok',
   DOING: 'warn', INCOMING: 'warn', PENDING: 'warn', REVIEW: 'warn',
   COORDINATED: 'warn', PENDING_FIX: 'warn', RECEIVED_PARTIAL: 'warn', ACTIVE: 'warn',

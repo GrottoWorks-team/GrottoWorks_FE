@@ -272,9 +272,34 @@ export interface Allocation {
 
 export type MaterialAllocation = Allocation
 
+export type AttendanceStatus = 'OPEN' | 'CLOSED' | 'CORRECTED'
+
+export interface AttendanceDto {
+  id: string
+  assignmentId: string
+  checkInAt: string
+  checkOutAt?: string | null
+  approvedMinutes: number
+  status: AttendanceStatus
+  version: number
+}
+
+export interface WorkingHourSummary {
+  volunteerId: string
+  approvedMinutes: number
+  approvedHours: number
+}
+
 export interface Timesheet {
-  id: string; volunteerId: string; date: string; checkIn: string; checkOut?: string;
-  hours: number; correctionRequest?: string; status: 'OPEN' | 'CLOSED' | 'PENDING_FIX';
+  id: string
+  volunteerId: string
+  date: string
+  checkIn: string
+  checkOut?: string
+  hours: number
+  approvedMinutes?: number
+  correctionRequest?: string
+  status: 'OPEN' | 'CLOSED' | 'PENDING_FIX' | 'CORRECTED'
 }
 
 /** Mức đáp ứng nhân lực: 0 người → OPEN; < cần → PARTIAL; ≥ cần → FULFILLED. */

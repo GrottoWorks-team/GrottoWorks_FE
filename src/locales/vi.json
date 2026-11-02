@@ -1560,5 +1560,15 @@
   "features.pointRules.title": "Quy tắc điểm",
   "features.pointRules.sub": "Quy tắc cộng điểm cho tình nguyện viên",
   "features.support.exportCsv": "Xuất CSV",
-  "features.support.date": "Ngày tạo"
+  "features.support.date": "Ngày tạo",
+  "status.CORRECTED": "Đã điều chỉnh",
+  "features.timesheets.statTotalVolunteers": "Tổng tình nguyện viên",
+  "features.timesheets.statTotalHours": "Tổng giờ công",
+  "features.timesheets.statTotalMinutes": "Tổng số phút",
+  "features.timesheets.statAvgHours": "Trung bình giờ/người",
+  "features.timesheets.exportCsv": "Xuất CSV",
+  "features.timesheets.tabSummary": "Tổng hợp giờ công khu vực",
+  "features.timesheets.tabPersonal": "Điểm danh cá nhân",
+  "features.timesheets.minutes": "Số phút đã duyệt",
+  "features.timesheets.approvedHours": "Giờ công đã duyệt"
 }
