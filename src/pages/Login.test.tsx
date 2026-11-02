@@ -53,7 +53,7 @@ beforeEach(() => {
 test('hiện chip tài khoản demo khớp seed thật của BE', async () => {
   render(<App />)
   // Ba tài khoản seed thật trong scripts/seed-demo.sh — không còn email bịa.
-  for (const local of ['parish.demo', 'leader.demo', 'mo.demo']) {
+  for (const local of ['parish.demo', 'leader.demo', 'mo.demo', 'volunteer.demo']) {
     expect(
       await screen.findByRole('button', { name: new RegExp(local) }, { timeout: 10_000 }),
     ).toBeDefined()

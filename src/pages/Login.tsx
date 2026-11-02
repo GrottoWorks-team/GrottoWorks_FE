@@ -8,6 +8,7 @@ import {
   Crown,
   Hammer,
   Package,
+  HeartHandshake,
   Mail,
   Lock,
   Eye,
@@ -35,7 +36,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 interface DemoRoleConfig {
-  role: Role
+  role: Role | 'VOLUNTEER'
   email: string
   icon: typeof Crown
   color: string
@@ -48,6 +49,7 @@ const DEMO: DemoRoleConfig[] = [
   { role: 'PARISH', email: 'parish.demo@grottoworks.local', icon: Crown, color: 'text-amber-600' },
   { role: 'LEADER', email: 'leader.demo@grottoworks.local', icon: Hammer, color: 'text-blue-700' },
   { role: 'MATERIAL_OFFICER', email: 'mo.demo@grottoworks.local', icon: Package, color: 'text-indigo-700' },
+  { role: 'VOLUNTEER', email: 'volunteer.demo@grottoworks.local', icon: HeartHandshake, color: 'text-emerald-700' },
 ]
 
 // Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md` (BE yêu cầu ≥ 8 ký tự,
