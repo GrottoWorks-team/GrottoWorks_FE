@@ -194,9 +194,50 @@ export interface Donation {
   receivedQty?: number
 }
 
+export type BorrowedItemStatus = 'OFFERED' | 'ACCEPTED' | 'REJECTED' | 'ISSUED' | 'IN_USE' | 'RETURNED'
+export type ReturnCondition = 'GOOD' | 'DAMAGED' | 'LOST'
+
+export interface BorrowTransaction {
+  id: string
+  borrowDate: string
+  returnDate?: string | null
+  condition?: ReturnCondition | null
+  quantity?: number | null
+  kind: string
+  recordedBy?: string | null
+  note?: string | null
+}
+
 export interface BorrowedItem {
-  id: string; name: string; owner: string; expectedReturn: string;
-  returnedCondition?: 'GOOD' | 'DAMAGED' | 'LOST'; areaId: string;
+  id: string
+  seasonId: string
+  workAreaId?: string | null
+  taskId?: string | null
+  offeredBy: string
+  acceptedBy?: string | null
+  ownerName: string
+  ownerPhone?: string | null
+  ownerAddress?: string | null
+  ownerNote?: string | null
+  itemName: string
+  quantity: number
+  description?: string | null
+  initialCondition?: string | null
+  expectedReturnDate: string
+  status: BorrowedItemStatus
+  overdue: boolean
+  rejectionReason?: string | null
+  acceptedAt?: string | null
+  createdAt: string
+  transactions?: BorrowTransaction[]
+  version: number
+
+  // Legacy optional fields for backward compatibility
+  name?: string
+  owner?: string
+  expectedReturn?: string
+  returnedCondition?: ReturnCondition
+  areaId?: string
 }
 
 /** Phân bổ vật tư đã nhận cho nhiệm vụ/khu (đích: task hoặc khu khác). */

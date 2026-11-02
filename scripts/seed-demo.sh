@@ -215,4 +215,16 @@ for port in 5185 5186; do
   curl -s -X PUT "http://localhost:$port/internal/season-scopes/44444444-4444-4444-4444-444444444444"     -H "X-Internal-Api-Key: $INTERNAL_KEY" -H "Content-Type: application/json"     -d '{"status":"Active","version":10}' >/dev/null 2>&1 || true
 done
 
+# ── Seed Do muon (Borrowed items) ──
+echo "==> Tao do muon mau..."
+VOLUNTEER_TOKEN=$(curl -s -X POST "$GATEWAY/api/v1/auth/login"   -H "Content-Type: application/json"   -d '{"email":"volunteer.demo@grottoworks.local","password":"ChangeMe!123456"}' |   python -c "import sys,json;print(json.load(sys.stdin).get('data',{}).get('accessToken',''))" 2>/dev/null || true)
+
+if [ -n "$VOLUNTEER_TOKEN" ]; then
+  OFFER_RES=$(curl -s -X POST "$GATEWAY/api/v1/loan-offers"     -H "Authorization: Bearer $VOLUNTEER_TOKEN"     -H "Content-Type: application/json"     -d '{"seasonId":"44444444-4444-4444-4444-444444444444","ownerName":"Nguyen Van Chu Kho","ownerPhone":"0901234567","itemName":"May tron be tong mini","quantity":1,"expectedReturnDate":"2026-12-01"}')
+  OFFER_ID=$(echo "$OFFER_RES" | python -c "import sys,json;print(json.load(sys.stdin).get('data',{}).get('id',''))" 2>/dev/null || true)
+  if [ -n "$OFFER_ID" ]; then
+    curl -s -X POST "$GATEWAY/api/v1/loan-offers/$OFFER_ID/accept"       -H "Authorization: Bearer $MO_TOKEN"       -H "Content-Type: application/json"       -d '{"version":1}' >/dev/null 2>&1 || true
+  fi
+fi
+
 echo "==> Seed thanh cong toan bo du lieu mau!"

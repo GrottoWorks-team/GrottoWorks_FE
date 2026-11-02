@@ -4,14 +4,15 @@ import { cn } from '@/lib/utils'
 // Map status → tone; nhóm ngoài brief mặc định ◇ soft (label vẫn dịch đúng).
 const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   DONE: 'ok', ENOUGH: 'ok', APPROVED: 'ok', RESOLVED: 'ok', CLOSED: 'ok',
-  ON_TRACK: 'ok', RECEIVED_FULL: 'ok', RECEIVED: 'ok',
+  ON_TRACK: 'ok', RECEIVED_FULL: 'ok', RECEIVED: 'ok', ACCEPTED: 'ok', RETURNED: 'ok',
   DOING: 'warn', INCOMING: 'warn', PENDING: 'warn', REVIEW: 'warn',
   COORDINATED: 'warn', PENDING_FIX: 'warn', RECEIVED_PARTIAL: 'warn', ACTIVE: 'warn',
-  PLEDGED: 'warn',
+  PLEDGED: 'warn', ISSUED: 'warn', IN_USE: 'warn',
   LATE: 'alert', REVISE: 'alert', REJECTED: 'alert', SHORTAGE: 'alert',
   AT_RISK: 'alert', UNUSABLE: 'alert', DAMAGED: 'alert', LOST: 'alert',
   OPEN: 'warn', // yêu cầu hỗ trợ đang chờ điều phối
   NOT_RETURNED: 'soft', // đồ mượn chưa trả
+  OFFERED: 'soft',
   IN_REVIEW: 'warn', // phiên bản thiết kế đang review
   IN_PROGRESS: 'warn', // yêu cầu chỉnh sửa đang xử lý
   CHANGES_REQUESTED: 'alert', // phiên bản thiết kế bị yêu cầu chỉnh sửa

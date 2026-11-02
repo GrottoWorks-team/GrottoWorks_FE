@@ -1,39 +1,168 @@
-// Đồ mượn domain — query key ['borrowedItems']. Ghi đã trả chỉ PATCH
-// returnedCondition (GOOD/DAMAGED/LOST) cho item truyền vào lúc gọi hook.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { BorrowedItem } from '@/types'
+import type { BorrowedItem, BorrowedItemStatus, ReturnCondition } from '@/types'
 
-export const borrowedKeys = { all: ['borrowedItems'] as const }
+export interface BorrowedItemFilterParams {
+  page?: number
+  size?: number
+  seasonId?: string
+  workAreaId?: string
+  status?: BorrowedItemStatus
+  overdue?: boolean
+}
 
-export function useBorrowedItems() {
+export interface ReturnBorrowedItemPayload {
+  itemId: string
+  version?: number
+  returnDate?: string
+  condition: ReturnCondition
+  returnedQuantity?: number
+  note?: string
+}
+
+export interface AcceptLoanOfferPayload {
+  offerId: string
+  version?: number
+  workAreaId?: string
+  expectedReturnDate?: string
+}
+
+export interface RejectLoanOfferPayload {
+  offerId: string
+  version?: number
+  reason?: string
+}
+
+export interface IssueBorrowedItemPayload {
+  itemId: string
+  version?: number
+  borrowDate?: string
+  note?: string
+}
+
+export interface AssignBorrowedItemPayload {
+  itemId: string
+  version?: number
+  workAreaId: string
+  taskId?: string
+}
+
+export const borrowedKeys = {
+  all: ['borrowedItems'] as const,
+  list: (filter?: BorrowedItemFilterParams) => ['borrowedItems', 'list', filter] as const,
+  overdue: () => ['borrowedItems', 'overdue'] as const,
+  offers: (params?: { page?: number; size?: number; seasonId?: string }) => ['borrowedItems', 'offers', params] as const,
+  detail: (id: string) => ['borrowedItems', 'detail', id] as const,
+}
+
+export function useBorrowedItems(filter?: BorrowedItemFilterParams) {
   return useQuery({
-    queryKey: borrowedKeys.all,
-    queryFn: () => api<BorrowedItem[]>('/api/v1/borrowed-items'),
+    queryKey: borrowedKeys.list(filter),
+    queryFn: async () => {
+      const sp = new URLSearchParams()
+      if (filter?.page) sp.set('page', String(filter.page))
+      if (filter?.size) sp.set('size', String(filter.size))
+      if (filter?.seasonId) sp.set('seasonId', filter.seasonId)
+      if (filter?.workAreaId) sp.set('workAreaId', filter.workAreaId)
+      if (filter?.status) sp.set('status', filter.status)
+      if (filter?.overdue !== undefined) sp.set('overdue', String(filter.overdue))
+      const qs = sp.toString()
+      const res = await api<{ data?: BorrowedItem[] } | BorrowedItem[]>(
+        `/api/v1/borrowed-items${qs ? `?${qs}` : ''}`,
+      )
+      if (Array.isArray(res)) return res
+      return res.data ?? []
+    },
   })
 }
 
-function useBorrowedMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
+export function useOverdueBorrowedItems() {
+  return useQuery({
+    queryKey: borrowedKeys.overdue(),
+    queryFn: async () => {
+      const res = await api<{ data?: BorrowedItem[] } | BorrowedItem[]>(
+        '/api/v1/borrowed-items/overdue',
+      )
+      if (Array.isArray(res)) return res
+      return res.data ?? []
+    },
+  })
+}
+
+export function useLoanOffers(params?: { page?: number; size?: number; seasonId?: string }) {
+  return useQuery({
+    queryKey: borrowedKeys.offers(params),
+    queryFn: async () => {
+      const sp = new URLSearchParams()
+      if (params?.page) sp.set('page', String(params.page))
+      if (params?.size) sp.set('size', String(params.size))
+      if (params?.seasonId) sp.set('seasonId', params.seasonId)
+      const qs = sp.toString()
+      const res = await api<{ data?: BorrowedItem[] } | BorrowedItem[]>(
+        `/api/v1/loan-offers${qs ? `?${qs}` : ''}`,
+      )
+      if (Array.isArray(res)) return res
+      return res.data ?? []
+    },
+  })
+}
+
+export function useAcceptLoanOffer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: fn,
+    mutationFn: ({ offerId, ...body }: AcceptLoanOfferPayload) =>
+      api<BorrowedItem>(`/api/v1/loan-offers/${offerId}/accept`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
     onSuccess: () => qc.invalidateQueries({ queryKey: borrowedKeys.all }),
   })
 }
 
-export function useCreateBorrowed() {
-  return useBorrowedMutation((data: Omit<BorrowedItem, 'id' | 'returnedCondition'>) =>
-    api<BorrowedItem>('/api/v1/borrowed-items', { method: 'POST', body: JSON.stringify(data) }),
-  )
+export function useRejectLoanOffer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ offerId, ...body }: RejectLoanOfferPayload) =>
+      api<BorrowedItem>(`/api/v1/loan-offers/${offerId}/reject`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: borrowedKeys.all }),
+  })
 }
 
-// useMarkReturned(id, condition): id cố định lúc gọi hook (dialog mount theo
-// item), condition truyền vào lúc mutate.
-export function useMarkReturned(itemId: string) {
-  return useBorrowedMutation((condition: NonNullable<BorrowedItem['returnedCondition']>) =>
-    api<BorrowedItem>(`/api/v1/borrowed-items/${itemId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ returnedCondition: condition }),
-    }),
-  )
+export function useIssueBorrowedItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ itemId, ...body }: IssueBorrowedItemPayload) =>
+      api<BorrowedItem>(`/api/v1/borrowed-items/${itemId}/issue`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: borrowedKeys.all }),
+  })
+}
+
+export function useReturnBorrowedItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ itemId, ...body }: ReturnBorrowedItemPayload) =>
+      api<BorrowedItem>(`/api/v1/borrowed-items/${itemId}/return`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: borrowedKeys.all }),
+  })
+}
+
+export function useAssignBorrowedItem() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ itemId, ...body }: AssignBorrowedItemPayload) =>
+      api<BorrowedItem>(`/api/v1/borrowed-items/${itemId}/assignment`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: borrowedKeys.all }),
+  })
 }
