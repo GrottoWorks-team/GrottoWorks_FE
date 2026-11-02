@@ -16,6 +16,7 @@ import { useToast } from '@/components/ui/toast'
 import { exportCsv } from '@/lib/csv'
 import { viDate } from '@/lib/format'
 import { useReportData } from '../api'
+import { useSeasonContext } from '@/features/season/season-context'
 import { RecognitionBoard } from '../components/RecognitionBoard'
 import type { ContributorRow } from '../api'
 
@@ -54,7 +55,10 @@ function Section({
 export default function ReportPage() {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data, isPending } = useReportData()
+  // Báo cáo luôn theo mùa đang chọn ở header — trước đây ghim cứng một UUID
+  // mùa demo nên số liệu không đổi khi người dùng đổi mùa.
+  const { seasonId } = useSeasonContext()
+  const { data, isPending } = useReportData(seasonId)
 
   // Lookup name: material, user, community — Map để O(1) khi join hàng nghìn dòng.
   const lookups = useMemo(() => {

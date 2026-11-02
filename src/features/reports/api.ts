@@ -111,38 +111,46 @@ export function useReportData(seasonIdParam?: string) {
   return useQuery({
     queryKey: [...reportKeys.all, seasonIdParam],
     queryFn: async (): Promise<ReportData> => {
-      const sid = seasonIdParam || '44444444-4444-4444-4444-444444444444'
-      const [
-        tasksRes,
-        materialsReportRes,
-        purchasesRes,
-        contributionsRes,
-        attendanceRes,
-        readinessRes,
-        recRes,
-        usersRes,
-        materialsRes,
-      ] = await Promise.allSettled([
-        api<OperationalReportDto>(`/api/v1/reports/tasks?seasonId=${sid}`),
-        api<OperationalReportDto>(`/api/v1/reports/materials?seasonId=${sid}`),
-        api<OperationalReportDto>(`/api/v1/reports/purchases?seasonId=${sid}`),
-        api<OperationalReportDto>(`/api/v1/reports/contributions?seasonId=${sid}`),
-        api<OperationalReportDto>(`/api/v1/reports/attendance?seasonId=${sid}`),
-        api<OperationalReportDto>(`/api/v1/reports/readiness?seasonId=${sid}`),
-        api<RecognitionRankingDto>(`/api/v1/seasons/${sid}/recognition`),
+      // Không có seasonId thì KHÔNG gọi 7 endpoint báo cáo: BE bắt buộc
+      // seasonId nên gọi với id cứng chỉ tạo ra 404 giả hoặc số liệu của mùa
+      // khác. Trả mảng rỗng và để trang hiện trạng thái chọn mùa.
+      const sid = seasonIdParam
+      // Chưa chọn mùa → chỉ lấy danh mục; 7 báo cáo bắt buộc seasonId nên bỏ
+      // qua, tránh gửi `seasonId=undefined` lên BE.
+      const reportCalls = sid
+        ? [
+            api<OperationalReportDto>(`/api/v1/reports/tasks?seasonId=${sid}`),
+            api<OperationalReportDto>(`/api/v1/reports/materials?seasonId=${sid}`),
+            api<OperationalReportDto>(`/api/v1/reports/purchases?seasonId=${sid}`),
+            api<OperationalReportDto>(`/api/v1/reports/contributions?seasonId=${sid}`),
+            api<OperationalReportDto>(`/api/v1/reports/attendance?seasonId=${sid}`),
+            api<OperationalReportDto>(`/api/v1/reports/readiness?seasonId=${sid}`),
+            api<RecognitionRankingDto>(`/api/v1/seasons/${sid}/recognition`),
+          ]
+        : []
+      const settled = await Promise.allSettled([
+        ...reportCalls,
         api<User[]>('/api/v1/users'),
         api<Material[]>('/api/v1/materials'),
       ])
-
-      const tasksReport = tasksRes.status === 'fulfilled' ? tasksRes.value : undefined
-      const purchasesReport = purchasesRes.status === 'fulfilled' ? purchasesRes.value : undefined
-      const contributionsReport = contributionsRes.status === 'fulfilled' ? contributionsRes.value : undefined
-      const attendanceReport = attendanceRes.status === 'fulfilled' ? attendanceRes.value : undefined
-      const materialsReport = materialsReportRes.status === 'fulfilled' ? materialsReportRes.value : undefined
-      const readinessReport = readinessRes.status === 'fulfilled' ? readinessRes.value : undefined
-      const recognition = recRes.status === 'fulfilled' ? recRes.value : undefined
-      const users = usersRes.status === 'fulfilled' && Array.isArray(usersRes.value) ? usersRes.value : []
-      const materials = materialsRes.status === 'fulfilled' && Array.isArray(materialsRes.value) ? materialsRes.value : []
+      // reportCalls rỗng khi chưa chọn mùa → settled[0..6] không tồn tại.
+      const report = (i: number): OperationalReportDto | undefined => {
+        const row = settled[reportCalls.length ? i : -1]
+        return row && row.status === 'fulfilled' ? (row.value as OperationalReportDto) : undefined
+      }
+      const usersRow = settled[reportCalls.length]
+      const materialsRow = settled[reportCalls.length + 1]
+      // allSettled() của mảng trộn suy ra User[] | Material[], nên phải ép
+      // kiểu tường minh ở từng nhánh thay vì để TS thu hẹp sai.
+      const users: User[] =
+        usersRow?.status === 'fulfilled' && Array.isArray(usersRow.value) ? (usersRow.value as User[]) : []
+      const materials: Material[] =
+        materialsRow?.status === 'fulfilled' && Array.isArray(materialsRow.value)
+          ? (materialsRow.value as unknown as Material[])
+          : []
+      const recRow = reportCalls.length ? settled[6] : undefined
+      const recognition =
+        recRow?.status === 'fulfilled' ? (recRow.value as RecognitionRankingDto) : undefined
 
       return {
         purchaseRecords: [],
@@ -154,12 +162,12 @@ export function useReportData(seasonIdParam?: string) {
         areas: [],
         materials,
         operational: {
-          tasks: tasksReport,
-          purchases: purchasesReport,
-          contributions: contributionsReport,
-          attendance: attendanceReport,
-          materials: materialsReport,
-          readiness: readinessReport,
+          tasks: report(0),
+          materials: report(1),
+          purchases: report(2),
+          contributions: report(3),
+          attendance: report(4),
+          readiness: report(5),
           recognition,
         },
       }
