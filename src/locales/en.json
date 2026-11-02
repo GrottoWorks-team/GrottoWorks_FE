@@ -1572,5 +1572,20 @@
   "features.timesheets.minutes": "Approved minutes",
   "features.timesheets.approvedHours": "Approved hours",
   "features.reports.readinessTitle": "Readiness Report",
-  "features.reports.operationalTitle": "Server Operational Reports"
+  "features.reports.operationalTitle": "Server Operational Reports",
+  "features.pointRules.readOnlyNotice": "Read-only mode: Recognition rules are configured by System Administrator (ADMIN).",
+  "features.pointRules.ruleName": "Rule Name",
+  "features.pointRules.contributionType": "Contribution Type",
+  "features.pointRules.points": "Reward Points",
+  "features.pointRules.version": "Version",
+  "features.pointRules.effective": "Effective Period",
+  "features.pointRules.status": "Status",
+  "features.pointRules.statTotal": "Total Rules",
+  "features.pointRules.statActive": "Active Rules",
+  "features.pointRules.statMaxPoints": "Max Points",
+  "features.pointRules.statTypes": "Contribution Types",
+  "features.pointRules.exportCsv": "Export CSV",
+  "features.pointRules.filterAll": "All",
+  "features.pointRules.filterActive": "Active",
+  "features.pointRules.empty": "No recognition rules found"
 }

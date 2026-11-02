@@ -476,3 +476,17 @@ export interface NotificationDto {
   readAt?: string | null;
 }
 
+export interface RecognitionRuleDto {
+  id: string;
+  contributionTypeId: string;
+  contributionTypeCode: string;
+  name: string;
+  ruleVersion: number;
+  points: number;
+  description?: string | null;
+  status: 'ACTIVE' | 'INACTIVE' | string;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  version: number;
+}
+

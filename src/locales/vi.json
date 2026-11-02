@@ -1572,5 +1572,20 @@
   "features.timesheets.minutes": "Số phút đã duyệt",
   "features.timesheets.approvedHours": "Giờ công đã duyệt",
   "features.reports.readinessTitle": "Báo cáo sẵn sàng công trình",
-  "features.reports.operationalTitle": "Báo cáo vận hành máy chủ"
+  "features.reports.operationalTitle": "Báo cáo vận hành máy chủ",
+  "features.pointRules.readOnlyNotice": "Chế độ xem: Bảng quy tắc tính điểm thi đua do Quản trị viên (ADMIN) cấu hình.",
+  "features.pointRules.ruleName": "Tên quy tắc",
+  "features.pointRules.contributionType": "Loại đóng góp",
+  "features.pointRules.points": "Điểm thưởng",
+  "features.pointRules.version": "Phiên bản",
+  "features.pointRules.effective": "Hiệu lực",
+  "features.pointRules.status": "Trạng thái",
+  "features.pointRules.statTotal": "Tổng số quy tắc",
+  "features.pointRules.statActive": "Đang áp dụng",
+  "features.pointRules.statMaxPoints": "Điểm cao nhất",
+  "features.pointRules.statTypes": "Loại đóng góp",
+  "features.pointRules.exportCsv": "Xuất CSV",
+  "features.pointRules.filterAll": "Tất cả",
+  "features.pointRules.filterActive": "Đang hiệu lực",
+  "features.pointRules.empty": "Chưa có quy tắc tính điểm nào"
 }
