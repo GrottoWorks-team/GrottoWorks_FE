@@ -1570,5 +1570,7 @@
   "features.timesheets.tabSummary": "Tổng hợp giờ công khu vực",
   "features.timesheets.tabPersonal": "Điểm danh cá nhân",
   "features.timesheets.minutes": "Số phút đã duyệt",
-  "features.timesheets.approvedHours": "Giờ công đã duyệt"
+  "features.timesheets.approvedHours": "Giờ công đã duyệt",
+  "features.reports.readinessTitle": "Báo cáo sẵn sàng công trình",
+  "features.reports.operationalTitle": "Báo cáo vận hành máy chủ"
 }

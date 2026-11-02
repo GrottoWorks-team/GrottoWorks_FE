@@ -1570,5 +1570,7 @@
   "features.timesheets.tabSummary": "Area Working Hours Summary",
   "features.timesheets.tabPersonal": "Personal Attendance",
   "features.timesheets.minutes": "Approved minutes",
-  "features.timesheets.approvedHours": "Approved hours"
+  "features.timesheets.approvedHours": "Approved hours",
+  "features.reports.readinessTitle": "Readiness Report",
+  "features.reports.operationalTitle": "Server Operational Reports"
 }

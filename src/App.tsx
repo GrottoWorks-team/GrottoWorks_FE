@@ -85,6 +85,7 @@ const PAGES: Record<string, ComponentType> = {
   '/material-officer/borrowed': BorrowedListPage,
   '/material-officer/allocations': AllocationPage,
   '/parish/purchases': CommitteeApprovalPage,
+  '/parish/reports': ReportPage,
   '/leader/timesheets': TimesheetPage,
   '/leader/checklist': ChecklistPage,
   '/community/checklist': ChecklistPage,
@@ -127,6 +128,7 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
+    { path: 'reports', Page: ReportPage },
   ],
 }
 

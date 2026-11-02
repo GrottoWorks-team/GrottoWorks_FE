@@ -180,6 +180,38 @@ export default function ReportPage() {
 
 
 
+  const purchaseColumns = useMemo(
+    () => [
+      { key: 'material', header: t('features.purchases.material'), render: (r: (typeof purchaseRows)[number]) => <span className="font-semibold">{r.material}</span> },
+      { key: 'qty', header: t('features.purchases.qty'), align: 'right' as const },
+      { key: 'cost', header: t('features.purchases.cost'), align: 'right' as const, render: (r: (typeof purchaseRows)[number]) => <span className="tabular">{r.cost.toLocaleString('vi-VN')} ₫</span> },
+      { key: 'supplier', header: t('features.purchases.supplier') },
+      { key: 'date', header: t('features.purchases.date'), render: (r: (typeof purchaseRows)[number]) => <span className="tabular">{viDate(r.date)}</span> },
+      { key: 'buyer', header: t('features.purchases.buyer') },
+    ],
+    [t],
+  )
+
+  const donationColumns = useMemo(
+    () => [
+      { key: 'donor', header: t('features.donations.donor'), render: (r: (typeof donationRows)[number]) => <span className="font-semibold">{r.donor}</span> },
+      { key: 'material', header: t('features.donations.material') },
+      { key: 'promised', header: t('features.donations.promised'), align: 'right' as const },
+      { key: 'received', header: t('features.donations.receivedCol'), align: 'right' as const },
+      { key: 'monetary', header: t('features.donations.money'), align: 'right' as const, render: (r: (typeof donationRows)[number]) => <span className="tabular">{r.monetary ? `${Number(r.monetary).toLocaleString('vi-VN')} ₫` : '—'}</span> },
+    ],
+    [t],
+  )
+
+  const hourColumns = useMemo(
+    () => [
+      { key: 'volunteer', header: t('features.timesheets.volunteer'), render: (r: (typeof hourRows)[number]) => <span className="font-semibold">{r.volunteer}</span> },
+      { key: 'sessions', header: t('features.reports.sessions'), align: 'right' as const },
+      { key: 'hours', header: t('features.timesheets.hours'), align: 'right' as const, render: (r: (typeof hourRows)[number]) => <span className="tabular">{r.hours.toFixed(1)}</span> },
+    ],
+    [t],
+  )
+
   const doneColumns = useMemo(
     () => [
       { key: 'title', header: t('features.tasks.name'), render: (r: (typeof doneRows)[number]) => <span className="font-semibold">{r.title}</span> },
@@ -274,41 +306,71 @@ export default function ReportPage() {
 
       <Section
         title={t('features.reports.purchasesTitle')}
-        count={0}
+        count={data?.operational ? purchaseRows.length : 0}
         onExport={exportPurchases}
         index={0}
       >
-        <Card>
-          <EmptyState
-            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-          />
-        </Card>
+        {data?.operational ? (
+          purchaseRows.length > 0 ? (
+            <DataTable rows={purchaseRows} columns={purchaseColumns} />
+          ) : (
+            <Card>
+              <EmptyState text={t('common.empty')} />
+            </Card>
+          )
+        ) : (
+          <Card>
+            <EmptyState
+              text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
+            />
+          </Card>
+        )}
       </Section>
 
       <Section
         title={t('features.reports.donationsTitle')}
-        count={0}
+        count={data?.operational ? donationRows.length : 0}
         onExport={exportDonations}
         index={1}
       >
-        <Card>
-          <EmptyState
-            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-          />
-        </Card>
+        {data?.operational ? (
+          donationRows.length > 0 ? (
+            <DataTable rows={donationRows} columns={donationColumns} />
+          ) : (
+            <Card>
+              <EmptyState text={t('common.empty')} />
+            </Card>
+          )
+        ) : (
+          <Card>
+            <EmptyState
+              text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
+            />
+          </Card>
+        )}
       </Section>
 
       <Section
         title={t('features.reports.hoursTitle')}
-        count={0}
+        count={data?.operational ? hourRows.length : 0}
         onExport={exportHours}
         index={2}
       >
-        <Card>
-          <EmptyState
-            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-          />
-        </Card>
+        {data?.operational ? (
+          hourRows.length > 0 ? (
+            <DataTable rows={hourRows} columns={hourColumns} />
+          ) : (
+            <Card>
+              <EmptyState text={t('common.empty')} />
+            </Card>
+          )
+        ) : (
+          <Card>
+            <EmptyState
+              text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
+            />
+          </Card>
+        )}
       </Section>
 
       <Section
@@ -324,6 +386,36 @@ export default function ReportPage() {
           emptyText={t('features.reports.emptyDone')}
         />
       </Section>
+
+      {data?.operational?.readiness && (
+        <Section
+          title={t('features.reports.readinessTitle')}
+          count={data.operational.readiness.rows.length}
+          onExport={() => {
+            exportCsv(
+              'grottoworks-bao-cao-san-sang.csv',
+              data.operational!.readiness!.rows.map((r) => ({
+                KhuVuc: String(r.workArea || ''),
+                Loai: String(r.kind || ''),
+                TrangThai: String(r.status || ''),
+                GhiChu: String(r.note || ''),
+              })),
+            )
+            onExported(t('features.reports.readinessTitle'))
+          }}
+          index={4}
+        >
+          <DataTable
+            rows={data.operational.readiness.rows}
+            columns={[
+              { key: 'workArea', header: 'Khu vực', render: (r) => <span className="font-semibold">{String(r.workArea)}</span> },
+              { key: 'kind', header: 'Loại', render: (r) => <span>{String(r.kind)}</span> },
+              { key: 'status', header: 'Trạng thái', render: (r) => <span>{String(r.status)}</span> },
+              { key: 'note', header: 'Ghi chú', render: (r) => <span className="text-stone-600 text-xs">{String(r.note)}</span> },
+            ]}
+          />
+        </Section>
+      )}
 
       <section className="mt-8" style={{ '--d': 4 } as CSSProperties} data-g-item>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
