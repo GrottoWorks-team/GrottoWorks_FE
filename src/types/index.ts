@@ -240,11 +240,37 @@ export interface BorrowedItem {
   areaId?: string
 }
 
-/** Phân bổ vật tư đã nhận cho nhiệm vụ/khu (đích: task hoặc khu khác). */
-export interface Allocation {
-  id: string; materialId: string; targetTaskId?: string; targetAreaId?: string;
-  qty: number; date: string; byUserId: string;
+export interface MaterialAllocationItem {
+  id: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  allocatedQuantity: number
 }
+
+/** Phân bổ vật tư cho khu vực hoặc nhiệm vụ (F-RES-15). */
+export interface Allocation {
+  id: string
+  workAreaId: string
+  workAreaName: string
+  taskId?: string | null
+  taskName?: string | null
+  allocatedBy: string
+  allocationDate: string
+  note?: string | null
+  items: MaterialAllocationItem[]
+
+  // Legacy optional fields for backward compatibility
+  materialId?: string
+  targetTaskId?: string
+  targetAreaId?: string
+  qty?: number
+  date?: string
+  byUserId?: string
+}
+
+export type MaterialAllocation = Allocation
 
 export interface Timesheet {
   id: string; volunteerId: string; date: string; checkIn: string; checkOut?: string;
