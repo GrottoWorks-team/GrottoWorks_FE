@@ -90,9 +90,17 @@ export ASPNETCORE_ENVIRONMENT=Development
 export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 export InternalApi__ApiKey="$INTERNAL_KEY"
 
+# Build một lần cho cả solution: 7 service dùng chung BuildingBlocks.* nên build
+# song song sẽ tranh ghi obj/*.dll (CS2012) và phần lớn tiến trình chết.
+echo "[be] build solution..."
+( cd "$BE" && dotnet build GrottoWorks_BE.slnx -v q --nologo ) || { echo "[be] build that bai, dung lai" >&2; exit 1; }
+
 start_service() {
   local name="$1" dir="$2" url="$3"; shift 3
-  ( cd "$BE/$dir" && env "$@" dotnet run --no-launch-profile --urls "$url" \
+  # --no-build là bắt buộc: 7 tiến trình `dotnet run` song song cùng build
+  # chung BuildingBlocks.* nên tranh nhau ghi obj/*.dll (CS2012) và 6/7 chết.
+  # Build một lần trước ở dưới, sau đó chỉ chạy.
+  ( cd "$BE/$dir" && env "$@" dotnet run --no-build --no-launch-profile --urls "$url" \
       > "$WORK_DIR/$name.log" 2>&1 ) &
   echo "[be] $name -> $url (log: $WORK_DIR/$name.log)"
 }

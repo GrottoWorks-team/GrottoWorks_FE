@@ -110,7 +110,7 @@ function Start-Service1 {
     $dir = Join-Path $BeDir $RelDir
     $log = Join-Path $WorkDir "$Name.log"
     Start-Process -FilePath 'dotnet' `
-        -ArgumentList 'run', '--no-launch-profile', '--urls', "http://localhost:$Port" `
+        -ArgumentList 'run', '--no-build', '--no-launch-profile', '--urls', "http://localhost:$Port" `
         -WorkingDirectory $dir -NoNewWindow `
         -RedirectStandardOutput $log -RedirectStandardError "$log.err" | Out-Null
     Write-Host "[be] $Name -> http://localhost:$Port (log: $log)"
@@ -118,6 +118,15 @@ function Start-Service1 {
 }
 
 $conn = "Host=127.0.0.1;Port=$PgPort;Database={0};Username=postgres;Password=postgres"
+
+# Build một lần cho cả solution: 7 service dùng chung BuildingBlocks.* nên build
+# song song sẽ tranh ghi obj/*.dll (CS2012) và phần lớn tiến trình chết.
+Write-Host '[be] build solution...'
+Push-Location $BeDir
+try {
+    & dotnet build GrottoWorks_BE.slnx -v q --nologo
+    if ($LASTEXITCODE -ne 0) { Write-Host '[be] build thất bại, dừng lại' -ForegroundColor Red; exit 1 }
+} finally { Pop-Location }
 
 Start-Service1 -Name 'identity' -RelDir 'Services\Identity\Identity.Api' -Port 5180 -Vars @{
     'ConnectionStrings__IdentityDatabase' = ($conn -f 'identity_db')

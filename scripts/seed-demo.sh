@@ -30,17 +30,20 @@ curl -s -X POST "$GATEWAY/api/v1/admin/users" \
 curl -s -X POST "$GATEWAY/api/v1/admin/users" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"displayName":"Truong Ban Thi Cong","email":"leader.demo@grottoworks.local","password":"ChangeMe!123456","role":"LEADER","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
+  -d '{"displayName":"Truong Ban Thi Cong","email":"leader.demo@grottoworks.local","password":"ChangeMe!123456","role":"LEADER","parishId":"11111111-1111-1111-1111-111111111111","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
 
 curl -s -X POST "$GATEWAY/api/v1/admin/users" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"displayName":"Phu Trach Vat Tu","email":"mo.demo@grottoworks.local","password":"ChangeMe!123456","role":"MO","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
+  -d '{"displayName":"Phu Trach Vat Tu","email":"mo.demo@grottoworks.local","password":"ChangeMe!123456","role":"MO","parishId":"11111111-1111-1111-1111-111111111111","communityId":"22222222-2222-2222-2222-222222222222"}' >/dev/null 2>&1 || true
 
 # Lay user ID
 USERS_JSON=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$GATEWAY/api/v1/admin/users?size=100")
-LEADER_ID=$(echo "$USERS_JSON" | grep -o '{"id":"[^"]*","fullName":"[^"]*","email":"leader.demo@grottoworks.local"' | grep -o '{"id":"[^"]*' | cut -d'"' -f4 || echo "1dca571b-6c19-4184-a07e-d87f29617741")
-MO_ID=$(echo "$USERS_JSON" | grep -o '{"id":"[^"]*","fullName":"[^"]*","email":"mo.demo@grottoworks.local"' | grep -o '{"id":"[^"]*' | cut -d'"' -f4 || echo "341a5b21-c9cb-4ab3-8424-8430fdb3db27")
+# Doc id that tu JSON (truong la displayName, khong phai fullName) — khong dung
+# UUID cung lam du phong: id cung se tro sai nguoi khi DB duoc tao lai.
+LEADER_ID=$(echo "$USERS_JSON" | python -c "import sys,json;d=json.load(sys.stdin);print(next((u['id'] for u in (d.get('data') or []) if u.get('email')=='leader.demo@grottoworks.local'),''))")
+MO_ID=$(echo "$USERS_JSON" | python -c "import sys,json;d=json.load(sys.stdin);print(next((u['id'] for u in (d.get('data') or []) if u.get('email')=='mo.demo@grottoworks.local'),''))")
+[ -n "$LEADER_ID" ] && [ -n "$MO_ID" ] || { echo "Khong tim thay id leader/mo" >&2; exit 1; }
 
 echo "LEADER_ID: $LEADER_ID, MO_ID: $MO_ID"
 
@@ -59,12 +62,12 @@ echo "==> Gan leader & MO vao work area..."
 curl -s -X PUT "$GATEWAY/api/v1/work-areas/66666666-6666-6666-6666-666666666666/leader" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"leaderUserId\":\"$LEADER_ID\"}" >/dev/null 2>&1 || true
+  -d "{\"userId\":\"$LEADER_ID\"}" >/dev/null 2>&1 || true
 
 curl -s -X PUT "$GATEWAY/api/v1/work-areas/66666666-6666-6666-6666-666666666666/material-officer" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"materialOfficerUserId\":\"$MO_ID\"}" >/dev/null 2>&1 || true
+  -d "{\"userId\":\"$MO_ID\"}" >/dev/null 2>&1 || true
 
 # Kich hoat season 4444...
 SEASON_INFO=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$GATEWAY/api/v1/seasons")
@@ -169,5 +172,16 @@ curl -s -X POST "$GATEWAY/api/v1/work-areas/66666666-6666-6666-6666-666666666666
   -H "Authorization: Bearer $LEADER_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Lap dat he thong den chieu sang","description":"Cang day LED vang va lap den pha","priority":"Medium","estimatedMinutes":180,"requiredVolunteers":3,"startAt":"2026-10-24T08:00:00Z","deadline":"2026-10-24T17:00:00Z"}' >/dev/null 2>&1 || true
+
+# ── 5. Day projection sang Readiness & Reporting ───────────────────────────
+# Hai service moi (5185, 5186) giu ban sao scope rieng de tinh bao cao. Khong
+# day thi GET /api/v1/reports/* va /seasons/{id}/readiness tra 404
+# SEASON_NOT_FOUND du du lieu that da co — day la bo sung bat buoc, khong phai
+# du lieu mau.
+echo "==> Day scope sang Readiness & Reporting..."
+for port in 5185 5186; do
+  curl -s -X PUT "http://localhost:$port/internal/work-area-scopes/66666666-6666-6666-6666-666666666666"     -H "X-Internal-Api-Key: $INTERNAL_KEY" -H "Content-Type: application/json"     -d "{\"seasonId\":\"44444444-4444-4444-4444-444444444444\",\"parishId\":\"11111111-1111-1111-1111-111111111111\",\"name\":\"Demo Work Area North\",\"status\":\"Planned\",\"seasonStatus\":\"Active\",\"communityId\":\"22222222-2222-2222-2222-222222222222\",\"leaderUserId\":\"$LEADER_ID\",\"materialOfficerUserId\":\"$MO_ID\",\"version\":10}" >/dev/null 2>&1 || true
+  curl -s -X PUT "http://localhost:$port/internal/season-scopes/44444444-4444-4444-4444-444444444444"     -H "X-Internal-Api-Key: $INTERNAL_KEY" -H "Content-Type: application/json"     -d '{"status":"Active","version":10}' >/dev/null 2>&1 || true
+done
 
 echo "==> Seed thanh cong toan bo du lieu mau!"
