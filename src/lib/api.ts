@@ -15,7 +15,19 @@ export class ApiError extends Error {
 
 let isRefreshing = false
 
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+/** Bóc envelope `{ data, meta }` — dùng chung cho mọi endpoint BE. */
+function unwrap<T>(body: unknown): T {
+  if (body !== null && typeof body === 'object' && 'data' in (body as Record<string, unknown>)) {
+    return (body as { data: T }).data
+  }
+  return body as T
+}
+
+/**
+ * Gọi API và trả NGUYÊN body (không bóc `data`) để giữ metadata phân trang.
+ * `PagedResponse` của BE = `{ data: T[], page: { page, size, totalItems, totalPages }, meta }`.
+ */
+async function request<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem('grotto-token')
   const headers = new Headers(init?.headers)
   headers.set('Content-Type', 'application/json')
@@ -52,8 +64,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
               const retryRes = await fetch(url, { ...init, headers })
               if (retryRes.ok) {
                 if (retryRes.status === 204) return undefined as T
-                const retryBody = await retryRes.json()
-                return (retryBody && typeof retryBody === 'object' && 'data' in retryBody ? retryBody.data : retryBody) as T
+                return (await retryRes.json()) as T
               }
             }
           }
@@ -97,9 +108,33 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (res.status === 204) return undefined as T
 
-  const body = (await res.json()) as any
-  if (body !== null && typeof body === 'object' && 'data' in body) {
-    return body.data as T
+  return (await res.json()) as T
+}
+
+/** Gọi API và bóc envelope `data` (mặc định cho hầu hết endpoint). */
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  return unwrap<T>(await request(path, init))
+}
+
+export interface PageMetaDto {
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+}
+
+/**
+ * Gọi endpoint paged và GIỮ `page` (totalItems/totalPages). Không có `page`
+ * (endpoint trả mảng thẳng) → `page: null` để caller tự xử lý.
+ */
+export async function apiPaged<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<{ data: T[]; page: PageMetaDto | null }> {
+  const body = await request<{ data?: T[]; page?: PageMetaDto } | T[]>(path, init)
+  if (Array.isArray(body)) return { data: body, page: null }
+  return {
+    data: Array.isArray(body?.data) ? body.data : [],
+    page: body?.page ?? null,
   }
-  return body as T
 }
