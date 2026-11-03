@@ -6,26 +6,23 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileImage, Pencil, Plus, Trash2 } from 'lucide-react'
+import { FileImage, Pencil, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button, buttonBase, buttonSizes, buttonVariants } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useScopedAreas } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
-import { useDeleteTask, useTasks } from '../api'
+import { useTasks } from '../api'
 import { SELECT_CLS, TaskFormDialog } from './TaskFormDialog'
 import type { Task } from '@/types'
 
 export default function TaskListPage() {
   const { t } = useTranslation()
-  const toast = useToast()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const { id: areaParam } = useParams()
@@ -34,7 +31,6 @@ export default function TaskListPage() {
     const readOnly = pathname.startsWith('/community/') || pathname.startsWith('/parish/')
 
   const { data: areas = [] } = useScopedAreas()
-  const deleteTask = useDeleteTask()
 
   // Khu của leader: 1 khu → cố định; nhiều khu → select (default khu đầu).
   const myAreas = areas.filter((a) => a.leaderId === user?.id)
@@ -48,7 +44,6 @@ export default function TaskListPage() {
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Task | null>(null)
-  const [deleting, setDeleting] = useState<Task | null>(null)
 
   const areaName = (id: string) => areas.find((a) => a.id === id)?.name ?? '—'
 
@@ -70,18 +65,6 @@ export default function TaskListPage() {
             <span className="font-semibold text-foreground hover:text-brand-pine transition-colors">
               {x.title}
             </span>
-            {x.skills && x.skills.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-0.5">
-                {x.skills.map((s) => (
-                  <span
-                    key={s}
-                    className="inline-flex items-center rounded-full bg-brand-gold/10 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300"
-                  >
-                    {s}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         ),
       },
@@ -100,26 +83,13 @@ export default function TaskListPage() {
         render: (x: Task) => <span className="tabular text-sm font-medium">{viDate(x.dueDate)}</span>,
       },
       {
-        key: 'assignees',
-        header: t('features.tasks.assignees'),
+        // BE không có `assignees` trong TaskDto → chỉ hiển thị số TNV cần.
+        key: 'volunteersNeeded',
+        header: t('features.tasks.volunteersNeeded'),
         align: 'right' as const,
-        render: (x: Task) => {
-          const ratio = Math.min(100, Math.round((x.assignees.length / x.volunteersNeeded) * 100))
-          const isFull = x.assignees.length >= x.volunteersNeeded
-          return (
-            <div className="flex flex-col items-end gap-1">
-              <span className={cn('tabular text-xs font-bold', isFull ? 'text-brand-pine' : 'text-amber-700')}>
-                {x.assignees.length}/{x.volunteersNeeded} TNV
-              </span>
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-border">
-                <div
-                  className={cn('h-full rounded-full transition-all', isFull ? 'bg-brand-pine' : 'bg-brand-warm')}
-                  style={{ width: `${ratio}%` }}
-                />
-              </div>
-            </div>
-          )
-        },
+        render: (x: Task) => (
+          <span className="tabular text-sm font-medium">{x.volunteersNeeded}</span>
+        ),
       },
       { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} /> },
       ...(readOnly
@@ -130,29 +100,21 @@ export default function TaskListPage() {
               header: t('common.actions'),
               render: (x: Task) => (
                 <div className="flex justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t('common.edit')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditing(x)
-                      setFormOpen(true)
-                    }}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t('common.delete')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setDeleting(x)
-                    }}
-                  >
-                    <Trash2 className="size-4 text-destructive" />
-                  </Button>
+                  {/* BE chỉ cho sửa task khi còn OPEN (sau POST /ready = 409 TASK_INVALID_STATE). */}
+                  {x.backendStatus === 'OPEN' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('common.edit')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditing(x)
+                        setFormOpen(true)
+                      }}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                  )}
                 </div>
               ),
             },
@@ -160,15 +122,6 @@ export default function TaskListPage() {
     ],
     [t, areas, readOnly],
   )
-
-  const onDelete = async (x: Task) => {
-    try {
-      await deleteTask.mutateAsync(x.id)
-      toast(t('features.tasks.deleted', { name: x.title }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -270,15 +223,6 @@ export default function TaskListPage() {
           onClose={() => setFormOpen(false)}
         />
       )}
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        title={t('features.tasks.deleteTitle')}
-        description={deleting ? t('features.tasks.deleteConfirm', { name: deleting.title }) : undefined}
-        confirmLabel={t('common.delete')}
-        tone="destructive"
-        onConfirm={() => deleting && onDelete(deleting)}
-        onClose={() => setDeleting(null)}
-      />
     </div>
   )
 }

@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
-import { useCreateTask, useSkills, useUpdateTask } from '../api'
+import { useCreateTask, useReplaceTaskSkills, useSkillsCatalog, useUpdateTask } from '../api'
 import { ApiError } from '@/lib/api'
 import type { Task } from '@/types'
 
@@ -59,9 +59,11 @@ export function TaskFormDialog({
   const { t } = useTranslation()
   const toast = useToast()
   const { data: areas = [] } = useScopedAreas()
-  const { data: skills = [] } = useSkills()
+  // Danh mục kỹ năng dùng id (GUID) — BE nhận `skillId` trong PUT /tasks/{id}/skills.
+  const { data: skills = [] } = useSkillsCatalog()
   const create = useCreateTask()
   const update = useUpdateTask()
+  const replaceSkills = useReplaceTaskSkills()
   const editing = Boolean(task)
 
   const {
@@ -77,7 +79,7 @@ export function TaskFormDialog({
           title: task.title,
           description: task.description,
           areaId: task.areaId,
-          skills: task.skills,
+          skills: [],
           estimateHours: task.estimateHours,
           volunteersNeeded: task.volunteersNeeded,
           materialIds: task.materialIds,
@@ -114,19 +116,43 @@ export function TaskFormDialog({
           return
         }
 
-        await update.mutateAsync({
+        const saved = await update.mutateAsync({
           id: task.id,
           version: task.version,
           ...data,
         })
+        // Kỹ năng không nằm trong PATCH /tasks/{id} — phải PUT riêng, và BE
+        // thay TOÀN BỘ danh sách nên chỉ gửi khi người dùng có chọn.
+        if (data.skills.length) {
+          await replaceSkills.mutateAsync({
+            taskId: task.id,
+            skills: data.skills.map((skillId) => ({
+              skillId,
+              requiredSkillLevel: 'Standard',
+              requiredVolunteerCount: 1,
+            })),
+            version: saved.version,
+          })
+        }
         toast(t('features.tasks.updated', { name: data.title }))
       } else {
-        await create.mutateAsync({
+        const created = await create.mutateAsync({
           ...data,
           assignees: [],
           status: 'TODO',
           submittedPhotos: 0,
         })
+        if (data.skills.length && created?.id) {
+          await replaceSkills.mutateAsync({
+            taskId: created.id,
+            skills: data.skills.map((skillId) => ({
+              skillId,
+              requiredSkillLevel: 'Standard',
+              requiredVolunteerCount: 1,
+            })),
+            version: created.version,
+          })
+        }
         toast(t('features.tasks.created', { name: data.title }))
       }
       onClose()
@@ -189,10 +215,10 @@ export function TaskFormDialog({
           <Label className="mb-1.5 block">{t('features.tasks.skills')}</Label>
           <div className="flex flex-wrap gap-2">
             {skills.map((s) => {
-              const checked = (watch('skills') ?? []).includes(s)
+              const checked = (watch('skills') ?? []).includes(s.id)
               return (
                 <label
-                  key={s}
+                  key={s.id}
                   className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                     checked
                       ? 'border-brand-pine bg-brand-pine text-white shadow-sm'
@@ -201,11 +227,11 @@ export function TaskFormDialog({
                 >
                   <input
                     type="checkbox"
-                    value={s}
+                    value={s.id}
                     className="sr-only"
                     {...register('skills')}
                   />
-                  <span>{checked ? '✓ ' : '+ '}{s}</span>
+                  <span>{checked ? '✓ ' : '+ '}{s.name}</span>
                 </label>
               )
             })}

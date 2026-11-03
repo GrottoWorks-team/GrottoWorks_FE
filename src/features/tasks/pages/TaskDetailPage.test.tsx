@@ -1,4 +1,3 @@
-import React from 'react'
 import { beforeEach, expect, test, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -7,50 +6,38 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from '@/components/ui/toast'
 import TaskDetailPage from './TaskDetailPage'
 
-let taskStatus = 'REVISE'
-let updateListeners: (() => void)[] = []
+let backendStatus = 'OPEN'
+let readyCalls: { taskId: string; version?: number }[] = []
 
 vi.mock('../api', () => ({
-  useTask: (id: string) => {
-    const [, setTick] = React.useState(0)
-    React.useEffect(() => {
-      const listener = () => setTick((t) => t + 1)
-      updateListeners.push(listener)
-      return () => {
-        updateListeners = updateListeners.filter((l) => l !== listener)
-      }
-    }, [])
-    return {
-      data: {
-        id,
-        areaId: 'a1',
-        title: 'Gắn bạt che mưa phía sau hang',
-        description: 'Gắn bạt che mưa',
-        status: taskStatus,
-        assignees: [],
-        skills: [],
-        materialIds: [],
-        dueDate: '2026-12-20',
-        volunteersNeeded: 2,
-        estimateHours: 4,
-      },
-      isPending: false,
-    }
-  },
-  useUpdateTask: () => ({
-    mutateAsync: vi.fn(async (patch: { id: string; status?: string }) => {
-      if (patch.status) {
-        taskStatus = patch.status
-        updateListeners.forEach((l) => l())
-      }
-      return { id: patch.id, status: taskStatus }
+  // TaskExecution: TaskDto không có assignees/skills/materialIds nên mapper trả
+  // mảng rỗng; `backendStatus` là field quyết định nút thao tác nào được hiện.
+  useTask: (id: string) => ({
+    data: {
+      id,
+      areaId: 'a1',
+      title: 'Gắn bạt che mưa phía sau hang',
+      description: 'Gắn bạt che mưa',
+      status: 'TODO',
+      backendStatus,
+      assignees: [],
+      skills: [],
+      materialIds: [],
+      dueDate: '2026-12-20',
+      volunteersNeeded: 2,
+      estimateHours: 4,
+      version: 3,
+    },
+    isPending: false,
+  }),
+  useReadyTask: () => ({
+    mutateAsync: vi.fn(async (vars: { taskId: string; version?: number }) => {
+      readyCalls.push(vars)
+      backendStatus = 'NOT_STARTED'
+      return vars
     }),
     isPending: false,
   }),
-  useSubmitReview: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useApproveCompletion: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useRequestRevision: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useAssignVolunteer: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnassign: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReplaceCompletionCriteria: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReplaceTaskSkills: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -70,7 +57,8 @@ vi.mock('@/features/users/api', () => ({
 }))
 
 beforeEach(() => {
-  taskStatus = 'REVISE'
+  backendStatus = 'OPEN'
+  readyCalls = []
 })
 
 function renderDetail(path: string, route: string) {
@@ -88,21 +76,25 @@ function renderDetail(path: string, route: string) {
   )
 }
 
-test('việc REVISE: bấm "Mở lại" → việc chuyển sang DOING', async () => {
+test('việc OPEN: bấm "Phát hành việc" → gọi POST /tasks/{id}/ready với version thật', async () => {
   renderDetail('/leader/tasks/t6', '/leader/tasks/:id')
   expect(await screen.findByText('Gắn bạt che mưa phía sau hang')).toBeDefined()
 
-  await userEvent.click(screen.getByRole('button', { name: 'Mở lại' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Phát hành việc' }))
 
-  expect((await screen.findAllByText('Đang làm')).length).toBeGreaterThan(0)
-  expect(await screen.findByRole('button', { name: 'Gửi duyệt hoàn thành' })).toBeDefined()
-  expect(screen.queryByRole('button', { name: 'Mở lại' })).toBeNull()
-
-  expect(taskStatus).toBe('DOING')
+  expect(readyCalls).toEqual([{ taskId: 't6', version: 3 }])
 })
 
-test('mount dưới /community/*: việc REVISE không có nút thao tác', async () => {
+test('không còn nút chuyển trạng thái chưa có API (Bắt đầu / Mở lại)', async () => {
+  renderDetail('/leader/tasks/t6', '/leader/tasks/:id')
+  expect(await screen.findByText('Gắn bạt che mưa phía sau hang')).toBeDefined()
+
+  expect(screen.queryByRole('button', { name: 'Mở lại' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Bắt đầu làm' })).toBeNull()
+})
+
+test('mount dưới /community/*: không có nút thao tác', async () => {
   renderDetail('/community/tasks/t6', '/community/tasks/:id')
   expect(await screen.findByText('Gắn bạt che mưa phía sau hang')).toBeDefined()
-  expect(screen.queryByRole('button', { name: 'Mở lại' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Phát hành việc' })).toBeNull()
 })

@@ -1,10 +1,9 @@
 // Tasks API hooks — Group G: TaskExecution backend integration
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { ApiError, api } from '@/lib/api'
 import type { Task } from '@/types'
 
 export type TaskBackendStatus =
-  | 'DRAFT'
   | 'OPEN'
   | 'NOT_STARTED'
   | 'IN_PROGRESS'
@@ -52,9 +51,11 @@ export interface SkillItemDto {
 
 /** Map TaskDto của Backend TaskExecution sang giao diện Task tương thích của FE */
 export function mapTaskDtoToTask(dto: TaskDto): Task {
+  // BE chỉ có 1 bước chuyển trạng thái thật (POST /tasks/{id}/ready:
+  // OPEN → NOT_STARTED). OPEN = việc vừa tạo trong mùa PLANNING → vẫn là TODO.
   let uiStatus: Task['status'] = 'TODO'
   const st = String(dto.status).toUpperCase()
-  if (st === 'IN_PROGRESS' || st === 'OPEN') {
+  if (st === 'IN_PROGRESS') {
     uiStatus = 'DOING'
   } else if (st === 'SUBMITTED') {
     uiStatus = 'REVIEW'
@@ -62,8 +63,6 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     uiStatus = 'REVISE'
   } else if (st === 'COMPLETED') {
     uiStatus = 'DONE'
-  } else {
-    uiStatus = 'TODO'
   }
 
   return {
@@ -77,6 +76,7 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     assignees: [],
     materialIds: [],
     status: uiStatus,
+    backendStatus: (st as TaskBackendStatus) ?? undefined,
     dueDate: dto.deadline ? dto.deadline.split('T')[0] : '',
     priority: dto.priority,
     submittedPhotos: 0,
@@ -161,7 +161,9 @@ export function useTask(id: string) {
   })
 }
 
-function useTaskMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
+function useTaskMutation<TVars, TResult = unknown>(
+  fn: (vars: TVars) => Promise<TResult>,
+) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,
@@ -171,6 +173,11 @@ function useTaskMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
 
 export function useCreateTask() {
   return useTaskMutation(async (data: Omit<Task, 'id'>) => {
+    // BE bắt buộc `deadline` (CreateTaskRequest) và domain chặn
+    // deadline <= startAt → không gửi null, mặc định cuối ngày của dueDate
+    // hoặc +7 ngày nếu người dùng để trống.
+    const start = new Date()
+    const deadline = endOfDay(data.dueDate) ?? new Date(start.getTime() + 7 * 86_400_000)
     const payload = {
       name: data.title,
       description: data.description || null,
@@ -178,14 +185,21 @@ export function useCreateTask() {
       priority: 'MEDIUM',
       estimatedMinutes: data.estimateHours ? Math.round(data.estimateHours * 60) : 120,
       requiredVolunteers: data.volunteersNeeded || 1,
-      startAt: new Date().toISOString(),
-      deadline: data.dueDate ? new Date(data.dueDate).toISOString() : null,
+      startAt: start.toISOString(),
+      deadline: deadline.toISOString(),
     }
     return api<TaskDto>(`/api/v1/work-areas/${data.areaId}/tasks`, {
       method: 'POST',
       body: JSON.stringify(payload),
     })
   })
+}
+
+/** `<input type="date">` → 23:59 giờ địa phương của đúng ngày đó. */
+function endOfDay(dateOnly?: string): Date | undefined {
+  if (!dateOnly) return undefined
+  const parsed = new Date(`${dateOnly.slice(0, 10)}T23:59:00`)
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed
 }
 
 export function useUpdateTask() {
@@ -199,7 +213,18 @@ export function useUpdateTask() {
       if (data.volunteersNeeded !== undefined)
         payload.requiredVolunteers = data.volunteersNeeded
       if (data.dueDate !== undefined)
-        payload.deadline = data.dueDate ? new Date(data.dueDate).toISOString() : null
+        payload.deadline = endOfDay(data.dueDate)?.toISOString() ?? null
+
+      // PATCH /api/v1/tasks/{id} chỉ nhận field planning — KHÔNG có `status`,
+      // `skills`, `assignees` hay `materialIds`. Gửi body rỗng thì BE trả 400
+      // VALIDATION_FAILED nên chặn ngay ở client với mã lỗi rõ ràng.
+      if (Object.keys(payload).length === 0) {
+        throw new ApiError(
+          409,
+          'BE chưa có API đổi trạng thái việc (chỉ có POST /tasks/{id}/ready).',
+          'TASK_STATUS_UNSUPPORTED',
+        )
+      }
 
       const headers: Record<string, string> = {}
       if (data.version !== undefined && data.version !== null) {
@@ -215,23 +240,35 @@ export function useUpdateTask() {
   )
 }
 
-export function useDeleteTask() {
-  return useTaskMutation((id: string) => api<void>(`/api/v1/tasks/${id}`, { method: 'DELETE' }))
+/**
+ * POST /api/v1/tasks/{taskId}/ready — bước chuyển trạng thái DUY NHẤT BE hỗ trợ
+ * (OPEN → NOT_STARTED, tức "phát hành việc" cho khu vực).
+ */
+export function useReadyTask() {
+  return useTaskMutation(async ({ taskId, version }: { taskId: string; version?: number }) => {
+    const headers: Record<string, string> = {}
+    if (version !== undefined && version !== null) headers['If-Match'] = `"${version}"`
+    return api<TaskDto>(`/api/v1/tasks/${taskId}/ready`, { method: 'POST', headers })
+  })
 }
+
+// BE CHƯA có `DELETE /api/v1/tasks/{id}` → không cung cấp hook xoá việc.
 
 /**
  * G5: PUT /api/v1/tasks/{taskId}/completion-criteria
+ * `version` lấy từ TaskDto hiện tại (BE trả 412 nếu lệch) — trước đây FE gửi
+ * cứng 1 nên lần lưu thứ 2 luôn fail.
  */
 export function useReplaceCompletionCriteria() {
   return useTaskMutation(
     async ({
       taskId,
       completionCriteria,
-      version = 1,
+      version,
     }: {
       taskId: string
       completionCriteria: string | null
-      version?: number
+      version: number
     }) => {
       return api<TaskDto>(`/api/v1/tasks/${taskId}/completion-criteria`, {
         method: 'PUT',
@@ -250,7 +287,7 @@ export function useReplaceTaskSkills() {
     async ({
       taskId,
       skills,
-      version = 1,
+      version,
     }: {
       taskId: string
       skills: Array<{
@@ -258,7 +295,7 @@ export function useReplaceTaskSkills() {
         requiredSkillLevel?: string | null
         requiredVolunteerCount?: number | null
       }>
-      version?: number
+      version: number
     }) => {
       return api<TaskDto>(`/api/v1/tasks/${taskId}/skills`, {
         method: 'PUT',
@@ -269,33 +306,6 @@ export function useReplaceTaskSkills() {
   )
 }
 
-export function useAssignVolunteer(taskId: string, volunteerId: string) {
-  return useTaskMutation(async () => {
-    // Client-side mock fallback cho tới khi BE hỗ trợ assignment
-    return { taskId, volunteerId }
-  })
-}
-
-export function useUnassign(taskId: string, volunteerId: string) {
-  return useTaskMutation(async () => {
-    return { taskId, volunteerId }
-  })
-}
-
-export function useSubmitReview(taskId: string) {
-  return useTaskMutation(async (note: string) => {
-    return { taskId, note }
-  })
-}
-
-export function useApproveCompletion(taskId: string) {
-  return useTaskMutation(async () => {
-    return { taskId }
-  })
-}
-
-export function useRequestRevision(taskId: string) {
-  return useTaskMutation(async (note: string) => {
-    return { taskId, note }
-  })
-}
+// Các thao tác còn thiếu API ở BE (phân công TNV, nộp duyệt, duyệt hoàn thành,
+// yêu cầu sửa) KHÔNG còn hook giả lập trả object thành công: UI hiện ghi chú thay vì
+// báo "đã phân công/đã duyệt" trong khi không có gì được lưu.

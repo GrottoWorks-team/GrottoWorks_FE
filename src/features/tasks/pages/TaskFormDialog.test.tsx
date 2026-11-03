@@ -14,9 +14,16 @@ vi.mock('@/features/materials/api', () => ({
 }))
 
 vi.mock('../api', () => ({
-  useSkills: () => ({ data: ['Điện', 'Mộc'], isPending: false }),
+  useSkillsCatalog: () => ({
+    data: [
+      { id: 's1', code: 'DIEN', name: 'Điện', status: 'ACTIVE' },
+      { id: 's2', code: 'MOC', name: 'Mộc', status: 'ACTIVE' },
+    ],
+    isPending: false,
+  }),
   useCreateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useReplaceTaskSkills: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 test('submit thiếu title → hiện lỗi zod "Vui lòng nhập tên việc"', async () => {
