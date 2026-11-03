@@ -24,12 +24,20 @@ import { useRegister } from '@/features/auth/api'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 import { JoinOptions } from '@/components/auth/JoinOptions'
 
+// BE `RegisterRequest`: password 8–128 ký tự, `parishId` là GUID của giáo xứ đã
+// tồn tại. Không có endpoint public trả danh sách giáo xứ (`GET /parishes` cần
+// ADMIN/PARISH) → người dùng nhập mã GUID do quản trị giáo xứ cung cấp.
+const PARISH_GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 const schema = z.object({
   displayName: z.string().trim().min(2, 'Họ và tên tối thiểu 2 ký tự'),
   email: z.string().trim().email('Email không đúng định dạng'),
-  password: z.string().min(6, 'Mật khẩu tối thiểu 6 ký tự'),
+  password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
   phone: z.string().optional(),
-  parishId: z.string().min(1, 'Vui lòng chọn hoặc nhập mã giáo xứ'),
+  parishId: z
+    .string()
+    .trim()
+    .regex(PARISH_GUID_RE, 'Mã giáo xứ phải là GUID (do quản trị giáo xứ cung cấp)'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -49,7 +57,7 @@ export default function Register() {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      parishId: '11111111-1111-1111-1111-111111111111',
+      parishId: '',
     },
   })
 
@@ -57,8 +65,8 @@ export default function Register() {
   const calculateStrength = (pwd: string) => {
     if (!pwd || pwd.length === 0) return { score: 0, label: 'Chưa nhập', color: 'text-slate-400' }
     let score = 0
-    if (pwd.length >= 6) score++
     if (pwd.length >= 8) score++
+    if (pwd.length >= 12) score++
     if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score++
     if (/[^A-Za-z0-9]/.test(pwd)) score++
 
@@ -243,19 +251,16 @@ export default function Register() {
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
                 <Church className="w-3.5 h-3.5" />
               </span>
-              <select
+              <Input
                 id="parishId"
-                className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white/90 text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand-pine/30 focus:border-brand-pine transition-all"
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                className="pl-9 pr-3 py-2 rounded-xl border-slate-200 bg-white/90 text-xs sm:text-sm focus-visible:ring-brand-pine font-mono"
                 {...register('parishId')}
-              >
-                <option value="11111111-1111-1111-1111-111111111111">
-                  Giáo xứ Chính Tòa
-                </option>
-                <option value="22222222-2222-2222-2222-222222222222">
-                  Giáo xứ Tân Định
-                </option>
-              </select>
+              />
             </div>
+            <p className="text-[11px] text-slate-500">
+              Mã giáo xứ (GUID) do quản trị giáo xứ cung cấp.
+            </p>
             {errors.parishId && (
               <p className="flex items-center gap-1 mt-1 text-xs font-semibold text-destructive">
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />

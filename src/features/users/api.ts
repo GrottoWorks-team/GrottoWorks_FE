@@ -18,7 +18,6 @@ interface UserSummaryDto {
   phone?: string | null
   role: string
   status: string
-  parishId?: string | null
   communityId?: string | null
   skillIds?: string[]
 }
@@ -82,7 +81,6 @@ export function useUsers(options: { enabled?: boolean; withSkills?: boolean } = 
         email: dto.email,
         role: normalizeRole(dto.role),
         communityId: dto.communityId ?? undefined,
-        parishId: dto.parishId ?? undefined,
         locked: dto.status?.toUpperCase() === 'LOCKED',
         skills: (dto.skillIds ?? [])
           .map((id) => nameById.get(id))

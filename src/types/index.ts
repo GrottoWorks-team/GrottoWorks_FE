@@ -26,7 +26,12 @@ export interface User {
   id: string; name: string; email: string; role: Role; communityId?: string;
   /** Giáo xứ của user — BE dùng để chặn truy cập chéo giáo xứ (403). */
   parishId?: string;
-  locked?: boolean; skills: string[]; points: number; avatarHue: number;
+  locked?: boolean;
+  /** Tên kỹ năng để hiển thị (dịch từ `skillIds` qua danh mục /api/v1/skills). */
+  skills: string[];
+  /** GUID kỹ năng — dùng khi gửi PUT /users/me/skills (BE nhận `skillIds`). */
+  skillIds?: string[];
+  points: number; avatarHue: number;
 }
 
 export interface Season {
@@ -39,8 +44,6 @@ export interface Season {
   status: SeasonStatus
   budget: number
   description?: string
-  /** BE không lưu cộng đoàn trên mùa — suy ra từ WorkArea.CommunityId. */
-  communityIds?: string[]
   /** Dùng cho If-Match khi PATCH/activate/complete — BE chặn ghi đè bằng 412. */
   version?: number
 }
@@ -50,14 +53,21 @@ export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'
 export interface WorkArea {
   id: string
   name: string
-  type: AreaType
-  level: 'PARISH' | 'COMMUNITY'
+  /**
+   * `type` / `level` / `progress` / `volunteerCount` / `taskCount` KHÔNG có trong
+   * `WorkAreaDto` của BE (thuộc service Task/Volunteer chưa gắn) → optional, UI
+   * phải hiển thị "—" thay vì bịa giá trị.
+   */
+  type?: AreaType
+  level?: 'PARISH' | 'COMMUNITY'
+  /** Hạng mục khu vực (`work-area-categories`) — BE trả `categoryId`. */
+  categoryId?: string
   communityId?: string
   leaderId: string
   officerId: string
-  progress: number
-  volunteerCount: number
-  taskCount: number
+  progress?: number
+  volunteerCount?: number
+  taskCount?: number
   status: WorkAreaStatus
   seasonId?: string
   startDate?: string
@@ -86,6 +96,11 @@ export interface Task {
   id: string; areaId: string; title: string; description: string; skills: string[];
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
   status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
+  /**
+   * Trạng thái gốc của TaskExecution (OPEN | NOT_STARTED | IN_PROGRESS | …).
+   * Cần để biết có gọi được POST /tasks/{id}/ready (chỉ OPEN → NOT_STARTED) hay không.
+   */
+  backendStatus?: 'OPEN' | 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'REVISION_REQUIRED' | 'COMPLETED' | 'CANCELLED';
   submittedPhotos: number; submittedNotes?: string;
   /** Ưu tiên từ TaskExecution (LOW|MEDIUM|HIGH|CRITICAL) — BE trả sẵn trong TaskDto. */
   priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';

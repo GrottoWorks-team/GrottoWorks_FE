@@ -38,14 +38,16 @@ export function StatCard({
   className,
 }: {
   label: string
-  value: number
+  /** Số → đếm động; chuỗi (vd "—") → hiển thị nguyên văn cho chỉ số chưa có API. */
+  value: number | string
   unit?: string
   delta?: { dir: 'up' | 'down'; text: string }
   tone?: 'ok' | 'warn' | 'alert'
   icon?: React.ComponentType<{ className?: string }>
   className?: string
 }) {
-  const v = useCountUp(value)
+  const numeric = typeof value === 'number'
+  const v = useCountUp(numeric ? value : 0)
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN'
   return (
     <Card className={cn('relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-hover', className)}>
@@ -55,7 +57,7 @@ export function StatCard({
         {Icon && <Icon className="size-5 text-muted-foreground/50 transition-colors group-hover:text-foreground" />}
       </div>
       <p className="tabular mt-2 text-3xl font-extrabold text-foreground">
-        {v.toLocaleString(locale)}
+        {numeric ? v.toLocaleString(locale) : value}
         {unit && <span className="ml-1.5 text-sm font-semibold text-muted-foreground">{unit}</span>}
       </p>
       {delta && (

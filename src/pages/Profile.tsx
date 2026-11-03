@@ -1,5 +1,6 @@
-// Hồ sơ cá nhân — RHF + zod: sửa tên + kỹ năng (PUT /users/me/skills), email readonly,
-// Thời gian rảnh (PUT /users/me/availability).
+// Hồ sơ cá nhân — RHF + zod: sửa tên (PATCH /users/me), kỹ năng
+// (PUT /users/me/skills — BE nhận `skillIds` GUID), thời gian rảnh
+// (PUT /users/me/availability).
 import type { CSSProperties } from 'react'
 import { useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
@@ -16,18 +17,18 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
-import { useSkills } from '@/features/tasks/api'
+import { useSkillsCatalog } from '@/features/tasks/api'
 import { useTimesheets } from '@/features/timesheets/api'
 import {
   useReplaceMyAvailability,
   useReplaceMySkills,
   useUpdateMyProfile,
-  useUpdateProfile,
 } from '@/features/profile/api'
 import type { User } from '@/types'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'common.required'),
+  // GUID kỹ năng (BE: ReplaceSkillsRequest.skillIds = Guid[]).
   skills: z.array(z.string()),
 })
 type FormData = z.infer<typeof schema>
@@ -41,11 +42,10 @@ const DEFAULT_SLOTS = [
 function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unknown> }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const update = useUpdateProfile()
   const updateMyProfile = useUpdateMyProfile()
   const replaceSkills = useReplaceMySkills()
   const replaceAvailability = useReplaceMyAvailability()
-  const { data: allSkills = [] } = useSkills()
+  const { data: allSkills = [] } = useSkillsCatalog()
   const [selectedSlots, setSelectedSlots] = useState<string[]>([])
 
   const {
@@ -55,23 +55,20 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: user.name, skills: user.skills },
+    // BE trả `skillIds` (GUID) — chọn sẵn đúng những kỹ năng đã khai.
+    defaultValues: { name: user.name, skills: user.skillIds ?? [] },
   })
 
   const onSubmit = async (data: FormData) => {
     try {
-      await update.mutateAsync({ id: user.id, name: data.name, skills: data.skills })
-      try {
-        await updateMyProfile.mutateAsync({ displayName: data.name })
-      } catch {
-        // v1 endpoint optional in legacy test env
-      }
+      // PATCH /api/v1/users/me — chỉ nhận displayName/phone/introduction/communityId.
+      await updateMyProfile.mutateAsync({ displayName: data.name })
 
-      // A10: PUT /api/v1/users/me/skills
+      // PUT /api/v1/users/me/skills — thay TOÀN BỘ danh sách, BE nhận GUID.
       try {
         await replaceSkills.mutateAsync(data.skills)
       } catch {
-        // Volunteer only in BE policy
+        // BE chỉ mở cho VOLUNTEER → role khác bỏ qua, không chặn lưu tên.
       }
 
       // A11: PUT /api/v1/users/me/availability
@@ -134,16 +131,16 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
             control={control}
             render={({ field }) => (
               <div className="flex flex-wrap gap-2" role="group" aria-label={t('profile.skills')}>
-                {allSkills.map((s) => {
-                  const on = field.value.includes(s)
+                {allSkills.map((sk) => {
+                  const on = field.value.includes(sk.id)
                   return (
                     <button
-                      key={s}
+                      key={sk.id}
                       type="button"
                       aria-pressed={on}
                       onClick={() =>
                         field.onChange(
-                          on ? field.value.filter((x) => x !== s) : [...field.value, s],
+                          on ? field.value.filter((x) => x !== sk.id) : [...field.value, sk.id],
                         )
                       }
                       className={cn(
@@ -153,7 +150,7 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
                           : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary',
                       )}
                     >
-                      {s}
+                      {sk.name}
                     </button>
                   )
                 })}
@@ -214,7 +211,7 @@ export default function Profile() {
 
       <div className="mb-6 grid grid-cols-2 gap-4">
         <div style={{ '--d': 0 } as CSSProperties}>
-          <StatCard label={t('profile.points')} value={user.points} />
+          <StatCard label={t('profile.points')} value="—" />
         </div>
         <div style={{ '--d': 1 } as CSSProperties}>
           <StatCard label={t('profile.hours')} value={Math.round(hours * 10) / 10} />

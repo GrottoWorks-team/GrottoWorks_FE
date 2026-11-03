@@ -53,6 +53,7 @@ export interface WorkAreaDto {
   id: string
   seasonId: string
   communityId: string | null
+  categoryId?: string | null
   leaderId: string | null
   materialOfficerId: string | null
   name?: string | null

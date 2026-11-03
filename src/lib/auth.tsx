@@ -52,7 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: normalizeRole(p.role),
       communityId: p.communityId,
       parishId: p.parishId,
-      skills: p.skillIds ?? p.skills ?? [],
+      // BE chỉ trả `skillIds` (GUID) — tên kỹ năng được dịch ở UI bằng danh mục
+      // /api/v1/skills. Trước đây GUID bị nhét vào `skills` nên UI in ra GUID.
+      skills: [],
+      skillIds: p.skillIds ?? [],
       points: p.points ?? 0,
       avatarHue: 45,
     }

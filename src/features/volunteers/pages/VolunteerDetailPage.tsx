@@ -129,7 +129,7 @@ export default function VolunteerDetailPage() {
             <div className="flex items-center gap-2">
               <p className="truncate text-base font-bold text-foreground">{user.name}</p>
               <span className="inline-flex items-center gap-1 rounded-full bg-brand-gold/15 px-2 py-0.5 text-xs font-bold text-amber-900 dark:text-amber-300">
-                ★ {user.points}
+                {/* BE chưa có điểm thưởng (service Volunteer/Reward chưa gắn). */}
               </span>
             </div>
             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
