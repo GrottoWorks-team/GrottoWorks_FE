@@ -56,15 +56,16 @@ for wcat in "HANG_DA:Hang đá chính" "KHU_LE:Khu vực lễ đài" "KHU_DEN:Kh
 done
 
 echo "==> Gan leader & MO vao work area..."
+# BE `AssignUserRequest` chi nhan { "userId": "..." } (truoc day script gui sai key nen 422 bi || true nuot)
 curl -s -X PUT "$GATEWAY/api/v1/work-areas/66666666-6666-6666-6666-666666666666/leader" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"leaderUserId\":\"$LEADER_ID\"}" >/dev/null 2>&1 || true
+  -d "{\"userId\":\"$LEADER_ID\"}" >/dev/null 2>&1 || true
 
 curl -s -X PUT "$GATEWAY/api/v1/work-areas/66666666-6666-6666-6666-666666666666/material-officer" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"materialOfficerUserId\":\"$MO_ID\"}" >/dev/null 2>&1 || true
+  -d "{\"userId\":\"$MO_ID\"}" >/dev/null 2>&1 || true
 
 # Kich hoat season 4444...
 SEASON_INFO=$(curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$GATEWAY/api/v1/seasons")

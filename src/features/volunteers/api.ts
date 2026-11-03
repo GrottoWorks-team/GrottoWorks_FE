@@ -1,13 +1,14 @@
 // Đăng ký tình nguyện: useVolunteerRegs + duyệt/từ chối qua PATCH
-// /volunteerRegs/:id. Duyệt phải đồng thời thêm volunteerId vào
-// task.assignees — mock PATCH là shallow-merge nên phải GET task rồi PATCH
-// cả mảng mới (pattern useAssignVolunteer, 2 bước trong mutationFn).
+// /volunteerRegs/:id (BE CHƯA có — xem BE-gap-requests-activity-flows.md).
+// Trước đây duyệt còn PATCH thêm `assignees` sang /api/v1/tasks/{id}, nhưng
+// `TaskDto` của TaskExecution không có field đó và `task.assignees` là
+// `undefined` → TypeError. Đã bỏ để lỗi nổi lên đúng chỗ (chưa có API).
 // Lệch chữ ký brief có chủ đích: reg truyền vào lúc mutateAsync(reg) (payload
 // lúc gọi — DataTable render cột không gọi được hook theo row; giữ reg trong
 // state của cha sẽ stale closure như note Task 5).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Task, VolunteerReg } from '@/types'
+import type { VolunteerReg } from '@/types'
 
 export const volunteerRegKeys = { all: ['volunteerRegs'] as const }
 
@@ -34,19 +35,10 @@ function useRegMutation(fn: (reg: VolunteerReg) => Promise<unknown>) {
 const patchReg = (id: string, patch: Partial<VolunteerReg>) =>
   api<VolunteerReg>(`/volunteerRegs/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
 
-// Duyệt: PATCH reg APPROVED rồi thêm volunteerId vào assignees (idempotent).
+// Duyệt: chỉ đổi trạng thái đăng ký. Việc thêm TNV vào task phải chờ BE có
+// endpoint TaskAssignment (hiện `TaskDto` không có `assignees`).
 export function useApproveReg() {
-  return useRegMutation(async (reg) => {
-    const approved = await patchReg(reg.id, { status: 'APPROVED' })
-    const task = await api<Task>(`/api/v1/tasks/${reg.taskId}`)
-    if (!task.assignees.includes(reg.volunteerId)) {
-      await api<Task>(`/api/v1/tasks/${reg.taskId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ assignees: [...task.assignees, reg.volunteerId] }),
-      })
-    }
-    return approved
-  })
+  return useRegMutation((reg) => patchReg(reg.id, { status: 'APPROVED' }))
 }
 
 // Từ chối: chỉ đổi status, không đụng assignees.

@@ -1,11 +1,10 @@
-// Donations domain — query key ['donations']. Ghi nhận quyên góp đồng bộ
-// material.donatedReceived theo delta (pattern 2 bước như useApproveReg/
-// useCreatePurchaseRecord); huỷ/không dùng được chỉ PATCH status, không đụng
-// material (theo brief).
+// Donations domain — query key ['donations']. BE CHƯA có domain này (path legacy
+// `/donations`); KHÔNG còn gọi chéo sang /api/v1/materials để cộng tồn kho vì
+// endpoint/field đó không tồn tại.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { materialKeys } from '@/features/materials/api'
-import type { Donation, Material } from '@/types'
+import type { Donation } from '@/types'
 
 export const donationKeys = { all: ['donations'] as const }
 
@@ -27,23 +26,18 @@ function useDonationMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   })
 }
 
-// Tạo cam kết (status PLEDGED). Cam kết vật tư → đồng bộ donatedPledged
-// (GET material rồi PATCH tổng mới — handler tính lại status INCOMING).
+// Tạo cam kết (status PLEDGED).
+// LƯU Ý: BE CHƯA có domain Donation. Code cũ còn gọi GET /api/v1/materials/{id}
+// + PATCH `{ donatedPledged }` để đồng bộ tồn kho, nhưng endpoint GET đó không
+// tồn tại (405) và `donatedPledged` không có trên MaterialDto → đã bỏ. Khi BE
+// bổ sung donation phải có API nhập kho riêng (xem BE-gap-requests-field-audit).
 export function useCreateDonation() {
-  return useDonationMutation(async (data: Omit<Donation, 'id' | 'receivedQty'>) => {
-    const donation = await api<Donation>('/donations', {
+  return useDonationMutation((data: Omit<Donation, 'id' | 'receivedQty'>) =>
+    api<Donation>('/donations', {
       method: 'POST',
       body: JSON.stringify(data),
-    })
-    if (donation.materialId && donation.promisedQty) {
-      const m = await api<Material>(`/api/v1/materials/${donation.materialId}`)
-      await api<Material>(`/api/v1/materials/${donation.materialId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ donatedPledged: m.donatedPledged + donation.promisedQty }),
-      })
-    }
-    return donation
-  })
+    }),
+  )
 }
 
 // PATCH chung — CANCELED/UNUSABLE chỉ đổi status, không đụng material.
@@ -56,9 +50,8 @@ export function useUpdateDonation() {
 
 // Ghi nhận số đã nhận (TỔNG mới, không phải phần tăng) cho 1 donation.
 // Status tự suy: 0 → PLEDGED; < promisedQty → RECEIVED_PARTIAL; còn lại
-// RECEIVED_FULL. donatedReceived cộng delta so với lần ghi trước (ghi lại
-// không đếm trùng). ponytail: ghi lại số NHỎ hơn không giảm donatedReceived
-// — demo không có luồng trả lại vật tư.
+// RECEIVED_FULL. Không tự cộng donatedReceived vào material nữa — BE chưa có
+// endpoint/field đó (xem BE-gap-requests-field-audit-2026-10-29.md).
 export function useRecordReception(donationId: string) {
   return useDonationMutation(async (receivedQty: number) => {
     const donation = await api<Donation>(`/donations/${donationId}`)
@@ -69,18 +62,9 @@ export function useRecordReception(donationId: string) {
         : promisedQty && receivedQty < promisedQty
           ? 'RECEIVED_PARTIAL'
           : 'RECEIVED_FULL'
-    const patched = await api<Donation>(`/donations/${donationId}`, {
+    return api<Donation>(`/donations/${donationId}`, {
       method: 'PATCH',
       body: JSON.stringify({ receivedQty, status }),
     })
-    const delta = receivedQty - (donation.receivedQty ?? 0)
-    if (donation.materialId && delta > 0) {
-      const m = await api<Material>(`/api/v1/materials/${donation.materialId}`)
-      await api<Material>(`/api/v1/materials/${donation.materialId}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ donatedReceived: m.donatedReceived + delta }),
-      })
-    }
-    return patched
   })
 }

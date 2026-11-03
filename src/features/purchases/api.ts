@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { materialKeys } from '@/features/materials/api'
-import type { Material, PurchaseRecord, PurchaseRequest } from '@/types'
+import type { PurchaseRecord, PurchaseRequest } from '@/types'
 
 export type PurchaseRequestStatusType =
   | 'DRAFT'
@@ -105,8 +105,10 @@ export function usePurchaseRequests(filter?: PurchaseRequestFilterParams) {
     queryKey: purchaseRequestKeys.list(filter),
     queryFn: async () => {
       const sp = new URLSearchParams()
+      // BE mặc định size=20 (QueryReader) — trang danh sách/đếm trạng thái cần
+      // toàn bộ đơn của mùa nên xin tối đa 100 (BE chặn size > 100 bằng 400).
+      sp.set('size', String(filter?.size ?? 100))
       if (filter?.page) sp.set('page', String(filter.page))
-      if (filter?.size) sp.set('size', String(filter.size))
       if (filter?.seasonId) sp.set('seasonId', filter.seasonId)
       if (filter?.workAreaId) sp.set('workAreaId', filter.workAreaId)
       if (filter?.status) sp.set('status', filter.status)
@@ -277,14 +279,13 @@ export interface NewPurchaseRecord {
 
 export function useCreatePurchaseRecord() {
   return usePurchaseMutation(async (vars: NewPurchaseRecord) => {
+    // BE CHƯA có /purchaseRecords và cũng không có GET /api/v1/materials/{id}
+    // hay field `purchased` trên material (catalog chỉ có code/name/unit/status).
+    // Giữ đúng một lời gọi legacy để lỗi hiện rõ cho tới khi Resource bổ sung
+    // API nhập kho theo đơn (xem BE-gap-requests-activity-flows.md §Purchase).
     const record = await api<PurchaseRecord>('/purchaseRecords', {
       method: 'POST',
       body: JSON.stringify(vars),
-    })
-    const m = await api<Material>(`/api/v1/materials/${vars.materialId}`)
-    await api<Material>(`/api/v1/materials/${vars.materialId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ purchased: m.purchased + vars.qty }),
     })
     return record
   })

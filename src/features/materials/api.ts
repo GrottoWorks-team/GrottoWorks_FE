@@ -5,7 +5,7 @@
 // field nhập tay.
 // Bổ sung C1..C6: Resource Catalog (categories + materials) nối BE thật.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, apiPaged } from '@/lib/api'
 import type { Material } from '@/types'
 
 export interface MaterialCategoryDto {
@@ -227,19 +227,20 @@ export function useSeasonMaterialNeeds(
       if (params?.workAreaId) q.set('workAreaId', params.workAreaId)
       if (params?.materialId) q.set('materialId', params.materialId)
       const qs = q.toString()
-      const res = await api<any>(`/api/v1/seasons/${seasonId}/material-needs${qs ? `?${qs}` : ''}`)
-      if (Array.isArray(res)) {
-        return {
-          data: res as MaterialNeedDto[],
-          page: {
-            page: params?.page ?? 1,
-            size: params?.size ?? 20,
-            totalItems: res.length,
-            totalPages: Math.ceil(res.length / (params?.size ?? 20)) || 1,
-          },
-        }
+      // apiPaged giữ `page` của BE: trước đây api() bóc mất meta nên totalItems
+      // bị lấy bằng độ dài trang hiện tại → không bao giờ sang được trang 2.
+      const res = await apiPaged<MaterialNeedDto>(
+        `/api/v1/seasons/${seasonId}/material-needs${qs ? `?${qs}` : ''}`,
+      )
+      return {
+        data: res.data,
+        page: res.page ?? {
+          page: params?.page ?? 1,
+          size: params?.size ?? 20,
+          totalItems: res.data.length,
+          totalPages: 1,
+        },
       }
-      return res as PagedResult<MaterialNeedDto>
     },
     enabled: Boolean(seasonId),
   })
@@ -318,19 +319,16 @@ export function useInventory(params?: {
         q.set('onlyShortage', String(params.onlyShortage))
       }
       const qs = q.toString()
-      const res = await api<any>(`/api/v1/inventory${qs ? `?${qs}` : ''}`)
-      if (Array.isArray(res)) {
-        return {
-          data: res as InventoryBalanceDto[],
-          page: {
-            page: params?.page ?? 1,
-            size: params?.size ?? 20,
-            totalItems: res.length,
-            totalPages: Math.ceil(res.length / (params?.size ?? 20)) || 1,
-          },
-        }
+      const res = await apiPaged<InventoryBalanceDto>(`/api/v1/inventory${qs ? `?${qs}` : ''}`)
+      return {
+        data: res.data,
+        page: res.page ?? {
+          page: params?.page ?? 1,
+          size: params?.size ?? 20,
+          totalItems: res.data.length,
+          totalPages: 1,
+        },
       }
-      return res as PagedResult<InventoryBalanceDto>
     },
   })
 }
@@ -482,11 +480,35 @@ export function useUpdateMaterialCatalogItem() {
   })
 }
 
-export function useMaterials(areaId?: string) {
+/**
+ * Danh mục vật tư ở dạng `Material` cũ (màn task/allocation/… vẫn dùng type này).
+ *
+ * LƯU Ý HỢP ĐỒNG: `/api/v1/materials` là **catalog** (`MaterialDto`: id/categoryId/
+ * code/name/unit/status) — KHÔNG có `areaId/required/purchased/received`. BE chưa có
+ * endpoint "vật tư của một khu" (xem BE-gap-requests-field-audit-2026-10-29.md §2 R-3),
+ * nên các field số lượng để 0 thay vì `undefined` (trước đây gây `NaN` ở
+ * `AllocationPage`/`PurchaseConfirmPage`). `areaId` bị bỏ qua vì BE không trả.
+ */
+export function useMaterials(_areaId?: string) {
   return useQuery({
     queryKey: materialKeys.all,
-    queryFn: () => api<Material[]>('/api/v1/materials'),
-    select: areaId ? (ms) => ms.filter((m) => m.areaId === areaId) : undefined,
+    queryFn: async () => {
+      const res = await apiPaged<MaterialCatalogItemDto>('/api/v1/materials?size=100')
+      return res.data.map<Material>((m) => ({
+        id: m.id,
+        areaId: '',
+        name: m.name,
+        unit: m.unit,
+        required: 0,
+        existing: 0,
+        purchased: 0,
+        donatedPledged: 0,
+        donatedReceived: 0,
+        received: 0,
+        status: 'ENOUGH',
+        estUnitPrice: 0,
+      }))
+    },
   })
 }
 

@@ -3,7 +3,8 @@
 // sẵn, KHÔNG đụng handlers). Aggregate/join chạy client-side trong page
 // (≤ vài trăm dòng — quy ước ponytail của repo).
 import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, apiPaged } from '@/lib/api'
+import { normalizeRole } from '@/lib/auth'
 import type {
   Community,
   Donation,
@@ -16,6 +17,34 @@ import type {
 } from '@/types'
 
 export const reportKeys = { all: ['reports'] as const }
+
+/** `UserSummary` của BE (`GET /api/v1/users`) — KHÔNG phải `User` của FE. */
+interface ReportUserDto {
+  id: string
+  displayName: string
+  email: string
+  phone?: string | null
+  role: string
+  status: string
+  communityId?: string | null
+  skillIds?: string[]
+}
+
+function toReportUser(dto: ReportUserDto): User {
+  return {
+    id: dto.id,
+    name: dto.displayName || dto.email,
+    email: dto.email,
+    role: normalizeRole(dto.role),
+    communityId: dto.communityId ?? undefined,
+    locked: dto.status?.toUpperCase() === 'LOCKED',
+    skills: [],
+    skillIds: dto.skillIds ?? [],
+    // BE chưa có điểm thưởng (service Volunteer/Reward chưa gắn).
+    points: 0,
+    avatarHue: 45,
+  }
+}
 
 export interface ReportData {
   purchaseRecords: PurchaseRecord[]
@@ -47,18 +76,27 @@ export function useReportData() {
   return useQuery({
     queryKey: reportKeys.all,
     queryFn: async (): Promise<ReportData> => {
-      const [purchaseRecords, donations, timesheets, tasks, users, communities, areas, materials] =
+      const [purchaseRecords, donations, timesheets, tasks, userPage, communities, areas, materialPage] =
         await Promise.all([
           api<PurchaseRecord[]>('/purchaseRecords'),
           api<Donation[]>('/donations'),
           api<Timesheet[]>('/timesheets'),
           api<Task[]>('/tasks'),
-          api<User[]>('/api/v1/users'),
+          apiPaged<ReportUserDto>('/api/v1/users?size=100'),
           api<Community[]>('/communities'),
           api<WorkArea[]>('/areas'),
-          api<Material[]>('/api/v1/materials'),
+          apiPaged<Material>('/api/v1/materials?size=100'),
         ])
-      return { purchaseRecords, donations, timesheets, tasks, users, communities, areas, materials }
+      return {
+        purchaseRecords,
+        donations,
+        timesheets,
+        tasks,
+        users: userPage.data.map(toReportUser),
+        communities,
+        areas,
+        materials: materialPage.data,
+      }
     },
   })
 }
