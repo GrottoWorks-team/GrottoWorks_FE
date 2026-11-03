@@ -173,6 +173,9 @@ docs/combo_1.html
 reports/
 bao-cao/
 
+# Model 3D quet that (>50MB) - chi dung local, khong dua len git
+public/asset/
+
 
 # Ke hoach noi bo - khong dua len git khach
 docs/plans/
