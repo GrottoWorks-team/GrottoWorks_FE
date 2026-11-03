@@ -1,69 +1,61 @@
-// Sổ quyên góp (route /material-officer/donations): officer xem cam kết vật tư khu
-// mình phụ trách + quà tiền; committee/parish thấy tất cả. "Ghi nhận quyên
-// góp" (dialog nhập TỔNG số đã nhận → status tự suy + material.donatedReceived
-// đồng bộ theo delta) và "Thêm cam kết" (DonationFormDialog). Filter chips
-// theo status, search theo donorName, xuất CSV.
+// Sổ quyên góp (/material-officer/donations) — BE Resource `Donation`.
+// Cam kết vật tư/tiền + ghi nhận từng lần nhận (số lượng là PHẦN TĂNG) + huỷ có lý do.
+// Donor do BE tự gán theo user đăng nhập (VolunteerDonorResolver).
 import { useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Ban, ClipboardCheck, Download, Plus, XCircle } from 'lucide-react'
+import { Ban, ClipboardCheck, Download, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
-import { useMaterials } from '@/features/materials/api'
 import { useAuth } from '@/lib/auth'
 import { exportCsv } from '@/lib/csv'
 import i18n from '@/lib/i18n'
-import { useDonations, useRecordReception, useUpdateDonation } from '../api'
+import { useCancelDonation, useDonations, useRecordDonationReceipt } from '../api'
 import { DonationFormDialog } from './DonationFormDialog'
-import type { Donation, Material } from '@/types'
+import type { Donation } from '@/types'
 
-// Dialog ghi nhận: nhập tổng số đã nhận (mặc định = số hiện tại); status và
-// đồng bộ material do useRecordReception xử lý.
-function ReceptionDialog({
-  item,
-  material,
-  onClose,
-}: {
-  item: Donation
-  material?: Material
-  onClose: () => void
-}) {
+const fmt = (n: number) => n.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')
+
+function ReceiptDialog({ donation, onClose }: { donation: Donation; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const record = useRecordReception(item.id)
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<{ receivedQty: number }>({
-    resolver: zodResolver(
-      z.object({
-        receivedQty: z.preprocess(
-          (v) => (v === '' || v == null ? undefined : v),
-          z.coerce
-            .number({ invalid_type_error: 'features.donations.receivedInvalid' })
-            .min(0, 'features.donations.receivedInvalid'),
-        ),
-      }),
-    ),
-    defaultValues: { receivedQty: item.receivedQty },
-  })
+  const record = useRecordDonationReceipt()
+  const outstandingOf = (i: Donation['items'][number]) => Math.max(0, i.pledgedQuantity - i.receivedQuantity)
 
-  const onSubmit = async (data: { receivedQty: number }) => {
+  const [lines, setLines] = useState<Record<string, { qty: string; unusable: string }>>(() =>
+    Object.fromEntries(
+      donation.items.map((item) => [item.id, { qty: String(outstandingOf(item) || ''), unusable: '0' }]),
+    ),
+  )
+  const [amount, setAmount] = useState(String(donation.pledgedAmount ?? donation.receivedAmount ?? ''))
+  const [note, setNote] = useState('')
+
+  const onSubmit = async () => {
     try {
-      await record.mutateAsync(data.receivedQty)
+      if (donation.type === 'MONEY') {
+        await record.mutateAsync({ donationId: donation.id, amount: Number(amount), note: note || undefined })
+      } else {
+        const items = Object.entries(lines)
+          .map(([donationItemId, line]) => ({
+            donationItemId,
+            receivedQuantity: Number(line.qty),
+            unusableQuantity: Number(line.unusable) || 0,
+          }))
+          .filter((line) => line.receivedQuantity > 0)
+        if (!items.length) {
+          toast(t('features.donations.receiptEmpty'), 'alert')
+          return
+        }
+        await record.mutateAsync({ donationId: donation.id, items, note: note || undefined })
+      }
       toast(t('features.donations.recorded'))
       onClose()
     } catch {
@@ -75,36 +67,133 @@ function ReceptionDialog({
     <Dialog
       open
       onClose={onClose}
-      size="md"
       title={t('features.donations.recordTitle')}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="reception-form" disabled={isSubmitting}>
+          <Button onClick={onSubmit} disabled={record.isPending}>
             {t('common.save')}
           </Button>
         </>
       }
     >
-      <form id="reception-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        {material && item.promisedQty != null && (
-          <p className="text-sm">
-            <span className="font-semibold text-foreground">{material.name}</span>{' '}
-            — {t('features.donations.pledgedOf', { n: item.promisedQty, unit: material.unit })}
-          </p>
+      <div className="space-y-3">
+        <p className="text-sm">
+          <span className="font-semibold text-foreground">{donation.donorName}</span> —{' '}
+          {donation.type === 'MONEY'
+            ? t('features.donations.money')
+            : donation.items.map((i) => i.materialName).join(', ')}
+        </p>
+        {donation.type === 'MONEY' ? (
+          <div>
+            <Label htmlFor="receipt-amount">{t('features.donations.receiveNow')}</Label>
+            <Input
+              id="receipt-amount"
+              type="number"
+              min={1}
+              step={1000}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {donation.items.map((item) => (
+              <div key={item.id} className="rounded-md border border-border/60 p-3">
+                <p className="text-sm font-semibold text-foreground">
+                  {item.materialName}{' '}
+                  <span className="text-xs font-normal text-muted-foreground">({item.unit})</span>
+                </p>
+                <p className="mb-2 text-xs text-muted-foreground">
+                  {t('features.donations.progressOf', {
+                    received: item.receivedQuantity,
+                    pledged: item.pledgedQuantity,
+                  })}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor={`receipt-${item.id}`}>{t('features.donations.receiveNow')}</Label>
+                    <Input
+                      id={`receipt-${item.id}`}
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={lines[item.id]?.qty ?? ''}
+                      onChange={(e) =>
+                        setLines((prev) => ({ ...prev, [item.id]: { ...prev[item.id], qty: e.target.value } }))
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`unusable-${item.id}`}>{t('features.donations.unusableQty')}</Label>
+                    <Input
+                      id={`unusable-${item.id}`}
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={lines[item.id]?.unusable ?? '0'}
+                      onChange={(e) =>
+                        setLines((prev) => ({ ...prev, [item.id]: { ...prev[item.id], unusable: e.target.value } }))
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
         <div>
-          <Label htmlFor="reception-qty">{t('features.donations.receivedQty')}</Label>
-          <Input id="reception-qty" type="number" min={0} step={1} {...register('receivedQty')} />
-          {errors.receivedQty?.message && (
-            <p className="mt-1 text-xs font-semibold text-destructive">
-              {t(errors.receivedQty.message)}
-            </p>
-          )}
+          <Label htmlFor="receipt-note">{t('features.donations.note')}</Label>
+          <Input id="receipt-note" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
-      </form>
+      </div>
+    </Dialog>
+  )
+}
+
+function CancelDialog({ donation, onClose }: { donation: Donation; onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const cancel = useCancelDonation()
+  const [reason, setReason] = useState('')
+
+  const onSubmit = async () => {
+    if (!reason.trim()) {
+      toast(t('features.donations.cancelReasonRequired'), 'alert')
+      return
+    }
+    try {
+      await cancel.mutateAsync({ id: donation.id, reason: reason.trim() })
+      toast(t('features.donations.canceled'))
+      onClose()
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('features.donations.cancelTitle')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button variant="destructive" onClick={onSubmit} disabled={cancel.isPending}>
+            {t('common.confirm')}
+          </Button>
+        </>
+      }
+    >
+      <p className="mb-3 text-sm text-muted-foreground">
+        {t('features.donations.cancelConfirm', { name: donation.donorName })}
+      </p>
+      <Label htmlFor="cancel-reason">{t('features.donations.cancelReason')}</Label>
+      <Input id="cancel-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
     </Dialog>
   )
 }
@@ -114,35 +203,39 @@ export default function DonationListPage() {
   const toast = useToast()
   const { user } = useAuth()
   const { data: areas = [], isPending: areasPending } = useScopedAreas()
-  const { data: materials = [] } = useMaterials()
   const { data: donations = [], isPending } = useDonations()
-  const update = useUpdateDonation()
 
-  // Officer: cam kết vật tư khu mình phụ trách + quà tiền (không gắn khu).
   const isOfficer = user?.role === 'MATERIAL_OFFICER'
-  const myAreaIds = new Set(
-    isOfficer ? areas.filter((a) => a.officerId === user.id).map((a) => a.id) : [],
+  const myAreaIds = useMemo(
+    () => new Set(isOfficer ? areas.filter((a) => a.officerId === user.id).map((a) => a.id) : []),
+    [areas, isOfficer, user],
   )
-  const materialById = useMemo(() => new Map(materials.map((m) => [m.id, m])), [materials])
-  const rows = isOfficer
-    ? donations.filter((d) => {
-        const areaId = d.materialId ? materialById.get(d.materialId)?.areaId : undefined
-        return areaId === undefined || myAreaIds.has(areaId)
-      })
-    : donations
-  const formMaterials = isOfficer ? materials.filter((m) => myAreaIds.has(m.areaId)) : materials
+  const rows = useMemo(
+    () =>
+      isOfficer
+        ? donations.filter((d) => d.type === 'MONEY' || (d.workAreaId ? myAreaIds.has(d.workAreaId) : false))
+        : donations,
+    [donations, isOfficer, myAreaIds],
+  )
 
   const [creating, setCreating] = useState(false)
-  const [recordingId, setRecordingId] = useState<string | null>(null)
+  const [recording, setRecording] = useState<Donation | null>(null)
   const [canceling, setCanceling] = useState<Donation | null>(null)
-  const [unusable, setUnusable] = useState<Donation | null>(null)
-  // Quà tiền PLEDGED → xác nhận 1 bước RECEIVED_FULL (không dialog nhận số lượng).
-  const [receivingMoney, setReceivingMoney] = useState<Donation | null>(null)
-  // Theo id (không giữ object) — data luôn tươi sau mutation.
-  const recording = recordingId ? (donations.find((d) => d.id === recordingId) ?? null) : null
 
-  const fmt = (n: number) => n.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')
-  const unitOf = (d: Donation) => (d.materialId ? materialById.get(d.materialId)?.unit : undefined)
+  const materialSummary = (d: Donation) =>
+    d.type === 'MONEY'
+      ? `${t('features.donations.money')} · ${fmt(d.pledgedAmount ?? 0)} ₫`
+      : d.items.map((item) => `${item.materialName} (${item.unit})`).join(', ')
+
+  const pledgedOf = (d: Donation) =>
+    d.type === 'MONEY'
+      ? `${fmt(d.pledgedAmount ?? 0)} ₫`
+      : d.items.map((item) => `${item.pledgedQuantity} ${item.unit}`).join(' + ')
+
+  const receivedOf = (d: Donation) =>
+    d.type === 'MONEY'
+      ? `${fmt(d.receivedAmount ?? 0)} ₫`
+      : d.items.map((item) => `${item.receivedQuantity} ${item.unit}`).join(' + ')
 
   const columns = useMemo(
     () => [
@@ -151,80 +244,33 @@ export default function DonationListPage() {
         header: t('features.donations.donor'),
         render: (d: Donation) => <span className="font-semibold text-foreground">{d.donorName}</span>,
       },
+      { key: 'material', header: t('features.donations.material'), render: materialSummary },
       {
-        key: 'material',
-        header: t('features.donations.material'),
-        render: (d: Donation) =>
-          d.materialId ? (
-            <span>
-              {materialById.get(d.materialId)?.name ?? '—'}
-              {unitOf(d) && <span className="text-xs text-muted-foreground"> ({unitOf(d)})</span>}
-            </span>
-          ) : (
-            <span className="tabular font-semibold text-brand-gold">
-              {t('features.donations.money')} · {fmt(d.monetary ?? 0)}
-            </span>
-          ),
-      },
-      {
-        key: 'promisedQty',
+        key: 'promised',
         header: t('features.donations.promised'),
         align: 'right' as const,
-        render: (d: Donation) =>
-          d.promisedQty != null ? (
-            <span className="tabular">
-              {d.promisedQty} {unitOf(d)}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
+        render: (d: Donation) => <span className="tabular">{pledgedOf(d)}</span>,
       },
       {
-        key: 'receivedQty',
+        key: 'received',
         header: t('features.donations.receivedCol'),
         align: 'right' as const,
-        render: (d: Donation) =>
-          d.receivedQty != null ? (
-            <span className="tabular">{d.receivedQty}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
+        render: (d: Donation) => <span className="tabular">{receivedOf(d)}</span>,
       },
       { key: 'status', header: t('common.status'), render: (d: Donation) => <StatusTag status={d.status} /> },
       {
         key: 'actions',
         header: t('common.actions'),
         render: (d: Donation) =>
-          d.status === 'PLEDGED' || d.status === 'RECEIVED_PARTIAL' ? (
+          d.status === 'PLEDGED' || d.status === 'PARTIALLY_RECEIVED' ? (
             <div className="flex justify-end gap-1">
-              {d.materialId ? (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('features.donations.record')}
-                  onClick={() => setRecordingId(d.id)}
-                >
-                  <ClipboardCheck className="size-4" />
-                </Button>
-              ) : (
-                d.status === 'PLEDGED' && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t('features.donations.receiveMoney')}
-                    onClick={() => setReceivingMoney(d)}
-                  >
-                    <ClipboardCheck className="size-4" />
-                  </Button>
-                )
-              )}
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label={t('features.donations.unusable')}
-                onClick={() => setUnusable(d)}
+                aria-label={t('features.donations.record')}
+                onClick={() => setRecording(d)}
               >
-                <XCircle className="size-4" />
+                <ClipboardCheck className="size-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -240,7 +286,8 @@ export default function DonationListPage() {
           ),
       },
     ],
-    [t, materialById],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t],
   )
 
   const onExport = () => {
@@ -248,11 +295,9 @@ export default function DonationListPage() {
       'grottoworks-quyen-gop.csv',
       rows.map((d) => ({
         [t('features.donations.donor')]: d.donorName,
-        [t('features.donations.material')]: d.materialId
-          ? (materialById.get(d.materialId)?.name ?? '—')
-          : t('features.donations.money'),
-        [t('features.donations.promised')]: d.promisedQty ?? d.monetary ?? '',
-        [t('features.donations.receivedCol')]: d.receivedQty ?? '',
+        [t('features.donations.material')]: materialSummary(d),
+        [t('features.donations.promised')]: pledgedOf(d),
+        [t('features.donations.receivedCol')]: receivedOf(d),
         [t('common.status')]: t(`status.${d.status}`),
       })),
     )
@@ -262,10 +307,9 @@ export default function DonationListPage() {
   if (areasPending) return <p className="lbl-mono">{t('common.loading')}</p>
   if (isOfficer && !myAreaIds.size) return <EmptyState text={t('features.donations.noArea')} />
 
-  const totalPledgedCount = rows.length
-  const fullReceivedCount = rows.filter((d) => d.status === 'RECEIVED_FULL').length
-  const pendingReceiveCount = rows.filter((d) => d.status === 'PLEDGED' || d.status === 'RECEIVED_PARTIAL').length
-  const totalMoney = rows.reduce((s, d) => s + (d.monetary ?? 0), 0)
+  const fullReceived = rows.filter((d) => d.status === 'RECEIVED').length
+  const pending = rows.filter((d) => d.status === 'PLEDGED' || d.status === 'PARTIALLY_RECEIVED').length
+  const totalMoney = rows.reduce((s, d) => s + (d.receivedAmount ?? 0), 0)
 
   return (
     <div>
@@ -286,106 +330,22 @@ export default function DonationListPage() {
         }
       />
 
-      {/* 4 StatCards */}
       <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard
-          label="Tổng cam kết"
-          value={totalPledgedCount}
-          unit="lượt"
-        />
-        <StatCard
-          label="Đã nhận đủ"
-          value={fullReceivedCount}
-          unit="lượt xong"
-          tone="ok"
-        />
-        <StatCard
-          label="Đang chờ tiếp nhận"
-          value={pendingReceiveCount}
-          unit="lượt chờ"
-          tone={pendingReceiveCount > 0 ? 'warn' : 'ok'}
-        />
-        <StatCard
-          label="Tiền quyên góp"
-          value={totalMoney}
-          unit="₫"
-          tone="ok"
-        />
+        <StatCard label={t('features.donations.statTotal')} value={rows.length} unit={t('features.donations.statTotalUnit')} />
+        <StatCard label={t('features.donations.statReceived')} value={fullReceived} unit={t('features.donations.statReceivedUnit')} tone="ok" />
+        <StatCard label={t('features.donations.statPending')} value={pending} unit={t('features.donations.statPendingUnit')} />
+        <StatCard label={t('features.donations.statMoney')} value={fmt(totalMoney)} unit="₫" tone="ok" />
       </div>
 
       {isPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
       ) : (
-        <DataTable
-          rows={rows}
-          columns={columns}
-          searchKeys={['donorName']}
-          filters={[
-            {
-              key: 'status',
-              options: ['PLEDGED', 'RECEIVED_FULL', 'RECEIVED_PARTIAL', 'UNUSABLE', 'CANCELED'],
-            },
-          ]}
-          emptyText={t('features.donations.empty')}
-        />
+        <DataTable rows={rows} columns={columns} emptyText={t('features.donations.empty')} />
       )}
 
-      {creating && <DonationFormDialog materials={formMaterials} onClose={() => setCreating(false)} />}
-      {recording && (
-        <ReceptionDialog
-          item={recording}
-          material={recording.materialId ? materialById.get(recording.materialId) : undefined}
-          onClose={() => setRecordingId(null)}
-        />
-      )}
-      {canceling && (
-        <ConfirmDialog
-          open
-          title={t('features.donations.cancelTitle')}
-          description={t('features.donations.cancelConfirm', { name: canceling.donorName })}
-          confirmLabel={t('features.donations.cancel')}
-          onConfirm={() => {
-            void update
-              .mutateAsync({ id: canceling.id, status: 'CANCELED' })
-              .then(() => toast(t('features.donations.canceled')))
-              .catch(() => toast(t('common.error'), 'alert'))
-          }}
-          onClose={() => setCanceling(null)}
-        />
-      )}
-      {unusable && (
-        <ConfirmDialog
-          open
-          title={t('features.donations.unusableTitle')}
-          description={t('features.donations.unusableConfirm', { name: unusable.donorName })}
-          confirmLabel={t('features.donations.unusable')}
-          onConfirm={() => {
-            void update
-              .mutateAsync({ id: unusable.id, status: 'UNUSABLE' })
-              .then(() => toast(t('features.donations.markedUnusable')))
-              .catch(() => toast(t('common.error'), 'alert'))
-          }}
-          onClose={() => setUnusable(null)}
-        />
-      )}
-      {receivingMoney && (
-        <ConfirmDialog
-          open
-          title={t('features.donations.receiveMoneyTitle')}
-          description={t('features.donations.receiveMoneyConfirm', {
-            amount: fmt(receivingMoney.monetary ?? 0),
-            name: receivingMoney.donorName,
-          })}
-          confirmLabel={t('features.donations.receiveMoney')}
-          onConfirm={() => {
-            void update
-              .mutateAsync({ id: receivingMoney.id, status: 'RECEIVED_FULL' })
-              .then(() => toast(t('features.donations.moneyReceived')))
-              .catch(() => toast(t('common.error'), 'alert'))
-          }}
-          onClose={() => setReceivingMoney(null)}
-        />
-      )}
+      {creating && <DonationFormDialog open onClose={() => setCreating(false)} />}
+      {recording && <ReceiptDialog donation={recording} onClose={() => setRecording(null)} />}
+      {canceling && <CancelDialog donation={canceling} onClose={() => setCanceling(null)} />}
     </div>
   )
 }

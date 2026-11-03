@@ -1,17 +1,86 @@
-// Donations domain — query key ['donations']. BE CHƯA có domain này (path legacy
-// `/donations`); KHÔNG còn gọi chéo sang /api/v1/materials để cộng tồn kho vì
-// endpoint/field đó không tồn tại.
+// Quyên góp — BE Resource `Donation` (API Contract v1.3.2).
+//   cam kết vật tư → POST /donations/material-pledges
+//   cam kết tiền   → POST /donations/monetary-pledges
+//   ghi nhận       → POST /donations/{id}/receipts (số lượng là PHẦN TĂNG của lần này)
+//   huỷ            → POST /donations/{id}/cancel
+// Donor do BE tự gán theo user đăng nhập (VolunteerDonorResolver).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { materialKeys } from '@/features/materials/api'
-import type { Donation } from '@/types'
+import { api, apiPaged } from '@/lib/api'
+import type { Donation, DonationItem } from '@/types'
 
-export const donationKeys = { all: ['donations'] as const }
+export const donationKeys = {
+  all: ['donations'] as const,
+}
 
-export function useDonations() {
+interface MoneyDto { amount: number; currency: string }
+interface DonationItemDto {
+  id: string; materialId: string; materialCode: string; materialName: string; unit: string
+  pledgedQuantity: number; receivedQuantity: number; unusableQuantity: number; usableQuantity: number
+  status: string; note?: string | null
+}
+interface DonationDto {
+  id: string; donorId: string; donorName: string; seasonId: string; workAreaId?: string | null
+  type: 'MONEY' | 'MATERIAL'
+  status: 'PLEDGED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED'
+  pledgedAmount?: MoneyDto | null; receivedAmount?: MoneyDto | null
+  donationDate: string; items: DonationItemDto[]
+  note?: string | null; cancelReason?: string | null; version: number
+}
+function mapItem(dto: DonationItemDto): DonationItem {
+  return {
+    id: dto.id,
+    materialId: dto.materialId,
+    materialCode: dto.materialCode,
+    materialName: dto.materialName,
+    unit: dto.unit,
+    pledgedQuantity: dto.pledgedQuantity,
+    receivedQuantity: dto.receivedQuantity,
+    unusableQuantity: dto.unusableQuantity,
+    usableQuantity: dto.usableQuantity,
+    status: dto.status,
+    note: dto.note ?? undefined,
+  }
+}
+
+function mapDonation(dto: DonationDto): Donation {
+  return {
+    id: dto.id,
+    donorId: dto.donorId,
+    donorName: dto.donorName,
+    seasonId: dto.seasonId,
+    workAreaId: dto.workAreaId ?? undefined,
+    type: dto.type,
+    status: dto.status,
+    pledgedAmount: dto.pledgedAmount?.amount,
+    receivedAmount: dto.receivedAmount?.amount,
+    donationDate: dto.donationDate,
+    items: dto.items.map(mapItem),
+    note: dto.note ?? undefined,
+    cancelReason: dto.cancelReason ?? undefined,
+    version: dto.version,
+  }
+}
+
+export interface DonationQuery {
+  status?: string
+  type?: string
+  workAreaId?: string
+  seasonId?: string
+  size?: number
+}
+
+export function useDonations(params?: DonationQuery) {
   return useQuery({
-    queryKey: donationKeys.all,
-    queryFn: () => api<Donation[]>('/donations'),
+    queryKey: [...donationKeys.all, params ?? {}],
+    queryFn: async () => {
+      const q = new URLSearchParams({ size: String(params?.size ?? 100) })
+      if (params?.status) q.set('status', params.status)
+      if (params?.type) q.set('type', params.type)
+      if (params?.workAreaId) q.set('workAreaId', params.workAreaId)
+      if (params?.seasonId) q.set('seasonId', params.seasonId)
+      const res = await apiPaged<DonationDto>(`/api/v1/donations?${q.toString()}`)
+      return res.data.map(mapDonation)
+    },
   })
 }
 
@@ -21,50 +90,81 @@ function useDonationMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
     mutationFn: fn,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: donationKeys.all })
-      void qc.invalidateQueries({ queryKey: materialKeys.all })
+      // Vật tư nhận được có thể đổi tồn kho → làm mới inventory.
+      void qc.invalidateQueries({ queryKey: ['materials'] })
     },
   })
 }
 
-// Tạo cam kết (status PLEDGED).
-// LƯU Ý: BE CHƯA có domain Donation. Code cũ còn gọi GET /api/v1/materials/{id}
-// + PATCH `{ donatedPledged }` để đồng bộ tồn kho, nhưng endpoint GET đó không
-// tồn tại (405) và `donatedPledged` không có trên MaterialDto → đã bỏ. Khi BE
-// bổ sung donation phải có API nhập kho riêng (xem BE-gap-requests-field-audit).
-export function useCreateDonation() {
-  return useDonationMutation((data: Omit<Donation, 'id' | 'receivedQty'>) =>
-    api<Donation>('/donations', {
+export interface MaterialPledgeInput {
+  workAreaId: string
+  materialId: string
+  pledgedQuantity: number
+  note?: string
+}
+
+/** POST /api/v1/donations/material-pledges — cam kết vật tư cho một khu vực. */
+export function useCreateMaterialPledge() {
+  return useDonationMutation((input: MaterialPledgeInput) =>
+    api<DonationDto>('/api/v1/donations/material-pledges', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        workAreaId: input.workAreaId,
+        items: [{ materialId: input.materialId, pledgedQuantity: input.pledgedQuantity }],
+        note: input.note || null,
+      }),
     }),
   )
 }
 
-// PATCH chung — CANCELED/UNUSABLE chỉ đổi status, không đụng material.
-export function useUpdateDonation() {
-  return useDonationMutation(
-    ({ id, ...data }: Partial<Omit<Donation, 'id'>> & { id: string }) =>
-      api<Donation>(`/donations/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+export interface MonetaryPledgeInput {
+  seasonId: string
+  workAreaId?: string
+  amount: number
+  note?: string
+}
+
+/** POST /api/v1/donations/monetary-pledges — cam kết tiền cho một mùa. */
+export function useCreateMonetaryPledge() {
+  return useDonationMutation((input: MonetaryPledgeInput) =>
+    api<DonationDto>('/api/v1/donations/monetary-pledges', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   )
 }
 
-// Ghi nhận số đã nhận (TỔNG mới, không phải phần tăng) cho 1 donation.
-// Status tự suy: 0 → PLEDGED; < promisedQty → RECEIVED_PARTIAL; còn lại
-// RECEIVED_FULL. Không tự cộng donatedReceived vào material nữa — BE chưa có
-// endpoint/field đó (xem BE-gap-requests-field-audit-2026-10-29.md).
-export function useRecordReception(donationId: string) {
-  return useDonationMutation(async (receivedQty: number) => {
-    const donation = await api<Donation>(`/donations/${donationId}`)
-    const promisedQty = donation.promisedQty ?? 0
-    const status: Donation['status'] =
-      receivedQty === 0
-        ? 'PLEDGED'
-        : promisedQty && receivedQty < promisedQty
-          ? 'RECEIVED_PARTIAL'
-          : 'RECEIVED_FULL'
-    return api<Donation>(`/donations/${donationId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ receivedQty, status }),
-    })
-  })
+export interface ReceiptInput {
+  donationId: string
+  amount?: number
+  items?: { donationItemId: string; receivedQuantity: number; unusableQuantity?: number }[]
+  note?: string
+}
+
+/** POST /api/v1/donations/{id}/receipts — số lượng là phần nhận THÊM của lần này. */
+export function useRecordDonationReceipt() {
+  return useDonationMutation((input: ReceiptInput) =>
+    api<unknown>(`/api/v1/donations/${input.donationId}/receipts`, {
+      method: 'POST',
+      body: JSON.stringify({
+        receivedAmount: input.amount ?? null,
+        items: (input.items ?? []).map((item) => ({
+          donationItemId: item.donationItemId,
+          receivedQuantity: item.receivedQuantity,
+          unusableQuantity: item.unusableQuantity ?? 0,
+        })),
+        note: input.note || null,
+      }),
+    }),
+  )
+}
+
+/** POST /api/v1/donations/{id}/cancel — bắt buộc lý do. */
+export function useCancelDonation() {
+  return useDonationMutation(({ id, reason }: { id: string; reason: string }) =>
+    api<DonationDto>(`/api/v1/donations/${id}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+  )
 }

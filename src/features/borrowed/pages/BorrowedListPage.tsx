@@ -1,45 +1,149 @@
-// Đồ mượn (route /material-officer/borrowed): officer xem đồ khu mình phụ trách.
-// Hẹn trả quá hạn (new Date() thật) → chữ brick "Quá hạn X ngày"; tình trạng
-// trả là StatusTag (chưa trả ◇ / GOOD ✓ / DAMAGED ✕ / LOST ✕). Nút "Đã trả"
-// mở dialog chọn tình trạng (useMarkReturned).
+// Đồ mượn (/material-officer/borrowed) — BE Resource.
+// MO nhận/từ chối chào cho mượn, xác nhận đã nhận đồ, ghi trả và sự cố.
+// Volunteer tạo chào cho mượn trên app mobile nên web không có form tạo.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Plus } from 'lucide-react'
+import { CheckCircle2, RotateCcw, ShieldAlert, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
-import { EmptyState } from '@/components/shared/EmptyState'
-import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
-import { useAuth } from '@/lib/auth'
 import { viDate } from '@/lib/format'
-import { useBorrowedItems, useMarkReturned } from '../api'
-import { SELECT_CLS, BorrowFormDialog } from './BorrowFormDialog'
-import type { BorrowedItem } from '@/types'
+import {
+  useAcceptLoanOffer,
+  useBorrowedIncident,
+  useBorrowedItems,
+  useIssueBorrowedItem,
+  useLoanOffers,
+  useRejectLoanOffer,
+  useReturnBorrowedItem,
+} from '../api'
+import type { BorrowedItem, ReturnCondition } from '@/types'
 
-const CONDITIONS: NonNullable<BorrowedItem['returnedCondition']>[] = ['GOOD', 'DAMAGED', 'LOST']
+const SELECT_CLS =
+  'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
-// Dialog ghi trả: chọn tình trạng rồi PATCH returnedCondition (pattern select
-// + missing state như SupportDetailDialog).
+function AcceptDialog({ offer, onClose }: { offer: BorrowedItem; onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const { data: areas = [] } = useScopedAreas()
+  const accept = useAcceptLoanOffer()
+  const [areaId, setAreaId] = useState(offer.workAreaId ?? '')
+  const [returnDate, setReturnDate] = useState(offer.expectedReturnDate)
+
+  const submit = async () => {
+    try {
+      await accept.mutateAsync({
+        offerId: offer.id,
+        version: offer.version,
+        workAreaId: areaId || undefined,
+        expectedReturnDate: returnDate || undefined,
+      })
+      toast(t('features.borrowed.accepted'))
+      onClose()
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('features.borrowed.acceptTitle')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={submit} disabled={accept.isPending}>
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div>
+          <Label htmlFor="accept-area">{t('features.borrowed.area')}</Label>
+          <select id="accept-area" className={SELECT_CLS} value={areaId} onChange={(e) => setAreaId(e.target.value)}>
+            <option value="">{t('features.tasks.selectPlaceholder')}</option>
+            {areas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="accept-return">{t('features.borrowed.expectedReturn')}</Label>
+          <Input id="accept-return" type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} />
+        </div>
+      </div>
+    </Dialog>
+  )
+}
+
+function ReasonDialog({
+  title,
+  onClose,
+  onSubmit,
+}: {
+  title: string
+  onClose: () => void
+  onSubmit: (reason: string) => Promise<void>
+}) {
+  const { t } = useTranslation()
+  const [reason, setReason] = useState('')
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => {
+              void onSubmit(reason).then(onClose)
+            }}
+          >
+            {t('common.confirm')}
+          </Button>
+        </>
+      }
+    >
+      <Label htmlFor="reason">{t('features.borrowed.reason')}</Label>
+      <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+      <p className="mt-1 text-xs text-muted-foreground">{t('features.borrowed.reasonHint')}</p>
+    </Dialog>
+  )
+}
+
 function ReturnDialog({ item, onClose }: { item: BorrowedItem; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const mark = useMarkReturned(item.id)
-  const [condition, setCondition] = useState('')
-  const [missing, setMissing] = useState(false)
+  const ret = useReturnBorrowedItem()
+  const [condition, setCondition] = useState<ReturnCondition>('GOOD')
+  const [qty, setQty] = useState(String(item.quantity))
+  const [note, setNote] = useState('')
 
   const submit = async () => {
-    if (!condition) {
-      setMissing(true)
-      return
-    }
     try {
-      await mark.mutateAsync(condition as NonNullable<BorrowedItem['returnedCondition']>)
-      toast(t('features.borrowed.returned', { name: item.name }))
+      await ret.mutateAsync({
+        itemId: item.id,
+        condition,
+        returnedQuantity: Number(qty),
+        note: note || undefined,
+      })
+      toast(t('features.borrowed.returned', { name: item.itemName }))
       onClose()
     } catch {
       toast(t('common.error'), 'alert')
@@ -56,179 +160,237 @@ function ReturnDialog({ item, onClose }: { item: BorrowedItem; onClose: () => vo
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={() => void submit()}>{t('features.borrowed.return')}</Button>
+          <Button onClick={submit} disabled={ret.isPending}>
+            {t('common.save')}
+          </Button>
         </>
       }
     >
       <div className="space-y-3">
-        <p className="text-sm text-foreground">
-          <span className="font-semibold">{item.name}</span> — {item.owner}
-        </p>
         <div>
           <Label htmlFor="return-condition">{t('features.borrowed.condition')}</Label>
           <select
             id="return-condition"
             className={SELECT_CLS}
             value={condition}
-            onChange={(e) => {
-              setCondition(e.target.value)
-              setMissing(false)
-            }}
+            onChange={(e) => setCondition(e.target.value as ReturnCondition)}
           >
-            <option value="">{t('features.tasks.selectPlaceholder')}</option>
-            {CONDITIONS.map((c) => (
-              <option key={c} value={c}>
-                {t(`status.${c}`)}
-              </option>
-            ))}
+            <option value="GOOD">{t('features.borrowed.condition.GOOD')}</option>
+            <option value="DAMAGED">{t('features.borrowed.condition.DAMAGED')}</option>
+            <option value="LOST">{t('features.borrowed.condition.LOST')}</option>
           </select>
-          {missing && (
-            <p className="mt-1 text-xs font-semibold text-destructive">
-              {t('features.borrowed.conditionRequired')}
-            </p>
-          )}
+        </div>
+        <div>
+          <Label htmlFor="return-qty">{t('features.borrowed.returnedQty')}</Label>
+          <Input id="return-qty" type="number" min={0} value={qty} onChange={(e) => setQty(e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor="return-note">{t('features.purchases.note')}</Label>
+          <Input id="return-note" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
       </div>
     </Dialog>
   )
 }
 
-// Ngày chậm so với hôm nay (đã trả thì không tính).
-const daysLate = (iso: string) =>
-  Math.floor((Date.now() - new Date(`${iso}T00:00:00`).getTime()) / 86_400_000)
+function IncidentDialog({ item, onClose }: { item: BorrowedItem; onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const incident = useBorrowedIncident()
+  const [condition, setCondition] = useState<ReturnCondition>('DAMAGED')
+  const [qty, setQty] = useState('1')
+  const [description, setDescription] = useState('')
+
+  const submit = async () => {
+    if (!description.trim()) {
+      toast(t('features.borrowed.descriptionRequired'), 'alert')
+      return
+    }
+    try {
+      await incident.mutateAsync({
+        itemId: item.id,
+        condition,
+        quantity: Number(qty),
+        description: description.trim(),
+      })
+      toast(t('features.borrowed.incidentRecorded'))
+      onClose()
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('features.borrowed.incidentTitle')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={submit} disabled={incident.isPending}>
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div>
+          <Label htmlFor="incident-condition">{t('features.borrowed.condition')}</Label>
+          <select
+            id="incident-condition"
+            className={SELECT_CLS}
+            value={condition}
+            onChange={(e) => setCondition(e.target.value as ReturnCondition)}
+          >
+            <option value="DAMAGED">{t('features.borrowed.condition.DAMAGED')}</option>
+            <option value="LOST">{t('features.borrowed.condition.LOST')}</option>
+          </select>
+        </div>
+        <div>
+          <Label htmlFor="incident-qty">{t('features.borrowed.incidentQty')}</Label>
+          <Input id="incident-qty" type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} />
+        </div>
+        <div>
+          <Label htmlFor="incident-desc">{t('features.borrowed.description')}</Label>
+          <Input id="incident-desc" value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+      </div>
+    </Dialog>
+  )
+}
 
 export default function BorrowedListPage() {
   const { t } = useTranslation()
-  const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useScopedAreas()
-  const { data: items = [], isPending } = useBorrowedItems()
+  const toast = useToast()
+  const { data: offers = [], isPending: offersPending } = useLoanOffers('OFFERED')
+  const { data: items = [], isPending: itemsPending } = useBorrowedItems()
+  const issue = useIssueBorrowedItem()
+  const reject = useRejectLoanOffer()
 
-  const isOfficer = user?.role === 'MATERIAL_OFFICER'
-  const myAreas = isOfficer ? areas.filter((a) => a.officerId === user.id) : areas
-  const myAreaIds = new Set(myAreas.map((a) => a.id))
-  const rows = isOfficer ? items.filter((b) => myAreaIds.has(b.areaId)) : items
+  const [accepting, setAccepting] = useState<BorrowedItem | null>(null)
+  const [rejecting, setRejecting] = useState<BorrowedItem | null>(null)
+  const [returning, setReturning] = useState<BorrowedItem | null>(null)
+  const [incident, setIncident] = useState<BorrowedItem | null>(null)
 
-  const [creating, setCreating] = useState(false)
-  const [returningId, setReturningId] = useState<string | null>(null)
-  // Theo id (không giữ object) — data luôn tươi sau mutation.
-  const returning = returningId ? (items.find((b) => b.id === returningId) ?? null) : null
+  const borrowable = useMemo(() => items.filter((item) => item.status !== 'OFFERED'), [items])
 
-  const columns = useMemo(
+  const offerColumns = useMemo(
     () => [
+      { key: 'item', header: t('features.borrowed.name'), render: (o: BorrowedItem) => <span className="font-semibold text-foreground">{o.itemName}</span> },
+      { key: 'owner', header: t('features.borrowed.owner'), render: (o: BorrowedItem) => o.ownerName },
+      { key: 'qty', header: t('features.allocations.qty'), align: 'right' as const, render: (o: BorrowedItem) => <span className="tabular">{o.quantity}</span> },
+      { key: 'return', header: t('features.borrowed.expectedReturn'), render: (o: BorrowedItem) => <span className="tabular">{viDate(o.expectedReturnDate)}</span> },
       {
-        key: 'name',
-        header: t('features.borrowed.name'),
-        render: (b: BorrowedItem) => <span className="font-semibold text-foreground">{b.name}</span>,
+        key: 'actions',
+        header: t('common.actions'),
+        render: (o: BorrowedItem) => (
+          <div className="flex justify-end gap-1">
+            <Button size="sm" variant="outline" onClick={() => setAccepting(o)}>
+              <CheckCircle2 className="size-4" /> {t('features.borrowed.accept')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setRejecting(o)}>
+              <X className="size-4" /> {t('features.borrowed.reject')}
+            </Button>
+          </div>
+        ),
       },
-      { key: 'owner', header: t('features.borrowed.owner'), render: (b: BorrowedItem) => b.owner },
+    ],
+    [t],
+  )
+
+  const itemColumns = useMemo(
+    () => [
+      { key: 'item', header: t('features.borrowed.name'), render: (i: BorrowedItem) => <span className="font-semibold text-foreground">{i.itemName}</span> },
+      { key: 'owner', header: t('features.borrowed.owner'), render: (i: BorrowedItem) => i.ownerName },
+      { key: 'qty', header: t('features.allocations.qty'), align: 'right' as const, render: (i: BorrowedItem) => <span className="tabular">{i.quantity}</span> },
+      { key: 'status', header: t('common.status'), render: (i: BorrowedItem) => <StatusTag status={i.status} /> },
       {
-        key: 'area',
-        header: t('features.borrowed.area'),
-        render: (b: BorrowedItem) => areas.find((a) => a.id === b.areaId)?.name ?? '—',
-      },
-      {
-        key: 'expectedReturn',
+        key: 'due',
         header: t('features.borrowed.expectedReturn'),
-        render: (b: BorrowedItem) => {
-          const late = b.returnedCondition ? 0 : daysLate(b.expectedReturn)
-          return (
-            <span>
-              <span className="tabular">{viDate(b.expectedReturn)}</span>
-              {late > 0 && (
-                <span className="ml-2 text-[11px] font-bold text-destructive">
-                  {t('features.borrowed.overdue', { n: late })}
-                </span>
-              )}
-            </span>
-          )
-        },
-      },
-      {
-        key: 'returnedCondition',
-        header: t('features.borrowed.condition'),
-        render: (b: BorrowedItem) => <StatusTag status={b.returnedCondition ?? 'NOT_RETURNED'} />,
+        render: (i: BorrowedItem) => (
+          <span className={i.overdue ? 'tabular font-semibold text-status-dangerText' : 'tabular'}>
+            {viDate(i.expectedReturnDate)}
+            {i.overdue && ` · ${t('features.borrowed.overdue', { n: '' })}`}
+          </span>
+        ),
       },
       {
         key: 'actions',
         header: t('common.actions'),
-        render: (b: BorrowedItem) =>
-          b.returnedCondition ? (
-            <span className="text-muted-foreground">—</span>
-          ) : (
-            <div className="flex justify-end">
+        render: (i: BorrowedItem) => (
+          <div className="flex justify-end gap-1">
+            {i.status === 'ACCEPTED' && (
               <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.borrowed.return')}
-                onClick={() => setReturningId(b.id)}
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    await issue.mutateAsync({ itemId: i.id })
+                    toast(t('features.borrowed.issued'))
+                  } catch {
+                    toast(t('common.error'), 'alert')
+                  }
+                }}
               >
-                <Check className="size-4" />
+                {t('features.borrowed.issue')}
               </Button>
-            </div>
-          ),
+            )}
+            {(i.status === 'ISSUED' || i.status === 'IN_USE') && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setReturning(i)}>
+                  <RotateCcw className="size-4" /> {t('features.borrowed.return')}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setIncident(i)}>
+                  <ShieldAlert className="size-4" /> {t('features.borrowed.incident')}
+                </Button>
+              </>
+            )}
+          </div>
+        ),
       },
     ],
-    [t, areas],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t],
   )
-
-  if (areasPending) return <p className="lbl-mono">{t('common.loading')}</p>
-  if (isOfficer && !myAreas.length) return <EmptyState text={t('features.borrowed.noArea')} />
-
-  const totalBorrowedCount = rows.length
-  const activeBorrowingCount = rows.filter((b) => !b.returnedCondition).length
-  const returnedCount = rows.filter((b) => b.returnedCondition != null).length
-  const overdueCount = rows.filter((b) => !b.returnedCondition && daysLate(b.expectedReturn) > 0).length
 
   return (
     <div>
-      <PageHeader
-        title={t('features.borrowed.title')}
-        sub={t('features.borrowed.sub')}
-        actions={
-          myAreas.length > 0 && (
-            <Button onClick={() => setCreating(true)}>
-              <Plus className="size-4" />
-              {t('features.borrowed.create')}
-            </Button>
-          )
-        }
-      />
+      <PageHeader title={t('features.borrowed.title')} sub={t('features.borrowed.sub')} />
 
-      {/* 4 StatCards */}
-      <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard
-          label="Tổng đồ mượn"
-          value={totalBorrowedCount}
-          unit="thiết bị"
-        />
-        <StatCard
-          label="Đang mượn"
-          value={activeBorrowingCount}
-          unit="món"
-          tone={activeBorrowingCount > 0 ? 'warn' : 'ok'}
-        />
-        <StatCard
-          label="Đã hoàn trả"
-          value={returnedCount}
-          unit="món xong"
-          tone="ok"
-        />
-        <StatCard
-          label="Quá hạn trả"
-          value={overdueCount}
-          unit="món trễ"
-          tone={overdueCount > 0 ? 'alert' : 'ok'}
-        />
-      </div>
-
-      {isPending ? (
+      <h2 className="mb-3 font-semibold text-foreground">{t('features.borrowed.offersTitle')}</h2>
+      {offersPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
       ) : (
-        <DataTable rows={rows} columns={columns} emptyText={t('features.borrowed.empty')} />
+        <DataTable rows={offers} columns={offerColumns} emptyText={t('features.borrowed.noOffers')} />
       )}
 
-      {creating && <BorrowFormDialog myAreas={myAreas} onClose={() => setCreating(false)} />}
-      {returning && <ReturnDialog item={returning} onClose={() => setReturningId(null)} />}
+      <h2 className="mb-3 mt-8 font-semibold text-foreground">{t('features.borrowed.itemsTitle')}</h2>
+      {itemsPending ? (
+        <p className="lbl-mono">{t('common.loading')}</p>
+      ) : (
+        <DataTable rows={borrowable} columns={itemColumns} emptyText={t('features.borrowed.empty')} />
+      )}
+
+      {accepting && <AcceptDialog offer={accepting} onClose={() => setAccepting(null)} />}
+      {returning && <ReturnDialog item={returning} onClose={() => setReturning(null)} />}
+      {incident && <IncidentDialog item={incident} onClose={() => setIncident(null)} />}
+      {rejecting && (
+        <ReasonDialog
+          title={t('features.borrowed.rejectTitle')}
+          onClose={() => setRejecting(null)}
+          onSubmit={async (reason) => {
+            try {
+              await reject.mutateAsync({ offerId: rejecting.id, version: rejecting.version, reason })
+              toast(t('features.borrowed.rejected'))
+            } catch {
+              toast(t('common.error'), 'alert')
+            }
+          }}
+        />
+      )}
     </div>
   )
 }

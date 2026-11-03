@@ -69,9 +69,9 @@ export default function VolunteerDetailPage() {
   )
   const donationColumns = useMemo(
     () => [
-      { key: 'material', header: t('features.volunteers.material'), render: (d: Donation) => materialName(d.materialId) },
-      { key: 'promisedQty', header: t('features.volunteers.qty'), align: 'right' as const, render: (d: Donation) => <span className="tabular">{d.promisedQty ?? '—'}</span> },
-      { key: 'monetary', header: t('features.volunteers.amount'), align: 'right' as const, render: (d: Donation) => <span className="tabular">{d.monetary ? d.monetary.toLocaleString() : '—'}</span> },
+      { key: 'material', header: t('features.volunteers.material'), render: (d: Donation) => d.items.map((i) => i.materialName).join(', ') || '—' },
+      { key: 'promisedQty', header: t('features.volunteers.qty'), align: 'right' as const, render: (d: Donation) => <span className="tabular">{d.type === 'MATERIAL' ? d.items.reduce((s, i) => s + i.pledgedQuantity, 0) : '—'}</span> },
+      { key: 'monetary', header: t('features.volunteers.amount'), align: 'right' as const, render: (d: Donation) => <span className="tabular">{d.pledgedAmount ? d.pledgedAmount.toLocaleString() : '—'}</span> },
       { key: 'status', header: t('common.status'), render: (d: Donation) => <StatusTag status={d.status} /> },
     ],
     [t, materials],

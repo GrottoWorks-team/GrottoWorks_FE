@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 // Map status → tone; nhóm ngoài brief mặc định ◇ soft (label vẫn dịch đúng).
 const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   DONE: 'ok', ENOUGH: 'ok', APPROVED: 'ok', RESOLVED: 'ok', CLOSED: 'ok',
-  ON_TRACK: 'ok', RECEIVED_FULL: 'ok',
+  ON_TRACK: 'ok', RECEIVED_FULL: 'ok', RECEIVED: 'ok',
   DOING: 'warn', INCOMING: 'warn', PENDING: 'warn', REVIEW: 'warn',
   COORDINATED: 'warn', PENDING_FIX: 'warn', RECEIVED_PARTIAL: 'warn', ACTIVE: 'warn',
   PLEDGED: 'warn',
@@ -26,6 +26,10 @@ const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
   PURCHASED: 'warn',
   PARTIALLY_RECEIVED: 'warn',
   CANCELLED: 'alert',
+  OFFERED: 'warn',
+  ISSUED: 'warn',
+  IN_USE: 'warn',
+  RETURNED: 'ok',
 }
 
 // DESIGN_SYSTEM.md mục 12 — Status Badge: pastel background + dark text.

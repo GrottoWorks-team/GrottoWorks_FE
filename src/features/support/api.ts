@@ -1,93 +1,112 @@
-// Support requests — query key ['supportRequests'] + ['supportRegs'].
-// Luồng hỗ trợ nhân lực giữa các cộng đoàn:
-//   Leader tạo (POST, status OPEN) → TNV cộng đoàn khác gửi SupportReg (PENDING)
-//   → Leader duyệt (APPROVED, tính lại fulfill) / từ chối (REJECTED)
-//   → fulfill = OPEN | PARTIAL | FULFILLED.
-// Committee điều phối (PATCH status COORDINATED) / giải quyết (RESOLVED).
+// Yêu cầu hỗ trợ chéo cộng đoàn — BE TaskExecution `/api/v1/support-requests`
+// (chỉ có list / create / get / update). Chưa có publish, response, duyệt member
+// hay chuyển vật tư → UI dừng ở trạng thái PLANNING và ghi chú rõ.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import type { SupportFulfill, SupportReg, SupportRequest } from '@/types'
+import { api, apiPaged } from '@/lib/api'
+import type { SupportRequest, SupportType } from '@/types'
 
-export const supportKeys = {
-  all: ['supportRequests'] as const,
-  regs: ['supportRegs'] as const,
+export const supportKeys = { all: ['supportRequests'] as const }
+
+export interface SupportQuery {
+  seasonId?: string
+  workAreaId?: string
+  supportType?: SupportType
+  status?: string
+  size?: number
 }
 
-export function useSupportRequests() {
+export function useSupportRequests(params?: SupportQuery) {
   return useQuery({
-    queryKey: supportKeys.all,
-    queryFn: () => api<SupportRequest[]>('/supportRequests'),
-  })
-}
-
-export function useSupportRegs() {
-  return useQuery({
-    queryKey: supportKeys.regs,
-    queryFn: () => api<SupportReg[]>('/supportRegs'),
-  })
-}
-
-function useSupportMutation<TVars>(fn: (vars: TVars) => Promise<unknown>, invalidateRegs = false) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: fn,
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: supportKeys.all })
-      if (invalidateRegs) void qc.invalidateQueries({ queryKey: supportKeys.regs })
+    queryKey: [...supportKeys.all, params ?? {}],
+    queryFn: async () => {
+      const q = new URLSearchParams({ size: String(params?.size ?? 100) })
+      if (params?.seasonId) q.set('seasonId', params.seasonId)
+      if (params?.workAreaId) q.set('workAreaId', params.workAreaId)
+      if (params?.supportType) q.set('supportType', params.supportType)
+      if (params?.status) q.set('status', params.status)
+      const res = await apiPaged<SupportRequest>(`/api/v1/support-requests?${q.toString()}`)
+      return res.data
     },
   })
 }
 
+export function useSupportRequest(id?: string) {
+  return useQuery({
+    queryKey: [...supportKeys.all, 'detail', id ?? ''],
+    queryFn: () => api<SupportRequest>(`/api/v1/support-requests/${id}`),
+    enabled: Boolean(id),
+  })
+}
+
+export interface SupportPositionDraft {
+  name: string
+  requiredVolunteerCount: number
+  note?: string
+}
+
+export interface SupportMaterialDraft {
+  materialId: string
+  requiredQuantity: number
+  note?: string
+}
+
+export interface CreateSupportInput {
+  seasonId: string
+  workAreaId: string
+  supportType: SupportType
+  description?: string
+  deadline?: string
+  positions: SupportPositionDraft[]
+  materials: SupportMaterialDraft[]
+}
+
+function payload(input: CreateSupportInput) {
+  return {
+    seasonId: input.seasonId,
+    workAreaId: input.workAreaId,
+    supportType: input.supportType,
+    description: input.description || null,
+    deadline: input.deadline || null,
+    positions: input.positions.map((p) => ({
+      name: p.name,
+      requiredVolunteerCount: p.requiredVolunteerCount,
+      note: p.note || null,
+      skills: [],
+    })),
+    materials: input.materials.map((m) => ({
+      materialId: m.materialId,
+      requiredQuantity: m.requiredQuantity,
+      note: m.note || null,
+    })),
+  }
+}
+
 export function useCreateSupportRequest() {
-  return useSupportMutation((data: Omit<SupportRequest, 'id'>) =>
-    api<SupportRequest>('/supportRequests', { method: 'POST', body: JSON.stringify(data) }))
-}
-
-export function useUpdateSupportRequest() {
-  return useSupportMutation(
-    ({ id, ...data }: Partial<Omit<SupportRequest, 'id'>> & { id: string }) =>
-      api<SupportRequest>(`/supportRequests/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateSupportInput) =>
+      api<SupportRequest>('/api/v1/support-requests', {
+        method: 'POST',
+        body: JSON.stringify(payload(input)),
       }),
-  )
+    onSuccess: () => qc.invalidateQueries({ queryKey: supportKeys.all }),
+  })
 }
 
-// Mức đáp ứng theo số nhân lực đã xác nhận: 0 → OPEN; < cần → PARTIAL; ≥ cần →
-// FULFILLED. Không cần người (MATERIAL, volunteersNeeded = 0) → FULFILLED.
-export function fulfillOf(needed: number, approved: number): SupportFulfill {
-  if (needed <= 0) return 'FULFILLED'
-  if (approved <= 0) return 'OPEN'
-  return approved >= needed ? 'FULFILLED' : 'PARTIAL'
-}
-
-const patchReg = (id: string, patch: Partial<SupportReg>) =>
-  api<SupportReg>(`/supportRegs/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })
-
-// Duyệt 2 bước: PATCH reg APPROVED → tính lại fulfill + (đủ người → COORDINATED).
-export function useApproveSupportReg() {
-  return useSupportMutation(async (reg: SupportReg) => {
-    const approved = await patchReg(reg.id, { status: 'APPROVED' })
-    const req = await api<SupportRequest>(`/supportRequests/${reg.requestId}`)
-    const regs = await api<SupportReg[]>('/supportRegs')
-    const approvedCount = regs.filter(
-      (g) => g.requestId === reg.requestId && g.status === 'APPROVED',
-    ).length
-    const fulfill = fulfillOf(req.volunteersNeeded ?? 0, approvedCount)
-    const status: SupportRequest['status'] =
-      fulfill === 'FULFILLED' ? 'COORDINATED' : req.status === 'RESOLVED' ? 'RESOLVED' : 'OPEN'
-    await api<SupportRequest>(`/supportRequests/${reg.requestId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ fulfill, status }),
-    })
-    return approved
-  }, true)
-}
-
-// Từ chối: chỉ đổi status reg, không đụng fulfill.
-export function useRejectSupportReg() {
-  return useSupportMutation(
-    (reg: SupportReg) => patchReg(reg.id, { status: 'REJECTED' }),
-    true,
-  )
+/** PATCH partial; `version` gửi qua If-Match để BE chặn ghi đè (412). */
+export function useUpdateSupportRequest() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      version,
+      ...input
+    }: Partial<CreateSupportInput> & { id: string; version: number }) =>
+      api<SupportRequest>(`/api/v1/support-requests/${id}`, {
+        method: 'PATCH',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify(payload(input as CreateSupportInput)),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: supportKeys.all }),
+  })
 }

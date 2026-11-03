@@ -1,102 +1,71 @@
-// Reports domain (task 11) — không CRUD riêng: mọi số liệu tổng hợp từ các
-// resource có sẵn qua CRUD generic của handlers.ts (pattern endpoint có
-// sẵn, KHÔNG đụng handlers). Aggregate/join chạy client-side trong page
-// (≤ vài trăm dòng — quy ước ponytail của repo).
+// Báo cáo — BE Reporting service. Một endpoint cho mỗi loại báo cáo, trả
+// `ReportDataDto` tổng quát (columns + rows + totals + notes) nên FE render động.
 import { useQuery } from '@tanstack/react-query'
-import { api, apiPaged } from '@/lib/api'
-import { normalizeRole } from '@/lib/auth'
-import type {
-  Community,
-  Donation,
-  Material,
-  PurchaseRecord,
-  Task,
-  Timesheet,
-  User,
-  WorkArea,
-} from '@/types'
+import { api } from '@/lib/api'
 
-export const reportKeys = { all: ['reports'] as const }
+export type ReportType = 'TASKS' | 'MATERIALS' | 'PURCHASES' | 'CONTRIBUTIONS' | 'ATTENDANCE' | 'READINESS'
 
-/** `UserSummary` của BE (`GET /api/v1/users`) — KHÔNG phải `User` của FE. */
-interface ReportUserDto {
-  id: string
-  displayName: string
-  email: string
-  phone?: string | null
-  role: string
-  status: string
-  communityId?: string | null
-  skillIds?: string[]
+export interface ReportColumn {
+  key: string
+  label: string
+  unit?: string | null
 }
 
-function toReportUser(dto: ReportUserDto): User {
-  return {
-    id: dto.id,
-    name: dto.displayName || dto.email,
-    email: dto.email,
-    role: normalizeRole(dto.role),
-    communityId: dto.communityId ?? undefined,
-    locked: dto.status?.toUpperCase() === 'LOCKED',
-    skills: [],
-    skillIds: dto.skillIds ?? [],
-    // BE chưa có điểm thưởng (service Volunteer/Reward chưa gắn).
-    points: 0,
-    avatarHue: 45,
-  }
+export interface ReportFilters {
+  seasonId: string
+  workAreaId?: string | null
+  communityId?: string | null
+  from?: string | null
+  to?: string | null
 }
 
 export interface ReportData {
-  purchaseRecords: PurchaseRecord[]
-  donations: Donation[]
-  timesheets: Timesheet[]
-  tasks: Task[]
-  users: User[]
-  communities: Community[]
-  areas: WorkArea[]
-  materials: Material[]
+  reportType: ReportType
+  parishId: string
+  seasonId: string
+  generatedAt: string
+  generatedBy: string
+  scope: string
+  filters: ReportFilters
+  columns: ReportColumn[]
+  rows: Record<string, unknown>[]
+  totals: Record<string, unknown>
+  notes: string[]
 }
 
-// Hàng Bảng vinh danh: 1 TNV — điểm (User.points), tổng giờ công, số quà
-// tặng đã trao, số nhiệm vụ DONE có tham gia.
-export interface ContributorRow {
-  id: string
-  name: string
-  avatarHue: number
-  communityName: string
-  points: number
-  hours: number
-  contributions: number
-  tasksDone: number
+const PATHS: Record<ReportType, string> = {
+  TASKS: 'tasks',
+  MATERIALS: 'materials',
+  PURCHASES: 'purchases',
+  CONTRIBUTIONS: 'contributions',
+  ATTENDANCE: 'attendance',
+  READINESS: 'readiness',
 }
 
-// 1 query duy nhất cho cả trang — mọi bảng tổng kết + RecognitionBoard ăn
-// chung 1 request batch (Promise.all), tránh waterfall 8 query riêng lẻ.
-export function useReportData() {
+export const reportKeys = {
+  data: (params: ReportQuery) => ['reports', 'data', params] as const,
+}
+
+export interface ReportQuery {
+  type: ReportType
+  seasonId?: string
+  workAreaId?: string
+  communityId?: string
+  from?: string
+  to?: string
+}
+
+export function useReportData(params: ReportQuery) {
   return useQuery({
-    queryKey: reportKeys.all,
-    queryFn: async (): Promise<ReportData> => {
-      const [purchaseRecords, donations, timesheets, tasks, userPage, communities, areas, materialPage] =
-        await Promise.all([
-          api<PurchaseRecord[]>('/purchaseRecords'),
-          api<Donation[]>('/donations'),
-          api<Timesheet[]>('/timesheets'),
-          api<Task[]>('/tasks'),
-          apiPaged<ReportUserDto>('/api/v1/users?size=100'),
-          api<Community[]>('/communities'),
-          api<WorkArea[]>('/areas'),
-          apiPaged<Material>('/api/v1/materials?size=100'),
-        ])
-      return {
-        purchaseRecords,
-        donations,
-        timesheets,
-        tasks,
-        users: userPage.data.map(toReportUser),
-        communities,
-        areas,
-        materials: materialPage.data,
-      }
+    queryKey: reportKeys.data(params),
+    queryFn: async () => {
+      const q = new URLSearchParams({ seasonId: params.seasonId ?? '' })
+      if (params.workAreaId) q.set('workAreaId', params.workAreaId)
+      if (params.communityId) q.set('communityId', params.communityId)
+      if (params.from) q.set('from', params.from)
+      if (params.to) q.set('to', params.to)
+      return api<ReportData>(`/api/v1/reports/${PATHS[params.type]}?${q.toString()}`)
     },
+    enabled: Boolean(params.seasonId),
   })
 }

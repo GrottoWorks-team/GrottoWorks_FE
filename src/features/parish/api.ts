@@ -3,7 +3,7 @@
 // (useUsers/useCommunities giá»¯ nguyÃªn key ['users']/['communities'] gá»‘c â€”
 // invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, apiPaged } from '@/lib/api'
 import type { ActivityLog, Community, Role } from '@/types'
 import type { AdminUserDto, CreateAdminUserRequest, RoleDto } from '@/types/identity'
 import type {
@@ -66,11 +66,29 @@ export const adminKeys = {
 // communities cho trá»n bá»™ import má»™t chá»—.
 export { useCommunities } from '@/features/communities/api'
 
+interface ActivityLogDto {
+  id: string
+  actorUserId?: string | null
+  action: string
+  entityType: string
+  entityId: string
+  createdAt: string
+}
+
 export function useActivityLogs() {
   return useQuery({
     queryKey: adminKeys.activity,
-    // /api/activity = activityLogs 50 dÃ²ng má»›i nháº¥t, má»›i nháº¥t Ä‘á»©ng Ä‘áº§u.
-    queryFn: () => api<ActivityLog[]>('/activity'),
+    // GET /api/v1/activity-logs (NotificationAudit) - paged, moi nhat dung dau.
+    queryFn: async () => {
+      const res = await apiPaged<ActivityLogDto>('/api/v1/activity-logs?size=50')
+      return res.data.map<ActivityLog>((row) => ({
+        id: row.id,
+        at: row.createdAt,
+        actor: row.actorUserId ?? '—',
+        action: row.action,
+        target: row.entityType,
+      }))
+    },
   })
 }
 

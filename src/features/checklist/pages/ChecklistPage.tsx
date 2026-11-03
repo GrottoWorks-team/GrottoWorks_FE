@@ -1,174 +1,222 @@
-// Trang checklist sẵn sàng (route /leader/checklist + /community/checklist):
-// mỗi khu 1 card vòm — tên khu + vòng % hoàn thành (Recharts RadialBar) +
-// danh sách items với switch. Leader toggle được (toast sau mutation);
-// committee/parish xem read-only. Banner tổng: mọi khu 100% → moss
-// "Sẵn sàng đón Lễ", ngược lại straw "Đang chuẩn bị X/Y mục".
-import { useMemo } from 'react'
-import type { CSSProperties } from 'react'
+// Checklist sẵn sàng (/leader/checklist, /community/checklist) — BE Readiness.
+// Leader tạo phiếu cho khu của mình, ghi kết quả PASSED/FAILED từng hạng mục,
+// xác nhận READY. Committee xem read-only.
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RadialBar, RadialBarChart } from 'recharts'
-import { CheckCircle2 } from 'lucide-react'
+import { Check, Plus, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
+import { StatusTag } from '@/components/shared/StatusTag'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Dialog } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
-import { cn } from '@/lib/utils'
-import { useChecklist, useToggleItem } from '../api'
-import type { ChecklistItem, WorkArea } from '@/types'
+import {
+  useConfirmReadiness,
+  useCreateReadinessCheck,
+  useReadinessCheck,
+  useRecheckReadinessItem,
+  useRecordReadinessResult,
+  useSeasonReadiness,
+} from '../api'
+import type { ReadinessItem } from '@/types'
 
-// Switch tay (không có primitive switch): role="switch" + aria-checked,
-// knob trượt bằng transition-transform — reduced-motion đã xử lý global.
-function Switch({
-  checked,
-  disabled,
-  label,
-  onToggle,
-}: {
-  checked: boolean
-  disabled?: boolean
-  label: string
-  onToggle: () => void
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      onClick={onToggle}
-      className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors',
-        checked ? 'border-brand-pine bg-brand-pine' : 'border-border bg-background',
-        disabled && 'cursor-not-allowed opacity-60',
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          'inline-block size-3.5 rounded-full bg-card shadow transition-transform',
-          checked ? 'translate-x-[18px]' : 'translate-x-[3px]',
-        )}
-      />
-    </button>
-  )
-}
+const SELECT_CLS =
+  'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
-// Card 1 khu: vòng tiến độ + danh sách items.
-function AreaChecklistCard({
-  area,
-  items,
-  editable,
-}: {
-  area: WorkArea
-  items: ChecklistItem[]
-  editable: boolean
-}) {
+function CreateCheckDialog({ areaId, onClose }: { areaId: string; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const toggle = useToggleItem()
+  const create = useCreateReadinessCheck()
+  const [name, setName] = useState(t('features.checklist.defaultName'))
+  const [items, setItems] = useState([{ name: '', mandatory: true }])
 
-  const done = items.filter((x) => x.done).length
-  const percent = items.length ? Math.round((done / items.length) * 100) : 0
-
-  const onToggle = async (item: ChecklistItem) => {
+  const submit = async () => {
+    const cleaned = items.filter((i) => i.name.trim())
+    if (!name.trim() || cleaned.length === 0) {
+      toast(t('features.checklist.itemRequired'), 'alert')
+      return
+    }
     try {
-      await toggle.mutateAsync({ id: item.id, done: !item.done })
-      toast(t('features.checklist.toggled', { label: item.label }))
+      await create.mutateAsync({ workAreaId: areaId, name: name.trim(), items: cleaned })
+      toast(t('features.checklist.created'))
+      onClose()
     } catch {
       toast(t('common.error'), 'alert')
     }
   }
 
   return (
-    <Card className="g-item p-5">
-      <div className="flex items-center gap-4">
-        <div
-          className="relative size-20 shrink-0"
-          role="img"
-          aria-label={`${t('features.areas.progress')}: ${percent}%`}
-        >
-          <RadialBarChart
-            width={80}
-            height={80}
-            innerRadius="68%"
-            outerRadius="100%"
-            data={[{ value: percent, fill: '#0A5C36' }]}
-            startAngle={90}
-            endAngle={-270}
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('features.checklist.createTitle')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={submit} disabled={create.isPending}>
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <div>
+          <Label htmlFor="check-name">{t('features.checklist.name')}</Label>
+          <Input id="check-name" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="flex items-center justify-between">
+          <Label>{t('features.checklist.items')}</Label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setItems((prev) => [...prev, { name: '', mandatory: true }])}
           >
-            <RadialBar dataKey="value" background={{ fill: '#E9ECEF' }} cornerRadius={10} />
-          </RadialBarChart>
-          <p className="tabular absolute inset-0 grid place-items-center text-sm font-extrabold text-foreground">
-            {percent}%
-          </p>
+            <Plus className="size-4" />
+            {t('features.checklist.addItem')}
+          </Button>
         </div>
-        <div className="min-w-0">
-          <h3 className="text-base font-bold text-foreground">{area.name}</h3>
-          <p className="lbl-mono mt-1">
-            {done}/{items.length} {t('features.checklist.itemUnit')}
-          </p>
-        </div>
-      </div>
-
-      <ul className="mt-4 space-y-3 border-t border-border pt-4">
-        {items.map((item) => (
-          <li key={item.id} className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p
-                className={cn(
-                  'text-sm',
-                  item.done ? 'text-muted-foreground line-through' : 'font-semibold text-foreground',
-                )}
-              >
-                {item.label}
-              </p>
-              {item.note && <p className="mt-0.5 text-xs text-muted-foreground">{item.note}</p>}
-            </div>
-            <Switch
-              checked={item.done}
-              label={item.label}
-              onToggle={() => void onToggle(item)}
-              disabled={!editable || toggle.isPending}
+        {items.map((item, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <Input
+              aria-label={`${t('features.checklist.itemName')} ${index + 1}`}
+              placeholder={t('features.checklist.itemName')}
+              value={item.name}
+              onChange={(e) =>
+                setItems((prev) => prev.map((x, i) => (i === index ? { ...x, name: e.target.value } : x)))
+              }
             />
-          </li>
+            <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={item.mandatory}
+                onChange={(e) =>
+                  setItems((prev) => prev.map((x, i) => (i === index ? { ...x, mandatory: e.target.checked } : x)))
+                }
+              />
+              {t('features.checklist.mandatory')}
+            </label>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t('common.delete')}
+              onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
         ))}
-      </ul>
-    </Card>
+      </div>
+    </Dialog>
   )
 }
 
 export default function ChecklistPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { user } = useAuth()
   const { data: areas = [] } = useScopedAreas()
-  const { data: items = [], isPending } = useChecklist()
-
-  // Leader: các khu mình lãnh (được toggle); committee/parish: mọi khu read-only.
-  // Memo hóa — totals dưới đây deps vào mảng này, không tạo mảng mới mỗi render.
   const isLeader = user?.role === 'LEADER'
   const myAreas = useMemo(
     () => (isLeader ? areas.filter((a) => a.leaderId === user?.id) : areas),
     [isLeader, areas, user?.id],
   )
+  const [areaId, setAreaId] = useState('')
+  const selected = myAreas.find((a) => a.id === areaId) ?? myAreas[0]
 
-  const itemsOf = (areaId: string) => items.filter((x) => x.areaId === areaId)
+  const { data: seasonReadiness, isPending: seasonPending } = useSeasonReadiness(selected?.seasonId)
+  const row = seasonReadiness?.areas.find((a) => a.workAreaId === selected?.id)
+  const { data: check, isPending: checkPending } = useReadinessCheck(row?.readinessCheckId)
 
-  const totals = useMemo(() => {
-    let done = 0
-    let total = 0
-    for (const a of myAreas) {
-      const xs = itemsOf(a.id)
-      done += xs.filter((x) => x.done).length
-      total += xs.length
+  const record = useRecordReadinessResult()
+  const recheck = useRecheckReadinessItem()
+  const confirm = useConfirmReadiness()
+  const [creating, setCreating] = useState(false)
+
+  const setResult = async (item: ReadinessItem, result: 'PASSED' | 'FAILED') => {
+    if (!check) return
+    try {
+      await record.mutateAsync({ checkId: check.id, itemId: item.id, version: check.version, result })
+      toast(t('features.checklist.saved'))
+    } catch {
+      toast(t('common.error'), 'alert')
     }
-    return { done, total }
-  }, [myAreas, items])
+  }
 
-  const allReady = totals.total > 0 && totals.done === totals.total
+  const runRecheck = async (item: ReadinessItem, result: 'PASSED' | 'FAILED') => {
+    if (!check) return
+    try {
+      await recheck.mutateAsync({ checkId: check.id, itemId: item.id, version: check.version, result })
+      toast(t('features.checklist.saved'))
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  const onConfirm = async () => {
+    if (!check) return
+    try {
+      await confirm.mutateAsync({ checkId: check.id, version: check.version })
+      toast(t('features.checklist.confirmed'))
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  const columns = useMemo(
+    () => [
+      { key: 'name', header: t('features.checklist.itemName'), render: (i: ReadinessItem) => <span className="font-semibold text-foreground">{i.name}</span> },
+      {
+        key: 'mandatory',
+        header: t('features.checklist.mandatory'),
+        render: (i: ReadinessItem) => (i.mandatory ? t('common.yes') : '—'),
+      },
+      { key: 'status', header: t('common.status'), render: (i: ReadinessItem) => <StatusTag status={i.status} /> },
+      {
+        key: 'actions',
+        header: t('common.actions'),
+        render: (i: ReadinessItem) => {
+          if (!isLeader) return <span className="text-muted-foreground">—</span>
+          if (i.status === 'PENDING') {
+            return (
+              <div className="flex justify-end gap-1">
+                <Button size="sm" variant="outline" onClick={() => setResult(i, 'PASSED')}>
+                  <Check className="size-4" /> {t('features.checklist.pass')}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setResult(i, 'FAILED')}>
+                  <X className="size-4" /> {t('features.checklist.fail')}
+                </Button>
+              </div>
+            )
+          }
+          if (i.status === 'RECHECK') {
+            return (
+              <div className="flex justify-end gap-1">
+                <Button size="sm" variant="outline" onClick={() => runRecheck(i, 'PASSED')}>
+                  <Check className="size-4" /> {t('features.checklist.recheck')}
+                </Button>
+              </div>
+            )
+          }
+          return <span className="text-muted-foreground">—</span>
+        },
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, isLeader, check?.version],
+  )
+
+  if (!myAreas.length && isLeader) return <EmptyState text={t('features.tasks.noArea')} />
 
   return (
     <div>
@@ -177,71 +225,68 @@ export default function ChecklistPage() {
         sub={isLeader ? t('features.checklist.subLeader') : t('features.checklist.subCommittee')}
       />
 
-      {isPending ? (
+      <Card className="mb-6 p-5">
+        <Label htmlFor="check-area">{t('features.checklist.area')}</Label>
+        <select
+          id="check-area"
+          className={SELECT_CLS}
+          value={selected?.id ?? ''}
+          onChange={(e) => setAreaId(e.target.value)}
+        >
+          {myAreas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </Card>
+
+      {seasonPending || checkPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
-      ) : isLeader && myAreas.length === 0 ? (
-        <EmptyState text={t('features.tasks.noArea')} />
+      ) : !selected ? null : !row?.readinessCheckId ? (
+        <div className="space-y-3">
+          <EmptyState text={t('features.checklist.noCheck')} />
+          {isLeader && (
+            <div className="flex justify-center">
+              <Button onClick={() => setCreating(true)}>
+                <Plus className="size-4" />
+                {t('features.checklist.create')}
+              </Button>
+            </div>
+          )}
+        </div>
       ) : (
         <>
-          {/* 3 StatCards */}
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard
-              label={t('features.checklist.title')}
-              value={totals.total}
-              unit="hạng mục"
-            />
-            <StatCard
-              label="Đã hoàn thành"
-              value={totals.done}
-              unit="mục xong"
-              tone="ok"
-            />
-            <StatCard
-              label="Tỷ lệ sẵn sàng"
-              value={totals.total ? Math.round((totals.done / totals.total) * 100) : 0}
-              unit="%"
-              tone={allReady ? 'ok' : 'warn'}
-            />
+          <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
+            <StatCard label={t('features.checklist.items')} value={row.totalItems} unit={t('features.checklist.itemUnit')} />
+            <StatCard label={t('features.checklist.passed')} value={row.passedItems} unit={t('features.checklist.itemUnit')} tone="ok" />
+            <StatCard label={t('features.checklist.failed')} value={row.failedItems} unit={t('features.checklist.itemUnit')} tone="alert" />
+            <StatCard label={t('features.checklist.pending')} value={row.pendingItems} unit={t('features.checklist.itemUnit')} />
           </div>
 
-          <div
-            className={cn(
-              'mb-6 flex items-center gap-4 rounded-card border p-5 shadow-xs transition-all',
-              allReady
-                ? 'border-brand-pine bg-brand-pine/10 text-brand-pine'
-                : 'border-brand-gold bg-brand-gold/10 text-amber-900 dark:text-amber-300',
-            )}
-          >
-            {allReady ? (
-              <CheckCircle2 className="size-10 shrink-0 text-brand-pine" aria-hidden />
-            ) : (
-              <span className="grid size-10 shrink-0 place-items-center text-2xl font-bold text-amber-600 dark:text-amber-400" aria-hidden>
-                ◐
-              </span>
-            )}
-            <div>
-              <p className="text-lg font-extrabold text-foreground">
-                {allReady
-                  ? t('features.checklist.ready')
-                  : t('features.checklist.preparing', { done: totals.done, total: totals.total })}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {allReady
-                  ? 'Tất cả các khu vực đã hoàn tất công tác kiểm tra, sẵn sàng cho Đại Lễ Giáng Sinh.'
-                  : 'Vui lòng tiếp tục rà soát các hạng mục còn lại theo từng phân khu phụ trách.'}
-              </p>
+          <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 p-5">
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-foreground">{check?.name ?? t('features.checklist.title')}</span>
+              {check && <StatusTag status={check.status} />}
             </div>
-          </div>
+            {isLeader && check && check.status !== 'READY' && (
+              <Button onClick={onConfirm} disabled={confirm.isPending}>
+                {t('features.checklist.confirm')}
+              </Button>
+            )}
+          </Card>
 
-          <div className="stagger grid gap-4 md:grid-cols-2">
-            {myAreas.map((a, i) => (
-              <div key={a.id} style={{ '--d': i } as CSSProperties}>
-                <AreaChecklistCard area={a} items={itemsOf(a.id)} editable={isLeader} />
-              </div>
-            ))}
-          </div>
+          {check && (
+            <DataTable
+              rows={check.items}
+              columns={columns}
+              emptyText={t('features.checklist.itemRequired')}
+            />
+          )}
         </>
       )}
+
+      {creating && selected && <CreateCheckDialog areaId={selected.id} onClose={() => setCreating(false)} />}
     </div>
   )
 }

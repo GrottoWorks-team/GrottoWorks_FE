@@ -8,30 +8,19 @@
 // giờ công tuần, checklist…) — xem BE-gap-requests-activity-flows.md §2 — nên
 // dashboard KHÔNG hiển thị số giả, chỉ hiện phần suy ra được từ dữ liệu thật.
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useScopedAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import { useCommunities } from '@/features/communities/api'
-import type { ActivityLog, WorkArea } from '@/types'
+import type { WorkArea } from '@/types'
 
 export const dashboardKeys = {
   activity: ['activity'] as const,
 }
 
-// BE chưa có Reporting service → `/api/activity` chưa tồn tại. Để false để không
-// gọi 404 trên MỌI trang (mọi trang đều render NotificationsDropdown).
-const ACTIVITY_API_AVAILABLE = false
-
-// 50 dòng activity mới nhất (GET /api/activity) — bật khi BE có endpoint.
-export function useActivity() {
-  return useQuery({
-    queryKey: dashboardKeys.activity,
-    enabled: ACTIVITY_API_AVAILABLE,
-    queryFn: () => api<ActivityLog[]>('/activity'),
-  })
-}
+// Activity log đã có API thật ở NotificationAudit (`/api/v1/activity-logs`) và
+// được dùng qua `useActivityLogs` ở trang /parish/activity. Dashboard không gọi
+// endpoint riêng nữa.
 
 export interface AreaCoverage {
   total: number

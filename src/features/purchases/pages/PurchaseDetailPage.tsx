@@ -13,13 +13,14 @@ import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
-import { viDateTime } from '@/lib/format'
+import { viDateTime, viDate } from '@/lib/format'
 import {
   usePurchaseRequest,
   usePurchaseRequestHistory,
   useSendForApproval,
   useApproveRequest,
   useRejectRequest,
+  useApproveCostOverrun,
   type StateChangeDto,
 } from '../api'
 
@@ -39,6 +40,16 @@ export default function PurchaseDetailPage() {
   const send = useSendForApproval()
   const approve = useApproveRequest()
   const reject = useRejectRequest()
+  const approveOverrun = useApproveCostOverrun()
+
+  const onApproveOverrun = async (purchaseId: string, version: number) => {
+    try {
+      await approveOverrun.mutateAsync({ purchaseId, version })
+      toast(t('features.purchases.overrunApproved'))
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
 
   const [approveOpen, setApproveOpen] = useState(false)
   const [rejectOpen, setRejectOpen] = useState(false)
@@ -280,8 +291,48 @@ export default function PurchaseDetailPage() {
           </Card>
         </div>
 
-        {/* Right Column (1 col): Timeline History F8 */}
+        {/* Right Column (1 col): Purchases + Timeline History F8 */}
         <div className="space-y-6">
+          {request.purchases && request.purchases.length > 0 && (
+            <Card id="purchase-purchases-card" className="p-6">
+              <div className="flex items-center gap-2 border-b border-border pb-3">
+                <Package className="size-5 text-primary" />
+                <h2 className="text-base font-semibold text-foreground">
+                  {t('features.purchases.purchasesTitle')}
+                </h2>
+              </div>
+              <div className="mt-3 space-y-3">
+                {request.purchases.map((purchase) => (
+                  <div key={purchase.id} className="rounded-md border border-border/60 p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-foreground">#{purchase.id.slice(0, 8)}</span>
+                      <StatusTag status={purchase.status} />
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {purchase.supplierName || '—'} · {viDate(purchase.purchaseDate)} ·{' '}
+                      {purchase.totalCost.amount.toLocaleString()} ₫
+                    </p>
+                    {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <span className="text-xs font-semibold text-status-dangerText">
+                          {t('features.purchases.overrun')}
+                        </span>
+                        {user?.role === 'LEADER' && (
+                          <Button
+                            size="sm"
+                            onClick={() => onApproveOverrun(purchase.id, purchase.version)}
+                            disabled={approveOverrun.isPending}
+                          >
+                            {t('features.purchases.approveOverrun')}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
           <Card id="purchase-history-timeline-card" className="p-6">
             <div className="flex items-center gap-2 border-b border-border pb-3">
               <History className="size-5 text-primary" />

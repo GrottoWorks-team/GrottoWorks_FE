@@ -1,256 +1,300 @@
-// Trang chấm công (route /leader/timesheets) — leader khu mình:
-// TNV thuộc khu = assignees của tasks khu; lọc volunteerId ∈ set đó.
-// Bảng: TNV, ngày, giờ vào/ra, giờ (tabular), StatusTag; row PENDING_FIX
-// có nút "Xử lý" mở CorrectionDialog. Thêm bản ghi tay qua TimesheetFormDialog.
-// StatCard tổng giờ + BarChart giờ theo ngày (7 ngày cuối của dữ liệu).
+// Chấm công (/leader/timesheets) — BE TaskExecution attendance.
+// Leader duyệt đơn xin check-in, đơn sửa giờ và xem tổng giờ công theo khu.
+// Check-in/out & gửi đơn sửa thuộc app mobile nên web không tạo bản ghi.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import { Plus, Wrench } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Dialog } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
-import { useTasks } from '@/features/tasks/api'
 import { useAuth } from '@/lib/auth'
-import { viDate } from '@/lib/format'
-import { useTimesheets } from '../api'
-import { SELECT_CLS, TimesheetFormDialog } from './TimesheetFormDialog'
-import { CorrectionDialog } from '../components/CorrectionDialog'
-import type { Timesheet } from '@/types'
+import { viDateTime } from '@/lib/format'
+import {
+  useAttendanceCorrections,
+  useAttendanceRequests,
+  useReviewAttendanceRequest,
+  useReviewCorrection,
+  useWorkingHours,
+} from '../api'
+import type { AttendanceCorrection, AttendanceRequest, WorkingHourSummary } from '@/types'
 
-// View-row: cộng tên TNV vào row để DataTable search theo tên client-side.
-type Row = Timesheet & { volunteerName: string }
+const SELECT_CLS =
+  'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
+
+function ReviewDialog({
+  title,
+  onClose,
+  onSubmit,
+}: {
+  title: string
+  onClose: () => void
+  onSubmit: (note: string) => Promise<void>
+}) {
+  const { t } = useTranslation()
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const submit = async () => {
+    setBusy(true)
+    try {
+      await onSubmit(note)
+      onClose()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={submit} disabled={busy}>
+            {t('common.confirm')}
+          </Button>
+        </>
+      }
+    >
+      <Label htmlFor="review-note">{t('features.timesheets.reviewNote')}</Label>
+      <Input id="review-note" value={note} onChange={(e) => setNote(e.target.value)} />
+    </Dialog>
+  )
+}
 
 export default function TimesheetPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { user } = useAuth()
   const { data: areas = [] } = useScopedAreas()
   const { data: users = [] } = useUsers()
-  const { data: tasks = [] } = useTasks()
-  const { data: timesheets = [], isPending } = useTimesheets()
 
-  // Khu của leader: 1 khu → cố định; nhiều khu → select (default khu đầu).
-  const myAreas = areas.filter((a) => a.leaderId === user?.id)
-  const [selectedArea, setSelectedArea] = useState('')
-  const areaId =
-    myAreas.length === 1 ? myAreas[0].id : myAreas.length > 1 ? selectedArea || myAreas[0].id : ''
-
-  // TNV của khu = assignees của mọi task khu đang chọn.
-  const areaVolunteerIds = useMemo(
-    () => new Set(tasks.filter((x) => x.areaId === areaId).flatMap((x) => x.assignees)),
-    [tasks, areaId],
+  const myAreas = useMemo(
+    () => (user?.role === 'LEADER' ? areas.filter((a) => a.leaderId === user.id) : areas),
+    [areas, user],
   )
-  const areaVolunteers = useMemo(
-    () => users.filter((u) => areaVolunteerIds.has(u.id)),
-    [users, areaVolunteerIds],
-  )
-  const volunteerName = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
+  const [areaId, setAreaId] = useState('')
+  const selected = myAreas.find((a) => a.id === areaId) ?? myAreas[0]
 
-  const rows = useMemo(
-    () =>
-      timesheets
-        .filter((x) => areaVolunteerIds.has(x.volunteerId))
-        .map((x) => ({ ...x, volunteerName: volunteerName(x.volunteerId) })),
-    [timesheets, areaVolunteerIds, users],
-  )
+  const { data: requests = [], isPending: requestsPending } = useAttendanceRequests(selected?.id)
+  const { data: corrections = [], isPending: correctionsPending } = useAttendanceCorrections(selected?.id)
+  const { data: hours = [] } = useWorkingHours(selected?.id)
+  const reviewRequest = useReviewAttendanceRequest()
+  const reviewCorrection = useReviewCorrection()
 
-  const totalHours = useMemo(() => rows.reduce((s, x) => s + x.hours, 0), [rows])
+  const [rejecting, setRejecting] = useState<
+    { kind: 'request'; item: AttendanceRequest } | { kind: 'correction'; item: AttendanceCorrection } | null
+  >(null)
 
-  // Giờ theo ngày: group by date, lấy 7 ngày cuối của dữ liệu (tuần gần nhất).
-  const chartData = useMemo(() => {
-    const byDate = new Map<string, number>()
-    for (const x of rows) byDate.set(x.date, (byDate.get(x.date) ?? 0) + x.hours)
-    return [...byDate.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-7)
-      .map(([date, hours]) => ({ date: viDate(date), hours }))
-  }, [rows])
+  const userName = (id: string) => users.find((u) => u.id === id)?.name ?? id.slice(0, 8)
 
-  const [creating, setCreating] = useState(false)
-  const [fixingId, setFixingId] = useState<string | null>(null)
-  // Theo id — data luôn tươi sau mutation.
-  const fixing = fixingId ? (timesheets.find((x) => x.id === fixingId) ?? null) : null
+  const approveRequest = async (request: AttendanceRequest) => {
+    try {
+      await reviewRequest.mutateAsync({ requestId: request.id, approve: true, version: request.version })
+      toast(t('features.timesheets.approvedReq'))
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
 
-  const columns = useMemo(
+  const approveCorrection = async (correction: AttendanceCorrection) => {
+    try {
+      await reviewCorrection.mutateAsync({
+        correctionId: correction.id,
+        approve: true,
+        version: correction.version,
+      })
+      toast(t('features.timesheets.approvedCorr'))
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  const requestColumns = useMemo(
     () => [
       {
-        key: 'volunteerName',
-        header: t('features.timesheets.volunteer'),
-        render: (x: Row) => <span className="font-semibold">{x.volunteerName}</span>,
+        key: 'requestedAt',
+        header: t('features.timesheets.requestedAt'),
+        render: (r: AttendanceRequest) => <span className="tabular">{viDateTime(r.requestedAt)}</span>,
       },
+      { key: 'type', header: t('common.status'), render: (r: AttendanceRequest) => r.type },
+      { key: 'note', header: t('features.purchases.note'), render: (r: AttendanceRequest) => r.note || '—' },
+      { key: 'status', header: t('common.status'), render: (r: AttendanceRequest) => <StatusTag status={r.status} /> },
       {
-        key: 'date',
-        header: t('features.timesheets.date'),
-        render: (x: Row) => <span className="tabular">{viDate(x.date)}</span>,
-      },
-      {
-        key: 'checkIn',
-        header: t('features.timesheets.checkIn'),
-        render: (x: Row) => <span className="tabular">{x.checkIn}</span>,
-      },
-      {
-        key: 'checkOut',
-        header: t('features.timesheets.checkOut'),
-        render: (x: Row) => (
-          <span className="tabular">{x.checkOut ?? <span className="text-muted-foreground">—</span>}</span>
+        key: 'actions',
+        header: t('common.actions'),
+        render: (r: AttendanceRequest) => (
+          <div className="flex justify-end gap-1">
+            <Button size="sm" variant="outline" onClick={() => approveRequest(r)}>
+              <Check className="size-4" /> {t('features.timesheets.approve')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setRejecting({ kind: 'request', item: r })}>
+              <X className="size-4" /> {t('features.timesheets.reject')}
+            </Button>
+          </div>
         ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t],
+  )
+
+  const correctionColumns = useMemo(
+    () => [
+      {
+        key: 'volunteer',
+        header: t('features.timesheets.volunteer'),
+        render: (c: AttendanceCorrection) => userName(c.requestedBy),
+      },
+      {
+        key: 'original',
+        header: t('features.timesheets.original'),
+        render: (c: AttendanceCorrection) => (
+          <span className="tabular">
+            {viDateTime(c.originalCheckInAt)} → {c.originalCheckOutAt ? viDateTime(c.originalCheckOutAt) : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'requested',
+        header: t('features.timesheets.requested'),
+        render: (c: AttendanceCorrection) => (
+          <span className="tabular">
+            {viDateTime(c.requestedCheckInAt)} → {viDateTime(c.requestedCheckOutAt)}
+          </span>
+        ),
+      },
+      { key: 'reason', header: t('features.timesheets.reason'), render: (c: AttendanceCorrection) => c.reason },
+      { key: 'status', header: t('common.status'), render: (c: AttendanceCorrection) => <StatusTag status={c.status} /> },
+      {
+        key: 'actions',
+        header: t('common.actions'),
+        render: (c: AttendanceCorrection) => (
+          <div className="flex justify-end gap-1">
+            <Button size="sm" variant="outline" onClick={() => approveCorrection(c)}>
+              <Check className="size-4" /> {t('features.timesheets.approve')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setRejecting({ kind: 'correction', item: c })}>
+              <X className="size-4" /> {t('features.timesheets.reject')}
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, users],
+  )
+
+  const hoursColumns = useMemo(
+    () => [
+      {
+        key: 'volunteer',
+        header: t('features.timesheets.volunteer'),
+        render: (h: WorkingHourSummary) => userName(h.volunteerId),
       },
       {
         key: 'hours',
         header: t('features.timesheets.hours'),
         align: 'right' as const,
-        render: (x: Row) => <span className="tabular">{x.hours}</span>,
-      },
-      {
-        key: 'status',
-        header: t('common.status'),
-        // Theo brief chấm công: OPEN ◇ soft (ca chưa bấm ra), PENDING_FIX ✕ straw.
-        render: (x: Row) => (
-          <StatusTag
-            status={x.status}
-            glyph={x.status === 'OPEN' ? '◇' : x.status === 'PENDING_FIX' ? '✕' : undefined}
-            tone={x.status === 'OPEN' ? 'soft' : undefined}
-          />
-        ),
-      },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (x: Row) =>
-          x.status === 'PENDING_FIX' ? (
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={t('features.timesheets.handle')}
-              onClick={() => setFixingId(x.id)}
-            >
-              <Wrench className="size-4" />
-              {t('features.timesheets.handle')}
-            </Button>
-          ) : null,
+        render: (h: WorkingHourSummary) => <span className="tabular">{h.approvedHours}</span>,
       },
     ],
-    [t],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, users],
   )
 
-  const pendingFixCount = useMemo(
-    () => rows.filter((x) => x.status === 'PENDING_FIX').length,
-    [rows],
-  )
+  const totalHours = hours.reduce((sum, h) => sum + Number(h.approvedHours), 0)
+
+  if (!myAreas.length) return <EmptyState text={t('features.tasks.noArea')} />
 
   return (
     <div>
-      <PageHeader
-        title={t('features.timesheets.title')}
-        sub={
-          areaId
-            ? `${t('features.tasks.area')}: ${areas.find((a) => a.id === areaId)?.name ?? '—'}`
-            : t('features.timesheets.sub')
-        }
-        actions={
-          areaId && (
-            <>
-              {myAreas.length > 1 && (
-                <select
-                  aria-label={t('features.tasks.area')}
-                  className={`${SELECT_CLS} w-48`}
-                  value={areaId}
-                  onChange={(e) => setSelectedArea(e.target.value)}
-                >
-                  {myAreas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <Button onClick={() => setCreating(true)} disabled={areaVolunteers.length === 0}>
-                <Plus className="size-4" />
-                {t('features.timesheets.create')}
-              </Button>
-            </>
-          )
-        }
-      />
+      <PageHeader title={t('features.timesheets.title')} sub={t('features.timesheets.sub')} />
 
-      {isPending ? (
+      <Card className="mb-6 p-5">
+        <Label htmlFor="attendance-area">{t('features.allocations.area')}</Label>
+        <select
+          id="attendance-area"
+          className={SELECT_CLS}
+          value={selected?.id ?? ''}
+          onChange={(e) => setAreaId(e.target.value)}
+        >
+          {myAreas.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.name}
+            </option>
+          ))}
+        </select>
+      </Card>
+
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard label={t('features.timesheets.pendingRequests')} value={requests.length} unit={t('features.timesheets.requestUnit')} />
+        <StatCard label={t('features.timesheets.pendingCorrections')} value={corrections.length} unit={t('features.timesheets.requestUnit')} />
+        <StatCard label={t('features.timesheets.totalApprovedHours')} value={totalHours} unit={t('features.timesheets.hours')} tone="ok" />
+      </div>
+
+      <h2 className="mb-3 font-semibold text-foreground">{t('features.timesheets.requestsTitle')}</h2>
+      {requestsPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
-      ) : user?.role === 'LEADER' && myAreas.length === 0 ? (
-        <EmptyState text={t('features.tasks.noArea')} />
       ) : (
-        <>
-          {/* Top 3 StatCards */}
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <StatCard
-              label={t('features.timesheets.totalHours')}
-              value={totalHours}
-              unit={t('features.volunteers.hourUnit')}
-              tone="ok"
-            />
-            <StatCard
-              label="Số ca đóng góp"
-              value={rows.length}
-              unit="ca"
-            />
-            <StatCard
-              label="Yêu cầu sửa giờ"
-              value={pendingFixCount}
-              unit="yêu cầu"
-              tone={pendingFixCount > 0 ? 'alert' : 'ok'}
-            />
-          </div>
-
-          {/* 7 Days Bar Chart */}
-          <Card className="mb-6 p-5">
-            <p className="lbl-mono mb-3 text-foreground">{t('features.timesheets.hoursByDay')}</p>
-            <div className="h-48">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -16 }}>
-                  <CartesianGrid stroke="#E9ECEF" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#6C757D' }} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: '#6C757D' }} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ fill: '#F1F5F2' }} />
-                  <Bar dataKey="hours" fill="#0A5C36" radius={[6, 6, 0, 0]} maxBarSize={32} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          <DataTable
-            rows={rows}
-            columns={columns}
-            searchKeys={['volunteerName']}
-            filters={[{ key: 'status', options: ['OPEN', 'CLOSED', 'PENDING_FIX'] }]}
-            emptyText={t('features.timesheets.empty')}
-          />
-        </>
+        <DataTable rows={requests} columns={requestColumns} emptyText={t('features.timesheets.noRequests')} />
       )}
 
-      {creating && areaId && (
-        <TimesheetFormDialog
-          volunteers={areaVolunteers}
-          onClose={() => setCreating(false)}
-        />
+      <h2 className="mb-3 mt-8 font-semibold text-foreground">{t('features.timesheets.correctionsTitle')}</h2>
+      {correctionsPending ? (
+        <p className="lbl-mono">{t('common.loading')}</p>
+      ) : (
+        <DataTable rows={corrections} columns={correctionColumns} emptyText={t('features.timesheets.noCorrections')} />
       )}
-      {fixing && fixing.correctionRequest != null && (
-        <CorrectionDialog
-          item={fixing}
-          volunteerName={volunteerName(fixing.volunteerId)}
-          onClose={() => setFixingId(null)}
+
+      <h2 className="mb-3 mt-8 font-semibold text-foreground">{t('features.timesheets.hoursTitle')}</h2>
+      <DataTable rows={hours} columns={hoursColumns} emptyText={t('features.timesheets.noHours')} />
+
+      {rejecting && (
+        <ReviewDialog
+          title={
+            rejecting.kind === 'request'
+              ? t('features.timesheets.rejectReqTitle')
+              : t('features.timesheets.rejectCorrTitle')
+          }
+          onClose={() => setRejecting(null)}
+          onSubmit={async (note) => {
+            try {
+              if (rejecting.kind === 'request') {
+                await reviewRequest.mutateAsync({
+                  requestId: rejecting.item.id,
+                  approve: false,
+                  version: rejecting.item.version,
+                  reviewNote: note,
+                })
+                toast(t('features.timesheets.rejectedReq'))
+              } else {
+                await reviewCorrection.mutateAsync({
+                  correctionId: rejecting.item.id,
+                  approve: false,
+                  version: rejecting.item.version,
+                  reviewNote: note,
+                })
+                toast(t('features.timesheets.rejectedCorr'))
+              }
+            } catch {
+              toast(t('common.error'), 'alert')
+            }
+          }}
         />
       )}
     </div>

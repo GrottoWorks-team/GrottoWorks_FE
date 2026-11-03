@@ -16,6 +16,7 @@ import { Snowfall } from '@/components/shared/Snowfall'
 import { WinterBackdrop } from '@/components/shared/WinterBackdrop'
 import { JoinOptions } from '@/components/auth/JoinOptions'
 import { cn } from '@/lib/utils'
+import { ApiError } from '@/lib/api'
 import { useCommunities } from '@/features/communities/api'
 import { useSkills } from '@/features/tasks/api'
 import type { AreaType, RegistrationKind } from '@/types'
@@ -92,8 +93,12 @@ export default function RegisterPage() {
       })
       setDone(true)
       toast(t('register.successToast'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'REGISTRATION_API_MISSING') {
+        toast(t('register.apiMissing'), 'alert')
+      } else {
+        toast(t('common.error'), 'alert')
+      }
     }
   }
 

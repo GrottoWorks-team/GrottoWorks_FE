@@ -1,61 +1,131 @@
-// Timesheets domain — query key ['timesheets'] (= db key + URL path).
-// Duyệt/từ chối chỉnh giờ: mock PATCH shallow-merge giữ key null
-// (handlers.ts) nên gửi correctionRequest: null để xoá field.
+// Chấm công — BE TaskExecution `/attendance-*`, `/working-hours`.
+// Web (Leader) chỉ duyệt đơn: check-in request, correction request, và xem giờ
+// công theo khu. Check-in/out và gửi đơn sửa thuộc app mobile (role VOLUNTEER).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import type { Timesheet } from '@/types'
+import { api, apiPaged } from '@/lib/api'
+import type {
+  AttendanceCorrection,
+  AttendanceCorrectionStatus,
+  AttendanceRequest,
+  AttendanceRequestStatus,
+  Timesheet,
+  WorkingHourSummary,
+} from '@/types'
 
-export const timesheetKeys = {
-  all: ['timesheets'] as const,
+export const attendanceKeys = {
+  requests: (areaId: string, status: string) => ['attendance', 'requests', areaId, status] as const,
+  corrections: (areaId: string, status: string) => ['attendance', 'corrections', areaId, status] as const,
+  hours: (areaId: string) => ['attendance', 'hours', areaId] as const,
 }
 
-export function useTimesheets(volunteerId?: string) {
+/** Danh sách đơn xin check-in của khu (mặc định PENDING). */
+export function useAttendanceRequests(
+  areaId?: string,
+  status: AttendanceRequestStatus = 'PENDING',
+) {
   return useQuery({
-    queryKey: timesheetKeys.all,
-    queryFn: () => api<Timesheet[]>('/timesheets'),
-    select: volunteerId ? (ts) => ts.filter((x) => x.volunteerId === volunteerId) : undefined,
+    queryKey: attendanceKeys.requests(areaId ?? '', status),
+    queryFn: async () => {
+      const res = await apiPaged<AttendanceRequest>(
+        `/api/v1/work-areas/${areaId}/attendance-requests?status=${status}&size=100`,
+      )
+      return res.data
+    },
+    enabled: Boolean(areaId),
   })
 }
 
-// correctionRequest: null = xoá field (mock PATCH shallow-merge giữ key null).
-type TimesheetPatch = Partial<Omit<Timesheet, 'correctionRequest'>> & {
-  correctionRequest?: string | null
-}
-
-function useTimesheetMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
+export function useReviewAttendanceRequest() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: fn,
-    onSuccess: () => qc.invalidateQueries({ queryKey: timesheetKeys.all }),
+    mutationFn: ({
+      requestId,
+      approve,
+      version,
+      reviewNote,
+    }: {
+      requestId: string
+      approve: boolean
+      version: number
+      reviewNote?: string
+    }) =>
+      api<AttendanceRequest>(
+        `/api/v1/attendance-requests/${requestId}/${approve ? 'approve' : 'reject'}`,
+        {
+          method: 'POST',
+          headers: { 'If-Match': `"${version}"` },
+          body: JSON.stringify({ version, reviewNote: reviewNote || null }),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance'] }),
   })
 }
 
-const patch = (id: string, body: TimesheetPatch) =>
-  api<Timesheet>(`/timesheets/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
-
-export function useCreateTimesheet() {
-  return useTimesheetMutation((data: Omit<Timesheet, 'id'>) =>
-    api<Timesheet>('/timesheets', { method: 'POST', body: JSON.stringify(data) }),
-  )
+export function useAttendanceCorrections(
+  areaId?: string,
+  status: AttendanceCorrectionStatus = 'PENDING',
+) {
+  return useQuery({
+    queryKey: attendanceKeys.corrections(areaId ?? '', status),
+    queryFn: async () => {
+      const res = await apiPaged<AttendanceCorrection>(
+        `/api/v1/work-areas/${areaId}/attendance-corrections?status=${status}&size=100`,
+      )
+      return res.data
+    },
+    enabled: Boolean(areaId),
+  })
 }
 
-export function useUpdateTimesheet() {
-  return useTimesheetMutation(({ id, ...data }: TimesheetPatch & { id: string }) =>
-    patch(id, data),
-  )
+export function useReviewCorrection() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      correctionId,
+      approve,
+      version,
+      reviewNote,
+    }: {
+      correctionId: string
+      approve: boolean
+      version: number
+      reviewNote?: string
+    }) =>
+      api<AttendanceCorrection>(
+        `/api/v1/attendance-corrections/${correctionId}/${approve ? 'approve' : 'reject'}`,
+        {
+          method: 'POST',
+          headers: { 'If-Match': `"${version}"` },
+          body: JSON.stringify({ version, reviewNote: reviewNote || null }),
+        },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance'] }),
+  })
 }
 
-// Duyệt yêu cầu chỉnh: ghi giờ mới + chốt CLOSED + xoá yêu cầu sửa.
-export function useApproveCorrection() {
-  return useTimesheetMutation(({ id, correctedHours }: { id: string; correctedHours: number }) =>
-    patch(id, { hours: correctedHours, status: 'CLOSED', correctionRequest: null }),
-  )
+/** Tổng giờ công đã duyệt của khu (`GET /work-areas/{id}/working-hours`). */
+export function useWorkingHours(areaId?: string) {
+  return useQuery({
+    queryKey: attendanceKeys.hours(areaId ?? ''),
+    queryFn: async () => {
+      const res = await api<{ data?: WorkingHourSummary[] } | WorkingHourSummary[]>(
+        `/api/v1/work-areas/${areaId}/working-hours`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    enabled: Boolean(areaId),
+  })
 }
 
-// Từ chối: xoá yêu cầu sửa và đóng ca luôn (không chỉnh giờ) → row khỏi
-// PENDING_FIX, nút "Xử lý" tự ẩn.
-export function useRejectCorrection() {
-  return useTimesheetMutation((id: string) =>
-    patch(id, { correctionRequest: null, status: 'CLOSED' }),
-  )
+/**
+ * Web không còn màn hình timesheet: BE chỉ cho VOLUNTEER đọc `/users/me/attendance`
+ * và web không có role này. Giữ hook trả rỗng để trang Profile/hồ sơ TNV không
+ * gọi path legacy `/timesheets`.
+ */
+export function useTimesheets(_volunteerId?: string) {
+  return useQuery({
+    queryKey: ['timesheets'],
+    queryFn: async (): Promise<Timesheet[]> => [],
+    staleTime: Infinity,
+  })
 }

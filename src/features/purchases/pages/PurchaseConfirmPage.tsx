@@ -1,354 +1,264 @@
-// Xác nhận mua (route /material-officer/purchases-confirm): request APPROVED chờ xử
-// lý → gán người mua (TNV, không ADMIN/COMMITTEE) + tạo hồ sơ giao hàng
-// (qty, cost thực tế, supplier, date, hoá đơn objectURL preview). Tạo record
-// cộng purchased → received tăng (useCreatePurchaseRecord). Bảng dưới: hồ sơ
-// đã/chưa xác nhận; xác nhận = PATCH confirmed=true.
+// Nhận hàng (/material-officer/purchases-confirm) — MO xác nhận số usable/unusable
+// của từng lần mua; kho chỉ tăng sau bước này (BR-26). Dữ liệu mua nằm trong
+// chi tiết đề nghị mua (`purchases`), không có endpoint list riêng.
 import { useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Check, FilePlus2 } from 'lucide-react'
+import { CheckCircle2, MessageSquareWarning } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { StatCard } from '@/components/shared/StatCard'
+import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useScopedAreas } from '@/features/areas/api'
-import { useMaterials } from '@/features/materials/api'
-import { useUsers } from '@/features/users/api'
-import { useAuth } from '@/lib/auth'
+import {
+  useConfirmPurchaseDelivery,
+  usePurchaseRequest,
+  usePurchaseRequests,
+  useRequestPurchaseInfo,
+  type PurchaseDto,
+} from '../api'
 import { viDate } from '@/lib/format'
-import { shortage } from '@/types'
-import type { Material, PurchaseRecord, PurchaseRequest } from '@/types'
-import { useConfirmPurchase, useCreatePurchaseRecord, useMockPurchaseRequests, usePurchaseRecords } from '../api'
 
-const SELECT_CLS =
-  'flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
+const CONFIRMABLE = new Set(['SUBMITTED', 'NEEDS_INFO'])
 
-const num = (key: string, min = 0) =>
-  z.preprocess(
-    (v) => (v === '' || v == null ? undefined : v),
-    z.coerce.number({ invalid_type_error: key }).min(min, key).int(min ? key : undefined),
-  )
-
-// Dialog tạo hồ sơ giao hàng cho 1 request APPROVED.
-function RecordDialog({ request, materials, onClose }: {
-  request: PurchaseRequest
-  materials: Material[] // vật tư của request
-  onClose: () => void
-}) {
+function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data: users = [] } = useUsers()
-  const create = useCreatePurchaseRecord()
-  const [photo, setPhoto] = useState('')
+  const confirm = useConfirmPurchaseDelivery()
+  const [lines, setLines] = useState<Record<string, { usable: string; unusable: string }>>(() =>
+    Object.fromEntries(
+      purchase.items.map((item) => [
+        item.id,
+        { usable: String(item.purchasedQuantity), unusable: '0' },
+      ]),
+    ),
+  )
 
-  const schema = z.object({
-    materialId: z.string().min(1, 'features.purchases.pickRequired'),
-    qty: num('features.purchases.numberInvalid', 1),
-    cost: num('features.purchases.numberInvalid'),
-    supplier: z.string().trim().min(1, 'features.purchases.supplierRequired'),
-    date: z.string().min(1, 'features.purchases.dateRequired'),
-    buyerId: z.string().min(1, 'features.purchases.buyerRequired'),
-  })
-  type FormData = z.infer<typeof schema>
-
-  const first = materials.find((m) => m.id === request.materialIds[0]) ?? materials[0]
-  const defaultQty = (request.qtys?.[first?.id ?? ''] ?? (first ? shortage(first) : 0)) || 1
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      materialId: first?.id ?? '',
-      qty: defaultQty,
-      cost: (first?.estUnitPrice ?? 0) * defaultQty,
-      supplier: '',
-      date: new Date().toISOString().slice(0, 10),
-      buyerId: '',
-    },
-  })
-
-  // ADMIN/COMMITTEE không mua hộ — loại khỏi select (pattern Task 6).
-  const volunteers = users.filter((u) => u.role !== 'PARISH' && u.role !== 'COMMUNITY')
-
-  const onSubmit = async (data: FormData) => {
+  const submit = async () => {
     try {
-      await create.mutateAsync({ requestId: request.id, ...data, receiptPhoto: photo || undefined, confirmed: false })
-      toast(t('features.purchases.recordCreated'))
+      await confirm.mutateAsync({
+        purchaseId: purchase.id,
+        version: purchase.version,
+        items: purchase.items.map((item) => ({
+          purchaseItemId: item.id,
+          receivedUsableQuantity: Number(lines[item.id]?.usable ?? 0),
+          receivedUnusableQuantity: Number(lines[item.id]?.unusable ?? 0),
+        })),
+      })
+      toast(t('features.purchases.deliveryConfirmed'))
       onClose()
     } catch {
       toast(t('common.error'), 'alert')
     }
   }
 
-  const err = (msg?: string) =>
-    msg ? <p className="mt-1 text-xs font-semibold text-destructive">{t(msg)}</p> : null
-
   return (
     <Dialog
       open
       onClose={onClose}
-      size="md"
-      title={t('features.purchases.recordTitle', { code: request.id })}
+      title={t('features.purchases.deliveryTitle')}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="record-form" disabled={isSubmitting}>
+          <Button onClick={submit} disabled={confirm.isPending}>
             {t('common.save')}
           </Button>
         </>
       }
     >
-      <form id="record-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <div>
-          <Label htmlFor="record-material">{t('features.purchases.material')}</Label>
-          <select id="record-material" className={SELECT_CLS} {...register('materialId')}>
-            <option value="">{t('features.tasks.selectPlaceholder')}</option>
-            {materials.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name} ({m.unit})
-              </option>
-            ))}
-          </select>
-          {err(errors.materialId?.message)}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="record-qty">{t('features.purchases.qty')}</Label>
-            <Input id="record-qty" type="number" min={1} step={1} {...register('qty')} />
-            {err(errors.qty?.message)}
+      <div className="space-y-3">
+        {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
+          <p className="rounded-md bg-status-dangerBg p-2 text-xs font-semibold text-status-dangerText">
+            {t('features.purchases.overrunPending')}
+          </p>
+        )}
+        {purchase.items.map((item) => (
+          <div key={item.id} className="rounded-md border border-border/60 p-3">
+            <p className="text-sm font-semibold text-foreground">
+              {item.materialName} <span className="text-xs font-normal text-muted-foreground">({item.unit})</span>
+            </p>
+            <p className="mb-2 text-xs text-muted-foreground">
+              {t('features.purchases.boughtQty', { n: item.purchasedQuantity })}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label htmlFor={`usable-${item.id}`}>{t('features.purchases.usable')}</Label>
+                <Input
+                  id={`usable-${item.id}`}
+                  type="number"
+                  min={0}
+                  value={lines[item.id]?.usable ?? ''}
+                  onChange={(e) =>
+                    setLines((prev) => ({ ...prev, [item.id]: { ...prev[item.id], usable: e.target.value } }))
+                  }
+                />
+              </div>
+              <div>
+                <Label htmlFor={`unusable-${item.id}`}>{t('features.purchases.unusable')}</Label>
+                <Input
+                  id={`unusable-${item.id}`}
+                  type="number"
+                  min={0}
+                  value={lines[item.id]?.unusable ?? '0'}
+                  onChange={(e) =>
+                    setLines((prev) => ({ ...prev, [item.id]: { ...prev[item.id], unusable: e.target.value } }))
+                  }
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <Label htmlFor="record-cost">{t('features.purchases.cost')}</Label>
-            <Input id="record-cost" type="number" min={0} step={1000} {...register('cost')} />
-            {err(errors.cost?.message)}
-          </div>
-        </div>
-        <div>
-          <Label htmlFor="record-supplier">{t('features.purchases.supplier')}</Label>
-          <Input id="record-supplier" {...register('supplier')} />
-          {err(errors.supplier?.message)}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="record-date">{t('features.purchases.date')}</Label>
-            <Input id="record-date" type="date" {...register('date')} />
-            {err(errors.date?.message)}
-          </div>
-          <div>
-            <Label htmlFor="record-buyer">{t('features.purchases.buyer')}</Label>
-            <select id="record-buyer" className={SELECT_CLS} {...register('buyerId')}>
-              <option value="">{t('features.tasks.selectPlaceholder')}</option>
-              {volunteers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {err(errors.buyerId?.message)}
-          </div>
-        </div>
-        <div>
-          <Label htmlFor="record-photo">{t('features.purchases.receipt')}</Label>
-          <input
-            id="record-photo"
-            type="file"
-            accept="image/*"
-            className="mt-1 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-primary-foreground"
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              setPhoto(f ? URL.createObjectURL(f) : '')
-            }}
-          />
-          {/* objectURL preview — demo không upload thật (chỉ tồn tại trong phiên). */}
-          {photo && <img src={photo} alt={t('features.purchases.receipt')} className="mt-2 max-h-32 rounded-card border border-border" />}
-        </div>
-      </form>
+        ))}
+      </div>
     </Dialog>
+  )
+}
+
+function RequestInfoDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const request = useRequestPurchaseInfo()
+  const [reason, setReason] = useState('')
+
+  const submit = async () => {
+    if (!reason.trim()) {
+      toast(t('features.purchases.reasonRequired'), 'alert')
+      return
+    }
+    try {
+      await request.mutateAsync({ purchaseId: purchase.id, version: purchase.version, reason: reason.trim() })
+      toast(t('features.purchases.infoRequested'))
+      onClose()
+    } catch {
+      toast(t('common.error'), 'alert')
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('features.purchases.requestInfoTitle')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button onClick={submit} disabled={request.isPending}>
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <Label htmlFor="info-reason">{t('features.purchases.reason')}</Label>
+      <Input id="info-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
+    </Dialog>
+  )
+}
+
+function PurchaseRow({ purchase }: { purchase: PurchaseDto }) {
+  const { t } = useTranslation()
+  const [confirming, setConfirming] = useState(false)
+  const [requesting, setRequesting] = useState(false)
+  const canAct = CONFIRMABLE.has(purchase.status)
+
+  return (
+    <Card className="p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm">
+          <span className="font-semibold text-foreground">#{purchase.id.slice(0, 8)}</span>{' '}
+          <span className="text-muted-foreground">
+            {purchase.supplierName || '—'} · {viDate(purchase.purchaseDate)} ·{' '}
+            {purchase.totalCost.amount.toLocaleString()} ₫
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
+            <span className="text-xs font-semibold text-status-dangerText">{t('features.purchases.overrun')}</span>
+          )}
+          <StatusTag status={purchase.status} />
+        </div>
+      </div>
+      <ul className="mb-3 space-y-1 text-sm">
+        {purchase.items.map((item) => (
+          <li key={item.id} className="flex justify-between">
+            <span>
+              {item.materialName}{' '}
+              <span className="text-xs text-muted-foreground">({item.unit})</span>
+            </span>
+            <span className="tabular">{item.purchasedQuantity}</span>
+          </li>
+        ))}
+      </ul>
+      {canAct && (
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" onClick={() => setRequesting(true)}>
+            <MessageSquareWarning className="size-4" />
+            {t('features.purchases.requestInfo')}
+          </Button>
+          <Button size="sm" onClick={() => setConfirming(true)}>
+            <CheckCircle2 className="size-4" />
+            {t('features.purchases.confirmDelivery')}
+          </Button>
+        </div>
+      )}
+      {confirming && <ConfirmDialog purchase={purchase} onClose={() => setConfirming(false)} />}
+      {requesting && <RequestInfoDialog purchase={purchase} onClose={() => setRequesting(false)} />}
+    </Card>
+  )
+}
+
+function RequestPurchases({ requestId }: { requestId: string }) {
+  const { t } = useTranslation()
+  const { data: detail, isPending } = usePurchaseRequest(requestId)
+  const purchases = useMemo(() => detail?.purchases ?? [], [detail])
+
+  if (isPending) return <p className="lbl-mono">{t('common.loading')}</p>
+  if (purchases.length === 0)
+    return <EmptyState text={t('features.purchases.noPurchases')} />
+
+  return (
+    <div className="space-y-3">
+      {purchases.map((purchase) => (
+        <PurchaseRow key={purchase.id} purchase={purchase} />
+      ))}
+    </div>
   )
 }
 
 export default function PurchaseConfirmPage() {
   const { t } = useTranslation()
-  const toast = useToast()
-  const { user } = useAuth()
-  const { data: areas = [], isPending: areasPending } = useScopedAreas()
-  const { data: materials = [] } = useMaterials()
-  const { data: users = [] } = useUsers()
-  const { data: requests = [] as PurchaseRequest[], isPending } = useMockPurchaseRequests()
-  const { data: records = [] } = usePurchaseRecords()
-  const confirmPurchase = useConfirmPurchase()
-
-  const [recording, setRecording] = useState<PurchaseRequest | null>(null)
-
-  const myAreas = areas.filter((a) => a.officerId === user?.id)
-  const inMyAreas = (m: Material) => myAreas.some((a) => a.id === m.areaId)
-  const myMaterials = materials.filter(inMyAreas)
-  const matName = (id: string) => materials.find((m) => m.id === id)?.name ?? id
-  const userName = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
-
-  // Chờ xử lý = APPROVED + chưa có hồ sơ nào (đã có record thì tạo tiếp sẽ
-  // double-count purchased — record tồn tại nghĩa là đã ghi giao hàng).
-  const pending = requests.filter(
-    (r) =>
-      r.status === 'APPROVED' &&
-      !records.some((rec) => rec.requestId === r.id) &&
-      r.materialIds.some((id: string) => myMaterials.some((m) => m.id === id)),
+  const { data: requests = [], isPending } = usePurchaseRequests({ size: 100 })
+  const relevant = requests.filter((r) =>
+    ['APPROVED', 'BUYER_ASSIGNED', 'PURCHASED', 'PARTIALLY_RECEIVED'].includes(r.status),
   )
-  const myRecords = records
-    .filter((r) => myMaterials.some((m) => m.id === r.materialId))
-    .sort((a, b) => Number(a.confirmed) - Number(b.confirmed)) // chưa xác nhận đứng trước
-
-  const pendingColumns = useMemo(
-    () => [
-      {
-        key: 'id',
-        header: t('features.purchases.code'),
-        render: (r: PurchaseRequest) => <span className="lbl-mono font-semibold">#{r.id}</span>,
-      },
-      {
-        key: 'materials',
-        header: t('features.purchases.materials'),
-        render: (r: PurchaseRequest) => (
-          <span>
-            {r.materialIds.map((id, i) => (
-              <span key={id}>
-                {i > 0 && ', '}
-                {matName(id)}
-              </span>
-            ))}
-          </span>
-        ),
-      },
-      {
-        key: 'total',
-        header: t('features.purchases.total'),
-        align: 'right' as const,
-        render: (r: PurchaseRequest) => <span className="tabular">{r.total.toLocaleString()} ₫</span>,
-      },
-      { key: 'note', header: t('features.purchases.note'), render: (r: PurchaseRequest) => r.note ?? '—' },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (r: PurchaseRequest) => (
-          <Button size="sm" onClick={() => setRecording(r)}>
-            <FilePlus2 className="size-4" />
-            {t('features.purchases.createRecord')}
-          </Button>
-        ),
-      },
-    ],
-    [t, materials],
-  )
-
-  const recordColumns = useMemo(
-    () => [
-      { key: 'material', header: t('features.purchases.material'), render: (r: PurchaseRecord) => matName(r.materialId) },
-      { key: 'qty', header: t('features.purchases.qty'), align: 'right' as const, render: (r: PurchaseRecord) => <span className="tabular">{r.qty}</span> },
-      { key: 'cost', header: t('features.purchases.cost'), align: 'right' as const, render: (r: PurchaseRecord) => <span className="tabular">{r.cost.toLocaleString()} ₫</span> },
-      { key: 'supplier', header: t('features.purchases.supplier'), render: (r: PurchaseRecord) => r.supplier },
-      { key: 'date', header: t('features.purchases.date'), render: (r: PurchaseRecord) => <span className="tabular">{viDate(r.date)}</span> },
-      { key: 'buyerId', header: t('features.purchases.buyer'), render: (r: PurchaseRecord) => userName(r.buyerId) },
-      {
-        key: 'receiptPhoto',
-        header: t('features.purchases.receipt'),
-        align: 'center' as const,
-        render: (r: PurchaseRecord) => (r.receiptPhoto ? <span className="text-brand-pine">✓</span> : <span className="text-muted-foreground">—</span>),
-      },
-      {
-        key: 'confirmed',
-        header: t('features.purchases.confirmed'),
-        render: (r: PurchaseRecord) =>
-          r.confirmed ? (
-            <span className="font-semibold text-brand-pine">✓</span>
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => {
-                void confirmPurchase
-                  .mutateAsync(r.id)
-                  .then(() => toast(t('features.purchases.confirmedDone', { code: r.id })))
-                  .catch(() => toast(t('common.error'), 'alert'))
-              }}
-            >
-              <Check className="size-4" />
-              {t('common.confirm')}
-            </Button>
-          ),
-      },
-    ],
-    [t, materials, users, confirmPurchase],
-  )
-
-  if (areasPending) return <p className="lbl-mono">{t('common.loading')}</p>
-  if (!myAreas.length) return <EmptyState text={t('features.materials.noArea')} />
-
-  const confirmedRecordsCount = myRecords.filter((r) => r.confirmed).length
-  const unconfirmedRecordsCount = myRecords.filter((r) => !r.confirmed).length
 
   return (
     <div>
       <PageHeader title={t('features.purchases.confirmTitle')} sub={t('features.purchases.confirmSub')} />
-
-      {/* 4 StatCards */}
-      <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard
-          label="Đơn chờ tạo hồ sơ"
-          value={pending.length}
-          unit="đơn duyệt"
-          tone={pending.length > 0 ? 'warn' : 'ok'}
-        />
-        <StatCard
-          label="Tổng hồ sơ giao nhận"
-          value={myRecords.length}
-          unit="hồ sơ"
-        />
-        <StatCard
-          label="Đã xác nhận kho"
-          value={confirmedRecordsCount}
-          unit="hồ sơ"
-          tone="ok"
-        />
-        <StatCard
-          label="Chờ thủ kho xác nhận"
-          value={unconfirmedRecordsCount}
-          unit="hồ sơ"
-          tone={unconfirmedRecordsCount > 0 ? 'alert' : 'ok'}
-        />
-      </div>
-
-      <div className="mb-6 rounded-card border border-border bg-card p-5">
-        <h2 className="lbl-mono mb-3 text-foreground">{t('features.purchases.pendingRecords')}</h2>
-        {isPending ? (
-          <p className="lbl-mono">{t('common.loading')}</p>
-        ) : (
-          <DataTable rows={pending} columns={pendingColumns} emptyText={t('features.purchases.noApproved')} />
-        )}
-      </div>
-
-      <div className="rounded-card border border-border bg-card p-5">
-        <h2 className="lbl-mono mb-3 text-foreground">{t('features.purchases.recordsTitle')}</h2>
-        <DataTable rows={myRecords} columns={recordColumns} pageSize={8} emptyText={t('features.purchases.noRecords')} />
-      </div>
-
-      {recording && (
-        <RecordDialog
-          request={recording}
-          // Chỉ material thuộc request VÀ khu officer phụ trách (inMyAreas).
-          materials={materials.filter((m) => recording.materialIds.includes(m.id) && inMyAreas(m))}
-          onClose={() => setRecording(null)}
-        />
+      {isPending ? (
+        <p className="lbl-mono">{t('common.loading')}</p>
+      ) : relevant.length === 0 ? (
+        <EmptyState text={t('features.purchases.noApproved')} />
+      ) : (
+        <div className="space-y-6">
+          {relevant.map((request) => (
+            <Card key={request.id} className="p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <p className="font-semibold text-foreground">#{request.id.slice(0, 8)}</p>
+                  <p className="text-xs text-muted-foreground">{request.workAreaName}</p>
+                </div>
+                <StatusTag status={request.status} />
+              </div>
+              <RequestPurchases requestId={request.id} />
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   )
