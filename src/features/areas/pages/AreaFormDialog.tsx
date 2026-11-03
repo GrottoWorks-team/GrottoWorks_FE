@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
+import { useWorkAreaCategories } from '@/features/parish/api'
 import type { Season, WorkArea } from '@/types'
 
 const AREA_TYPES = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE'] as const
@@ -29,6 +30,7 @@ const createSchema = (seasons: Season[]) =>
       communityId: z.string(),
       leaderId: z.string().min(1, 'features.areas.leaderRequired'),
       officerId: z.string().min(1, 'features.areas.officerRequired'),
+      categoryId: z.string().optional(),
       deadline: z.string().optional(),
       description: z.string().max(300, 'features.areas.descriptionMax').optional(),
     })
@@ -81,6 +83,9 @@ export function AreaFormDialog({
   const { data: users = [] } = useUsers()
   const { data: communities = [] } = useCommunities()
   const { data: seasons = [] } = useSeasons()
+  // Khi SỬA: lấy mọi trạng thái để không mất hạng mục đã gán (BE chặn gán hạng mục
+  // INACTIVE nhưng vẫn phải hiển thị giá trị hiện tại); khi TẠO: chỉ lấy ACTIVE.
+  const { data: categories = [] } = useWorkAreaCategories(area ? undefined : 'ACTIVE')
   const create = useCreateArea()
   const update = useUpdateArea()
   const editing = Boolean(area)
@@ -117,6 +122,7 @@ export function AreaFormDialog({
           communityId: area.communityId ?? (isCommunity ? (user?.communityId ?? '') : ''),
           leaderId: area.leaderId,
           officerId: area.officerId,
+          categoryId: area.categoryId ?? '',
           deadline: area.deadline ?? '',
           description: area.description ?? '',
         }
@@ -128,6 +134,7 @@ export function AreaFormDialog({
           communityId: isCommunity ? (user?.communityId ?? '') : '',
           leaderId: '',
           officerId: '',
+          categoryId: '',
           deadline: '',
           description: '',
         },
@@ -164,20 +171,36 @@ export function AreaFormDialog({
           name: data.name,
           description: data.description || undefined,
           deadline: data.deadline || undefined,
+          categoryId: data.categoryId || undefined,
           communityId,
           leaderId: data.leaderId || undefined,
           officerId: data.officerId || undefined,
         })
         toast(t('features.areas.updated', { name: data.name }))
       } else {
-        await create.mutateAsync({
+        const created = await create.mutateAsync({
           seasonId: data.seasonId,
           name: data.name,
           description: data.description || null,
+          categoryId: data.categoryId || null,
           communityId: data.level === 'COMMUNITY' ? (communityId ?? null) : null,
           startDate: null,
           deadline: data.deadline || null,
         })
+        // BE KHÔNG nhận leaderId/officerId trong POST → phải PUT riêng ngay sau khi tạo
+        // (`useUpdateArea` gọi /leader rồi /material-officer, chuyền version qua If-Match).
+        if (created?.id) {
+          try {
+            await update.mutateAsync({
+              id: created.id,
+              version: created.version,
+              leaderId: data.leaderId || undefined,
+              officerId: data.officerId || undefined,
+            })
+          } catch {
+            toast(t('features.areas.assignAfterCreateFailed'), 'alert')
+          }
+        }
         toast(t('features.areas.created', { name: data.name }))
       }
       onClose()
@@ -254,6 +277,31 @@ export function AreaFormDialog({
             </select>
           </div>
         </div>
+
+        {categories.length > 0 ? (
+          <div>
+            <Label htmlFor="area-category">{t('features.areas.category')}</Label>
+            <select id="area-category" className={SELECT_CLS} {...register('categoryId')}>
+              <option value="">{t('features.areas.selectPlaceholder')}</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          // BE không có bản ghi hạng mục nào (bảng rỗng, seeder chưa tạo) → không
+          // hiện select rỗng; chỉ nhắc ADMIN tạo danh mục trước.
+          <p className="text-[11px] text-muted-foreground">
+            {t('features.areas.categoryEmpty')}{' '}
+            {user?.role === 'PARISH' && (
+              <a href="/parish/categories" className="font-semibold text-primary hover:underline">
+                {t('features.areas.categoryEmptyAction')}
+              </a>
+            )}
+          </p>
+        )}
 
         {level === 'COMMUNITY' && (
           <div>

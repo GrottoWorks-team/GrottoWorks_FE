@@ -1,22 +1,21 @@
 // Trang khu vực công tác (COMMITTEE/PARISH): filter mùa, grid AreaCard + DataTable (toggle),
-// tạo/sửa qua AreaFormDialog (prefill mùa), phân công qua AreaAssignDialog, xoá qua ConfirmDialog.
+// tạo/sửa qua AreaFormDialog (prefill mùa), phân công qua AreaAssignDialog.
+// BE chưa có DELETE /work-areas → không có nút xoá.
 // Click card/row → /community/areas/:id/tasks hoặc /parish/areas/:id/tasks (TaskListPage).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutGrid, Table2, Pencil, Trash2, Plus, UserPlus, FileImage } from 'lucide-react'
+import { LayoutGrid, Table2, Pencil, Plus, UserPlus, FileImage } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
 import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { useSeasonContext } from '@/features/season/season-context'
-import { useAreas, useDeleteArea, useSeasons, useUsers } from '../api'
+import { useAreas, useSeasons, useUsers } from '../api'
 import { AreaCard } from '../components/AreaCard'
 import { AreaDetailDialog } from '../components/AreaDetailDialog'
 import { AreaFormDialog, SELECT_CLS } from './AreaFormDialog'
@@ -27,7 +26,6 @@ type View = 'grid' | 'table'
 
 export default function AreaListPage() {
   const { t } = useTranslation()
-  const toast = useToast()
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -56,7 +54,6 @@ export default function AreaListPage() {
   )
   const { data: rawAreas = [], isPending: isAreasPending } = useAreas(seasonIds)
   const { data: users = [] } = useUsers()
-  const deleteArea = useDeleteArea()
 
   // Đồng bộ khi URL đổi từ ngoài (link có `?season=`, back/forward). Không xử lý
   // trường hợp URL MẤT param: đó chính là lúc người dùng chọn "Tất cả mùa".
@@ -99,7 +96,6 @@ export default function AreaListPage() {
   const [view, setView] = useState<View>('grid')
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<WorkArea | null>(null)
-  const [deleting, setDeleting] = useState<WorkArea | null>(null)
   const [assigning, setAssigning] = useState<WorkArea | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
@@ -135,16 +131,6 @@ export default function AreaListPage() {
         },
       },
       {
-        key: 'type',
-        header: t('features.areas.type'),
-        render: (a: WorkArea) => t(`features.areas.areaType.${a.type}`),
-      },
-      {
-        key: 'level',
-        header: t('features.areas.level'),
-        render: (a: WorkArea) => t(`features.areas.level.${a.level}`),
-      },
-      {
         key: 'leaderId',
         header: t('features.areas.leader'),
         render: (a: WorkArea) => nameOf(a.leaderId),
@@ -160,24 +146,6 @@ export default function AreaListPage() {
         render: (a: WorkArea) => (
           <span className="tabular text-xs font-medium text-muted-foreground">
             {a.deadline ? viDate(a.deadline) : '—'}
-          </span>
-        ),
-      },
-      // ponytail: progress/volunteerCount/taskCount thuộc service Task/Volunteer
-      // (chưa gắn) — mapper đang trả 0. Gắn service tương ứng thì bỏ chú thích.
-      {
-        key: 'progress',
-        header: t('features.areas.progress'),
-        align: 'right' as const,
-        render: (a: WorkArea) => <span className="tabular">{a.progress}%</span>,
-      },
-      {
-        key: 'people',
-        header: t('features.areas.people'),
-        align: 'right' as const,
-        render: (a: WorkArea) => (
-          <span className="tabular">
-            {a.volunteerCount}/{a.taskCount}
           </span>
         ),
       },
@@ -227,29 +195,12 @@ export default function AreaListPage() {
             >
               <Pencil className="size-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.delete')}
-              onClick={() => setDeleting(a)}
-            >
-              <Trash2 className="size-4" />
-            </Button>
           </div>
         ),
       },
     ],
     [t, users, seasonMap, navigate, pathname, canViewDesign],
   )
-
-  const onDelete = async (a: WorkArea) => {
-    try {
-      await deleteArea.mutateAsync(a.id)
-      toast(t('features.areas.deleted', { name: a.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
 
   const isPending = isAreasPending || isSeasonsPending
 
@@ -385,15 +336,6 @@ export default function AreaListPage() {
         areaId={detailAreaId}
         open={Boolean(detailAreaId)}
         onClose={() => setDetailAreaId(null)}
-      />
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        title={t('features.areas.deleteTitle')}
-        description={deleting ? t('features.areas.deleteConfirm', { name: deleting.name }) : undefined}
-        confirmLabel={t('common.delete')}
-        tone="destructive"
-        onConfirm={() => deleting && onDelete(deleting)}
-        onClose={() => setDeleting(null)}
       />
     </div>
   )

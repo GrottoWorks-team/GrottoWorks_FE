@@ -249,7 +249,7 @@ export default function ParishMapPage() {
             ) : (
               <ul className="space-y-3">
                 {numbered.map(({ area, n }) => {
-                  const Icon = AREA_ICONS[area.type]
+                  const Icon = (area.type && AREA_ICONS[area.type]) || MapPin
                   const placed = Boolean(pins[area.id])
                   const isPlacing = placingId === area.id
                   return (
@@ -273,7 +273,6 @@ export default function ParishMapPage() {
                             {area.name}
                           </span>
                           <span className="block text-xs text-muted-foreground">
-                            {t(`features.areas.areaType.${area.type}`)} ·{' '}
                             {placed ? t('features.map.positioned') : t('features.map.notPositioned')}
                           </span>
                         </span>

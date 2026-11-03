@@ -116,7 +116,8 @@ export function AreaAssignDialog({
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">{t('features.areas.type')}:</span>
           <span className="font-semibold text-foreground">
-            {t(`features.areas.areaType.${area.type}`)} · {t(`features.areas.level.${area.level}`)}
+            {area.type ? t(`features.areas.areaType.${area.type}`) : '—'}
+            {area.level ? ` · ${t(`features.areas.level.${area.level}`)}` : ''}
           </span>
         </div>
         {area.deadline ? (

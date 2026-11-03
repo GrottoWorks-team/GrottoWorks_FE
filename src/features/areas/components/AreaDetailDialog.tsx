@@ -94,7 +94,9 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
                 <span>Loại phân khu</span>
               </div>
               <p className="mt-1 text-sm font-bold text-foreground">
-                {t(`features.areas.type.${area.type}`, { defaultValue: area.type || 'Hang đá Bê-lem' })}
+                {area.type
+                  ? t(`features.areas.type.${area.type}`, { defaultValue: area.type })
+                  : '—'}
               </p>
             </div>
 

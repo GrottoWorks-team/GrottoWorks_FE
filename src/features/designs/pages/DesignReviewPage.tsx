@@ -262,7 +262,7 @@ export default function DesignReviewPage() {
     <div>
       <PageHeader
         title={area ? `${area.name} — ${t('features.design.title')}` : t('features.design.title')}
-        sub={area ? `${t('features.design.sub')} · ${t(`features.areas.level.${area.level}`)}` : undefined}
+        sub={area ? t('features.design.sub') : undefined}
         actions={
           <div className="flex gap-2">
             <Button variant="outline" onClick={backToTasks}>
