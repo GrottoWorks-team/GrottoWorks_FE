@@ -7,11 +7,10 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, Trash2, Church, MapPin, Info, Check, ShieldCheck } from 'lucide-react'
+import { Pencil, Plus, Church, MapPin, Info, Check, ShieldCheck } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -26,7 +25,6 @@ import {
   useCommunities,
   useCreateCommunity,
   useCreateParish,
-  useDeleteCommunity,
   useParish,
   useUpdateParish,
   useUpdateCommunity,
@@ -337,32 +335,13 @@ function ParishCard() {
 
 export default function CommunitiesPage() {
   const { t } = useTranslation()
-  const toast = useToast()
   const { data: communities = [], isPending } = useCommunities()
   const { data: users = [] } = useUsers()
   const { data: areas = [] } = useAreas()
-  const deleteCommunity = useDeleteCommunity()
 
   const [formOpen, setFormOpen] = useState(false)
   const [parishCreateOpen, setParishCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Community | null>(null)
-  const [deleting, setDeleting] = useState<Community | null>(null)
-
-  // Xoá chặn khi còn tham chiếu: user.communityId hoặc area.communityId.
-  const onDelete = async (c: Community) => {
-    const used =
-      users.some((u) => u.communityId === c.id) || areas.some((a) => a.communityId === c.id)
-    if (used) {
-      toast(t('features.parish.communityInUse', { name: c.name }), 'alert')
-      return
-    }
-    try {
-      await deleteCommunity.mutateAsync(c.id)
-      toast(t('features.parish.deleted', { name: c.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
 
   const columns = useMemo(
     () => [
@@ -421,14 +400,6 @@ export default function CommunitiesPage() {
             >
               <Pencil className="size-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.delete')}
-              onClick={() => setDeleting(c)}
-            >
-              <Trash2 className="size-4" />
-            </Button>
           </div>
         ),
       },
@@ -483,15 +454,6 @@ export default function CommunitiesPage() {
 
       {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}
       {formOpen && <CommunityFormDialog community={editing} onClose={() => setFormOpen(false)} />}
-      <ConfirmDialog
-        open={Boolean(deleting)}
-        title={t('features.parish.deleteTitle')}
-        description={deleting ? t('features.parish.deleteConfirm', { name: deleting.name }) : undefined}
-        confirmLabel={t('common.delete')}
-        tone="destructive"
-        onConfirm={() => deleting && onDelete(deleting)}
-        onClose={() => setDeleting(null)}
-      />
     </div>
   )
 }

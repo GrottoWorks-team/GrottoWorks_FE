@@ -191,16 +191,12 @@ export function useAssignUserRole() {
     }),
   )
 }
+// BE KHÔNG có `DELETE` user/community → chỉ khoá/mở user, không xoá.
 export function useRoles() {
   return useQuery({
     queryKey: ['roles'],
     queryFn: () => api<RoleDto[]>('/api/v1/roles'),
   })
-}
-export function useDeleteUser() {
-  return useAdminMutation([[ 'users' ]], (id: string) =>
-    api<void>(`/users/${id}`, { method: 'DELETE' }),
-  )
 }
 
 // ---- Communities (CRUD) --------------------------------------------------
@@ -238,48 +234,40 @@ export function useUpdateCommunity() {
   )
 }
 
-// BE hiện CHƯA có DELETE /api/v1/communities/{id} (xem
-// BE-gap-requests-activity-flows.md) — gọi đúng đường dẫn chuẩn để khi BE bổ
-// sung là chạy, thay vì endpoint mock đã bị xoá.
-export function useDeleteCommunity() {
-  return useAdminMutation([['communities']], (id: string) =>
-    api<void>(`/api/v1/communities/${id}`, { method: 'DELETE' }),
-  )
-}
+// BE hiện CHƯA có `DELETE /api/v1/communities/{id}` → không cung cấp hook xoá.
 
-// ---- Parish (object Ä‘Æ¡n) + Skills (string[]) ------------------------------
+// ---- Parish (object đơn) + Skills ------------------------------------------
 
 export function useCreateSkill() {
   return useAdminMutation([[ 'admin', 'skills' ]], async (name: string) => {
-    const code = name.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'SKL'
+    // `code` bắt buộc ở BE (`CreateSkillRequest`) — sinh từ tên thay vì random
+    // (trùng code thì BE trả 409, người dùng sửa tên/mã).
+    const base = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/gi, 'd')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 10)
+    const code = base || 'SKL'
     return api<any>('/api/v1/skills', {
       method: 'POST',
-      body: JSON.stringify({ code: `${code}${Math.floor(Math.random() * 899 + 100)}`, name }),
+      body: JSON.stringify({ code, name }),
     })
   })
 }
 
+/** PATCH /api/v1/skills/{skillId} — đổi tên theo GUID (trước đây theo index → sai id). */
 export function useRenameSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], async ({ index, name }: { index: number; name: string }) => {
-    try {
-      const skills = await api<any[]>('/api/v1/skills')
-      if (Array.isArray(skills) && skills[index]?.id) {
-        return api<any>(`/api/v1/skills/${skills[index].id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ name }),
-        })
-      }
-    } catch {
-      // fallback
-    }
-  })
-}
-
-export function useDeleteSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], (index: number) =>
-    api<void>(`/skills/${index}`, { method: 'DELETE' }),
+  return useAdminMutation([[ 'admin', 'skills' ]], async ({ id, name }: { id: string; name: string }) =>
+    api<any>(`/api/v1/skills/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
   )
 }
+
+// BE KHÔNG có `DELETE /api/v1/skills/{id}` → không cung cấp hook xoá kỹ năng nữa.
 
 // ---- Backup ----------------------------------------------------------------
 

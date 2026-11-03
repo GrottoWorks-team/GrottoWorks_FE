@@ -1,7 +1,7 @@
 // Trang xuất & sao lưu (route /parish/backup):
-//   • "Tải backup JSON" — POST /api/export/backup → blob download.
-//   • "Đặt lại dữ liệu demo" — xoá localStorage + reload;
-//     ConfirmDialog tone destructive trước khi thực hiện.
+//   • "Tải backup JSON" — BE CHƯA có `/export/backup` (Reporting service) → nút bị
+//     disable và hiện ghi chú, không gọi endpoint không tồn tại.
+//   • "Đặt lại dữ liệu demo" — xoá localStorage + reload.
 import { useTranslation } from 'react-i18next'
 import { Download, RotateCcw } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -50,8 +50,16 @@ export default function BackupPage() {
           <div>
             <p className="lbl-mono">{t('features.parish.backupExport')}</p>
             <p className="mt-2 text-sm text-muted-foreground">{t('features.parish.backupExportSub')}</p>
+            <p className="mt-2 text-[11px] font-medium text-destructive">
+              {t('features.parish.backupApiMissing')}
+            </p>
           </div>
-          <Button className="mt-5 self-start" onClick={() => void download()} disabled={backup.isPending}>
+          <Button
+            className="mt-5 self-start"
+            onClick={() => void download()}
+            disabled
+            title={t('features.parish.backupApiMissing')}
+          >
             <Download className="size-4" />
             {backup.isPending ? t('common.loading') : t('features.parish.backupDownload')}
           </Button>
