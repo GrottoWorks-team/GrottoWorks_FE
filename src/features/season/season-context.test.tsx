@@ -19,7 +19,6 @@ const { seasons } = vi.hoisted(() => {
     endDate: `${year}-12-31`,
     status,
     budget: 0,
-    communityIds: [],
     version: 1,
   })
   return {

@@ -22,20 +22,13 @@ const validSeason: Season = {
   status: 'PLANNING',
   budget: 100_000_000,
   description: 'Mùa 2026',
-  communityIds: ['c1'],
 }
 
 const validArea: WorkArea = {
   id: 'a-test',
   name: 'Hang đá thử nghiệm',
-  type: 'GROTTO',
-  level: 'PARISH',
   leaderId: 'u3',
   officerId: 'u4',
-  deadline: '2027-12-20',
-  progress: 0,
-  volunteerCount: 0,
-  taskCount: 0,
   status: 'IN_PROGRESS',
   seasonId: 's1',
 }
@@ -52,7 +45,7 @@ function setup(season: Season, areas: WorkArea[], onClose = () => {}) {
 }
 
 describe('validateSeasonActivation logic', () => {
-  it('đạt đủ 4 điều kiện → canActivate = true', () => {
+  it('đạt đủ điều kiện của BE (ngày + khu vực + leader/MO) → canActivate = true', () => {
     const result = validateSeasonActivation(validSeason, [validArea])
     expect(result.canActivate).toBe(true)
     expect(result.items.every((i) => i.valid)).toBe(true)
@@ -65,11 +58,10 @@ describe('validateSeasonActivation logic', () => {
     expect(result.items.find((i) => i.key === 'dates')?.valid).toBe(false)
   })
 
-  it('không có cộng đoàn tham gia → canActivate = false', () => {
-    const s = { ...validSeason, communityIds: [] }
-    const result = validateSeasonActivation(s, [validArea])
-    expect(result.canActivate).toBe(false)
-    expect(result.items.find((i) => i.key === 'communities')?.valid).toBe(false)
+  it('không còn điều kiện cộng đoàn tham gia (BE không lưu)', () => {
+    const result = validateSeasonActivation(validSeason, [validArea])
+    expect(result.items.find((i) => i.key === 'communities')).toBeUndefined()
+    expect(result.canActivate).toBe(true)
   })
 
   it('chưa có khu vực nào thuộc mùa → canActivate = false', () => {
@@ -78,11 +70,16 @@ describe('validateSeasonActivation logic', () => {
     expect(result.items.find((i) => i.key === 'areas')?.valid).toBe(false)
   })
 
-  it('khu vực thiếu officerId hoặc deadline → canActivate = false', () => {
-    const a = { ...validArea, officerId: '', deadline: undefined }
+  it('khu vực thiếu officerId → canActivate = false (BE chỉ đòi leader + MO)', () => {
+    const a = { ...validArea, officerId: '' }
     const result = validateSeasonActivation(validSeason, [a])
     expect(result.canActivate).toBe(false)
     expect(result.items.find((i) => i.key === 'staff')?.valid).toBe(false)
+  })
+
+  it('khu vực thiếu deadline vẫn kích hoạt được (BE không yêu cầu)', () => {
+    const result = validateSeasonActivation(validSeason, [{ ...validArea, deadline: undefined }])
+    expect(result.canActivate).toBe(true)
   })
 })
 

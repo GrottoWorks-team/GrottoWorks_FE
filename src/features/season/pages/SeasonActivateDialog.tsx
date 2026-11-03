@@ -1,8 +1,9 @@
-// Dialog kiểm tra điều kiện kích hoạt mùa (Flow 6) — checklist validate:
+// Dialog kiểm tra điều kiện kích hoạt mùa (Flow 6) — đối chiếu ĐÚNG rule của BE
+// (`ActivateSeasonCommandHandler` + `WorkAreaRepository.GetActivationReadinessAsync`):
 // 1. Thời gian hợp lệ (startDate < endDate)
-// 2. Đã chọn cộng đoàn tham gia (tối thiểu 1)
-// 3. Đã phân chia khu vực thuộc mùa (tối thiểu 1)
-// 4. Mọi khu vực đều có Trưởng khu, Thủ kho và Thời hạn
+// 2. Đã phân chia khu vực thuộc mùa (tối thiểu 1)
+// 3. Mọi khu vực đều có Trưởng khu và Trưởng nhóm vật tư
+// BE KHÔNG yêu cầu cộng đoàn tham gia và KHÔNG yêu cầu deadline của khu vực.
 import { useTranslation } from 'react-i18next'
 import { CircleCheck, CircleX, CircleAlert, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -25,12 +26,9 @@ export function validateSeasonActivation(
   const isDateValid = Boolean(
     season.startDate && season.endDate && season.startDate < season.endDate,
   )
-  const isCommValid = Boolean(season.communityIds && season.communityIds.length > 0)
   const hasAreas = areasOfSeason.length > 0
 
-  const missingStaffAreas = areasOfSeason.filter(
-    (a) => !a.leaderId || !a.officerId || !a.deadline,
-  )
+  const missingStaffAreas = areasOfSeason.filter((a) => !a.leaderId || !a.officerId)
   const isStaffValid = hasAreas && missingStaffAreas.length === 0
 
   const items: SeasonValidationItem[] = [
@@ -39,12 +37,6 @@ export function validateSeasonActivation(
       label: 'features.season.checkDate',
       valid: isDateValid,
       detail: !isDateValid ? 'features.season.endAfterStart' : undefined,
-    },
-    {
-      key: 'communities',
-      label: 'features.season.checkCommunities',
-      valid: isCommValid,
-      detail: !isCommValid ? 'features.season.communityRequired' : undefined,
     },
     {
       key: 'areas',
@@ -63,7 +55,7 @@ export function validateSeasonActivation(
     },
   ]
 
-  const canActivate = isDateValid && isCommValid && hasAreas && isStaffValid
+  const canActivate = isDateValid && hasAreas && isStaffValid
 
   return { canActivate, items }
 }
