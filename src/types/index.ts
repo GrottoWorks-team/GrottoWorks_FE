@@ -301,6 +301,48 @@ export interface SupportRequest {
   version: number
   positions: SupportPosition[]
   materials: SupportMaterial[]
+  responses?: SupportResponse[]
+}
+
+export interface SupportResponseMember {
+  id: string
+  positionId: string
+  volunteerId: string
+  status: string
+  assignmentId?: string | null
+  version: number
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  reason?: string | null
+}
+
+export interface SupportResponseMaterial {
+  id: string
+  requestMaterialId: string
+  sourceWorkAreaId: string
+  materialId: string
+  offeredQuantity: number
+  approvedQuantity?: number | null
+  receivedUsableQuantity?: number | null
+  receivedUnusableQuantity?: number | null
+  status: string
+  version: number
+  note?: string | null
+  reviewReason?: string | null
+}
+
+export interface SupportResponse {
+  id: string
+  requestId: string
+  volunteerId?: string | null
+  respondingCommunityId?: string | null
+  status: string
+  responseQuantity: number
+  note?: string | null
+  createdAt: string
+  version: number
+  members: SupportResponseMember[]
+  materials: SupportResponseMaterial[]
 }
 
 export type ReadinessCheckStatus =

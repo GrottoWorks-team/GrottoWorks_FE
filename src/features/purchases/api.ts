@@ -345,3 +345,48 @@ export interface NewPurchaseRecord {
   confirmed: boolean
   buyerId: string
 }
+
+/** POST /api/v1/purchase-requests/{requestId}/purchase-tasks (LEADER) — tạo việc đi mua cho TNV. */
+export function useCreatePurchaseTask() {
+  return usePurchaseMutation(
+    async ({
+      requestId,
+      name,
+      description,
+      completionCriteria,
+      priority,
+      estimatedMinutes,
+      startAt,
+      deadline,
+    }: {
+      requestId: string
+      name: string
+      description?: string | null
+      completionCriteria?: string | null
+      priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+      estimatedMinutes: number
+      startAt?: string | null
+      deadline: string
+    }) =>
+      api<{ data: unknown }>(`/api/v1/purchase-requests/${requestId}/purchase-tasks`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          description: description || null,
+          completionCriteria: completionCriteria || null,
+          priority,
+          estimatedMinutes,
+          startAt: startAt || null,
+          deadline,
+        }),
+      }),
+  )
+}
+
+/** GET /api/v1/purchases/{purchaseId}/receipts/{fileId}/download-url — mở hoá đơn đã đính kèm. */
+export async function openPurchaseReceipt(purchaseId: string, fileId: string): Promise<void> {
+  const res = await api<{ downloadUrl: string; expiresAt: string }>(
+    `/api/v1/purchases/${purchaseId}/receipts/${fileId}/download-url`,
+  )
+  window.open(res.downloadUrl, '_blank', 'noopener,noreferrer')
+}

@@ -13,13 +13,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
+import { ApiError } from '@/lib/api'
 import { viDate } from '@/lib/format'
 import {
   useAcceptLoanOffer,
+  useAssignBorrowedItem,
   useBorrowedIncident,
   useBorrowedItems,
   useIssueBorrowedItem,
   useLoanOffers,
+  useOverdueBorrowedItems,
   useRejectLoanOffer,
   useReturnBorrowedItem,
 } from '../api'
@@ -262,11 +265,66 @@ function IncidentDialog({ item, onClose }: { item: BorrowedItem; onClose: () => 
   )
 }
 
+function AssignDialog({ item, onClose }: { item: BorrowedItem; onClose: () => void }) {
+  const { t } = useTranslation()
+  const toast = useToast()
+  const assign = useAssignBorrowedItem()
+  const { data: areas = [] } = useScopedAreas()
+  const [areaId, setAreaId] = useState(item.workAreaId ?? '')
+
+  const submit = async () => {
+    try {
+      await assign.mutateAsync({ itemId: item.id, version: item.version, workAreaId: areaId })
+      toast(t('features.borrowed.assigned'))
+      onClose()
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+    }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title={t('features.borrowed.assignTitle')}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button disabled={!areaId || assign.isPending} onClick={() => void submit()}>
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">{item.itemName}</p>
+        <Label htmlFor="borrowed-assign-area">{t('features.borrowed.assignArea')}</Label>
+        <select
+          id="borrowed-assign-area"
+          className={SELECT_CLS}
+          value={areaId}
+          onChange={(e) => setAreaId(e.target.value)}
+        >
+          <option value="">{t('common.selectPlaceholder')}</option>
+          {areas.map((area) => (
+            <option key={area.id} value={area.id}>
+              {area.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </Dialog>
+  )
+}
+
 export default function BorrowedListPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { data: offers = [], isPending: offersPending } = useLoanOffers('OFFERED')
   const { data: items = [], isPending: itemsPending } = useBorrowedItems()
+  const { data: overdue = [] } = useOverdueBorrowedItems()
   const issue = useIssueBorrowedItem()
   const reject = useRejectLoanOffer()
 
@@ -274,6 +332,7 @@ export default function BorrowedListPage() {
   const [rejecting, setRejecting] = useState<BorrowedItem | null>(null)
   const [returning, setReturning] = useState<BorrowedItem | null>(null)
   const [incident, setIncident] = useState<BorrowedItem | null>(null)
+  const [assigning, setAssigning] = useState<BorrowedItem | null>(null)
 
   const borrowable = useMemo(() => items.filter((item) => item.status !== 'OFFERED'), [items])
 
@@ -356,6 +415,39 @@ export default function BorrowedListPage() {
     [t],
   )
 
+  const overdueColumns = useMemo(
+    () => [
+      {
+        key: 'item',
+        header: t('features.borrowed.name'),
+        render: (o: BorrowedItem) => <span className="font-semibold text-foreground">{o.itemName}</span>,
+      },
+      {
+        key: 'owner',
+        header: t('features.borrowed.owner'),
+        render: (o: BorrowedItem) => o.ownerName,
+      },
+      {
+        key: 'return',
+        header: t('features.borrowed.expectedReturn'),
+        render: (o: BorrowedItem) => <span className="tabular">{viDate(o.expectedReturnDate)}</span>,
+      },
+      {
+        key: 'actions',
+        header: t('common.actions'),
+        render: (o: BorrowedItem) => (
+          <div className="flex justify-end">
+            <Button size="sm" variant="outline" onClick={() => setAssigning(o)}>
+              {t('features.borrowed.assign')}
+            </Button>
+          </div>
+        ),
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t],
+  )
+
   return (
     <div>
       <PageHeader title={t('features.borrowed.title')} sub={t('features.borrowed.sub')} />
@@ -374,7 +466,19 @@ export default function BorrowedListPage() {
         <DataTable rows={borrowable} columns={itemColumns} emptyText={t('features.borrowed.empty')} />
       )}
 
+      <h2 className="mb-3 mt-8 font-semibold text-foreground">{t('features.borrowed.overdueTitle')}</h2>
+      {overdue.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t('features.borrowed.noOverdue')}</p>
+      ) : (
+        <DataTable
+          rows={overdue}
+          columns={overdueColumns}
+          emptyText={t('features.borrowed.noOverdue')}
+        />
+      )}
+
       {accepting && <AcceptDialog offer={accepting} onClose={() => setAccepting(null)} />}
+      {assigning && <AssignDialog item={assigning} onClose={() => setAssigning(null)} />}
       {returning && <ReturnDialog item={returning} onClose={() => setReturning(null)} />}
       {incident && <IncidentDialog item={incident} onClose={() => setIncident(null)} />}
       {rejecting && (

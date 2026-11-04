@@ -3,7 +3,7 @@
 // chi tiết đề nghị mua (`purchases`), không có endpoint list riêng.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, MessageSquareWarning } from 'lucide-react'
+import { CheckCircle2, MessageSquareWarning, Paperclip } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import {
+  openPurchaseReceipt,
   useConfirmPurchaseDelivery,
   usePurchaseRequest,
   usePurchaseRequests,
@@ -162,6 +163,7 @@ function RequestInfoDialog({ purchase, onClose }: { purchase: PurchaseDto; onClo
 
 function PurchaseRow({ purchase }: { purchase: PurchaseDto }) {
   const { t } = useTranslation()
+  const toast = useToast()
   const [confirming, setConfirming] = useState(false)
   const [requesting, setRequesting] = useState(false)
   const canAct = CONFIRMABLE.has(purchase.status)
@@ -194,6 +196,28 @@ function PurchaseRow({ purchase }: { purchase: PurchaseDto }) {
           </li>
         ))}
       </ul>
+      {purchase.receiptFileIds.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="lbl-mono">{t('features.purchases.receipts')}</span>
+          {purchase.receiptFileIds.map((fileId, index) => (
+            <Button
+              key={fileId}
+              size="sm"
+              variant="ghost"
+              onClick={async () => {
+                try {
+                  await openPurchaseReceipt(purchase.id, fileId)
+                } catch {
+                  toast(t('common.error'), 'alert')
+                }
+              }}
+            >
+              <Paperclip className="size-3.5" />
+              {`#${index + 1}`}
+            </Button>
+          ))}
+        </div>
+      )}
       {canAct && (
         <div className="flex justify-end gap-2">
           <Button size="sm" variant="outline" onClick={() => setRequesting(true)}>

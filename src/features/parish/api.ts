@@ -81,14 +81,68 @@ export function useActivityLogs() {
     // GET /api/v1/activity-logs (NotificationAudit) - paged, moi nhat dung dau.
     queryFn: async () => {
       const res = await apiPaged<ActivityLogDto>('/api/v1/activity-logs?size=50')
-      return res.data.map<ActivityLog>((row) => ({
+      return res.data.map<ActivityRow>((row) => ({
         id: row.id,
         at: row.createdAt,
         actor: row.actorUserId ?? '—',
         action: row.action,
         target: row.entityType,
+        entityType: row.entityType,
+        entityId: row.entityId,
       }))
     },
+  })
+}
+
+/** Dòng log kèm khoá đối tượng để mở chi tiết / lịch sử. */
+export interface ActivityRow extends ActivityLog {
+  entityType: string
+  entityId: string
+}
+
+export interface ActivityLogDetailDto extends ActivityLogDto {
+  parishId?: string | null
+  seasonId?: string | null
+  oldValue?: unknown
+  newValue?: unknown
+  reason?: string | null
+  correlationId?: string | null
+}
+
+/** GET /api/v1/activity-logs/{logId} — chi tiết một bản ghi audit. */
+export function useActivityLogDetail(logId?: string) {
+  return useQuery({
+    queryKey: ['admin', 'activity', logId ?? ''] as const,
+    queryFn: () => api<ActivityLogDetailDto>(`/api/v1/activity-logs/${logId}`),
+    enabled: Boolean(logId),
+  })
+}
+
+export interface StateChangeDto {
+  logId: string
+  action: string
+  oldValue?: unknown
+  newValue?: unknown
+  reason?: string | null
+  actorUserId?: string | null
+  changedAt: string
+}
+
+/** GET /api/v1/resource-history/{resourceType}/{resourceId} — lịch sử đối tượng. */
+export function useResourceHistory(
+  resourceType?: string,
+  resourceId?: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['admin', 'resource-history', resourceType ?? '', resourceId ?? ''] as const,
+    queryFn: async () => {
+      const res = await api<StateChangeDto[] | { data?: StateChangeDto[] }>(
+        `/api/v1/resource-history/${resourceType}/${resourceId}`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    enabled: Boolean(resourceType && resourceId) && enabled,
   })
 }
 
@@ -288,12 +342,6 @@ export function useRenameSkill() {
 // BE KHÔNG có `DELETE /api/v1/skills/{id}` → không cung cấp hook xoá kỹ năng nữa.
 
 // ---- Backup ----------------------------------------------------------------
-
-export function useBackup() {
-  return useAdminMutation([], () =>
-    api<Record<string, unknown>>('/export/backup', { method: 'POST' }),
-  )
-}
 
 export function useRoleLabel(): Record<Role, string> {
   return {

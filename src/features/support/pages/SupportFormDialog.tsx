@@ -1,6 +1,7 @@
 // Dialog tạo yêu cầu hỗ trợ: khu đang thiếu + loại (STAFFING/MATERIAL/MIXED),
 // danh sách vị trí (headcount) và/hoặc dòng vật tư. BE chưa có publish nên
 // yêu cầu được tạo ở PLANNING.
+import { useMemo } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,6 +14,8 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useWorkAreaRequirements } from '@/features/materials/api'
+import { useAuth } from '@/lib/auth'
+import { useTasks } from '@/features/tasks/api'
 import { useCreateSupportRequest } from '../api'
 import type { SupportType } from '@/types'
 
@@ -29,6 +32,7 @@ const schema = z.object({
       name: z.string().trim().min(1, 'features.support.positionRequired'),
       requiredVolunteerCount: z.coerce.number().min(1, 'features.support.headcountInvalid'),
       note: z.string(),
+      taskId: z.string(),
     }),
   ),
   materials: z.array(
@@ -45,7 +49,13 @@ type FormData = z.infer<typeof schema>
 export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data: areas = [] } = useScopedAreas()
+  const { user } = useAuth()
+  const { data: scopedAreas = [] } = useScopedAreas()
+  // LEADER chỉ tạo được yêu cầu cho khu mình phụ trách (BE: WORK_AREA_ACCESS_DENIED).
+  const areas = useMemo(
+    () => (user?.role === 'LEADER' ? scopedAreas.filter((a) => a.leaderId === user.id) : scopedAreas),
+    [scopedAreas, user],
+  )
   const create = useCreateSupportRequest()
 
   const {
@@ -61,7 +71,7 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
       supportType: 'STAFFING',
       description: '',
       deadline: '',
-      positions: [{ name: '', requiredVolunteerCount: 1, note: '' }],
+      positions: [{ name: '', requiredVolunteerCount: 1, note: '', taskId: '' }],
       materials: [],
     },
   })
@@ -74,6 +84,8 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
   const needsMaterials = supportType === 'MATERIAL' || supportType === 'MIXED'
   const area = areas.find((a) => a.id === areaId)
   const { data: requirements = [] } = useWorkAreaRequirements(areaId || undefined, 'ACTIVE')
+  // BE bắt buộc mỗi vị trí phải gắn task trước khi công bố (SUPPORT_POSITION_TASK_REQUIRED).
+  const { data: tasks = [] } = useTasks(areaId || undefined)
 
   const onSubmit = async (data: FormData) => {
     if (!area || !area.seasonId) {
@@ -100,6 +112,7 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
               name: p.name,
               requiredVolunteerCount: p.requiredVolunteerCount,
               note: p.note || undefined,
+              taskId: p.taskId || undefined,
             }))
           : [],
         materials: needsMaterials
@@ -180,7 +193,7 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => positions.append({ name: '', requiredVolunteerCount: 1, note: '' })}
+                onClick={() => positions.append({ name: '', requiredVolunteerCount: 1, note: '', taskId: '' })}
               >
                 <Plus className="size-4" />
                 {t('features.support.addPosition')}
@@ -188,26 +201,43 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
             </div>
             <div className="space-y-2">
               {positions.fields.map((field, index) => (
-                <div key={field.id} className="grid gap-2 rounded-md border border-border/60 p-3 sm:grid-cols-4">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor={`pos-name-${index}`}>{t('features.support.positionName')}</Label>
-                    <Input id={`pos-name-${index}`} {...register(`positions.${index}.name`)} />
-                    {err(errors.positions?.[index]?.name?.message)}
+                <div key={field.id} className="rounded-md border border-border/60 p-3">
+                  <div className="grid gap-2 sm:grid-cols-4">
+                    <div className="sm:col-span-2">
+                      <Label htmlFor={`pos-name-${index}`}>{t('features.support.positionName')}</Label>
+                      <Input id={`pos-name-${index}`} {...register(`positions.${index}.name`)} />
+                      {err(errors.positions?.[index]?.name?.message)}
+                    </div>
+                    <div>
+                      <Label htmlFor={`pos-count-${index}`}>{t('features.support.headcount')}</Label>
+                      <Input
+                        id={`pos-count-${index}`}
+                        type="number"
+                        min={1}
+                        {...register(`positions.${index}.requiredVolunteerCount`)}
+                      />
+                      {err(errors.positions?.[index]?.requiredVolunteerCount?.message)}
+                    </div>
+                    <div className="flex items-end">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => positions.remove(index)}>
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor={`pos-count-${index}`}>{t('features.support.headcount')}</Label>
-                    <Input
-                      id={`pos-count-${index}`}
-                      type="number"
-                      min={1}
-                      {...register(`positions.${index}.requiredVolunteerCount`)}
-                    />
-                    {err(errors.positions?.[index]?.requiredVolunteerCount?.message)}
-                  </div>
-                  <div className="flex items-end">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => positions.remove(index)}>
-                      <Trash2 className="size-4" />
-                    </Button>
+                  <div className="mt-2">
+                    <Label htmlFor={`pos-task-${index}`}>{t('features.support.positionTask')}</Label>
+                    <select
+                      id={`pos-task-${index}`}
+                      className={SELECT_CLS}
+                      {...register(`positions.${index}.taskId`)}
+                    >
+                      <option value="">{t('features.support.positionTaskNone')}</option>
+                      {tasks.map((task) => (
+                        <option key={task.id} value={task.id}>
+                          {task.title}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               ))}

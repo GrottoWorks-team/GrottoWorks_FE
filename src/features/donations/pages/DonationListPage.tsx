@@ -3,22 +3,26 @@
 // Donor do BE tự gán theo user đăng nhập (VolunteerDonorResolver).
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Ban, ClipboardCheck, Download, Plus } from 'lucide-react'
+import { Ban, ClipboardCheck, Download, PencilLine, Plus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
+import { DonorsDialog } from '@/features/donors/DonorsDialog'
 import { useAuth } from '@/lib/auth'
 import { exportCsv } from '@/lib/csv'
 import i18n from '@/lib/i18n'
-import { useCancelDonation, useDonations, useRecordDonationReceipt } from '../api'
+import { useCancelDonation, useContributionNeeds, useDonation, useDonations, useRecordDonationReceipt } from '../api'
+import { useSeasonContext } from '@/features/season/season-context'
+import { AdjustReceiptDialog } from '../AdjustReceiptDialog'
 import { DonationFormDialog } from './DonationFormDialog'
 import type { Donation } from '@/types'
 
@@ -28,6 +32,9 @@ function ReceiptDialog({ donation, onClose }: { donation: Donation; onClose: () 
   const { t } = useTranslation()
   const toast = useToast()
   const record = useRecordDonationReceipt()
+  // Lấy lại bản ghi mới nhất trước khi ghi nhận (danh sách có thể đã cũ).
+  const { data: fresh } = useDonation(donation.id)
+  const current = fresh ?? donation
   const outstandingOf = (i: Donation['items'][number]) => Math.max(0, i.pledgedQuantity - i.receivedQuantity)
 
   const [lines, setLines] = useState<Record<string, { qty: string; unusable: string }>>(() =>
@@ -82,11 +89,11 @@ function ReceiptDialog({ donation, onClose }: { donation: Donation; onClose: () 
       <div className="space-y-3">
         <p className="text-sm">
           <span className="font-semibold text-foreground">{donation.donorName}</span> —{' '}
-          {donation.type === 'MONEY'
+          {current.type === 'MONEY'
             ? t('features.donations.money')
-            : donation.items.map((i) => i.materialName).join(', ')}
+            : current.items.map((i) => i.materialName).join(', ')}
         </p>
-        {donation.type === 'MONEY' ? (
+        {current.type === 'MONEY' ? (
           <div>
             <Label htmlFor="receipt-amount">{t('features.donations.receiveNow')}</Label>
             <Input
@@ -100,7 +107,7 @@ function ReceiptDialog({ donation, onClose }: { donation: Donation; onClose: () 
           </div>
         ) : (
           <div className="space-y-3">
-            {donation.items.map((item) => (
+            {current.items.map((item) => (
               <div key={item.id} className="rounded-md border border-border/60 p-3">
                 <p className="text-sm font-semibold text-foreground">
                   {item.materialName}{' '}
@@ -204,6 +211,8 @@ export default function DonationListPage() {
   const { user } = useAuth()
   const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: donations = [], isPending } = useDonations()
+  const { seasonId } = useSeasonContext()
+  const { data: needs = [] } = useContributionNeeds(seasonId ?? undefined)
 
   const isOfficer = user?.role === 'MATERIAL_OFFICER'
   const myAreaIds = useMemo(
@@ -219,8 +228,10 @@ export default function DonationListPage() {
   )
 
   const [creating, setCreating] = useState(false)
+  const [donorsOpen, setDonorsOpen] = useState(false)
   const [recording, setRecording] = useState<Donation | null>(null)
   const [canceling, setCanceling] = useState<Donation | null>(null)
+  const [adjusting, setAdjusting] = useState<Donation | null>(null)
 
   const materialSummary = (d: Donation) =>
     d.type === 'MONEY'
@@ -272,6 +283,16 @@ export default function DonationListPage() {
               >
                 <ClipboardCheck className="size-4" />
               </Button>
+              {d.status === 'PARTIALLY_RECEIVED' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('features.donations.adjust')}
+                  onClick={() => setAdjusting(d)}
+                >
+                  <PencilLine className="size-4" />
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -279,6 +300,17 @@ export default function DonationListPage() {
                 onClick={() => setCanceling(d)}
               >
                 <Ban className="size-4" />
+              </Button>
+            </div>
+          ) : d.status === 'RECEIVED' ? (
+            <div className="flex justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('features.donations.adjust')}
+                onClick={() => setAdjusting(d)}
+              >
+                <PencilLine className="size-4" />
               </Button>
             </div>
           ) : (
@@ -318,6 +350,10 @@ export default function DonationListPage() {
         sub={t('features.donations.sub')}
         actions={
           <>
+            <Button variant="outline" onClick={() => setDonorsOpen(true)}>
+              <Users className="size-4" />
+              {t('features.donations.donors')}
+            </Button>
             <Button variant="outline" onClick={onExport} disabled={!rows.length}>
               <Download className="size-4" />
               {t('features.donations.export')}
@@ -343,9 +379,36 @@ export default function DonationListPage() {
         <DataTable rows={rows} columns={columns} emptyText={t('features.donations.empty')} />
       )}
 
+      {needs.length > 0 && (
+        <Card className="mt-6 p-5">
+          <p className="lbl-mono mb-3">{t('features.donations.needsTitle')}</p>
+          <ul className="space-y-1.5">
+            {needs.slice(0, 8).map((need) => (
+              <li
+                key={`${need.workAreaId}-${need.materialId}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-1.5 text-sm"
+              >
+                <span className="min-w-0 truncate">
+                  <span className="font-semibold">{need.materialName}</span>
+                  <span className="text-muted-foreground"> · {need.workAreaName}</span>
+                </span>
+                <span className="tabular shrink-0 text-xs text-muted-foreground">
+                  {t('features.donations.needRemaining', {
+                    need: need.remainingNeed,
+                    unit: need.unit,
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       {creating && <DonationFormDialog open onClose={() => setCreating(false)} />}
       {recording && <ReceiptDialog donation={recording} onClose={() => setRecording(null)} />}
       {canceling && <CancelDialog donation={canceling} onClose={() => setCanceling(null)} />}
+      {adjusting && <AdjustReceiptDialog donation={adjusting} onClose={() => setAdjusting(null)} />}
+      {donorsOpen && <DonorsDialog open onClose={() => setDonorsOpen(false)} />}
     </div>
   )
 }

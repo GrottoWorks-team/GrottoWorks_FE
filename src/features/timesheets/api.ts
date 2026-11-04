@@ -103,6 +103,29 @@ export function useReviewCorrection() {
   })
 }
 
+export interface OpenAttendanceSession {
+  id: string
+  assignmentId: string
+  checkInAt: string
+  checkOutAt?: string | null
+  approvedMinutes: number
+  status: string
+  version: number
+}
+
+/** GET /api/v1/attendance/open-sessions — phiên mở quá lâu (LEADER/ADMIN). */
+export function useOpenAttendanceSessions(hours?: number) {
+  return useQuery({
+    queryKey: ['attendance', 'open-sessions', hours ?? 'default'] as const,
+    queryFn: async () => {
+      const res = await api<OpenAttendanceSession[] | { data?: OpenAttendanceSession[] }>(
+        `/api/v1/attendance/open-sessions${hours ? `?hours=${hours}` : ''}`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+  })
+}
+
 /** Tổng giờ công đã duyệt của khu (`GET /work-areas/{id}/working-hours`). */
 export function useWorkingHours(areaId?: string) {
   return useQuery({

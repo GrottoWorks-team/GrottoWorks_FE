@@ -125,11 +125,14 @@ export function SeasonProvider({
     () => ({
       seasons,
       season,
-      seasonId: scoped ? season?.id : undefined,
+      // Dùng ngay id đang chọn (URL/localStorage) TRƯỚC khi danh sách mùa tải xong:
+      // nếu để `season?.id` thì mọi hook theo mùa sẽ bắn 1 request "không mùa"
+      // rồi bắn lại lần nữa khi mùa resolve — BE bị gọi gấp đôi mỗi lần vào trang.
+      seasonId: scoped ? (requestedId ?? season?.id) : undefined,
       selectSeason,
       isPending,
     }),
-    [seasons, season, scoped, selectSeason, isPending],
+    [seasons, season, scoped, selectSeason, isPending, requestedId],
   )
 
   return <SeasonContext.Provider value={value}>{children}</SeasonContext.Provider>

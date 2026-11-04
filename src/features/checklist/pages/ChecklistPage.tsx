@@ -3,7 +3,7 @@
 // xác nhận READY. Committee xem read-only.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Plus, X } from 'lucide-react'
+import { Check, Link2, Paperclip, Plus, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -16,10 +16,16 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
+import { useTasks } from '@/features/tasks/api'
+import { uploadFile } from '@/lib/files'
+import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
 import {
+  getReadinessEvidenceUrl,
+  useAttachReadinessEvidence,
   useConfirmReadiness,
   useCreateReadinessCheck,
+  useLinkCorrectiveTask,
   useReadinessCheck,
   useRecheckReadinessItem,
   useRecordReadinessResult,
@@ -141,7 +147,57 @@ export default function ChecklistPage() {
   const record = useRecordReadinessResult()
   const recheck = useRecheckReadinessItem()
   const confirm = useConfirmReadiness()
+  const attachEvidence = useAttachReadinessEvidence()
+  const linkCorrective = useLinkCorrectiveTask()
+  const { data: areaTasks = [] } = useTasks(selected?.id)
   const [creating, setCreating] = useState(false)
+  const [evidenceBusy, setEvidenceBusy] = useState<string | null>(null)
+  const [correctiveTarget, setCorrectiveTarget] = useState<ReadinessItem | null>(null)
+  const [correctiveTaskId, setCorrectiveTaskId] = useState('')
+
+  const fail = (error: unknown) =>
+    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+
+  const uploadEvidence = async (item: ReadinessItem, file: File) => {
+    if (!check) return
+    setEvidenceBusy(item.id)
+    try {
+      const fileId = await uploadFile(file, 'ReadinessEvidence')
+      await attachEvidence.mutateAsync({ checkId: check.id, itemId: item.id, fileIds: [fileId] })
+      toast(t('features.checklist.evidenceUploaded'))
+    } catch (error) {
+      fail(error)
+    } finally {
+      setEvidenceBusy(null)
+    }
+  }
+
+  const openEvidence = async (item: ReadinessItem, fileId: string) => {
+    if (!check) return
+    try {
+      const url = await getReadinessEvidenceUrl(check.id, item.id, fileId)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (error) {
+      fail(error)
+    }
+  }
+
+  const submitCorrective = async () => {
+    if (!check || !correctiveTarget) return
+    try {
+      await linkCorrective.mutateAsync({
+        checkId: check.id,
+        itemId: correctiveTarget.id,
+        version: check.version,
+        taskId: correctiveTaskId || null,
+      })
+      toast(t('features.checklist.correctiveLinked'))
+      setCorrectiveTarget(null)
+      setCorrectiveTaskId('')
+    } catch (error) {
+      fail(error)
+    }
+  }
 
   const setResult = async (item: ReadinessItem, result: 'PASSED' | 'FAILED') => {
     if (!check) return
@@ -183,6 +239,44 @@ export default function ChecklistPage() {
       },
       { key: 'status', header: t('common.status'), render: (i: ReadinessItem) => <StatusTag status={i.status} /> },
       {
+        key: 'evidence',
+        header: t('features.checklist.evidence'),
+        render: (i: ReadinessItem) => (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {i.evidenceFileIds.length === 0 && (
+              <span className="text-xs text-muted-foreground">—</span>
+            )}
+            {i.evidenceFileIds.map((fileId) => (
+              <Button
+                key={fileId}
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                title={t('features.checklist.downloadEvidence')}
+                onClick={() => void openEvidence(i, fileId)}
+              >
+                <Paperclip className="size-3.5" />
+              </Button>
+            ))}
+            {isLeader && (
+              <label className="inline-flex cursor-pointer items-center rounded-md border border-border px-2 py-1 text-xs font-semibold text-foreground transition-colors hover:bg-muted/30">
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={evidenceBusy === i.id}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    if (file) void uploadEvidence(i, file)
+                    e.target.value = ''
+                  }}
+                />
+                {evidenceBusy === i.id ? t('common.loading') : t('features.checklist.addEvidence')}
+              </label>
+            )}
+          </div>
+        ),
+      },
+      {
         key: 'actions',
         header: t('common.actions'),
         render: (i: ReadinessItem) => {
@@ -204,6 +298,22 @@ export default function ChecklistPage() {
               <div className="flex justify-end gap-1">
                 <Button size="sm" variant="outline" onClick={() => runRecheck(i, 'PASSED')}>
                   <Check className="size-4" /> {t('features.checklist.recheck')}
+                </Button>
+              </div>
+            )
+          }
+          if (i.status === 'FAILED') {
+            return (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setCorrectiveTaskId(i.correctiveTaskId ?? '')
+                    setCorrectiveTarget(i)
+                  }}
+                >
+                  <Link2 className="size-4" /> {t('features.checklist.correctiveTask')}
                 </Button>
               </div>
             )
@@ -287,6 +397,45 @@ export default function ChecklistPage() {
       )}
 
       {creating && selected && <CreateCheckDialog areaId={selected.id} onClose={() => setCreating(false)} />}
+
+      {correctiveTarget && (
+        <Dialog
+          open
+          onClose={() => setCorrectiveTarget(null)}
+          title={t('features.checklist.correctiveTask')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setCorrectiveTarget(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={linkCorrective.isPending}
+                onClick={() => void submitCorrective()}
+              >
+                {t('common.save')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{correctiveTarget.name}</p>
+            <Label htmlFor="corrective-task">{t('features.checklist.correctiveTaskPick')}</Label>
+            <select
+              id="corrective-task"
+              className={SELECT_CLS}
+              value={correctiveTaskId}
+              onChange={(e) => setCorrectiveTaskId(e.target.value)}
+            >
+              <option value="">{t('common.selectPlaceholder')}</option>
+              {areaTasks.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.title}
+                </option>
+              ))}
+            </select>
+          </div>
+        </Dialog>
+      )}
     </div>
   )
 }

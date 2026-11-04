@@ -3,7 +3,13 @@
 // hay chuyển vật tư → UI dừng ở trạng thái PLANNING và ghi chú rõ.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, apiPaged } from '@/lib/api'
-import type { SupportRequest, SupportType } from '@/types'
+import type {
+  SupportRequest,
+  SupportResponse,
+  SupportResponseMaterial,
+  SupportResponseMember,
+  SupportType,
+} from '@/types'
 
 export const supportKeys = { all: ['supportRequests'] as const }
 
@@ -42,6 +48,8 @@ export interface SupportPositionDraft {
   name: string
   requiredVolunteerCount: number
   note?: string
+  /** BE yêu cầu gắn task trước khi publish (SUPPORT_POSITION_TASK_REQUIRED). */
+  taskId?: string
 }
 
 export interface SupportMaterialDraft {
@@ -72,6 +80,7 @@ function payload(input: CreateSupportInput) {
       requiredVolunteerCount: p.requiredVolunteerCount,
       note: p.note || null,
       skills: [],
+      taskId: p.taskId || null,
     })),
     materials: input.materials.map((m) => ({
       materialId: m.materialId,
@@ -109,4 +118,160 @@ export function useUpdateSupportRequest() {
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: supportKeys.all }),
   })
+}
+
+/* ------------------------------------------------------------------------ */
+/* Phát hành / đóng / phản hồi / duyệt (LEADER, trừ response do MO gửi)      */
+/* ------------------------------------------------------------------------ */
+
+function useSupportMutation<TVars, TResult>(fn: (vars: TVars) => Promise<TResult>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => qc.invalidateQueries({ queryKey: supportKeys.all }),
+  })
+}
+
+/** POST /support-requests/{id}/publish — công bố yêu cầu cho các cộng đoàn. */
+export function usePublishSupportRequest() {
+  return useSupportMutation(({ id, version }: { id: string; version: number }) =>
+    api<SupportRequest>(`/api/v1/support-requests/${id}/publish`, {
+      method: 'POST',
+      headers: { 'If-Match': `"${version}"` },
+      body: JSON.stringify({ version }),
+    }),
+  )
+}
+
+/** POST /support-requests/{id}/close — đóng / huỷ kèm lý do. */
+export function useCloseSupportRequest() {
+  return useSupportMutation(
+    ({
+      id,
+      version,
+      status,
+      reason,
+    }: {
+      id: string
+      version: number
+      status: 'CLOSED' | 'CANCELLED'
+      reason?: string
+    }) =>
+      api<SupportRequest>(`/api/v1/support-requests/${id}/close`, {
+        method: 'POST',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ version, status, reason: reason || null }),
+      }),
+  )
+}
+
+/** GET /support-requests/{id}/responses — phản hồi của các cộng đoàn. */
+export function useSupportResponses(id?: string) {
+  return useQuery({
+    queryKey: [...supportKeys.all, 'responses', id ?? ''],
+    queryFn: async () => {
+      const res = await api<SupportResponse[] | { data?: SupportResponse[] }>(
+        `/api/v1/support-requests/${id}/responses`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    enabled: Boolean(id),
+  })
+}
+
+/** POST /support-response-materials/{itemId}/approve — duyệt số lượng vật tư hỗ trợ. */
+export function useApproveSupportMaterial() {
+  return useSupportMutation(
+    ({ itemId, version, approvedQuantity }: { itemId: string; version: number; approvedQuantity: number }) =>
+      api<SupportResponseMaterial>(`/api/v1/support-response-materials/${itemId}/approve`, {
+        method: 'POST',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ version, approvedQuantity }),
+      }),
+  )
+}
+
+export function useRejectSupportMaterial() {
+  return useSupportMutation(
+    ({ itemId, version, reason }: { itemId: string; version: number; reason: string }) =>
+      api<SupportResponseMaterial>(`/api/v1/support-response-materials/${itemId}/reject`, {
+        method: 'POST',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ version, reason }),
+      }),
+  )
+}
+
+export function useApproveSupportMember() {
+  return useSupportMutation(({ memberId, version }: { memberId: string; version: number }) =>
+    api<SupportResponseMember>(`/api/v1/support-response-members/${memberId}/approve`, {
+      method: 'POST',
+      headers: { 'If-Match': `"${version}"` },
+      body: JSON.stringify({ version }),
+    }),
+  )
+}
+
+export function useRejectSupportMember() {
+  return useSupportMutation(
+    ({ memberId, version, reason }: { memberId: string; version: number; reason: string }) =>
+      api<SupportResponseMember>(`/api/v1/support-response-members/${memberId}/reject`, {
+        method: 'POST',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ version, reason }),
+      }),
+  )
+}
+
+export interface SupportSummaryDto {
+  seasonId: string
+  totalRequests: number
+  requests: Array<{ status: string; count: number }>
+  communities: Array<{
+    respondingCommunityId?: string | null
+    responses: number
+    offeredMembers: number
+    approvedMembers: number
+    completedMembers: number
+  }>
+  calculatedAt: string
+}
+
+/** GET /seasons/{seasonId}/support-summary — tổng hợp hỗ trợ chéo (ban hành giáo). */
+export function useSupportSummary(seasonId?: string) {
+  return useQuery({
+    queryKey: [...supportKeys.all, 'summary', seasonId ?? ''],
+    queryFn: () => api<SupportSummaryDto>(`/api/v1/seasons/${seasonId}/support-summary`),
+    enabled: Boolean(seasonId),
+    retry: false,
+  })
+}
+
+/** POST /support-response-materials/{itemId}/confirm-receipt (MO) — số thực nhận; chỉ usable vào kho. */
+export function useConfirmSupportMaterialReceipt() {
+  return useSupportMutation(
+    ({
+      itemId,
+      version,
+      usableQuantity,
+      unusableQuantity,
+      note,
+    }: {
+      itemId: string
+      version: number
+      usableQuantity: number
+      unusableQuantity?: number
+      note?: string
+    }) =>
+      api<unknown>(`/api/v1/support-response-materials/${itemId}/confirm-receipt`, {
+        method: 'POST',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({
+          version,
+          receivedUsableQuantity: usableQuantity,
+          receivedUnusableQuantity: unusableQuantity ?? 0,
+          note: note || null,
+        }),
+      }),
+  )
 }

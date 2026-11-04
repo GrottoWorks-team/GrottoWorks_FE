@@ -1,52 +1,42 @@
-// Chuông thông báo trên header.
+// Chuông thông báo trên header — dữ liệu từ NotificationAudit service:
+//   GET  /api/v1/notifications?size=10         (10 mục mới nhất)
+//   GET  /api/v1/notifications?isRead=false&size=1 → page.totalItems (số chưa đọc)
+//   POST /api/v1/notifications/{id}/read | /read-all
 //
-// Nguồn dữ liệu: features/notifications/api.ts — suy ra từ dữ liệu THẬT (khu
-// được phân công, khu thiếu nhân sự, đơn mua chờ duyệt) vì BE chưa có service
-// Notification. Trạng thái đã đọc ở features/notifications/seen.ts (localStorage,
-// chia sẻ với trang Thông báo theo role).
-//
-// Hành vi: mở panel = đánh dấu đã đọc 10 mục đang thấy; nút "Đọc tất cả" đánh
-// dấu TOÀN BỘ feed (kể cả mục ngoài 10); link cuối panel mở trang đầy đủ.
+// Bấm một mục = đánh dấu đã đọc trên server rồi điều hướng; "Đọc tất cả" gọi
+// read-all. Không còn trạng thái localStorage.
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Bell } from 'lucide-react'
-import { useNotificationFeed } from '@/features/notifications/api'
+import {
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useNotificationFeed,
+  useUnreadNotificationCount,
+} from '@/features/notifications/api'
 import { NotificationRow } from '@/features/notifications/NotificationRow'
-import { markSeen, useSeenIds } from '@/features/notifications/seen'
 import { useAuth } from '@/lib/auth'
 import { rolePrefix } from '@/lib/roles'
 import { EmptyState } from './EmptyState'
-
-/** Số mục hiển thị tối đa trong panel. */
-const MAX_ITEMS = 10
 
 export function NotificationsDropdown() {
   const { t } = useTranslation()
   const { user } = useAuth()
   const [open, setOpen] = useState(false)
-  const seen = useSeenIds()
-  const { items } = useNotificationFeed()
+  const { items } = useNotificationFeed(10, open)
+  const { data: unreadCount = 0 } = useUnreadNotificationCount()
+  const markRead = useMarkNotificationRead()
+  const markAll = useMarkAllNotificationsRead()
 
   const allHref = `/${rolePrefix(user?.role ?? 'COMMUNITY')}/notifications`
-  const visible = items.slice(0, MAX_ITEMS)
-  const unreadCount = items.filter((i) => !seen.includes(i.id)).length
   const hasUnread = unreadCount > 0
-
-  const toggle = () => {
-    if (!open && visible.length) {
-      // Mở panel = đã xem 10 mục này; mục ngoài 10 vẫn "chưa đọc" cho tới khi
-      // bấm "Đọc tất cả" hoặc mở trang Thông báo.
-      markSeen(visible.map((i) => i.id))
-    }
-    setOpen(!open)
-  }
 
   return (
     <div className="relative">
       <button
         type="button"
-        onClick={toggle}
+        onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="dialog"
         title={t('shell.notifications')}
@@ -80,34 +70,31 @@ export function NotificationsDropdown() {
             {items.length > 0 && (
               <button
                 type="button"
-                onClick={() => markSeen(items.map((i) => i.id))}
-                disabled={!hasUnread}
+                onClick={() => markAll.mutate()}
+                disabled={!hasUnread || markAll.isPending}
                 className="text-xs font-semibold text-primary transition-opacity hover:underline disabled:cursor-default disabled:opacity-40 disabled:no-underline"
               >
                 {t('notifications.markAllRead')}
               </button>
             )}
           </div>
-          {visible.length ? (
+          {items.length ? (
             <>
               <ul className="max-h-96 overflow-y-auto">
-                {visible.map((item) => (
+                {items.map((item) => (
                   <li key={item.id} className="border-b border-border/60 last:border-0">
                     <NotificationRow
                       item={item}
-                      unread={!seen.includes(item.id)}
+                      unread={!item.isRead}
                       onActivate={() => {
-                        markSeen([item.id])
+                        if (!item.isRead) markRead.mutate(item.id)
                         setOpen(false)
                       }}
                     />
                   </li>
                 ))}
               </ul>
-              <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2">
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  {t('shell.feed.hint')}
-                </p>
+              <div className="flex items-center justify-end border-t border-border px-4 py-2">
                 <Link
                   to={allHref}
                   onClick={() => setOpen(false)}

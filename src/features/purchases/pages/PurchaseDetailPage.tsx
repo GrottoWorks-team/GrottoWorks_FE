@@ -10,9 +10,11 @@ import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
+import { ApiError } from '@/lib/api'
 import { viDateTime, viDate } from '@/lib/format'
 import {
   usePurchaseRequest,
@@ -21,6 +23,7 @@ import {
   useApproveRequest,
   useRejectRequest,
   useApproveCostOverrun,
+  useCreatePurchaseTask,
   type StateChangeDto,
 } from '../api'
 
@@ -41,6 +44,7 @@ export default function PurchaseDetailPage() {
   const approve = useApproveRequest()
   const reject = useRejectRequest()
   const approveOverrun = useApproveCostOverrun()
+  const createPurchaseTask = useCreatePurchaseTask()
 
   const onApproveOverrun = async (purchaseId: string, version: number) => {
     try {
@@ -56,6 +60,12 @@ export default function PurchaseDetailPage() {
   const [decisionNote, setDecisionNote] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [editOpen, setEditOpen] = useState(false)
+  const [purchaseTaskOpen, setPurchaseTaskOpen] = useState(false)
+  const [ptName, setPtName] = useState('')
+  const [ptDescription, setPtDescription] = useState('')
+  const [ptPriority, setPtPriority] = useState('MEDIUM')
+  const [ptEstimate, setPtEstimate] = useState('1')
+  const [ptDeadline, setPtDeadline] = useState('')
 
   if (isLoading) {
     return <p className="lbl-mono p-6">{t('common.loading')}</p>
@@ -166,6 +176,23 @@ export default function PurchaseDetailPage() {
                   <span>{t('features.purchases.actions.approve')}</span>
                 </Button>
               </>
+            )}
+
+            {isLeader && request.status !== 'DRAFT' && request.status !== 'REJECTED' && request.status !== 'CANCELLED' && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!ptDeadline) {
+                    const d = new Date()
+                    d.setDate(d.getDate() + 7)
+                    setPtDeadline(d.toISOString().slice(0, 10))
+                  }
+                  setPurchaseTaskOpen(true)
+                }}
+              >
+                <Package className="size-4" />
+                <span>{t('features.purchases.actions.purchaseTask')}</span>
+              </Button>
             )}
           </div>
         }
@@ -465,6 +492,104 @@ export default function PurchaseDetailPage() {
             <p className="text-right text-[11px] text-muted-foreground">
               {rejectReason.length}/500
             </p>
+          </div>
+        </Dialog>
+      )}
+
+      {purchaseTaskOpen && (
+        <Dialog
+          open
+          onClose={() => setPurchaseTaskOpen(false)}
+          title={t('features.purchases.purchaseTaskTitle')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setPurchaseTaskOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!ptName.trim() || !ptDeadline || createPurchaseTask.isPending}
+                onClick={async () => {
+                  try {
+                    await createPurchaseTask.mutateAsync({
+                      requestId: request.id,
+                      name: ptName.trim(),
+                      description: ptDescription.trim() || null,
+                      priority: ptPriority as 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL',
+                      estimatedMinutes: Math.max(1, Math.round((Number(ptEstimate) || 1) * 60)),
+                      deadline: new Date(`${ptDeadline}T23:59:00`).toISOString(),
+                    })
+                    toast(t('features.purchases.purchaseTaskCreated'))
+                    setPurchaseTaskOpen(false)
+                    setPtName('')
+                    setPtDescription('')
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('common.save')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="purchase-task-name">{t('features.tasks.title')}</Label>
+              <Input
+                id="purchase-task-name"
+                value={ptName}
+                maxLength={160}
+                onChange={(e) => setPtName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="purchase-task-note">{t('features.purchases.note')}</Label>
+              <textarea
+                id="purchase-task-note"
+                rows={2}
+                maxLength={2000}
+                className={TEXTAREA_CLS}
+                value={ptDescription}
+                onChange={(e) => setPtDescription(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="purchase-task-priority">{t('features.design.priorityLabel')}</Label>
+                <select
+                  id="purchase-task-priority"
+                  className="h-10 w-full rounded-md border border-border bg-card px-2 text-sm"
+                  value={ptPriority}
+                  onChange={(e) => setPtPriority(e.target.value)}
+                >
+                  {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((value) => (
+                    <option key={value} value={value}>
+                      {t(`priority.${value}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="purchase-task-minutes">{t('features.tasks.estimateHours')}</Label>
+                <Input
+                  id="purchase-task-minutes"
+                  type="number"
+                  min={0.5}
+                  step={0.5}
+                  value={ptEstimate}
+                  onChange={(e) => setPtEstimate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="purchase-task-deadline">{t('features.tasks.dueDate')}</Label>
+                <Input
+                  id="purchase-task-deadline"
+                  type="date"
+                  value={ptDeadline}
+                  onChange={(e) => setPtDeadline(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         </Dialog>
       )}

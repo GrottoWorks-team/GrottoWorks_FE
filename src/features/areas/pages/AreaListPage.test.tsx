@@ -160,6 +160,7 @@ vi.mock('@/features/areas/api', () => ({
   useAssignWorkAreaLeader: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useAssignWorkAreaMaterialOfficer: () => ({ mutateAsync: vi.fn().mockResolvedValue({}), isPending: false }),
   useArea: (id?: string) => ({ data: mockAreas.find((a) => a.id === id), isPending: false }),
+  useAreaProgress: () => ({ data: undefined, isPending: false }),
 }))
 
 vi.mock('@/features/season/api', () => ({

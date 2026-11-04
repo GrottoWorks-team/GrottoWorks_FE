@@ -377,6 +377,34 @@ export function useRecordOpeningStock() {
   })
 }
 
+/** D1b: POST /api/v1/inventory-adjustments (MO) — ghi nhận hỏng / mất / thanh lý. */
+export type InventoryAdjustmentKind = 'Damaged' | 'Lost' | 'Disposed'
+
+export interface InventoryAdjustmentPayload {
+  workAreaId: string
+  materialId: string
+  type: InventoryAdjustmentKind
+  quantity: number
+  reason: string
+  transactionDate?: string
+}
+
+export function useAdjustInventory() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: InventoryAdjustmentPayload) =>
+      api<{ data?: InventoryTransactionDto } | InventoryTransactionDto>(
+        '/api/v1/inventory-adjustments',
+        { method: 'POST', body: JSON.stringify(payload) },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['inventory'] })
+      qc.invalidateQueries({ queryKey: ['material-history'] })
+      qc.invalidateQueries({ queryKey: materialKeys.all })
+    },
+  })
+}
+
 /** C1: GET /api/v1/material-categories */
 export function useMaterialCategories(status?: 'ACTIVE' | 'INACTIVE') {
   return useQuery({
@@ -485,7 +513,8 @@ export function useUpdateMaterialCatalogItem() {
  *
  * LƯU Ý HỢP ĐỒNG: `/api/v1/materials` là **catalog** (`MaterialDto`: id/categoryId/
  * code/name/unit/status) — KHÔNG có `areaId/required/purchased/received`. BE chưa có
- * endpoint "vật tư của một khu" (xem BE-gap-requests-field-audit-2026-10-29.md §2 R-3),
+ * endpoint riêng theo khu (đã dùng `material-requirements` + `shortages` ở nơi khác —
+ * xem API-GAP-STATUS-2026-11-04.md §2.3),
  * nên các field số lượng để 0 thay vì `undefined` (trước đây gây `NaN` ở
  * `AllocationPage`/`PurchaseConfirmPage`). `areaId` bị bỏ qua vì BE không trả.
  */

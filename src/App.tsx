@@ -42,6 +42,8 @@ const AllocationPage = lazy(() => import('@/features/allocations/pages/Allocatio
 const TimesheetPage = lazy(() => import('@/features/timesheets/pages/TimesheetPage'))
 const ChecklistPage = lazy(() => import('@/features/checklist/pages/ChecklistPage'))
 const ReportPage = lazy(() => import('@/features/reports/pages/ReportPage'))
+const MaterialReportsPage = lazy(() => import('@/features/materialReports/pages/MaterialReportsPage'))
+const MaterialReceiptsPage = lazy(() => import('@/features/support/pages/MaterialReceiptsPage'))
 const CommitteeOverview = lazy(() => import('@/features/dashboards/CommitteeOverview'))
 const LeaderOverview = lazy(() => import('@/features/dashboards/LeaderOverview'))
 const OfficerOverview = lazy(() => import('@/features/dashboards/OfficerOverview'))
@@ -77,6 +79,8 @@ const PAGES: Record<string, ComponentType> = {
   '/material-officer/categories': MaterialCategoriesPage,
   '/material-officer/materials': MaterialListPage,
   '/material-officer/inventory': MaterialInventoryPage,
+  '/material-officer/material-reports': MaterialReportsPage,
+  '/material-officer/support-materials': MaterialReceiptsPage,
   '/material-officer/material-needs': SeasonMaterialNeedsPage,
   '/material-officer/purchases': PurchaseListPage,
   '/material-officer/purchases-confirm': PurchaseConfirmPage,

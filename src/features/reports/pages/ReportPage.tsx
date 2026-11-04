@@ -1,9 +1,9 @@
 // Báo cáo (/community/reports) — BE Reporting `/api/v1/reports/{type}`.
 // ReportDataDto trả columns + rows + totals + notes nên trang render động,
 // không còn gộp 6 endpoint legacy.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download } from 'lucide-react'
+import { Download, FileSpreadsheet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
@@ -12,9 +12,17 @@ import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useSeasons } from '@/features/season/api'
 import { exportCsv } from '@/lib/csv'
+import { ApiError } from '@/lib/api'
 import i18n from '@/lib/i18n'
 import { viDateTime } from '@/lib/format'
-import { useReportData, type ReportType } from '../api'
+import {
+  downloadReportExport,
+  useCreateReportExport,
+  useReportData,
+  useReportExportJob,
+  type ReportType,
+} from '../api'
+import { useSeasonRecognition } from '@/features/recognition/api'
 
 const TYPES: ReportType[] = ['TASKS', 'MATERIALS', 'PURCHASES', 'CONTRIBUTIONS', 'ATTENDANCE', 'READINESS']
 
@@ -46,6 +54,18 @@ export default function ReportPage() {
 
   const rows = useMemo(() => data?.rows ?? [], [data])
 
+  const [jobId, setJobId] = useState<string | undefined>()
+  const createExport = useCreateReportExport()
+  const { data: job, refetch: refetchJob } = useReportExportJob(jobId)
+  const { data: recognition } = useSeasonRecognition(selectedSeason)
+
+  // BE giới hạn 3 request/phút cho system-jobs → hỏi lại trạng thái một lần sau khi tạo.
+  useEffect(() => {
+    if (!jobId) return
+    const timer = setTimeout(() => void refetchJob(), 10_000)
+    return () => clearTimeout(timer)
+  }, [jobId, refetchJob])
+
   const onExport = () => {
     if (!data) return
     exportCsv(
@@ -59,16 +79,59 @@ export default function ReportPage() {
     toast(t('features.reports.exported', { label: t(`features.reports.type.${type}`) }))
   }
 
+  // Xuất bất đồng bộ của BE: tạo job → poll trạng thái → tải tệp khi xong.
+  useEffect(() => {
+    if (!jobId || !job) return
+    if (job.status === 'COMPLETED') {
+      const label = t(`features.reports.type.${job.reportType}`)
+      const name =
+        job.fileName ?? `grottoworks-${job.reportType.toLowerCase()}.${job.format.toLowerCase()}`
+      downloadReportExport(job.id, name)
+        .then(() => toast(t('features.reports.exportedFile', { label })))
+        .catch(() => toast(t('common.error'), 'alert'))
+        .finally(() => setJobId(undefined))
+    } else if (job.status === 'FAILED') {
+      toast(job.errorMessage ?? t('common.error'), 'alert')
+      setJobId(undefined)
+    }
+  }, [job, jobId, t, toast])
+
+  const onServerExport = async () => {
+    if (!selectedSeason) return
+    try {
+      const created = await createExport.mutateAsync({
+        reportType: type,
+        format: 'XLSX',
+        seasonId: selectedSeason,
+        workAreaId: areaId || undefined,
+      })
+      setJobId(created.id)
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+    }
+  }
+
   return (
     <div>
       <PageHeader
         title={t('features.reports.title')}
         sub={t('features.reports.sub')}
         actions={
-          <Button variant="outline" onClick={onExport} disabled={!rows.length}>
-            <Download className="size-4" />
-            {t('features.reports.export')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onExport} disabled={!rows.length}>
+              <Download className="size-4" />
+              {t('features.reports.export')}
+            </Button>
+            <Button onClick={onServerExport} disabled={!selectedSeason || !!jobId}>
+              <FileSpreadsheet className="size-4" />
+              {jobId ? t('features.reports.exportRunning') : t('features.reports.exportServer')}
+            </Button>
+            {jobId && (
+              <Button variant="outline" onClick={() => void refetchJob()}>
+                {t('features.parish.jobRefresh')}
+              </Button>
+            )}
+          </div>
         }
       />
 
@@ -187,6 +250,43 @@ export default function ReportPage() {
             </table>
           </div>
         </>
+      )}
+
+      {recognition && recognition.ranking.length > 0 && (
+        <Card className="mt-6 p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="lbl-mono">{t('features.reports.recognitionRanking')}</p>
+            <span className="tabular text-xs text-muted-foreground">
+              {t('features.reports.recognitionTotals', {
+                points: recognition.totalPoints,
+                contributors: recognition.contributors,
+              })}
+            </span>
+          </div>
+          <ol className="space-y-1.5">
+            {recognition.ranking.slice(0, 10).map((row) => (
+              <li
+                key={row.userId}
+                className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-1.5 text-sm"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="tabular w-6 shrink-0 text-xs font-bold text-brand-gold">
+                    #{row.rank}
+                  </span>
+                  <span className="truncate font-semibold">
+                    {row.displayName ?? row.userId.slice(0, 8)}
+                  </span>
+                </span>
+                <span className="tabular shrink-0 text-xs text-muted-foreground">
+                  {t('features.reports.recognitionRow', {
+                    points: row.totalPoints,
+                    contributions: row.contributions,
+                  })}
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Card>
       )}
     </div>
   )

@@ -33,6 +33,43 @@ export function useBorrowedItems(status?: BorrowedItemStatus) {
   })
 }
 
+/** GET /api/v1/borrowed-items/overdue — đồ mượn quá hạn trả (MO).
+ *  Endpoint không nhận `size` (chỉ `date` / `withinDays`) → gọi không query. */
+export function useOverdueBorrowedItems() {
+  return useQuery({
+    queryKey: ['borrowed', 'overdue'] as const,
+    queryFn: async () => {
+      const res = await api<BorrowedItem[] | { data?: BorrowedItem[] }>(
+        '/api/v1/borrowed-items/overdue',
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    retry: false,
+  })
+}
+
+/** PUT /api/v1/borrowed-items/{itemId}/assignment — chuyển đồ mượn sang khu/việc khác (MO). */
+export function useAssignBorrowedItem() {
+  return useBorrowedMutation(
+    ({
+      itemId,
+      version,
+      workAreaId,
+      taskId,
+    }: {
+      itemId: string
+      version: number
+      workAreaId: string
+      taskId?: string | null
+    }) =>
+      api<BorrowedItem>(`/api/v1/borrowed-items/${itemId}/assignment`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ version, workAreaId, taskId: taskId || null }),
+      }),
+  )
+}
+
 function useBorrowedMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   const qc = useQueryClient()
   return useMutation({

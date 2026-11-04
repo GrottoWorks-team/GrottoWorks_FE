@@ -60,8 +60,32 @@ export function useAreas(seasonIds?: string[]) {
  * tính trong mùa hiện tại. Role không có picker mùa (PARISH) → toàn bộ như cũ.
  */
 export function useScopedAreas() {
-  const { seasonId } = useSeasonContext()
-  return useAreas(seasonId ? [seasonId] : undefined)
+  const { seasonId, isPending } = useSeasonContext()
+  // Chưa biết mùa hiệu lực (danh sách mùa đang tải) → KHÔNG gọi /work-areas cho
+  // mọi mùa (N request thừa rồi gọi lại lần nữa khi mùa resolve).
+  return useAreas(seasonId ? [seasonId] : isPending ? [] : undefined)
+}
+
+/** GET /api/v1/work-areas/{id}/progress — tiến độ task của khu (ParishCoordination). */
+export interface WorkAreaProgressDto {
+  workAreaId: string
+  seasonId: string
+  workAreaStatus: string
+  totalTasks: number
+  cancelledTasks: number
+  eligibleTasks: number
+  completedTasks: number
+  overdueTasks: number
+  calculatedAt: string
+}
+
+export function useAreaProgress(areaId?: string) {
+  return useQuery({
+    queryKey: ['area', areaId ?? '', 'progress'] as const,
+    queryFn: () => api<WorkAreaProgressDto>(`/api/v1/work-areas/${areaId}/progress`),
+    enabled: Boolean(areaId),
+    retry: false,
+  })
 }
 
 /** GET /api/v1/work-areas/{id} */

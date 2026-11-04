@@ -7,7 +7,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, apiPaged } from '@/lib/api'
 import type { Donation, DonationItem } from '@/types'
-
 export const donationKeys = {
   all: ['donations'] as const,
 }
@@ -25,6 +24,16 @@ interface DonationDto {
   pledgedAmount?: MoneyDto | null; receivedAmount?: MoneyDto | null
   donationDate: string; items: DonationItemDto[]
   note?: string | null; cancelReason?: string | null; version: number
+  updatedAt?: string | null
+  receipts?: DonationReceiptDto[] | null
+}
+interface DonationReceiptItemDto {
+  id: string; donationItemId: string; materialId: string
+  receivedQuantity: number; unusableQuantity: number; usableQuantity: number
+}
+interface DonationReceiptDto {
+  id: string; receivedAt: string; receivedBy: string
+  receivedAmount?: MoneyDto | null; note?: string | null; items: DonationReceiptItemDto[]
 }
 function mapItem(dto: DonationItemDto): DonationItem {
   return {
@@ -165,6 +174,123 @@ export function useCancelDonation() {
     api<DonationDto>(`/api/v1/donations/${id}/cancel`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
+    }),
+  )
+}
+
+/** GET /api/v1/donations/{donationId} — chi tiết một lần quyên góp. */
+export function useDonation(donationId?: string) {
+  return useQuery({
+    queryKey: [...donationKeys.all, 'detail', donationId ?? ''],
+    queryFn: async () => {
+      const res = await api<DonationDto | { data?: DonationDto }>(
+        `/api/v1/donations/${donationId}`,
+      )
+      const dto = 'data' in res && res.data ? res.data : (res as DonationDto)
+      return mapDonation(dto)
+    },
+    enabled: Boolean(donationId),
+  })
+}
+
+export interface ContributionNeedDto {
+  kind: string
+  workAreaId: string
+  workAreaName: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  required: number
+  shortage: number
+  pledgedOutstanding: number
+  remainingNeed: number
+}
+
+/** GET /api/v1/seasons/{seasonId}/contribution-needs — vật tư còn thiếu cần quyên góp. */
+export function useContributionNeeds(seasonId?: string) {
+  return useQuery({
+    queryKey: [...donationKeys.all, 'needs', seasonId ?? ''],
+    queryFn: async () => {
+      const res = await apiPaged<ContributionNeedDto>(
+        `/api/v1/seasons/${seasonId}/contribution-needs?size=50`,
+      )
+      return res.data
+    },
+    enabled: Boolean(seasonId),
+  })
+}
+
+export interface ReceiptLineRow {
+  id: string
+  materialId: string
+  receivedQuantity: number
+  unusableQuantity: number
+  usableQuantity: number
+}
+
+export interface ReceiptRow {
+  id: string
+  receivedAt: string
+  amount?: number | null
+  note?: string | null
+  items: ReceiptLineRow[]
+}
+
+/** GET /api/v1/donations/{id} — chỉ getDonation trả `receipts`, dùng để điều chỉnh phiếu đã ghi. */
+export function useDonationReceipts(donationId?: string) {
+  return useQuery({
+    queryKey: [...donationKeys.all, 'receipts', donationId ?? ''],
+    queryFn: async () => {
+      const dto = await api<DonationDto>(`/api/v1/donations/${donationId}`)
+      return {
+        version: dto.version,
+        receipts: (dto.receipts ?? []).map<ReceiptRow>((receipt) => ({
+          id: receipt.id,
+          receivedAt: receipt.receivedAt,
+          amount: receipt.receivedAmount?.amount ?? null,
+          note: receipt.note ?? null,
+          items: receipt.items.map((item) => ({
+            id: item.id,
+            materialId: item.materialId,
+            receivedQuantity: item.receivedQuantity,
+            unusableQuantity: item.unusableQuantity,
+            usableQuantity: item.usableQuantity,
+          })),
+        })),
+      }
+    },
+    enabled: Boolean(donationId),
+  })
+}
+
+export interface AdjustReceiptInput {
+  donationId: string
+  receiptId: string
+  version?: number
+  reason: string
+  /** MONEY: số tiền đã nhận sau điều chỉnh. */
+  receivedAmount?: number
+  /** MATERIAL: số lượng đúng của từng dòng phiếu. */
+  items?: { donationReceiptItemId: string; receivedQuantity: number; unusableQuantity?: number }[]
+}
+
+/** PATCH /api/v1/donations/{id} — MO điều chỉnh số liệu một phiếu đã ghi nhận (kèm lý do). */
+export function useAdjustDonationReceipt() {
+  return useDonationMutation((input: AdjustReceiptInput) =>
+    api<DonationDto>(`/api/v1/donations/${input.donationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        version: input.version ?? null,
+        receiptId: input.receiptId,
+        receivedAmount: input.receivedAmount ?? null,
+        items: (input.items ?? []).map((item) => ({
+          donationReceiptItemId: item.donationReceiptItemId,
+          receivedQuantity: item.receivedQuantity,
+          unusableQuantity: item.unusableQuantity ?? 0,
+        })),
+        reason: input.reason,
+      }),
     }),
   )
 }

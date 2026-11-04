@@ -8,6 +8,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -136,7 +137,29 @@ export default function ParishOverview() {
         </Card>
 
         <Card className="p-5">
-          <p className="text-sm text-muted-foreground">{t('features.dashboards.pendingApi')}</p>
+          <p className="lbl-mono mb-3">{t('features.dashboards.areaStatusBreakdown')}</p>
+          {areas.length === 0 ? (
+            <EmptyState text={t('common.empty')} className="py-6" />
+          ) : (
+            <ul className="space-y-2">
+              {Object.entries(
+                areas.reduce<Record<string, number>>((acc, a) => {
+                  acc[a.status] = (acc[a.status] ?? 0) + 1
+                  return acc
+                }, {}),
+              ).map(([status, count]) => (
+                <li key={status} className="flex items-center justify-between gap-3 text-sm">
+                  <StatusTag status={status} />
+                  <span className="tabular font-semibold text-foreground">
+                    {count} {t('features.dashboards.areaUnit')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            {t('features.dashboards.adminScopeHint')}
+          </p>
         </Card>
       </div>
     </div>

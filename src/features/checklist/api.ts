@@ -125,3 +125,51 @@ export function useReopenReadiness() {
     }),
   )
 }
+
+/** POST /readiness-checks/{id}/items/{itemId}/evidence — gắn file đã upload (NotificationAudit). */
+export function useAttachReadinessEvidence() {
+  return useReadinessMutation(
+    ({ checkId, itemId, fileIds }: { checkId: string; itemId: string; fileIds: string[] }) =>
+      api<ReadinessItem>(`/api/v1/readiness-checks/${checkId}/items/${itemId}/evidence`, {
+        method: 'POST',
+        body: JSON.stringify(fileIds.map((id) => ({ id }))),
+      }),
+  )
+}
+
+/** PUT /readiness-checks/{id}/items/{itemId}/corrective-task — gắn việc khắc phục. */
+export function useLinkCorrectiveTask() {
+  return useReadinessMutation(
+    ({
+      checkId,
+      itemId,
+      version,
+      taskId,
+    }: {
+      checkId: string
+      itemId: string
+      version: number
+      taskId: string | null
+    }) =>
+      api<ReadinessItem>(
+        `/api/v1/readiness-checks/${checkId}/items/${itemId}/corrective-task`,
+        {
+          method: 'PUT',
+          headers: { 'If-Match': `"${version}"` },
+          body: JSON.stringify({ version, taskId }),
+        },
+      ),
+  )
+}
+
+/** GET .../evidence/{fileId}/download-url — URL tải minh chứng (hết hạn ngắn). */
+export async function getReadinessEvidenceUrl(
+  checkId: string,
+  itemId: string,
+  fileId: string,
+): Promise<string> {
+  const res = await api<{ downloadUrl: string }>(
+    `/api/v1/readiness-checks/${checkId}/items/${itemId}/evidence/${fileId}/download-url`,
+  )
+  return res.downloadUrl
+}

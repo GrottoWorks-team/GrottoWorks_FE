@@ -41,6 +41,16 @@ vi.mock('../api', () => ({
   useUnassign: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReplaceCompletionCriteria: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReplaceTaskSkills: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useApproveTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRequestTaskRevision: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useTaskProgress: () => ({ data: [], isPending: false }),
+  useTaskReviewPackage: () => ({ data: undefined, isPending: false }),
+  useTaskAssignments: () => ({ data: [], isPending: false }),
+  useAssignVolunteer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useCancelTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useReplaceTaskMaterials: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useVolunteerMatches: () => ({ data: [], isPending: false }),
+  getTaskEvidenceUrl: vi.fn(),
   useSkillsCatalog: () => ({ data: [{ id: 's1', code: 'MOC', name: 'Thợ mộc', status: 'ACTIVE' }], isPending: false }),
 }))
 

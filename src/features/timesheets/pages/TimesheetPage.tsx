@@ -22,6 +22,7 @@ import { viDateTime } from '@/lib/format'
 import {
   useAttendanceCorrections,
   useAttendanceRequests,
+  useOpenAttendanceSessions,
   useReviewAttendanceRequest,
   useReviewCorrection,
   useWorkingHours,
@@ -218,6 +219,7 @@ export default function TimesheetPage() {
   )
 
   const totalHours = hours.reduce((sum, h) => sum + Number(h.approvedHours), 0)
+  const { data: openSessions = [] } = useOpenAttendanceSessions()
 
   if (!myAreas.length) return <EmptyState text={t('features.tasks.noArea')} />
 
@@ -263,6 +265,34 @@ export default function TimesheetPage() {
 
       <h2 className="mb-3 mt-8 font-semibold text-foreground">{t('features.timesheets.hoursTitle')}</h2>
       <DataTable rows={hours} columns={hoursColumns} emptyText={t('features.timesheets.noHours')} />
+
+      <h2 className="mb-3 mt-8 font-semibold text-foreground">
+        {t('features.timesheets.openSessionsTitle')}
+      </h2>
+      <Card className="p-5">
+        {openSessions.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{t('features.timesheets.noOpenSessions')}</p>
+        ) : (
+          <ul className="space-y-2">
+            {openSessions.map((session) => {
+              const hoursOpen = (Date.now() - new Date(session.checkInAt).getTime()) / 3_600_000
+              return (
+                <li
+                  key={session.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-status-dangerBg/40 px-3 py-2 text-sm"
+                >
+                  <span className="tabular text-foreground">
+                    {t('features.timesheets.checkedInAt', { at: viDateTime(session.checkInAt) })}
+                  </span>
+                  <span className="tabular font-semibold text-status-dangerText">
+                    {t('features.timesheets.hoursOpen', { hours: hoursOpen.toFixed(1) })}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </Card>
 
       {rejecting && (
         <ReviewDialog

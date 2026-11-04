@@ -2,7 +2,7 @@
 //
 // Lý do tách interface: giai đoạn A lưu localStorage, giai đoạn B sẽ thay bằng
 // API (`GET/PUT /api/v1/work-areas/{id}/design-scene` — xem
-// `BE-gap-requests-activity-flows.md` §6). Logic scene/layer/transform chỉ biết
+// `API-GAP-STATUS-2026-11-04.md` §3-A6). Logic scene/layer/transform chỉ biết
 // interface này nên KHÔNG phải viết lại khi đổi backend.
 //
 // Lưu ý trung thực: localStorage chỉ là nơi lưu của MỘT trình duyệt, KHÔNG chia

@@ -1,6 +1,6 @@
 // Tasks API hooks — Group G: TaskExecution backend integration
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ApiError, api } from '@/lib/api'
+import { ApiError, api, apiPaged } from '@/lib/api'
 import type { Task } from '@/types'
 
 export type TaskBackendStatus =
@@ -306,6 +306,309 @@ export function useReplaceTaskSkills() {
   )
 }
 
-// Các thao tác còn thiếu API ở BE (phân công TNV, nộp duyệt, duyệt hoàn thành,
-// yêu cầu sửa) KHÔNG còn hook giả lập trả object thành công: UI hiện ghi chú thay vì
-// báo "đã phân công/đã duyệt" trong khi không có gì được lưu.
+// ---------------------------------------------------------------------------
+// Tiến độ & nghiệm thu (TaskExecution)
+//   GET  /api/v1/tasks/{taskId}/progress                  (paged tiến độ)
+//   GET  /api/v1/tasks/{taskId}/review-package            (LEADER)
+//   POST /api/v1/tasks/{taskId}/approve                   (LEADER)
+//   POST /api/v1/tasks/{taskId}/request-revision          (LEADER)
+// Tình nguyện viên nộp tiến độ bằng app mobile (BE yêu cầu role VOLUNTEER).
+// ---------------------------------------------------------------------------
+
+export interface ProgressEvidenceDto {
+  id?: string
+  progressId?: string
+  fileId: string
+  caption?: string | null
+  uploadedAt?: string | null
+}
+
+export interface TaskProgressDto {
+  id: string
+  taskId: string
+  submittedByUserId: string
+  percentComplete: number
+  note?: string | null
+  submittedAt: string
+  isSubmission: boolean
+  approvedByUserId?: string | null
+  approvedAt?: string | null
+  evidence: ProgressEvidenceDto[]
+}
+
+export interface TaskReviewPackageDto {
+  task: TaskDto
+  completionCriteria?: string | null
+  progress: TaskProgressDto[]
+  reviews: unknown[]
+  approvedHours: number
+  materialSummary: unknown
+}
+
+export const progressKeys = {
+  list: (taskId: string) => ['tasks', 'progress', taskId] as const,
+  review: (taskId: string) => ['tasks', 'review-package', taskId] as const,
+}
+
+export function useTaskProgress(taskId?: string) {
+  return useQuery({
+    queryKey: progressKeys.list(taskId ?? ''),
+    queryFn: async () => {
+      const res = await apiPaged<TaskProgressDto>(`/api/v1/tasks/${taskId}/progress?size=100`)
+      return res.data
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+export function useTaskReviewPackage(taskId?: string, enabled = true) {
+  return useQuery({
+    queryKey: progressKeys.review(taskId ?? ''),
+    queryFn: () => api<TaskReviewPackageDto>(`/api/v1/tasks/${taskId}/review-package`),
+    enabled: Boolean(taskId) && enabled,
+    // 503 = read-model `task_projection` chưa nhận event → không thử lại liên tục.
+    retry: false,
+  })
+}
+
+function useTaskReviewAction(path: 'approve' | 'request-revision') {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ taskId, version, reason }: { taskId: string; version?: number; reason?: string }) => {
+      const headers: Record<string, string> = {}
+      if (version !== undefined && version !== null) headers['If-Match'] = `"${version}"`
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/${path}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason: reason ?? null, version: version ?? null }),
+      })
+    },
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: taskKeys.all })
+      qc.invalidateQueries({ queryKey: progressKeys.review(vars.taskId) })
+      qc.invalidateQueries({ queryKey: progressKeys.list(vars.taskId) })
+    },
+  })
+}
+
+/** POST /api/v1/tasks/{taskId}/approve — chốt hoàn thành (LEADER). */
+export function useApproveTask() {
+  return useTaskReviewAction('approve')
+}
+
+/** POST /api/v1/tasks/{taskId}/request-revision — trả việc về cho TNV sửa (LEADER). */
+export function useRequestTaskRevision() {
+  return useTaskReviewAction('request-revision')
+}
+
+// ---------------------------------------------------------------------------
+// Phân công & đăng ký tình nguyện (TaskExecution)
+//   GET/POST /api/v1/tasks/{taskId}/assignments      (LEADER)
+//   POST     /api/v1/task-assignments/{id}/accept|decline (VOLUNTEER — app mobile)
+//   GET      /api/v1/tasks/{taskId}/applications     (LEADER)
+//   POST     /api/v1/task-applications/{id}/approve|reject (LEADER)
+// ---------------------------------------------------------------------------
+
+export type AssignmentStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'CANCELLED'
+
+export interface AssignmentDto {
+  id: string
+  taskId: string
+  volunteerId: string
+  assignmentType: string
+  status: AssignmentStatus
+  note?: string | null
+  version: number
+  requestedAt?: string | null
+  assignedAt?: string | null
+  approvedAt?: string | null
+  rejectedAt?: string | null
+  warnings: string[]
+  responseReason?: string | null
+}
+
+export interface TaskApplicationDto {
+  id: string
+  taskId: string
+  volunteerId: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+  note?: string | null
+  version: number
+  requestedAt?: string | null
+  reviewedAt?: string | null
+  reason?: string | null
+}
+
+export const assignmentKeys = {
+  list: (taskId: string) => ['tasks', 'assignments', taskId] as const,
+  applications: (taskId: string) => ['tasks', 'applications', taskId] as const,
+}
+
+export function useTaskAssignments(taskId?: string) {
+  return useQuery({
+    queryKey: assignmentKeys.list(taskId ?? ''),
+    queryFn: async () => {
+      const res = await api<AssignmentDto[] | { data?: AssignmentDto[] }>(
+        `/api/v1/tasks/${taskId}/assignments`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+export function useAssignVolunteer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: {
+      taskId: string
+      volunteerId: string
+      note?: string | null
+      overrideCapacity?: boolean
+      overrideSkillMismatch?: boolean
+      overrideReason?: string | null
+    }) =>
+      api<AssignmentDto>(`/api/v1/tasks/${input.taskId}/assignments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          volunteerId: input.volunteerId,
+          note: input.note ?? null,
+          overrideCapacity: input.overrideCapacity ?? false,
+          overrideSkillMismatch: input.overrideSkillMismatch ?? false,
+          overrideReason: input.overrideReason ?? null,
+        }),
+      }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: assignmentKeys.list(vars.taskId) })
+      qc.invalidateQueries({ queryKey: taskKeys.detail(vars.taskId) })
+    },
+  })
+}
+
+export function useTaskApplications(taskId?: string) {
+  return useQuery({
+    queryKey: assignmentKeys.applications(taskId ?? ''),
+    queryFn: async () => {
+      const res = await apiPaged<TaskApplicationDto>(
+        `/api/v1/tasks/${taskId}/applications?size=100`,
+      )
+      return res.data
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+function useApplicationReview(action: 'approve' | 'reject') {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (vars: {
+      applicationId: string
+      taskId: string
+      version: number
+      reason?: string
+    }) =>
+      api<TaskApplicationDto | AssignmentDto>(`/api/v1/task-applications/${vars.applicationId}/${action}`, {
+        method: 'POST',
+        headers: { 'If-Match': `"${vars.version}"` },
+        body: JSON.stringify({ version: vars.version, reason: vars.reason ?? null }),
+      }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: assignmentKeys.applications(vars.taskId) })
+      qc.invalidateQueries({ queryKey: assignmentKeys.list(vars.taskId) })
+      qc.invalidateQueries({ queryKey: taskKeys.all })
+    },
+  })
+}
+
+/** POST /api/v1/task-applications/{id}/approve — duyệt đăng ký của TNV (LEADER). */
+export function useApproveApplication() {
+  return useApplicationReview('approve')
+}
+
+/** POST /api/v1/task-applications/{id}/reject — từ chối đăng ký (LEADER). */
+export function useRejectApplication() {
+  return useApplicationReview('reject')
+}
+
+// ---------------------------------------------------------------------------
+// Vòng đời & vật tư của việc (TaskExecution)
+//   POST /api/v1/tasks/{taskId}/cancel                 (LEADER)
+//   PUT  /api/v1/tasks/{taskId}/materials              (LEADER)
+//   GET  /api/v1/tasks/{taskId}/volunteer-matches      (LEADER)
+//   GET  /api/v1/tasks/{id}/progress/{p}/evidence/{f}/download-url
+// ---------------------------------------------------------------------------
+
+/** POST /tasks/{taskId}/cancel — huỷ việc kèm lý do (LEADER). */
+export function useCancelTask() {
+  return useTaskMutation(
+    ({ taskId, version, reason }: { taskId: string; version?: number; reason: string }) =>
+      api<TaskDto>(`/api/v1/tasks/${taskId}/cancel`, {
+        method: 'POST',
+        headers: version !== undefined ? { 'If-Match': `"${version}"` } : {},
+        body: JSON.stringify({ version: version ?? null, reason }),
+      }),
+  )
+}
+
+/** PUT /tasks/{taskId}/materials — thay toàn bộ vật tư yêu cầu của việc. */
+export function useReplaceTaskMaterials() {
+  return useTaskMutation(
+    ({
+      taskId,
+      version,
+      materials,
+    }: {
+      taskId: string
+      version: number
+      materials: Array<{ materialId: string; requiredQuantity: number; note?: string | null }>
+    }) =>
+      api<TaskDto>(`/api/v1/tasks/${taskId}/materials`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify(
+          materials.map((row) => ({
+            materialId: row.materialId,
+            requiredQuantity: row.requiredQuantity,
+            note: row.note ?? null,
+          })),
+        ),
+      }),
+  )
+}
+
+export interface VolunteerMatchDto {
+  volunteerId: string
+  displayName: string
+  communityId?: string | null
+  sameCommunity: boolean
+  availabilityMatched?: boolean | null
+  hasScheduleConflict: boolean
+  warnings: string[]
+}
+
+/** GET /tasks/{taskId}/volunteer-matches — gợi ý TNV phù hợp (LEADER). */
+export function useVolunteerMatches(taskId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['tasks', 'volunteer-matches', taskId ?? ''] as const,
+    queryFn: async () => {
+      const res = await api<VolunteerMatchDto[] | { data?: VolunteerMatchDto[] }>(
+        `/api/v1/tasks/${taskId}/volunteer-matches`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    enabled: Boolean(taskId) && enabled,
+    retry: false,
+  })
+}
+
+/** GET .../progress/{progressId}/evidence/{fileId}/download-url */
+export async function getTaskEvidenceUrl(
+  taskId: string,
+  progressId: string,
+  fileId: string,
+): Promise<string> {
+  const res = await api<{ downloadUrl: string }>(
+    `/api/v1/tasks/${taskId}/progress/${progressId}/evidence/${fileId}/download-url`,
+  )
+  return res.downloadUrl
+}

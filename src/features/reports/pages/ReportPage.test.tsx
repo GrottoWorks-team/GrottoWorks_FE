@@ -35,6 +35,9 @@ vi.mock('@/features/areas/api', () => ({
 
 vi.mock('../api', () => ({
   useReportData: () => ({ data: mockReport, isPending: false, isError: false }),
+  useCreateReportExport: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useReportExportJob: () => ({ data: undefined }),
+  downloadReportExport: vi.fn(),
 }))
 
 test('render động theo columns/rows/totals của ReportDataDto', async () => {

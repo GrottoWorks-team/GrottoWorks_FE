@@ -22,7 +22,7 @@ export function normalizeRole(roleStr?: string): Role {
   if (code === 'ADMIN') return 'PARISH'
   if (code === 'PARISH' || code.includes('COMMUNITY')) return 'COMMUNITY'
   if (code.includes('LEADER')) return 'LEADER'
-  // VOLUNTEER chưa có giao diện web (dùng app mobile) → xem BE-gap-requests-activity-flows.md
+  // VOLUNTEER chưa có giao diện web (dùng app mobile) → xem API-GAP-STATUS-2026-11-04.md §2.2
   return 'COMMUNITY'
 }
 
