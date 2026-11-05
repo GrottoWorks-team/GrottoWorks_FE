@@ -59,7 +59,7 @@ describe('SeasonFormDialog validation', () => {
     expect(await screen.findByText('Ngày kết thúc phải sau ngày mở')).toBeDefined()
   })
 
-  it('không còn trường "Cộng đoàn tham gia" (BE không lưu) và submit thành công', async () => {
+  it('không còn trường "Cộng đoàn tham gia" (BE không lưu) và end sau start → submit thành công', async () => {
     setup()
     const nameInput = screen.queryByLabelText(/Tên mùa/i)
     if (nameInput) fireEvent.change(nameInput, { target: { value: 'Mùa 2026' } })

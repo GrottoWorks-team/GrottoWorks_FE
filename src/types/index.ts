@@ -32,6 +32,8 @@ export interface User {
   /** GUID kỹ năng — dùng khi gửi PUT /users/me/skills (BE nhận `skillIds`). */
   skillIds?: string[];
   points: number; avatarHue: number;
+  /** Role gốc BE trả từ Identity service, ví dụ 'VOLUNTEER'. */
+  rawRole?: string;
 }
 
 export interface Season {
@@ -46,6 +48,7 @@ export interface Season {
   description?: string
   /** Dùng cho If-Match khi PATCH/activate/complete — BE chặn ghi đè bằng 412. */
   version?: number
+  createdAt?: string
 }
 
 export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'
@@ -92,6 +95,8 @@ export interface ParishMap {
   updatedAt: string;
 }
 
+export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+
 export interface Task {
   id: string; areaId: string; title: string; description: string; skills: string[];
   /** Kỹ năng yêu cầu dạng GUID (`TaskDto.skills` của TaskExecution) — hiển thị qua danh mục `/api/v1/skills`. */
@@ -99,7 +104,7 @@ export interface Task {
   /** Nhu cầu vật tư chi tiết (`TaskDto.materials`) — dùng để prefill dialog gán vật tư. */
   materialRequirements?: Array<{ materialId: string; requiredQuantity: number; note?: string | null }>;
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
-  status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
+  status: 'TODO' | 'READY' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
   /** Ngày bắt đầu dự kiến (`TaskDto.startAt`) — việc chuyển IN_PROGRESS khi leader duyệt check-in. */
   startAt?: string | null;
   /**
@@ -109,7 +114,7 @@ export interface Task {
   backendStatus?: 'OPEN' | 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'REVISION_REQUIRED' | 'COMPLETED' | 'CANCELLED';
   submittedPhotos: number; submittedNotes?: string;
   /** Ưu tiên từ TaskExecution (LOW|MEDIUM|HIGH|CRITICAL) — BE trả sẵn trong TaskDto. */
-  priority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  priority?: TaskPriority;
   version?: number;
 }
 

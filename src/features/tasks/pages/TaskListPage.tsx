@@ -91,7 +91,7 @@ export default function TaskListPage() {
           <span className="tabular text-sm font-medium">{x.volunteersNeeded}</span>
         ),
       },
-      { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} /> },
+      { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} scope="task" /> },
       ...(readOnly
         ? []
         : [

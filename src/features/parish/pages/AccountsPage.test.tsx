@@ -22,7 +22,6 @@ vi.mock('@/features/communities/api', () => ({
 }))
 
 vi.mock('../api', () => ({
-  useDeleteUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useLockUser: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUnlockUser: () => ({ mutateAsync: vi.fn(), isPending: false }),

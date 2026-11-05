@@ -88,7 +88,11 @@ export default function Login() {
     setServerError('')
     try {
       const user = await login(data.email, data.password)
-      navigate(roleHomePath(user.role))
+      if (user.rawRole === 'VOLUNTEER') {
+        navigate('/volunteer')
+      } else {
+        navigate(roleHomePath(user.role))
+      }
     } catch {
       const msg = t('login.invalid')
       setServerError(msg)

@@ -56,7 +56,7 @@ export interface WorkAreaDto {
   categoryId?: string | null
   leaderId: string | null
   materialOfficerId: string | null
-  name?: string | null
+  name: string
   description?: string | null
   startDate?: string | null
   deadline?: string | null

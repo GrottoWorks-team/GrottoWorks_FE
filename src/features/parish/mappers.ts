@@ -44,6 +44,7 @@ export function toSeason(dto: SeasonDto): Season {
     // BE không có cộng đoàn trên mùa (quan hệ nằm ở WorkArea.CommunityId) → không
     // tạo field `communityIds` giả ở đây (trước đây luôn [] khiến UI chặn sai).
     version: dto.version,
+    createdAt: dto.createdAt,
   }
 }
 
@@ -51,7 +52,8 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
   return {
     id: dto.id,
     seasonId: dto.seasonId,
-    name: dto.name ? dto.name : `Khu vực #${dto.id.slice(0, 8)}`,
+    // BE WorkAreaDto (27ed9c8) bat buoc tra Name — khong con can fallback bia ten.
+    name: dto.name,
     description: opt(dto.description),
     categoryId: opt(dto.categoryId),
     communityId: opt(dto.communityId),

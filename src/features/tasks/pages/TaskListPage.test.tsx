@@ -50,7 +50,6 @@ vi.mock('../api', () => ({
   useTasks: () => ({ data: mockTasks, isPending: false }),
   useCreateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useDeleteTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useSkills: () => ({ data: [], isPending: false }),
 }))
 

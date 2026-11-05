@@ -308,7 +308,7 @@ export function useUpdateCommunity() {
 
 // BE hiện CHƯA có `DELETE /api/v1/communities/{id}` → không cung cấp hook xoá.
 
-// ---- Parish (object đơn) + Skills ------------------------------------------
+// ---- Parish (object đơn) + Skills (string[]) --------------------------------
 
 export function useCreateSkill() {
   return useAdminMutation([[ 'admin', 'skills' ]], async (name: string) => {

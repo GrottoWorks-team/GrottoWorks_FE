@@ -28,9 +28,10 @@ const createSchema = (seasons: Season[]) =>
       type: z.enum(AREA_TYPES),
       level: z.enum(LEVELS),
       communityId: z.string(),
+      categoryId: z.string().optional(),
       leaderId: z.string().min(1, 'features.areas.leaderRequired'),
       officerId: z.string().min(1, 'features.areas.officerRequired'),
-      categoryId: z.string().optional(),
+      startDate: z.string().optional(),
       deadline: z.string().optional(),
       description: z.string().max(300, 'features.areas.descriptionMax').optional(),
     })
@@ -40,6 +41,13 @@ const createSchema = (seasons: Season[]) =>
           code: z.ZodIssueCode.custom,
           path: ['communityId'],
           message: 'features.areas.communityRequired',
+        })
+      }
+      if (data.startDate && data.deadline && data.startDate > data.deadline) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['startDate'],
+          message: 'features.areas.startDateInvalid',
         })
       }
       if (data.deadline && data.seasonId) {
@@ -120,9 +128,10 @@ export function AreaFormDialog({
           type: area.type,
           level: area.level,
           communityId: area.communityId ?? (isCommunity ? (user?.communityId ?? '') : ''),
+          categoryId: area.categoryId ?? '',
           leaderId: area.leaderId,
           officerId: area.officerId,
-          categoryId: area.categoryId ?? '',
+          startDate: area.startDate ?? '',
           deadline: area.deadline ?? '',
           description: area.description ?? '',
         }
@@ -132,9 +141,10 @@ export function AreaFormDialog({
           type: 'GROTTO',
           level: isCommunity ? 'COMMUNITY' : 'PARISH',
           communityId: isCommunity ? (user?.communityId ?? '') : '',
+          categoryId: '',
           leaderId: '',
           officerId: '',
-          categoryId: '',
+          startDate: '',
           deadline: '',
           description: '',
         },
@@ -170,6 +180,7 @@ export function AreaFormDialog({
           version: area.version,
           name: data.name,
           description: data.description || undefined,
+          startDate: data.startDate || undefined,
           deadline: data.deadline || undefined,
           categoryId: data.categoryId || undefined,
           communityId,
@@ -184,7 +195,7 @@ export function AreaFormDialog({
           description: data.description || null,
           categoryId: data.categoryId || null,
           communityId: data.level === 'COMMUNITY' ? (communityId ?? null) : null,
-          startDate: null,
+          startDate: data.startDate || null,
           deadline: data.deadline || null,
         })
         // BE KHÔNG nhận leaderId/officerId trong POST → phải PUT riêng ngay sau khi tạo
@@ -255,7 +266,7 @@ export function AreaFormDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <Label htmlFor="area-type">{t('features.areas.type')}</Label>
             <select id="area-type" className={SELECT_CLS} {...register('type')}>
@@ -356,22 +367,27 @@ export function AreaFormDialog({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
+            <Label htmlFor="area-start-date">{t('features.areas.startDate')}</Label>
+            <Input id="area-start-date" type="date" {...register('startDate')} />
+            {err(errors.startDate?.message)}
+          </div>
+          <div>
             <Label htmlFor="area-deadline">{t('features.areas.deadline')}</Label>
             <Input id="area-deadline" type="date" {...register('deadline')} />
             {err(errors.deadline?.message)}
           </div>
+        </div>
 
-          <div>
-            <Label htmlFor="area-description">{t('features.areas.description')}</Label>
-            <textarea
-              id="area-description"
-              rows={2}
-              placeholder={t('features.areas.descriptionPlaceholder')}
-              className={TEXTAREA_CLS}
-              {...register('description')}
-            />
-            {err(errors.description?.message)}
-          </div>
+        <div>
+          <Label htmlFor="area-description">{t('features.areas.description')}</Label>
+          <textarea
+            id="area-description"
+            rows={2}
+            placeholder={t('features.areas.descriptionPlaceholder')}
+            className={TEXTAREA_CLS}
+            {...register('description')}
+          />
+          {err(errors.description?.message)}
         </div>
       </form>
     </Dialog>

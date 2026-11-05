@@ -221,7 +221,7 @@ export default function TaskDetailPage() {
           <Card className="p-6 space-y-6">
             <div className="flex items-start justify-between gap-4">
               <p className="text-sm leading-relaxed text-muted-foreground">{task.description || t('features.tasks.noDescription')}</p>
-              <StatusTag status={task.status} />
+              <StatusTag status={task.status} scope="task" />
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -230,8 +230,8 @@ export default function TaskDetailPage() {
               {statBox(Users, t('features.tasks.volunteersNeeded'), String(task.volunteersNeeded))}
               {statBox(
                 CalendarClock,
-                t('features.tasks.startAt'),
-                task.startAt ? viDateTime(task.startAt) : t('features.tasks.startAtNone'),
+                t('features.tasks.startDate'),
+                task.startAt ? viDateTime(task.startAt) : t('features.tasks.startDateNone'),
               )}
               {statBox(Calendar, t('features.tasks.dueDate'), viDate(task.dueDate))}
             </div>
@@ -373,7 +373,7 @@ export default function TaskDetailPage() {
             <p className="lbl-mono">{t('features.tasks.timeline')}</p>
             <div className="mt-2 space-y-2">
               <div className="flex items-center gap-2">
-                <StatusTag status={task.status} />
+                <StatusTag status={task.status} scope="task" />
                 <span className="text-sm text-muted-foreground">{viDate(task.dueDate)}</span>
               </div>
               {task.submittedNotes && (
@@ -629,7 +629,7 @@ export default function TaskDetailPage() {
                   {t('features.tasks.startPlanTitle')}
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  {task.startAt ? viDateTime(task.startAt) : t('features.tasks.startAtNone')}
+                  {task.startAt ? viDateTime(task.startAt) : t('features.tasks.startDateNone')}
                 </p>
                 {task.backendStatus === 'OPEN' && (
                   <p className="text-[11px] text-muted-foreground">

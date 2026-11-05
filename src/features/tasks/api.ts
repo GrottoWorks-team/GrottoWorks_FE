@@ -73,7 +73,11 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
   // OPEN → NOT_STARTED). OPEN = việc vừa tạo trong mùa PLANNING → vẫn là TODO.
   let uiStatus: Task['status'] = 'TODO'
   const st = String(dto.status).toUpperCase()
-  if (st === 'IN_PROGRESS') {
+  if (st === 'OPEN') {
+    uiStatus = 'TODO' // chưa ai nhận
+  } else if (st === 'NOT_STARTED') {
+    uiStatus = 'READY' // đã chốt tuyển, chờ bắt đầu
+  } else if (st === 'IN_PROGRESS') {
     uiStatus = 'DOING'
   } else if (st === 'SUBMITTED') {
     uiStatus = 'REVIEW'
@@ -203,7 +207,9 @@ export function useCreateTask() {
       name: data.title,
       description: data.description || null,
       completionCriteria: data.submittedNotes || null,
-      priority: 'MEDIUM',
+      // BE bắt buộc `deadline`, domain chặn deadline <= startAt, và
+      // `requiredVolunteers`/`estimatedMinutes` phải hợp lệ → luôn gửi giá trị đã chuẩn hoá.
+      priority: data.priority ?? 'MEDIUM',
       estimatedMinutes: data.estimateHours ? Math.round(data.estimateHours * 60) : 120,
       requiredVolunteers: data.volunteersNeeded || 1,
       startAt: start.toISOString(),
@@ -229,10 +235,13 @@ export function useUpdateTask() {
       const payload: Record<string, unknown> = {}
       if (data.title !== undefined) payload.name = data.title
       if (data.description !== undefined) payload.description = data.description
+      if (data.priority !== undefined) payload.priority = data.priority
       if (data.estimateHours !== undefined)
         payload.estimatedMinutes = Math.round(data.estimateHours * 60)
       if (data.volunteersNeeded !== undefined)
         payload.requiredVolunteers = data.volunteersNeeded
+      if (data.startAt !== undefined)
+        payload.startAt = data.startAt ? new Date(data.startAt).toISOString() : null
       if (data.dueDate !== undefined)
         payload.deadline = endOfDay(data.dueDate)?.toISOString() ?? null
 
@@ -263,13 +272,23 @@ export function useUpdateTask() {
 
 /**
  * POST /api/v1/tasks/{taskId}/ready — bước chuyển trạng thái DUY NHẤT BE hỗ trợ
- * (OPEN → NOT_STARTED, tức "phát hành việc" cho khu vực).
+ * (OPEN → NOT_STARTED, tức "phát hành việc" cho khu vực). BE bắt buộc If-Match
+ * (thiếu → 400 INVALID_IF_MATCH, lệch version → 412).
  */
 export function useReadyTask() {
   return useTaskMutation(async ({ taskId, version }: { taskId: string; version?: number }) => {
     const headers: Record<string, string> = {}
     if (version !== undefined && version !== null) headers['If-Match'] = `"${version}"`
     return api<TaskDto>(`/api/v1/tasks/${taskId}/ready`, { method: 'POST', headers })
+  })
+}
+
+/** Cùng endpoint `ready`, dạng tham số `{ id }` dùng ở các trang mới. */
+export function useMarkTaskReady() {
+  return useTaskMutation(async ({ id, version }: { id: string; version?: number }) => {
+    const headers: Record<string, string> = {}
+    if (version !== undefined && version !== null) headers['If-Match'] = `"${version}"`
+    return api<TaskDto>(`/api/v1/tasks/${id}/ready`, { method: 'POST', headers })
   })
 }
 

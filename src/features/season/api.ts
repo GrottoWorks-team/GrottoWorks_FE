@@ -20,7 +20,12 @@ export function useSeasons() {
     queryFn: async () => {
       // ponytail: api() unwrap mất `page`; size=100 lấy hết rồi phân trang client.
       const list = await api<SeasonDto[]>('/api/v1/seasons?size=100')
-      return list.map(toSeason)
+      return list
+        .map(toSeason)
+        .sort(
+          (a, b) =>
+            (b.createdAt ?? '').localeCompare(a.createdAt ?? '') || b.year - a.year,
+        )
     },
   })
 }

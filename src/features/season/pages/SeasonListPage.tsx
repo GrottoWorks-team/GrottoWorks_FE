@@ -11,12 +11,15 @@ import { StatusTag } from '@/components/shared/StatusTag'
 import { StatCard } from '@/components/shared/StatCard'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
+import { useCommunities } from '@/features/communities/api'
 import { useAreas } from '@/features/areas/api'
-import { useSeasons, useActivateSeason, useArchiveSeason } from '../api'
+import { useSeasons, useCompleteSeason, useActivateSeason, useArchiveSeason } from '../api'
 import { SeasonFormDialog } from './SeasonFormDialog'
 import { SeasonActivateDialog, validateSeasonActivation } from './SeasonActivateDialog'
 import type { Season } from '@/types'
+import { useAuth } from '@/lib/auth'
 import i18n from '@/lib/i18n'
 import { viDate } from '@/lib/format'
 
@@ -25,13 +28,18 @@ const d = (n: number) => ({ '--d': n }) as CSSProperties
 export default function SeasonListPage() {
   const { t } = useTranslation()
   const toast = useToast()
+  const { user } = useAuth()
+  const canManage = user?.role === 'PARISH'
   const { data: seasons = [], isPending } = useSeasons()
+  const { data: communities = [] } = useCommunities()
   const { data: areas = [] } = useAreas()
+  const completeSeason = useCompleteSeason()
   const activateSeason = useActivateSeason()
   const archiveSeason = useArchiveSeason()
 
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Season | null>(null)
+  const [closing, setClosing] = useState<Season | null>(null)
   const [archiving, setArchiving] = useState<Season | null>(null)
   const [activatingCheck, setActivatingCheck] = useState<Season | null>(null)
   const [activatingConfirm, setActivatingConfirm] = useState<Season | null>(null)
@@ -39,13 +47,26 @@ export default function SeasonListPage() {
   const active = seasons.filter((s) => s.status === 'ACTIVE')
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN'
 
+  const communityMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    for (const c of communities) map[c.id] = c.name
+    return map
+  }, [communities])
+
+  const communityIdsOf = (s: Season) => [
+    ...new Set(
+      areas.filter((a) => a.seasonId === s.id).map((a) => a.communityId).filter(Boolean),
+    ),
+  ] as string[]
+
   const onActivateClick = (s: Season) => {
     const areasOfSeason = areas.filter((a) => a.seasonId === s.id)
-    const { canActivate } = validateSeasonActivation(s, areasOfSeason)
+    const effectiveSeason = { ...s, communityIds: communityIdsOf(s) }
+    const { canActivate } = validateSeasonActivation(effectiveSeason, areasOfSeason)
     if (canActivate) {
       setActivatingConfirm(s)
     } else {
-      setActivatingCheck(s)
+      setActivatingCheck(effectiveSeason)
     }
   }
 
@@ -86,6 +107,24 @@ export default function SeasonListPage() {
         ),
       },
       {
+        key: 'communities',
+        header: t('features.season.communities'),
+        render: (s: Season) => {
+          const ids = communityIdsOf(s)
+          if (ids.length === 0) {
+            return <span className="text-xs text-muted-foreground">—</span>
+          }
+          const names = ids.map((id) => communityMap[id] ?? id).join(', ')
+          return (
+            <span title={names}>
+              <Badge className="tabular border-border bg-card text-xs">
+                {ids.length} {t('features.season.communities')}
+              </Badge>
+            </span>
+          )
+        },
+      },
+      {
         key: 'budget',
         header: t('features.season.budget'),
         align: 'right' as const,
@@ -119,63 +158,74 @@ export default function SeasonListPage() {
           )
         },
       },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (s: Season) => (
-          <div className="flex justify-end gap-1">
-            {s.status === 'PLANNING' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.season.activate')}
-                className="text-primary hover:bg-primary/10 hover:text-primary"
-                onClick={() => onActivateClick(s)}
-              >
-                <Rocket className="size-4" />
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.edit')}
-              onClick={() => {
-                setEditing(s)
-                setFormOpen(true)
-              }}
-            >
-              <Pencil className="size-4" />
-            </Button>
-            {s.status === 'COMPLETED' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.season.archive')}
-                className="text-amber-600 hover:bg-amber-50"
-                onClick={() => setArchiving(s)}
-              >
-                <Archive className="size-4" />
-              </Button>
-            )}
-            {s.status !== 'COMPLETED' && s.status !== 'ARCHIVED' && (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.season.close')}
-                // BE chỉ cho `complete` khi mùa ở READY, mà chưa có endpoint ACTIVE → READY
-                // → nút này luôn 409. Giữ nút nhưng vô hiệu hoá + tooltip để không bấm nhầm.
-                disabled
-                title={t('features.season.completeApiMissing')}
-              >
-                <LockKeyhole className="size-4 opacity-40" />
-              </Button>
-            )}
-          </div>
-        ),
-      },
+      ...(canManage
+        ? [
+            {
+              key: 'actions',
+              header: t('common.actions'),
+              render: (s: Season) => (
+                <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                  {s.status === 'PLANNING' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('features.season.activate')}
+                      className="text-primary hover:bg-primary/10 hover:text-primary"
+                      onClick={() => onActivateClick(s)}
+                    >
+                      <Rocket className="size-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t('common.edit')}
+                    onClick={() => {
+                      setEditing(s)
+                      setFormOpen(true)
+                    }}
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  {s.status === 'COMPLETED' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('features.season.archive')}
+                      className="text-amber-600 hover:bg-amber-50"
+                      onClick={() => setArchiving(s)}
+                    >
+                      <Archive className="size-4" />
+                    </Button>
+                  )}
+                  {s.status !== 'COMPLETED' && s.status !== 'ARCHIVED' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('features.season.close')}
+                      onClick={() => setClosing(s)}
+                    >
+                      <LockKeyhole className="size-4" />
+                    </Button>
+                  )}
+                </div>
+              ),
+            },
+          ]
+        : []),
     ],
-    [t, locale, areas],
+    [t, locale, communityMap, areas, canManage],
   )
+
+  const onCloseSeason = async (s: Season) => {
+    try {
+      await completeSeason.mutateAsync({ id: s.id, version: s.version })
+      toast(t('features.season.closed', { year: s.year }))
+      setClosing(null)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+    }
+  }
 
   const onArchiveSeason = async (s: Season) => {
     try {
@@ -193,15 +243,17 @@ export default function SeasonListPage() {
         title={t('features.season.title')}
         sub={t('features.season.sub')}
         actions={
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-          >
-            <CalendarPlus className="size-4" />
-            {t('features.season.create')}
-          </Button>
+          canManage ? (
+            <Button
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+            >
+              <CalendarPlus className="size-4" />
+              {t('features.season.create')}
+            </Button>
+          ) : undefined
         }
       />
 
@@ -249,6 +301,16 @@ export default function SeasonListPage() {
       {formOpen && (
         <SeasonFormDialog season={editing} onClose={() => setFormOpen(false)} />
       )}
+      <ConfirmDialog
+        open={Boolean(closing)}
+        title={t('features.season.closeTitle')}
+        description={
+          closing ? t('features.season.closeConfirm', { year: closing.year }) : undefined
+        }
+        confirmLabel={t('features.season.close')}
+        onConfirm={() => closing && onCloseSeason(closing)}
+        onClose={() => setClosing(null)}
+      />
       <ConfirmDialog
         open={Boolean(archiving)}
         title={t('features.season.archiveTitle')}

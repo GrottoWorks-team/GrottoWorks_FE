@@ -18,7 +18,7 @@ vi.mock('@/lib/api', () => ({
         id: 'u2',
         displayName: 'Giuse Trần Văn Bình',
         name: 'Giuse Trần Văn Bình',
-        email: 'committee@grottoworks.vn',
+        email: 'bao.tran@giaoxuthanhtam.org.vn',
         role: 'COMMUNITY',
         communityId: 'c1',
         points: 0,
@@ -45,7 +45,7 @@ beforeEach(() => {
 
 test('hiện 4 chip tài khoản demo', async () => {
   render(<App />)
-  for (const local of ['admin', 'committee', 'leader', 'officer']) {
+  for (const local of ['hoa.nguyen', 'bao.tran', 'ngan.nguyen', 'anh.pham']) {
     expect(
       await screen.findByRole('button', { name: new RegExp(local) }, { timeout: 10_000 }),
     ).toBeDefined()
@@ -56,7 +56,7 @@ test('đăng nhập committee → vào shell với nav điều phối, hiện M�
   const user = userEvent.setup()
   render(<App />)
   await user.click(
-    await screen.findByRole('button', { name: /committee/ }, { timeout: 10_000 }),
+    await screen.findByRole('button', { name: /bao\.tran/ }, { timeout: 10_000 }),
   )
   await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
   expect(await screen.findByText('Điều phối', {}, { timeout: 10_000 })).toBeDefined()

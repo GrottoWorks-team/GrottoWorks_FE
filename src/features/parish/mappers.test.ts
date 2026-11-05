@@ -39,6 +39,7 @@ describe('toSeason', () => {
       id: 's1', parishId: 'p1', name: 'Mùa Giáng sinh 2026', year: 2026,
       startDate: '2026-10-01', endDate: '2027-01-15', status: 'PLANNING',
       budget: 0, description: undefined,
+      version: undefined, createdAt: '2026-10-01T00:00:00Z',
     })
   })
 
@@ -69,12 +70,22 @@ describe('toWorkArea', () => {
     })
   })
 
-  it('fallback tên khi BE không trả name', () => {
-    const a = toWorkArea({
-      id: '66666666-6666-6666-6666-666666666666', seasonId: 's1', communityId: null, leaderId: null,
-      materialOfficerId: null, status: 'PLANNED',
-    })
-    expect(a.name).toBe('Khu vực #66666666')
+  it('toWorkArea lay ten that tu BE, khong bia "Khu vuc #"', () => {
+    const dto = {
+      id: '66666666-6666-6666-6666-666666666666',
+      seasonId: 's1',
+      communityId: null,
+      leaderId: null,
+      materialOfficerId: null,
+      name: 'Hang đá số 3',
+      description: null,
+      categoryId: null,
+      startDate: null,
+      deadline: null,
+      status: 'PLANNED' as const,
+      version: 1,
+    }
+    expect(toWorkArea(dto).name).toBe('Hang đá số 3')
   })
 
   it('giữ communityId khi có', () => {

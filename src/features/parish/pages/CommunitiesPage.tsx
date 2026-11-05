@@ -34,6 +34,7 @@ import type { Community } from '@/types'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
 })
 type FormData = z.infer<typeof schema>
 
@@ -58,13 +59,21 @@ function CommunityFormDialog({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { name: community?.name ?? '' },
+    defaultValues: {
+      name: community?.name ?? '',
+      status: community?.status ?? 'ACTIVE',
+    },
   })
 
   const onSubmit = async (data: FormData) => {
     try {
       if (editing && community) {
-        await update.mutateAsync({ id: community.id, version: community.version, name: data.name })
+        await update.mutateAsync({
+          id: community.id,
+          version: community.version,
+          name: data.name,
+          status: data.status,
+        })
         toast(t('features.parish.updated', { name: data.name }))
       } else {
         await create.mutateAsync({ name: data.name, parishId: parishId! })
@@ -101,6 +110,19 @@ function CommunityFormDialog({
           <Input id="community-name" {...register('name')} />
           {err(errors.name?.message)}
         </div>
+        {editing && (
+          <div>
+            <Label htmlFor="community-status">{t('common.status')}</Label>
+            <select
+              id="community-status"
+              {...register('status')}
+              className="h-9 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <option value="ACTIVE">{t('status.ACTIVE')}</option>
+              <option value="INACTIVE">{t('status.INACTIVE')}</option>
+            </select>
+          </div>
+        )}
       </form>
     </Dialog>
   )
@@ -393,7 +415,8 @@ export default function CommunitiesPage() {
               variant="ghost"
               size="icon"
               aria-label={t('common.edit')}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation()
                 setEditing(c)
                 setFormOpen(true)
               }}

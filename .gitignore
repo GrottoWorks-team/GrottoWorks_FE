@@ -170,7 +170,7 @@ docs/AI_LOG.md
 docs/combo_1.html
 
 # E2E test reports & screenshots
-reports/
+/reports/
 bao-cao/
 
 # Model 3D quet that (>50MB) - chi dung local, khong dua len git
