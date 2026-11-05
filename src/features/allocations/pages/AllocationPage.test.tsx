@@ -88,6 +88,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/features/materials/api', () => ({
   useInventory: () => ({ data: mockInventory, isPending: false }),
+  useMaterials: () => ({ data: [], isPending: false }),
 }))
 
 vi.mock('@/features/areas/api', () => ({

@@ -33,13 +33,31 @@ export interface TaskDto {
   version: number
   createdAt: string
   updatedAt?: string | null
+  /** `GET /tasks/{id}` trả kèm yêu cầu kỹ năng (danh sách rỗng nếu chưa gắn). */
+  skills?: TaskSkillDto[]
+  /** `GET /tasks/{id}` trả kèm nhu cầu vật tư của task. */
+  materials?: TaskMaterialDto[]
 }
 
 export interface TaskSkillDto {
   skillId: string
-  requiredSkillLevel?: string | null
+  requiredSkillLevel?: TaskSkillLevel | null
   requiredVolunteerCount?: number | null
 }
+
+export interface TaskMaterialDto {
+  materialId: string
+  requiredQuantity: number
+  note?: string | null
+}
+
+/**
+ * BE (`SkillLevels.Normalize`) chỉ nhận 4 mức này — giá trị khác trả 422
+ * `TASK_SKILL_LEVEL_INVALID`. Seed cũng dùng `BASIC` cho yêu cầu kỹ năng của task.
+ */
+export type TaskSkillLevel = 'BASIC' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT'
+
+export const DEFAULT_TASK_SKILL_LEVEL: TaskSkillLevel = 'BASIC'
 
 export interface SkillItemDto {
   id: string
@@ -71,13 +89,16 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     title: dto.name,
     description: dto.description || '',
     skills: [],
+    skillIds: (dto.skills ?? []).map((skill) => skill.skillId),
     estimateHours: dto.estimatedMinutes ? Number((dto.estimatedMinutes / 60).toFixed(1)) : 0,
     volunteersNeeded: dto.requiredVolunteers || 1,
     assignees: [],
-    materialIds: [],
+    materialIds: (dto.materials ?? []).map((material) => material.materialId),
+    materialRequirements: dto.materials ?? [],
     status: uiStatus,
     backendStatus: (st as TaskBackendStatus) ?? undefined,
     dueDate: dto.deadline ? dto.deadline.split('T')[0] : '',
+    startAt: dto.startAt ?? null,
     priority: dto.priority,
     submittedPhotos: 0,
     submittedNotes: dto.completionCriteria || undefined,
@@ -292,7 +313,7 @@ export function useReplaceTaskSkills() {
       taskId: string
       skills: Array<{
         skillId: string
-        requiredSkillLevel?: string | null
+        requiredSkillLevel?: TaskSkillLevel | null
         requiredVolunteerCount?: number | null
       }>
       version: number
@@ -350,14 +371,14 @@ export const progressKeys = {
   review: (taskId: string) => ['tasks', 'review-package', taskId] as const,
 }
 
-export function useTaskProgress(taskId?: string) {
+export function useTaskProgress(taskId?: string, enabled = true) {
   return useQuery({
     queryKey: progressKeys.list(taskId ?? ''),
     queryFn: async () => {
       const res = await apiPaged<TaskProgressDto>(`/api/v1/tasks/${taskId}/progress?size=100`)
       return res.data
     },
-    enabled: Boolean(taskId),
+    enabled: Boolean(taskId) && enabled,
   })
 }
 
@@ -444,7 +465,7 @@ export const assignmentKeys = {
   applications: (taskId: string) => ['tasks', 'applications', taskId] as const,
 }
 
-export function useTaskAssignments(taskId?: string) {
+export function useTaskAssignments(taskId?: string, enabled = true) {
   return useQuery({
     queryKey: assignmentKeys.list(taskId ?? ''),
     queryFn: async () => {
@@ -453,7 +474,7 @@ export function useTaskAssignments(taskId?: string) {
       )
       return Array.isArray(res) ? res : (res.data ?? [])
     },
-    enabled: Boolean(taskId),
+    enabled: Boolean(taskId) && enabled,
   })
 }
 
@@ -485,7 +506,8 @@ export function useAssignVolunteer() {
   })
 }
 
-export function useTaskApplications(taskId?: string) {
+/** GET /api/v1/tasks/{taskId}/applications — endpoint chỉ mở cho LEADER phụ trách khu. */
+export function useTaskApplications(taskId?: string, enabled = true) {
   return useQuery({
     queryKey: assignmentKeys.applications(taskId ?? ''),
     queryFn: async () => {
@@ -494,7 +516,7 @@ export function useTaskApplications(taskId?: string) {
       )
       return res.data
     },
-    enabled: Boolean(taskId),
+    enabled: Boolean(taskId) && enabled,
   })
 }
 

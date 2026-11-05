@@ -24,6 +24,7 @@ vi.mock('../api', () => ({
   useCreateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useUpdateTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReplaceTaskSkills: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useReplaceTaskMaterials: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }))
 
 test('submit thiếu title → hiện lỗi zod "Vui lòng nhập tên việc"', async () => {

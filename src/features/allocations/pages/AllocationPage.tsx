@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
-import { useInventory } from '@/features/materials/api'
+import { useInventory, useMaterials } from '@/features/materials/api'
 import { useTasks } from '@/features/tasks/api'
 import { useUsers } from '@/features/users/api'
 import { useAuth } from '@/lib/auth'
@@ -56,7 +56,6 @@ export default function AllocationPage() {
   const toast = useToast()
   const { user } = useAuth()
   const { data: areas = [], isPending: areasPending } = useScopedAreas()
-  const { data: inventoryPage } = useInventory({ size: 200 })
   const { data: users = [] } = useUsers()
   const { data: allocations = [], isPending } = useAllocations()
   const create = useCreateAllocation()
@@ -67,14 +66,10 @@ export default function AllocationPage() {
     () => (isOfficer ? areas.filter((a) => a.officerId === user.id) : areas),
     [areas, isOfficer, user],
   )
-  const myAreaIds = useMemo(() => new Set(myAreas.map((a) => a.id)), [myAreas])
-  const stock = useMemo(
-    () => (inventoryPage?.data ?? []).filter((row) => myAreaIds.has(row.workAreaId)),
-    [inventoryPage, myAreaIds],
-  )
-
   // available đổi theo query data → validate lúc submit đọc ref (schema tạo 1 lần).
   const availRef = useRef(0)
+  // Trần theo nhu cầu còn lại của việc (BE chặn bằng 409 ALLOCATION_EXCEEDS_TASK_REQUIREMENT).
+  const needRef = useRef(Number.POSITIVE_INFINITY)
 
   const schema = useMemo(
     () =>
@@ -90,6 +85,12 @@ export default function AllocationPage() {
           const max = availRef.current
           if ((data.qty ?? 0) > max)
             ctx.addIssue({ code: 'custom', path: ['qty'], message: 'features.allocations.qtyExceeds' })
+          if ((data.qty ?? 0) > needRef.current)
+            ctx.addIssue({
+              code: 'custom',
+              path: ['qty'],
+              message: 'features.allocations.qtyExceedsTaskNeed',
+            })
           if (data.targetType === 'TASK' && !data.taskId)
             ctx.addIssue({ code: 'custom', path: ['taskId'], message: 'features.allocations.targetRequired' })
         }),
@@ -111,7 +112,39 @@ export default function AllocationPage() {
   const materialId = watch('materialId')
   const targetType = watch('targetType')
 
+  // BE chỉ nhận `size` ≤ 100 (`INVALID_PAGE_SIZE`) → lọc tồn kho theo khu vực đang chọn.
+  const { data: inventoryPage } = useInventory({
+    workAreaId: workAreaId || undefined,
+    size: 100,
+  })
+  const stock = useMemo(() => inventoryPage?.data ?? [], [inventoryPage])
+
   const { data: tasks = [] } = useTasks(workAreaId || undefined)
+  // Danh mục vật tư của khu → dịch `task.materialRequirements` sang tên/đơn vị.
+  const { data: areaMaterials = [] } = useMaterials(workAreaId || undefined)
+  const selectedTaskId = watch('taskId')
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId)
+  // Đã cấp cho việc này (mọi phiếu) → tính phần nhu cầu còn lại.
+  const { data: taskAllocations = [] } = useAllocations(
+    selectedTaskId ? { taskId: selectedTaskId } : undefined,
+    Boolean(selectedTaskId),
+  )
+  const allocatedByMaterial = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const allocation of taskAllocations) {
+      for (const item of allocation.items) {
+        map.set(item.materialId, (map.get(item.materialId) ?? 0) + item.allocatedQuantity)
+      }
+    }
+    return map
+  }, [taskAllocations])
+  const requirement = selectedTask?.materialRequirements?.find(
+    (row) => row.materialId === materialId,
+  )
+  const allocatedForSelected = allocatedByMaterial.get(materialId) ?? 0
+  const remainingNeed = requirement
+    ? Math.max(0, requirement.requiredQuantity - allocatedForSelected)
+    : undefined
   const areaStock = useMemo(
     () => stock.filter((row) => row.workAreaId === workAreaId && row.unallocated > 0),
     [stock, workAreaId],
@@ -120,6 +153,7 @@ export default function AllocationPage() {
 
   // available đổi theo query data → validate lúc submit đọc ref (schema tạo 1 lần).
   availRef.current = selected?.unallocated ?? 0
+  needRef.current = remainingNeed ?? Number.POSITIVE_INFINITY
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -241,6 +275,11 @@ export default function AllocationPage() {
                 </option>
               ))}
             </select>
+            {isOfficer && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t('features.allocations.onlyMyAreas')}
+              </p>
+            )}
             {err(errors.workAreaId?.message)}
           </div>
           <div>
@@ -263,11 +302,34 @@ export default function AllocationPage() {
                 {t('features.allocations.available', { n: selected.unallocated })}
               </p>
             )}
+            {remainingNeed !== undefined && (
+              <p
+                className={`mt-1 text-xs font-semibold ${
+                  remainingNeed === 0 ? 'text-destructive' : 'text-muted-foreground'
+                }`}
+              >
+                {t('features.allocations.taskNeedRemaining', {
+                  n: remainingNeed,
+                  required: requirement?.requiredQuantity ?? 0,
+                })}
+              </p>
+            )}
             {err(errors.materialId?.message)}
           </div>
           <div>
             <Label htmlFor="allocation-qty">{t('features.allocations.qty')}</Label>
-            <Input id="allocation-qty" type="number" min={1} step={1} {...register('qty')} />
+            <Input
+              id="allocation-qty"
+              type="number"
+              min={1}
+              step={1}
+              max={
+                remainingNeed === undefined
+                  ? undefined
+                  : Math.min(selected?.unallocated ?? remainingNeed, remainingNeed)
+              }
+              {...register('qty')}
+            />
             {err(errors.qty?.message)}
           </div>
           <div>
@@ -307,6 +369,62 @@ export default function AllocationPage() {
             </div>
           )}
         </form>
+
+        {/* LEADER khai báo vật tư khi tạo/sửa việc → MO xem tại đây để biết cần cấp gì. */}
+        {targetType === 'TASK' && selectedTask && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3">
+            <p className="lbl-mono mb-1">{t('features.allocations.taskMaterials')}</p>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              {t('features.allocations.taskMaterialsHint')}
+            </p>
+            {selectedTask.materialRequirements?.length ? (
+              <ul className="space-y-1 text-xs">
+                {selectedTask.materialRequirements.map((row) => {
+                  const material = areaMaterials.find((m) => m.id === row.materialId)
+                  const inStock = stock.find(
+                    (s) => s.workAreaId === workAreaId && s.materialId === row.materialId,
+                  )
+                  const allocated = allocatedByMaterial.get(row.materialId) ?? 0
+                  return (
+                    <li
+                      key={row.materialId}
+                      className="flex items-center justify-between gap-2 rounded border border-border/60 bg-card px-2 py-1"
+                    >
+                      <span className="font-semibold text-foreground">
+                        {material?.name ?? row.materialId}
+                        <span className="ml-1 font-normal text-muted-foreground">
+                          ({material?.unit ?? '—'})
+                        </span>
+                      </span>
+                      <span className="flex items-center gap-3">
+                        <span className="tabular font-bold text-brand-pine">
+                          ×{row.requiredQuantity}
+                        </span>
+                        {allocated > 0 ? (
+                          <span className="tabular text-[11px] font-semibold text-emerald-600">
+                            {t('features.allocations.taskAllocated', {
+                              allocated,
+                              required: row.requiredQuantity,
+                            })}
+                          </span>
+                        ) : null}
+                        {inStock ? (
+                          <span className="text-[11px] text-muted-foreground">
+                            {t('features.allocations.available', { n: inStock.unallocated })}
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                {t('features.allocations.taskMaterialsEmpty')}
+              </p>
+            )}
+          </div>
+        )}
       </Card>
 
       {isPending ? (

@@ -94,8 +94,14 @@ export interface ParishMap {
 
 export interface Task {
   id: string; areaId: string; title: string; description: string; skills: string[];
+  /** Kỹ năng yêu cầu dạng GUID (`TaskDto.skills` của TaskExecution) — hiển thị qua danh mục `/api/v1/skills`. */
+  skillIds?: string[];
+  /** Nhu cầu vật tư chi tiết (`TaskDto.materials`) — dùng để prefill dialog gán vật tư. */
+  materialRequirements?: Array<{ materialId: string; requiredQuantity: number; note?: string | null }>;
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
   status: 'TODO' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
+  /** Ngày bắt đầu dự kiến (`TaskDto.startAt`) — việc chuyển IN_PROGRESS khi leader duyệt check-in. */
+  startAt?: string | null;
   /**
    * Trạng thái gốc của TaskExecution (OPEN | NOT_STARTED | IN_PROGRESS | …).
    * Cần để biết có gọi được POST /tasks/{id}/ready (chỉ OPEN → NOT_STARTED) hay không.

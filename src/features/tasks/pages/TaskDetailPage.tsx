@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, Clock, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarClock, ClipboardCheck, Clock, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -22,23 +22,30 @@ import { useToast } from '@/components/ui/toast'
 import { useAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import {
+  DEFAULT_TASK_SKILL_LEVEL,
   getTaskEvidenceUrl,
+  useApproveApplication,
   useApproveTask,
   useAssignVolunteer,
   useCancelTask,
   useReadyTask,
+  useRejectApplication,
   useReplaceCompletionCriteria,
   useReplaceTaskMaterials,
   useReplaceTaskSkills,
   useRequestTaskRevision,
   useSkillsCatalog,
   useTask,
+  useTaskApplications,
   useTaskAssignments,
   useTaskProgress,
   useTaskReviewPackage,
   useVolunteerMatches,
+  type TaskApplicationDto,
 } from '../api'
 import { useUsers } from '@/features/users/api'
+import { useAllocations } from '@/features/allocations/api'
+import { useAuth } from '@/lib/auth'
 import { ApiError } from '@/lib/api'
 import { viDate, viDateTime } from '@/lib/format'
 
@@ -51,23 +58,51 @@ export default function TaskDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { user } = useAuth()
   const readOnly = pathname.startsWith('/community/')
 
   const { data: task, isPending } = useTask(id)
   const { data: areas = [] } = useAreas()
   const { data: materials = [] } = useMaterials(task?.areaId)
 
+  // BE chỉ cho LEADER phụ trách khu vực đọc/sửa dữ liệu của task
+  // (TaskScopeAccess.GetWorkAreaForLeaderWriteAsync → 403 WORK_AREA_ACCESS_DENIED).
+  const area = areas.find((a) => a.id === task?.areaId)
+  const isAreaLeader = user?.role === 'LEADER' && area?.leaderId === user.id
+  const canReadAreaData = user?.role !== 'LEADER' || isAreaLeader
+
   const ready = useReadyTask()
   const replaceCriteria = useReplaceCompletionCriteria()
   const replaceSkills = useReplaceTaskSkills()
   const approveTask = useApproveTask()
   const requestRevision = useRequestTaskRevision()
-  const { data: progress = [], isPending: progressPending } = useTaskProgress(task?.id)
+  const { data: progress = [], isPending: progressPending } = useTaskProgress(
+    task?.id,
+    canReadAreaData,
+  )
   const { data: reviewPackage } = useTaskReviewPackage(
     task?.id,
     !readOnly && task?.backendStatus === 'SUBMITTED',
   )
-  const { data: assignments = [], isPending: assignmentsPending } = useTaskAssignments(task?.id)
+  const { data: assignments = [], isPending: assignmentsPending } = useTaskAssignments(
+    task?.id,
+    canReadAreaData,
+  )
+  // Đơn đăng ký của TNV: `GET /tasks/{id}/assignments` đã lọc bỏ application PENDING
+  // (chỉ giữ direct/support hoặc đã duyệt) nên phải đọc riêng endpoint applications.
+  const { data: applications = [], isPending: applicationsPending } = useTaskApplications(
+    task?.id,
+    !readOnly && isAreaLeader,
+  )
+  const approveApplication = useApproveApplication()
+  const rejectApplication = useRejectApplication()
+  const pendingApplications = applications.filter((row) => row.status === 'PENDING')
+  const reviewedApplications = applications.filter((row) => row.status !== 'PENDING')
+  // Vật tư MO đã cấp cho việc này (`GET /material-allocations?taskId=…`).
+  const { data: taskAllocations = [] } = useAllocations(
+    task ? { taskId: task.id } : undefined,
+    Boolean(task?.id),
+  )
   const assignVolunteer = useAssignVolunteer()
   const cancelTask = useCancelTask()
   const replaceMaterials = useReplaceTaskMaterials()
@@ -84,10 +119,14 @@ export default function TaskDetailPage() {
   const [materialRows, setMaterialRows] = useState<Array<{ materialId: string; quantity: string }>>([
     { materialId: '', quantity: '1' },
   ])
-  const [savedMaterials, setSavedMaterials] = useState<string[]>([])
   const [revisionOpen, setRevisionOpen] = useState(false)
-  const { data: volunteerMatches = [] } = useVolunteerMatches(task?.id, assignOpen && !readOnly)
+  const { data: volunteerMatches = [] } = useVolunteerMatches(
+    task?.id,
+    assignOpen && !readOnly && isAreaLeader,
+  )
   const [revisionReason, setRevisionReason] = useState('')
+  const [rejectTarget, setRejectTarget] = useState<TaskApplicationDto | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
   const [criteriaValue, setCriteriaValue] = useState('')
   const [editingSkills, setEditingSkills] = useState(false)
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -116,11 +155,39 @@ export default function TaskDetailPage() {
     )
   }
 
-  const area = areas.find((a) => a.id === task.areaId)
-  const taskMaterials = materials.filter((m) => task.materialIds.includes(m.id))
-  const displayMaterials = savedMaterials.length
-    ? materials.filter((m) => savedMaterials.includes(m.id))
-    : taskMaterials
+  const materialQtyById = new Map(
+    (task.materialRequirements ?? []).map((row) => [row.materialId, row.requiredQuantity]),
+  )
+  const taskMaterials = materials
+    .filter((m) => task.materialIds.includes(m.id))
+    .map((m) => ({ ...m, requiredQuantity: materialQtyById.get(m.id) }))
+  const displayMaterials = taskMaterials
+  // Tổng đã cấp theo vật tư (nhiều phiếu cấp cho cùng một task → cộng dồn).
+  const allocatedMaterials = (() => {
+    const byMaterial = new Map<
+      string,
+      { materialId: string; name: string; unit: string; quantity: number; required?: number }
+    >()
+    for (const allocation of taskAllocations) {
+      for (const item of allocation.items) {
+        const current = byMaterial.get(item.materialId)
+        byMaterial.set(item.materialId, {
+          materialId: item.materialId,
+          name: item.materialName,
+          unit: item.unit,
+          quantity: (current?.quantity ?? 0) + item.allocatedQuantity,
+          required: materialQtyById.get(item.materialId) ?? current?.required,
+        })
+      }
+    }
+    return [...byMaterial.values()]
+  })()
+  // TaskDto trả `skills`/`materials` dạng GUID → dịch sang tên qua danh mục.
+  const displaySkills = (task.skillIds ?? []).length
+    ? skillsCatalog.filter((sk) => task.skillIds?.includes(sk.id)).map((sk) => sk.name)
+    : task.skills
+  // Chỉ sửa được khi task còn OPEN (EnsurePlanningCanBeUpdated).
+  const canEditPlanning = !readOnly && isAreaLeader && task.backendStatus === 'OPEN'
 
   // Info panel: icon + label + value in clean card.
   const statBox = (Icon: typeof Users, label: string, value: string) => (
@@ -157,10 +224,15 @@ export default function TaskDetailPage() {
               <StatusTag status={task.status} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {statBox(MapPin, t('features.tasks.area'), area?.name ?? '—')}
               {statBox(Clock, t('features.tasks.estimateHours'), `${task.estimateHours} ${t('features.tasks.hours')}`)}
               {statBox(Users, t('features.tasks.volunteersNeeded'), String(task.volunteersNeeded))}
+              {statBox(
+                CalendarClock,
+                t('features.tasks.startAt'),
+                task.startAt ? viDateTime(task.startAt) : t('features.tasks.startAtNone'),
+              )}
               {statBox(Calendar, t('features.tasks.dueDate'), viDate(task.dueDate))}
             </div>
 
@@ -171,17 +243,19 @@ export default function TaskDetailPage() {
                     <Sparkles className="size-3.5 text-brand-gold" />
                     {t('features.tasks.skillsRequiredTitle')}
                   </p>
-                  {/* BE chỉ cho sửa task khi còn OPEN (sau POST /ready mọi PATCH/PUT = 409). */}
-                  {!readOnly && task.backendStatus === 'OPEN' && (
+                  {/* BE chỉ cho LEADER phụ trách khu vực sửa, và chỉ khi task còn OPEN. */}
+                  {canEditPlanning && (
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs text-brand-pine hover:text-brand-pine hover:bg-brand-pine/10"
                       onClick={() => {
                         // Khởi tạo các skill đã chọn từ task
-                        const matchedIds = skillsCatalog
-                          .filter((sk) => task.skills.includes(sk.name) || task.skills.includes(sk.code))
-                          .map((sk) => sk.id)
+                        const matchedIds = task.skillIds?.length
+                          ? task.skillIds
+                          : skillsCatalog
+                              .filter((sk) => task.skills.includes(sk.name) || task.skills.includes(sk.code))
+                              .map((sk) => sk.id)
                         setSelectedSkills(matchedIds)
                         setEditingSkills(true)
                       }}
@@ -190,10 +264,15 @@ export default function TaskDetailPage() {
                       {t('common.edit')}
                     </Button>
                   )}
+                  {!readOnly && !canEditPlanning && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {t(isAreaLeader ? 'features.tasks.planningOnlyHint' : 'features.tasks.leaderOnlyHint')}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {task.skills.length ? (
-                    task.skills.map((s) => (
+                  {displaySkills.length ? (
+                    displaySkills.map((s) => (
                       <span key={s} className="inline-flex items-center gap-1 rounded-full bg-brand-gold/15 px-3 py-1 text-xs font-semibold text-amber-900 dark:text-amber-200">
                         {s}
                       </span>
@@ -210,30 +289,82 @@ export default function TaskDetailPage() {
                     <Package className="size-3.5 text-brand-pine" />
                     {t('features.tasks.materials')}
                   </p>
-                  {!readOnly && (
+                  {/* PUT /tasks/{id}/materials dùng cùng rule quyền + trạng thái OPEN. */}
+                  {canEditPlanning && (
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs text-brand-pine hover:bg-brand-pine/10 hover:text-brand-pine"
-                      onClick={() => setMaterialsOpen(true)}
+                      onClick={() => {
+                        const existing = task.materialRequirements ?? []
+                        setMaterialRows(
+                          existing.length
+                            ? existing.map((row) => ({
+                                materialId: row.materialId,
+                                quantity: String(row.requiredQuantity),
+                              }))
+                            : [{ materialId: '', quantity: '1' }],
+                        )
+                        setMaterialsOpen(true)
+                      }}
                     >
                       <Edit3 className="size-3 mr-1" />
                       {t('features.tasks.assignMaterials')}
                     </Button>
                   )}
+                  {!readOnly && !canEditPlanning && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {t(isAreaLeader ? 'features.tasks.planningOnlyHint' : 'features.tasks.leaderOnlyHint')}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {displayMaterials.length ? (
-                    displayMaterials.map((m) => (
-                      <span key={m.id} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium shadow-xs">
-                        <span className="size-1.5 rounded-full bg-brand-pine" />
-                        {m.name} <span className="text-muted-foreground font-normal">({m.unit})</span>
-                      </span>
-                    ))
-                  ) : (
+                    displayMaterials.map((m) => {
+                      const allocated = allocatedMaterials.find(
+                        (row) => row.materialId === m.id,
+                      )?.quantity
+                      return (
+                        <span key={m.id} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium shadow-xs">
+                          <span className="size-1.5 rounded-full bg-brand-pine" />
+                          {m.name}
+                          {typeof m.requiredQuantity === 'number' && m.requiredQuantity > 0 ? (
+                            <span className="tabular font-semibold text-brand-pine">×{m.requiredQuantity}</span>
+                          ) : null}
+                          <span className="text-muted-foreground font-normal">({m.unit})</span>
+                          {allocated ? (
+                            <span className="tabular text-[11px] font-semibold text-emerald-600">
+                              {t('features.tasks.allocatedOf', {
+                                allocated,
+                                required: m.requiredQuantity ?? 0,
+                              })}
+                            </span>
+                          ) : null}
+                        </span>
+                      )
+                    })
+                  ) : allocatedMaterials.length === 0 ? (
                     <span className="text-xs text-muted-foreground">{t('features.tasks.materialNone')}</span>
-                  )}
+                  ) : null}
                 </div>
+                {/* MO đã cấp vật tư cho việc (`GET /material-allocations?taskId=…`). */}
+                {allocatedMaterials.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-muted-foreground">
+                      {t('features.tasks.allocatedTitle')}
+                    </span>
+                    {allocatedMaterials.map((row) => (
+                      <span
+                        key={row.materialId}
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      >
+                        {row.name}
+                        <span className="tabular">×{row.quantity}</span>
+                        <span className="font-normal opacity-75">({row.unit})</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -261,7 +392,7 @@ export default function TaskDetailPage() {
                 <p className="lbl-mono text-sm font-semibold text-foreground">{t('features.tasks.completionCriteriaTitle')}</p>
                 <p className="text-xs text-muted-foreground">{t('features.tasks.completionCriteriaSub')}</p>
               </div>
-              {!readOnly && task.backendStatus === 'OPEN' && (
+              {canEditPlanning && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -360,10 +491,95 @@ export default function TaskDetailPage() {
 
         {/* Phải: phân công tình nguyện viên + thao tác trạng thái. */}
         <div className="space-y-6">
+          {/* Đơn đăng ký của TNV — duyệt/từ chối ngay trong chi tiết việc. */}
+          {!readOnly && isAreaLeader && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between gap-3">
+                <p className="lbl-mono">
+                  {t('features.tasks.applicationsTitle')} ({pendingApplications.length})
+                </p>
+                {reviewedApplications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => navigate('/leader/regs')}
+                  >
+                    <ClipboardCheck className="size-3.5" />
+                    {t('features.tasks.applicationsHistory')}
+                  </Button>
+                )}
+              </div>
+              {applicationsPending ? (
+                <p className="mt-2 text-xs text-muted-foreground">{t('common.loading')}</p>
+              ) : pendingApplications.length === 0 ? (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  {t('features.tasks.applicationsEmpty')}
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {pendingApplications.map((application) => (
+                    <li
+                      key={application.id}
+                      className="rounded-md border border-border/60 bg-muted/20 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-semibold text-foreground">
+                          {userNameById.get(application.volunteerId) ?? application.volunteerId}
+                        </span>
+                        {application.requestedAt && (
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {viDateTime(application.requestedAt)}
+                          </span>
+                        )}
+                      </div>
+                      {application.note && (
+                        <p className="mt-1 text-[11px] text-muted-foreground">{application.note}</p>
+                      )}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          disabled={approveApplication.isPending}
+                          onClick={() =>
+                            run(
+                              () =>
+                                approveApplication.mutateAsync({
+                                  applicationId: application.id,
+                                  taskId: task.id,
+                                  version: application.version,
+                                }),
+                              t('features.tasks.applicationApproved', {
+                                name: userNameById.get(application.volunteerId) ?? '',
+                              }),
+                            )
+                          }
+                        >
+                          {t('features.tasks.applicationApprove')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setRejectReason('')
+                            setRejectTarget(application)
+                          }}
+                        >
+                          {t('features.tasks.applicationReject')}
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
+
           <Card className="p-6">
             <div className="flex items-center justify-between gap-3">
-              <p className="lbl-mono">{t('features.tasks.assignees')}</p>
-              {!readOnly && (
+              <p className="lbl-mono">
+                {t('features.tasks.assignees')} ({assignments.length}/{task.volunteersNeeded})
+              </p>
+              {!readOnly && isAreaLeader && (
                 <Button variant="ghost" size="sm" onClick={() => setAssignOpen(true)}>
                   <UserPlus className="size-4" />
                   {t('features.tasks.assignVolunteer')}
@@ -374,7 +590,9 @@ export default function TaskDetailPage() {
               <p className="mt-2 text-xs text-muted-foreground">{t('common.loading')}</p>
             ) : assignments.length === 0 ? (
               <p className="mt-2 text-[11px] text-muted-foreground">
-                {t('features.tasks.assignmentsEmpty')}
+                {pendingApplications.length > 0
+                  ? t('features.tasks.assignmentsPendingOnly', { n: pendingApplications.length })
+                  : t('features.tasks.assignmentsEmpty')}
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
@@ -383,9 +601,17 @@ export default function TaskDetailPage() {
                     key={assignment.id}
                     className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
                   >
-                    <span className="truncate text-sm font-semibold text-foreground">
-                      {userNameById.get(assignment.volunteerId) ?? assignment.volunteerId}
-                    </span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {userNameById.get(assignment.volunteerId) ?? assignment.volunteerId}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(
+                          `features.tasks.assignmentType.${String(assignment.assignmentType).toUpperCase()}`,
+                          { defaultValue: assignment.assignmentType },
+                        )}
+                      </p>
+                    </div>
                     <StatusTag status={assignment.status} />
                   </li>
                 ))}
@@ -393,9 +619,44 @@ export default function TaskDetailPage() {
             )}
           </Card>
 
-          {!readOnly && (
+          {!readOnly && isAreaLeader && (
             <Card className="space-y-2 p-6">
               <p className="lbl-mono">{t('common.actions')}</p>
+              {/* Khi nào việc bắt đầu: `startAt` là lịch dự kiến, còn NOT_STARTED → IN_PROGRESS
+                  xảy ra khi leader duyệt đơn check-in của TNV (POST /attendance-requests/{id}/approve). */}
+              <div className="space-y-0.5 rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                <p className="text-[11px] font-semibold text-foreground">
+                  {t('features.tasks.startPlanTitle')}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {task.startAt ? viDateTime(task.startAt) : t('features.tasks.startAtNone')}
+                </p>
+                {task.backendStatus === 'OPEN' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('features.tasks.startPlanOpen')}
+                  </p>
+                )}
+                {task.backendStatus === 'NOT_STARTED' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('features.tasks.startViaAttendance')}
+                  </p>
+                )}
+                {task.backendStatus === 'IN_PROGRESS' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('features.tasks.startedAlready')}
+                  </p>
+                )}
+              </div>
+              {(task.backendStatus === 'NOT_STARTED' || task.backendStatus === 'IN_PROGRESS') && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate('/leader/timesheets')}
+                >
+                  <ClipboardCheck className="size-4" />
+                  {t('features.tasks.openTimesheets')}
+                </Button>
+              )}
               {/* POST /tasks/{id}/ready là chuyển trạng thái duy nhất BE hỗ trợ. */}
               {task.backendStatus === 'OPEN' && (
                 <Button
@@ -637,7 +898,7 @@ export default function TaskDetailPage() {
                         requiredQuantity: Number(row.quantity),
                       })),
                     })
-                    setSavedMaterials(rows.map((row) => row.materialId))
+                    setMaterialRows([{ materialId: '', quantity: '1' }])
                     toast(t('features.tasks.materialsSaved'))
                     setMaterialsOpen(false)
                   } catch (error) {
@@ -698,6 +959,62 @@ export default function TaskDetailPage() {
               <Plus className="size-4" />
               {t('features.tasks.addMaterialRow')}
             </Button>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Dialog: Từ chối đơn đăng ký — POST /task-applications/{id}/reject (lý do bắt buộc). */}
+      {rejectTarget && (
+        <Dialog
+          open
+          onClose={() => setRejectTarget(null)}
+          title={t('features.tasks.applicationRejectTitle')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setRejectTarget(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!rejectReason.trim() || rejectApplication.isPending}
+                onClick={async () => {
+                  try {
+                    await rejectApplication.mutateAsync({
+                      applicationId: rejectTarget.id,
+                      taskId: task.id,
+                      version: rejectTarget.version,
+                      reason: rejectReason.trim(),
+                    })
+                    toast(
+                      t('features.tasks.applicationRejected', {
+                        name: userNameById.get(rejectTarget.volunteerId) ?? '',
+                      }),
+                    )
+                    setRejectTarget(null)
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('features.tasks.applicationReject')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {userNameById.get(rejectTarget.volunteerId) ?? rejectTarget.volunteerId}
+            </p>
+            <Label htmlFor="task-application-reject-reason">
+              {t('features.tasks.applicationRejectReason')}
+            </Label>
+            <textarea
+              id="task-application-reject-reason"
+              rows={3}
+              maxLength={1000}
+              className={TEXTAREA_CLS}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
           </div>
         </Dialog>
       )}
@@ -811,7 +1128,7 @@ export default function TaskDetailPage() {
                   try {
                     const reqSkills = selectedSkills.map(sId => ({
                       skillId: sId,
-                      requiredSkillLevel: 'Standard',
+                      requiredSkillLevel: DEFAULT_TASK_SKILL_LEVEL,
                       requiredVolunteerCount: 1,
                     }))
                     await replaceSkills.mutateAsync({

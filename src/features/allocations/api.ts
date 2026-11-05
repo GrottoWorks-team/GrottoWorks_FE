@@ -17,7 +17,7 @@ export interface AllocationQuery {
   materialId?: string
 }
 
-export function useAllocations(params?: AllocationQuery) {
+export function useAllocations(params?: AllocationQuery, enabled = true) {
   return useQuery({
     queryKey: [...allocationKeys.all, params ?? {}],
     queryFn: async () => {
@@ -30,6 +30,7 @@ export function useAllocations(params?: AllocationQuery) {
       const res = await apiPaged<Allocation>(`/api/v1/material-allocations?${q.toString()}`)
       return res.data
     },
+    enabled,
   })
 }
 
