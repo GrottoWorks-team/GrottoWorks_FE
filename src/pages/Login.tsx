@@ -41,16 +41,16 @@ interface DemoRoleConfig {
 }
 
 const DEMO: DemoRoleConfig[] = [
-  { role: 'PARISH', email: 'admin@grottoworks.vn', icon: Crown, color: 'text-amber-600' },
-  { role: 'COMMUNITY', email: 'committee@grottoworks.vn', icon: Users, color: 'text-emerald-700' },
-  { role: 'LEADER', email: 'leader@grottoworks.vn', icon: Hammer, color: 'text-blue-700' },
-  { role: 'MATERIAL_OFFICER', email: 'officer@grottoworks.vn', icon: Package, color: 'text-indigo-700' },
+  { role: 'PARISH', email: 'hoa.nguyen@giaoxuthanhtam.org.vn', icon: Crown, color: 'text-amber-600' },
+  { role: 'COMMUNITY', email: 'bao.tran@giaoxuthanhtam.org.vn', icon: Users, color: 'text-emerald-700' },
+  { role: 'LEADER', email: 'ngan.nguyen@giaoxuthanhtam.org.vn', icon: Hammer, color: 'text-blue-700' },
+  { role: 'MATERIAL_OFFICER', email: 'anh.pham@giaoxuthanhtam.org.vn', icon: Package, color: 'text-indigo-700' },
 ]
 
 // Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md` (BE yêu cầu ≥ 8 ký tự,
 // có ít nhất 1 chữ và 1 số nên `grotto` không hợp lệ). Đổi bằng biến môi trường
 // VITE_DEMO_PASSWORD nếu seed ở máy bạn dùng mật khẩu khác.
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'grotto123'
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'GxThanhTam@2026'
 
 export default function Login() {
   const { t } = useTranslation()

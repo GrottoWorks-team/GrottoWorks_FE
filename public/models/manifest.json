@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "id": "hang-da-template",
+    "name": "Template hang đá (mẫu quét 3D)",
+    "url": "/asset/model.glb",
+    "category": "builder.category.structure"
+  }
+]
