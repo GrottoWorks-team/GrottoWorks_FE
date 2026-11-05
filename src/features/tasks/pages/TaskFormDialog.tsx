@@ -5,6 +5,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
@@ -13,7 +14,15 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
-import { useCreateTask, useSkills, useUpdateTask } from '../api'
+import { viDate } from '@/lib/format'
+import {
+  DEFAULT_TASK_SKILL_LEVEL,
+  useCreateTask,
+  useReplaceTaskMaterials,
+  useReplaceTaskSkills,
+  useSkillsCatalog,
+  useUpdateTask,
+} from '../api'
 import { ApiError } from '@/lib/api'
 import type { Task } from '@/types'
 
@@ -75,10 +84,22 @@ export function TaskFormDialog({
   const { t } = useTranslation()
   const toast = useToast()
   const { data: areas = [] } = useScopedAreas()
-  const { data: skills = [] } = useSkills()
+  // Danh mục kỹ năng dùng id (GUID) — BE nhận `skillId` trong PUT /tasks/{id}/skills.
+  const { data: skills = [] } = useSkillsCatalog()
   const create = useCreateTask()
   const update = useUpdateTask()
+  const replaceSkills = useReplaceTaskSkills()
+  const replaceMaterials = useReplaceTaskMaterials()
   const editing = Boolean(task)
+  // Số lượng từng vật tư (BE lưu `requiredQuantity`); mặc định 1 nếu chưa nhập.
+  const [materialQty, setMaterialQty] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      (task?.materialRequirements ?? []).map((row) => [
+        row.materialId,
+        String(row.requiredQuantity),
+      ]),
+    ),
+  )
 
   const {
     register,
@@ -93,7 +114,7 @@ export function TaskFormDialog({
           title: task.title,
           description: task.description,
           areaId: task.areaId,
-          skills: task.skills,
+          skills: task.skillIds ?? [],
           priority: task.priority ?? 'MEDIUM',
           startAt: formatInitialStartAt(task.startAt),
           estimateHours: task.estimateHours,
@@ -117,9 +138,23 @@ export function TaskFormDialog({
 
   const areaId = watch('areaId')
   const { data: materials = [] } = useMaterials(areaId || undefined)
+  // BE chặn deadline của task vượt deadline khu vực (`TASK_DATE_OUT_OF_WORK_AREA`).
+  const areaDeadline = areas.find((a) => a.id === areaId)?.deadline?.slice(0, 10)
+  const selectedMaterialIds = watch('materialIds') ?? []
+  const materialRows = selectedMaterialIds.map((materialId) => ({
+    materialId,
+    requiredQuantity: Number(materialQty[materialId] ?? 1) || 1,
+  }))
 
   const onSubmit = async (data: FormData) => {
     try {
+      if (areaDeadline && data.dueDate && data.dueDate > areaDeadline) {
+        toast(
+          t('features.tasks.dueAfterAreaDeadline', { date: viDate(areaDeadline) }),
+          'alert',
+        )
+        return
+      }
       if (editing && task) {
         // G4: Chặn gửi rỗng / không có thay đổi nào so với task hiện tại
         const isUnchanged =
@@ -136,19 +171,60 @@ export function TaskFormDialog({
           return
         }
 
-        await update.mutateAsync({
+        const saved = await update.mutateAsync({
           id: task.id,
           version: task.version,
           ...data,
         })
+        // Kỹ năng/vật tư không nằm trong PATCH /tasks/{id} — phải PUT riêng, và BE
+        // thay TOÀN BỘ danh sách (nên gửi cả khi người dùng bỏ hết để xoá).
+        let latest = saved
+        if (data.skills.length) {
+          latest = await replaceSkills.mutateAsync({
+            taskId: task.id,
+            skills: data.skills.map((skillId) => ({
+              skillId,
+              requiredSkillLevel: DEFAULT_TASK_SKILL_LEVEL,
+              requiredVolunteerCount: 1,
+            })),
+            version: latest.version,
+          })
+        }
+        if (materialRows.length || (task.materialRequirements?.length ?? 0) > 0) {
+          await replaceMaterials.mutateAsync({
+            taskId: task.id,
+            materials: materialRows,
+            version: latest.version,
+          })
+        }
         toast(t('features.tasks.updated', { name: data.title }))
       } else {
-        await create.mutateAsync({
+        const created = await create.mutateAsync({
           ...data,
           assignees: [],
           status: 'TODO',
           submittedPhotos: 0,
         })
+        let latest = created
+        if (data.skills.length && created?.id) {
+          latest = await replaceSkills.mutateAsync({
+            taskId: created.id,
+            skills: data.skills.map((skillId) => ({
+              skillId,
+              requiredSkillLevel: DEFAULT_TASK_SKILL_LEVEL,
+              requiredVolunteerCount: 1,
+            })),
+            version: latest.version,
+          })
+        }
+        // Vật tư phải PUT sau khi tạo (CreateTaskRequest không nhận materials).
+        if (materialRows.length && created?.id) {
+          await replaceMaterials.mutateAsync({
+            taskId: created.id,
+            materials: materialRows,
+            version: latest.version,
+          })
+        }
         toast(t('features.tasks.created', { name: data.title }))
       }
       onClose()
@@ -211,10 +287,10 @@ export function TaskFormDialog({
           <Label className="mb-1.5 block">{t('features.tasks.skills')}</Label>
           <div className="flex flex-wrap gap-2">
             {skills.map((s) => {
-              const checked = (watch('skills') ?? []).includes(s)
+              const checked = (watch('skills') ?? []).includes(s.id)
               return (
                 <label
-                  key={s}
+                  key={s.id}
                   className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                     checked
                       ? 'border-brand-pine bg-brand-pine text-white shadow-sm'
@@ -223,11 +299,11 @@ export function TaskFormDialog({
                 >
                   <input
                     type="checkbox"
-                    value={s}
+                    value={s.id}
                     className="sr-only"
                     {...register('skills')}
                   />
-                  <span>{checked ? '✓ ' : '+ '}{s}</span>
+                  <span>{checked ? '✓ ' : '+ '}{s.name}</span>
                 </label>
               )
             })}
@@ -263,7 +339,18 @@ export function TaskFormDialog({
           </div>
           <div>
             <Label htmlFor="task-due">{t('features.tasks.dueDate')}</Label>
-            <Input id="task-due" type="date" className="tabular" {...register('dueDate')} />
+            <Input
+              id="task-due"
+              type="date"
+              className="tabular"
+              max={areaDeadline}
+              {...register('dueDate')}
+            />
+            {areaDeadline ? (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t('features.tasks.areaDeadlineHint', { date: viDate(areaDeadline) })}
+              </p>
+            ) : null}
             {err(errors.dueDate?.message)}
           </div>
         </div>
@@ -274,22 +361,37 @@ export function TaskFormDialog({
               {materials.map((m) => {
                 const checked = (watch('materialIds') ?? []).includes(m.id)
                 return (
-                  <label
+                  <div
                     key={m.id}
-                    className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-all ${
+                    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition-all ${
                       checked
                         ? 'border-brand-gold bg-brand-gold/15 font-semibold text-amber-900 dark:text-amber-200'
                         : 'border-border bg-card text-foreground hover:bg-muted/50'
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      value={m.id}
-                      className="sr-only"
-                      {...register('materialIds')}
-                    />
-                    <span>{checked ? '✓ ' : ''}{m.name} <span className="text-[11px] opacity-75">({m.unit})</span></span>
-                  </label>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5">
+                      <input
+                        type="checkbox"
+                        value={m.id}
+                        className="sr-only"
+                        {...register('materialIds')}
+                      />
+                      <span>{checked ? '✓ ' : ''}{m.name} <span className="text-[11px] opacity-75">({m.unit})</span></span>
+                    </label>
+                    {checked && (
+                      <input
+                        type="number"
+                        min={0.01}
+                        step="any"
+                        aria-label={`${t('features.requirements.colRequired')} ${m.name}`}
+                        className="tabular w-16 rounded border border-border bg-card px-1.5 py-0.5 text-right text-xs"
+                        value={materialQty[m.id] ?? '1'}
+                        onChange={(e) =>
+                          setMaterialQty((prev) => ({ ...prev, [m.id]: e.target.value }))
+                        }
+                      />
+                    )}
+                  </div>
                 )
               })}
             </div>

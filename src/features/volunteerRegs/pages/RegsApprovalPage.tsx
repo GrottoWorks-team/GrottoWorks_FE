@@ -1,142 +1,159 @@
-// Duyệt đăng ký TNV (route /leader/regs, committee cũng mở được qua URL).
-// Leader chỉ thấy reg của nhiệm vụ thuộc khu mình lãnh (area leaderId);
-// committee/parish thấy tất cả. Nút Duyệt/Từ chối từng row — duyệt chạy
-// 2 bước trong useApproveReg (reg APPROVED + volunteer vào assignees).
+// Duyệt đăng ký tình nguyện viên (route /leader/regs).
+//
+// BE TaskExecution chỉ trả đăng ký THEO TỪNG task:
+//   GET  /api/v1/work-areas/{areaId}/tasks        → việc của khu mình lãnh
+//   GET  /api/v1/tasks/{taskId}/applications      → đơn đăng ký của việc đó
+//   POST /api/v1/task-applications/{id}/approve|reject   (kèm If-Match version)
+// Trang gom đơn của mọi khu mình phụ trách trong mùa đang chọn.
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueries } from '@tanstack/react-query'
 import { Check, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
-import { useScopedAreas } from '@/features/areas/api'
-import { useTasks } from '@/features/tasks/api'
+import { api, apiPaged, ApiError } from '@/lib/api'
+import { viDateTime } from '@/lib/format'
+import { useDashboardData } from '@/features/dashboards/api'
 import { useUsers } from '@/features/users/api'
-import { useAuth } from '@/lib/auth'
-import { viDate } from '@/lib/format'
-import { useApproveReg, useRejectReg, useVolunteerRegs } from '../../volunteers/api'
-import type { VolunteerReg } from '@/types'
+import {
+  mapTaskDtoToTask,
+  useApproveApplication,
+  useRejectApplication,
+  type TaskApplicationDto,
+  type TaskDto,
+} from '@/features/tasks/api'
+
+interface ApplicationRow extends TaskApplicationDto {
+  taskName: string
+}
 
 export default function RegsApprovalPage() {
   const { t } = useTranslation()
   const toast = useToast()
-  const { user } = useAuth()
-  const { data: regs = [], isPending } = useVolunteerRegs()
-  const { data: tasks = [] } = useTasks()
-  const { data: areas = [] } = useScopedAreas()
-  const { data: users = [] } = useUsers()
-  const approve = useApproveReg()
-  const reject = useRejectReg()
+  const { areas } = useDashboardData()
+  const { data: users = [] } = useUsers({ withSkills: false })
+  const approve = useApproveApplication()
+  const reject = useRejectApplication()
 
-  const myAreaIds = new Set(areas.filter((a) => a.leaderId === user?.id).map((a) => a.id))
-  const taskOf = (taskId: string) => tasks.find((x) => x.id === taskId)
-  const volunteerName = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
-  const areaName = (id: string) => areas.find((a) => a.id === id)?.name ?? '—'
+  const taskQueries = useQueries({
+    queries: areas.map((area) => ({
+      queryKey: ['tasks', 'area', area.id],
+      queryFn: async () => {
+        const res = await api<{ data?: TaskDto[]; items?: TaskDto[] } | TaskDto[]>(
+          `/api/v1/work-areas/${area.id}/tasks?size=100`,
+        )
+        const list = Array.isArray(res) ? res : (res.data ?? res.items ?? [])
+        return list.map(mapTaskDtoToTask)
+      },
+    })),
+  })
 
-  // Leader: chỉ reg của task thuộc khu mình lãnh; committee/parish: tất cả.
-  const rows = regs.filter((r) =>
-    user?.role === 'LEADER' ? myAreaIds.has(taskOf(r.taskId)?.areaId ?? '') : true,
-  )
+  const tasks = taskQueries.flatMap((query) => query.data ?? [])
 
-  const act = async (reg: VolunteerReg, fn: { mutateAsync: (r: VolunteerReg) => Promise<unknown> }, msg: string) => {
+  // BE chỉ nhận/duyệt đơn khi task còn ở trạng thái OPEN (EnsurePlanningCanBeUpdated)
+  // → chỉ gọi /tasks/{id}/applications cho các task đó, tránh N request vô ích.
+  const openTasks = tasks.filter((task) => task.backendStatus === 'OPEN')
+
+  const applicationQueries = useQueries({
+    queries: openTasks.map((task) => ({
+      queryKey: ['tasks', 'applications', task.id],
+      queryFn: async () => {
+        const res = await apiPaged<TaskApplicationDto>(
+          `/api/v1/tasks/${task.id}/applications?size=100`,
+        )
+        return res.data.map((application) => ({ ...application, taskName: task.title }))
+      },
+    })),
+  })
+
+  const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
+
+  const rows = applicationQueries
+    .flatMap((query) => query.data ?? [])
+    .sort((a, b) => (b.requestedAt ?? '').localeCompare(a.requestedAt ?? ''))
+
+  const isLoading = taskQueries.some((query) => query.isPending)
+
+  const review = async (row: ApplicationRow, approveIt: boolean) => {
     try {
-      await fn.mutateAsync(reg)
-      toast(msg)
-    } catch {
-      toast(t('common.error'), 'alert')
+      if (approveIt) {
+        await approve.mutateAsync({
+          applicationId: row.id,
+          taskId: row.taskId,
+          version: row.version,
+        })
+        toast(t('features.volunteers.regApproved'))
+      } else {
+        await reject.mutateAsync({
+          applicationId: row.id,
+          taskId: row.taskId,
+          version: row.version,
+          reason: t('features.volunteers.regRejectReason'),
+        })
+        toast(t('features.volunteers.regRejected'))
+      }
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
     }
   }
 
-  const columns = useMemo(
-    () => [
-      {
-        key: 'volunteer',
-        header: t('features.volunteers.regVolunteer'),
-        render: (r: VolunteerReg) => {
-          const vol = users.find((u) => u.id === r.volunteerId)
-          return (
-            <div className="space-y-1">
-              <span className="font-semibold text-foreground">{vol?.name ?? '—'}</span>
-              {vol?.skills && vol.skills.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {vol.skills.map((s) => (
-                    <span
-                      key={s}
-                      className="inline-flex items-center rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:text-amber-300"
-                    >
-                      {s}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-          )
-        },
-      },
-      {
-        key: 'task',
-        header: t('features.volunteers.regTask'),
-        render: (r: VolunteerReg) => (
-          <span className="font-medium text-foreground">{taskOf(r.taskId)?.title ?? '—'}</span>
-        ),
-      },
-      {
-        key: 'area',
-        header: t('features.volunteers.regArea'),
-        render: (r: VolunteerReg) => (
-          <span className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
-            {areaName(taskOf(r.taskId)?.areaId ?? '')}
+  const columns = [
+    {
+      key: 'taskName',
+      header: t('features.tasks.title'),
+      render: (row: ApplicationRow) => <span className="font-semibold">{row.taskName}</span>,
+    },
+    {
+      key: 'volunteerId',
+      header: t('features.tasks.volunteer'),
+      render: (row: ApplicationRow) => userNameById.get(row.volunteerId) ?? row.volunteerId,
+    },
+    {
+      key: 'requestedAt',
+      header: t('features.volunteers.requestedAt'),
+      align: 'right' as const,
+      render: (row: ApplicationRow) =>
+        row.requestedAt ? <span className="tabular">{viDateTime(row.requestedAt)}</span> : '—',
+    },
+    {
+      key: 'status',
+      header: t('common.status'),
+      render: (row: ApplicationRow) => <StatusTag status={row.status} />,
+    },
+    {
+      key: 'actions',
+      header: t('common.actions'),
+      align: 'right' as const,
+      render: (row: ApplicationRow) =>
+        row.status === 'PENDING' ? (
+          <span className="flex justify-end gap-1.5">
+            <Button
+              size="sm"
+              disabled={approve.isPending}
+              onClick={() => review(row, true)}
+              title={t('features.volunteers.approve')}
+            >
+              <Check className="size-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={reject.isPending}
+              onClick={() => review(row, false)}
+              title={t('features.volunteers.reject')}
+            >
+              <X className="size-4" />
+            </Button>
           </span>
+        ) : (
+          '—'
         ),
-      },
-      {
-        key: 'dueDate',
-        header: t('features.volunteers.dueDate'),
-        render: (r: VolunteerReg) => {
-          const due = taskOf(r.taskId)?.dueDate
-          return <span className="tabular text-sm">{due ? viDate(due) : '—'}</span>
-        },
-      },
-      { key: 'status', header: t('common.status'), render: (r: VolunteerReg) => <StatusTag status={r.status} /> },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (r: VolunteerReg) =>
-          r.status === 'PENDING' ? (
-            <div className="flex justify-end gap-2">
-              <Button
-                size="sm"
-                className="bg-brand-pine hover:bg-brand-pineHover text-white"
-                aria-label={t('features.volunteers.approve')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void act(r, approve, t('features.volunteers.approved', { name: volunteerName(r.volunteerId) }))
-                }}
-              >
-                <Check className="size-4" />
-                {t('features.volunteers.approve')}
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                aria-label={t('features.volunteers.reject')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  void act(r, reject, t('features.volunteers.rejected', { name: volunteerName(r.volunteerId) }))
-                }}
-              >
-                <X className="size-4" />
-                {t('features.volunteers.reject')}
-              </Button>
-            </div>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
-      },
-    ],
-    [t, users, tasks, areas],
-  )
+    },
+  ]
 
   return (
     <div>
@@ -144,18 +161,17 @@ export default function RegsApprovalPage() {
         title={t('features.volunteers.regsTitle')}
         sub={t('features.volunteers.regsSub')}
       />
-      {isPending ? (
-        <p className="lbl-mono">{t('common.loading')}</p>
-      ) : (
+
+      <Card className="p-5">
         <DataTable
           rows={rows}
           columns={columns}
-          filters={[{ key: 'status', options: ['PENDING', 'APPROVED', 'REJECTED'] }]}
-          // Mặc định hiện reg chờ duyệt — bấm "Tất cả" để xem hết.
-          defaultFilters={{ status: 'PENDING' }}
-          emptyText={t('features.volunteers.regsEmpty')}
+          pageSize={10}
+          emptyText={
+            isLoading ? t('common.loading') : t('features.volunteers.regsEmpty')
+          }
         />
-      )}
+      </Card>
     </div>
   )
 }

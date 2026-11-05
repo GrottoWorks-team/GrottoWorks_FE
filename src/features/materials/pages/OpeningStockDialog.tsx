@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
 import { useRecordOpeningStock, useMaterialCatalog } from '../api'
-import { useAreas } from '@/features/areas/api'
+import { useScopedAreas } from '@/features/areas/api'
 
 const openingStockSchema = z.object({
   workAreaId: z.string().min(1, 'features.inventory.dialog.workAreaRequired'),
@@ -47,7 +47,8 @@ export function OpeningStockDialog({
   const toast = useToast()
   const recordMutation = useRecordOpeningStock()
 
-  const { data: areas = [] } = useAreas()
+  // Khu của mùa đang chọn — dialog luôn mount nên tránh useAreas() gọi mọi mùa (N+1).
+  const { data: areas = [] } = useScopedAreas()
   const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 100, status: 'ACTIVE' })
   const materials = catalogResult?.data || []
 

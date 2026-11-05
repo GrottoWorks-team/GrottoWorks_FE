@@ -1,135 +1,56 @@
 // Chi tiết việc (LEADER, route /leader/tasks/:id): 2 cột — trái info panel
 // (mọi field + materials chips + StatusTag) + timeline (submittedNotes +
-// status hiện tại); phải assignee chips (X = bỏ phân công), dialog phân công
-// TNV (sort khớp kỹ năng lên đầu) và các nút chuyển trạng thái.
+// status hiện tại); phải assignee chips và thao tác trạng thái.
 // Mount dưới /community/* → read-only (không nút thao tác).
-import { useState } from 'react'
+//
+// PHẠM VI API THẬT: task có đủ vòng đời (ready → progress/submit → duyệt hoàn thành)
+// và phân công TNV (assign / accept / decline) — xem API-GAP-STATUS-2026-11-04.md §2.2.
+// Phần còn thiếu so với nghiệp vụ: §3-A8 (mobile chưa có `assignmentId`).
+import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, Camera, Check, Clock, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users, X } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarClock, ClipboardCheck, Clock, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
-import { useUsers } from '@/features/users/api'
 import {
+  DEFAULT_TASK_SKILL_LEVEL,
+  getTaskEvidenceUrl,
+  useApproveApplication,
+  useApproveTask,
   useAssignVolunteer,
-  useMarkTaskReady,
+  useCancelTask,
+  useReadyTask,
+  useRejectApplication,
   useReplaceCompletionCriteria,
+  useReplaceTaskMaterials,
   useReplaceTaskSkills,
+  useRequestTaskRevision,
   useSkillsCatalog,
   useTask,
-  useUnassign,
-  useUpdateTask,
+  useTaskApplications,
+  useTaskAssignments,
+  useTaskProgress,
+  useTaskReviewPackage,
+  useVolunteerMatches,
+  type TaskApplicationDto,
 } from '../api'
-import type { Task, User } from '@/types'
-import { viDate } from '@/lib/format'
+import { useUsers } from '@/features/users/api'
+import { useAllocations } from '@/features/allocations/api'
+import { useAuth } from '@/lib/auth'
+import { ApiError } from '@/lib/api'
+import { viDate, viDateTime } from '@/lib/format'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
-
-// 1 dòng TNV trong dialog phân công: tự dùng hook assign theo user đó.
-function VolunteerRow({ task, user }: { task: Task; user: User }) {
-  const { t } = useTranslation()
-  const toast = useToast()
-  const assign = useAssignVolunteer(task.id, user.id)
-  const assigned = task.assignees.includes(user.id)
-  const matched = user.skills.filter((s) => task.skills.includes(s))
-  const onAssign = async () => {
-    try {
-      await assign.mutateAsync()
-      toast(t('features.tasks.assigned', { name: user.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/40 p-3 hover:border-brand-pine/30 hover:bg-muted/30 transition-all">
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <span className="grid size-7 place-items-center rounded-full bg-brand-pine/10 text-xs font-bold text-brand-pine">
-            {user.name.charAt(0)}
-          </span>
-          <p className="text-sm font-semibold text-foreground">{user.name}</p>
-        </div>
-        {matched.length > 0 ? (
-          <div className="flex flex-wrap gap-1 pt-0.5">
-            {matched.map((s) => (
-              <span key={s} className="inline-flex items-center rounded-full bg-brand-pine/10 px-2 py-0.5 text-[10px] font-semibold text-brand-pine">
-                ✓ {s}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[11px] text-muted-foreground">{t('features.tasks.skills')}: {user.skills.join(', ') || '—'}</p>
-        )}
-      </div>
-      <Button size="sm" variant={assigned ? 'outline' : 'default'} disabled={assigned} onClick={onAssign} className={assigned ? '' : 'bg-brand-pine hover:bg-brand-pineHover text-white'}>
-        {assigned ? <Check className="size-4" /> : <Plus className="size-4" />}
-        {assigned ? t('features.tasks.assignedShort') : t('features.tasks.assignVolunteer')}
-      </Button>
-    </div>
-  )
-}
-
-// Dialog phân công: mọi user, khớp kỹ năng nhiều nhất đứng đầu.
-function AssignDialog({ task, onClose }: { task: Task; onClose: () => void }) {
-  const { t } = useTranslation()
-  const { data: users = [] } = useUsers()
-  const ranked = [...users].sort(
-    (a, b) =>
-      b.skills.filter((s) => task.skills.includes(s)).length -
-      a.skills.filter((s) => task.skills.includes(s)).length,
-  )
-  return (
-    <Dialog open onClose={onClose} title={t('features.tasks.assignTitle')}>
-      <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
-        {ranked.map((u) => (
-          <VolunteerRow key={u.id} task={task} user={u} />
-        ))}
-      </div>
-    </Dialog>
-  )
-}
-
-// Assignee chip + nút X bỏ phân công (ẩn X khi readOnly).
-function AssigneeChip({ taskId, user, readOnly }: { taskId: string; user: User; readOnly?: boolean }) {
-  const { t } = useTranslation()
-  const toast = useToast()
-  const unassign = useUnassign(taskId, user.id)
-  const onUnassign = async () => {
-    try {
-      await unassign.mutateAsync()
-      toast(t('features.tasks.unassigned', { name: user.name }))
-    } catch {
-      toast(t('common.error'), 'alert')
-    }
-  }
-  return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 shadow-sm hover:border-brand-pine/30 transition-all">
-      <span className="grid size-5 place-items-center rounded-full bg-brand-pine/15 text-[10px] font-bold text-brand-pine">
-        {user.name.charAt(0)}
-      </span>
-      <span className="text-xs font-semibold text-foreground">{user.name}</span>
-      {!readOnly && (
-        <button
-          type="button"
-          aria-label={t('features.tasks.unassign', { name: user.name })}
-          onClick={onUnassign}
-          className="rounded-full p-0.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-        >
-          <X className="size-3.5" />
-        </button>
-      )}
-    </div>
-  )
-}
 
 export default function TaskDetailPage() {
   const { t } = useTranslation()
@@ -137,21 +58,75 @@ export default function TaskDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const { user } = useAuth()
   const readOnly = pathname.startsWith('/community/')
 
   const { data: task, isPending } = useTask(id)
   const { data: areas = [] } = useAreas()
-  const { data: users = [] } = useUsers()
   const { data: materials = [] } = useMaterials(task?.areaId)
 
-  const update = useUpdateTask()
-  const markReady = useMarkTaskReady()
+  // BE chỉ cho LEADER phụ trách khu vực đọc/sửa dữ liệu của task
+  // (TaskScopeAccess.GetWorkAreaForLeaderWriteAsync → 403 WORK_AREA_ACCESS_DENIED).
+  const area = areas.find((a) => a.id === task?.areaId)
+  const isAreaLeader = user?.role === 'LEADER' && area?.leaderId === user.id
+  const canReadAreaData = user?.role !== 'LEADER' || isAreaLeader
 
-  const [assigning, setAssigning] = useState(false)
+  const ready = useReadyTask()
   const replaceCriteria = useReplaceCompletionCriteria()
   const replaceSkills = useReplaceTaskSkills()
+  const approveTask = useApproveTask()
+  const requestRevision = useRequestTaskRevision()
+  const { data: progress = [], isPending: progressPending } = useTaskProgress(
+    task?.id,
+    canReadAreaData,
+  )
+  const { data: reviewPackage } = useTaskReviewPackage(
+    task?.id,
+    !readOnly && task?.backendStatus === 'SUBMITTED',
+  )
+  const { data: assignments = [], isPending: assignmentsPending } = useTaskAssignments(
+    task?.id,
+    canReadAreaData,
+  )
+  // Đơn đăng ký của TNV: `GET /tasks/{id}/assignments` đã lọc bỏ application PENDING
+  // (chỉ giữ direct/support hoặc đã duyệt) nên phải đọc riêng endpoint applications.
+  const { data: applications = [], isPending: applicationsPending } = useTaskApplications(
+    task?.id,
+    !readOnly && isAreaLeader,
+  )
+  const approveApplication = useApproveApplication()
+  const rejectApplication = useRejectApplication()
+  const pendingApplications = applications.filter((row) => row.status === 'PENDING')
+  const reviewedApplications = applications.filter((row) => row.status !== 'PENDING')
+  // Vật tư MO đã cấp cho việc này (`GET /material-allocations?taskId=…`).
+  const { data: taskAllocations = [] } = useAllocations(
+    task ? { taskId: task.id } : undefined,
+    Boolean(task?.id),
+  )
+  const assignVolunteer = useAssignVolunteer()
+  const cancelTask = useCancelTask()
+  const replaceMaterials = useReplaceTaskMaterials()
+  const { data: users = [] } = useUsers({ withSkills: false })
+  const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
   const { data: skillsCatalog = [] } = useSkillsCatalog()
   const [editingCriteria, setEditingCriteria] = useState(false)
+  const [assignOpen, setAssignOpen] = useState(false)
+  const [assignVolunteerId, setAssignVolunteerId] = useState('')
+  const [assignNote, setAssignNote] = useState('')
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
+  const [materialsOpen, setMaterialsOpen] = useState(false)
+  const [materialRows, setMaterialRows] = useState<Array<{ materialId: string; quantity: string }>>([
+    { materialId: '', quantity: '1' },
+  ])
+  const [revisionOpen, setRevisionOpen] = useState(false)
+  const { data: volunteerMatches = [] } = useVolunteerMatches(
+    task?.id,
+    assignOpen && !readOnly && isAreaLeader,
+  )
+  const [revisionReason, setRevisionReason] = useState('')
+  const [rejectTarget, setRejectTarget] = useState<TaskApplicationDto | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
   const [criteriaValue, setCriteriaValue] = useState('')
   const [editingSkills, setEditingSkills] = useState(false)
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
@@ -160,8 +135,8 @@ export default function TaskDetailPage() {
     try {
       await fn()
       toast(msg)
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
     }
   }
 
@@ -180,9 +155,39 @@ export default function TaskDetailPage() {
     )
   }
 
-  const area = areas.find((a) => a.id === task.areaId)
-  const taskMaterials = materials.filter((m) => task.materialIds.includes(m.id))
-  const assignees = users.filter((u) => task.assignees.includes(u.id))
+  const materialQtyById = new Map(
+    (task.materialRequirements ?? []).map((row) => [row.materialId, row.requiredQuantity]),
+  )
+  const taskMaterials = materials
+    .filter((m) => task.materialIds.includes(m.id))
+    .map((m) => ({ ...m, requiredQuantity: materialQtyById.get(m.id) }))
+  const displayMaterials = taskMaterials
+  // Tổng đã cấp theo vật tư (nhiều phiếu cấp cho cùng một task → cộng dồn).
+  const allocatedMaterials = (() => {
+    const byMaterial = new Map<
+      string,
+      { materialId: string; name: string; unit: string; quantity: number; required?: number }
+    >()
+    for (const allocation of taskAllocations) {
+      for (const item of allocation.items) {
+        const current = byMaterial.get(item.materialId)
+        byMaterial.set(item.materialId, {
+          materialId: item.materialId,
+          name: item.materialName,
+          unit: item.unit,
+          quantity: (current?.quantity ?? 0) + item.allocatedQuantity,
+          required: materialQtyById.get(item.materialId) ?? current?.required,
+        })
+      }
+    }
+    return [...byMaterial.values()]
+  })()
+  // TaskDto trả `skills`/`materials` dạng GUID → dịch sang tên qua danh mục.
+  const displaySkills = (task.skillIds ?? []).length
+    ? skillsCatalog.filter((sk) => task.skillIds?.includes(sk.id)).map((sk) => sk.name)
+    : task.skills
+  // Chỉ sửa được khi task còn OPEN (EnsurePlanningCanBeUpdated).
+  const canEditPlanning = !readOnly && isAreaLeader && task.backendStatus === 'OPEN'
 
   // Info panel: icon + label + value in clean card.
   const statBox = (Icon: typeof Users, label: string, value: string) => (
@@ -219,10 +224,15 @@ export default function TaskDetailPage() {
               <StatusTag status={task.status} scope="task" />
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {statBox(MapPin, t('features.tasks.area'), area?.name ?? '—')}
               {statBox(Clock, t('features.tasks.estimateHours'), `${task.estimateHours} ${t('features.tasks.hours')}`)}
-              {statBox(Users, t('features.tasks.volunteersNeeded'), `${task.assignees.length}/${task.volunteersNeeded}`)}
+              {statBox(Users, t('features.tasks.volunteersNeeded'), String(task.volunteersNeeded))}
+              {statBox(
+                CalendarClock,
+                t('features.tasks.startDate'),
+                task.startAt ? viDateTime(task.startAt) : t('features.tasks.startDateNone'),
+              )}
               {statBox(Calendar, t('features.tasks.dueDate'), viDate(task.dueDate))}
             </div>
 
@@ -233,16 +243,19 @@ export default function TaskDetailPage() {
                     <Sparkles className="size-3.5 text-brand-gold" />
                     {t('features.tasks.skillsRequiredTitle')}
                   </p>
-                  {!readOnly && (
+                  {/* BE chỉ cho LEADER phụ trách khu vực sửa, và chỉ khi task còn OPEN. */}
+                  {canEditPlanning && (
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-6 px-2 text-xs text-brand-pine hover:text-brand-pine hover:bg-brand-pine/10"
                       onClick={() => {
                         // Khởi tạo các skill đã chọn từ task
-                        const matchedIds = skillsCatalog
-                          .filter((sk) => task.skills.includes(sk.name) || task.skills.includes(sk.code))
-                          .map((sk) => sk.id)
+                        const matchedIds = task.skillIds?.length
+                          ? task.skillIds
+                          : skillsCatalog
+                              .filter((sk) => task.skills.includes(sk.name) || task.skills.includes(sk.code))
+                              .map((sk) => sk.id)
                         setSelectedSkills(matchedIds)
                         setEditingSkills(true)
                       }}
@@ -251,10 +264,15 @@ export default function TaskDetailPage() {
                       {t('common.edit')}
                     </Button>
                   )}
+                  {!readOnly && !canEditPlanning && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {t(isAreaLeader ? 'features.tasks.planningOnlyHint' : 'features.tasks.leaderOnlyHint')}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {task.skills.length ? (
-                    task.skills.map((s) => (
+                  {displaySkills.length ? (
+                    displaySkills.map((s) => (
                       <span key={s} className="inline-flex items-center gap-1 rounded-full bg-brand-gold/15 px-3 py-1 text-xs font-semibold text-amber-900 dark:text-amber-200">
                         {s}
                       </span>
@@ -266,43 +284,87 @@ export default function TaskDetailPage() {
               </div>
 
               <div>
-                <p className="lbl-mono mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <Package className="size-3.5 text-brand-pine" />
-                  {t('features.tasks.materials')}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {taskMaterials.length ? (
-                    taskMaterials.map((m) => (
-                      <span key={m.id} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium shadow-xs">
-                        <span className="size-1.5 rounded-full bg-brand-pine" />
-                        {m.name} <span className="text-muted-foreground font-normal">({m.unit})</span>
-                      </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-muted-foreground">{t('features.tasks.materialNone')}</span>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="lbl-mono flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                    <Package className="size-3.5 text-brand-pine" />
+                    {t('features.tasks.materials')}
+                  </p>
+                  {/* PUT /tasks/{id}/materials dùng cùng rule quyền + trạng thái OPEN. */}
+                  {canEditPlanning && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs text-brand-pine hover:bg-brand-pine/10 hover:text-brand-pine"
+                      onClick={() => {
+                        const existing = task.materialRequirements ?? []
+                        setMaterialRows(
+                          existing.length
+                            ? existing.map((row) => ({
+                                materialId: row.materialId,
+                                quantity: String(row.requiredQuantity),
+                              }))
+                            : [{ materialId: '', quantity: '1' }],
+                        )
+                        setMaterialsOpen(true)
+                      }}
+                    >
+                      <Edit3 className="size-3 mr-1" />
+                      {t('features.tasks.assignMaterials')}
+                    </Button>
+                  )}
+                  {!readOnly && !canEditPlanning && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {t(isAreaLeader ? 'features.tasks.planningOnlyHint' : 'features.tasks.leaderOnlyHint')}
+                    </span>
                   )}
                 </div>
-              </div>
-
-              <div>
-                <p className="lbl-mono mb-2 flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                  <Camera className="size-3.5 text-brand-pine" />
-                  {t('features.tasks.photos')}
-                </p>
-                <div className="flex items-center gap-2">
-                  <span className="tabular text-xs font-bold px-2 py-0.5 rounded-full bg-muted text-foreground">
-                    {task.submittedPhotos} {t('features.tasks.photos')}
-                  </span>
-                  {Array.from({ length: Math.min(task.submittedPhotos, 6) }).map((_, i) => (
-                    <div
-                      key={i}
-                      aria-hidden
-                      className="size-9 rounded-md border border-border bg-muted/40 flex items-center justify-center text-muted-foreground/50"
-                    >
-                      <Camera className="size-4" />
-                    </div>
-                  ))}
+                <div className="flex flex-wrap gap-2">
+                  {displayMaterials.length ? (
+                    displayMaterials.map((m) => {
+                      const allocated = allocatedMaterials.find(
+                        (row) => row.materialId === m.id,
+                      )?.quantity
+                      return (
+                        <span key={m.id} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium shadow-xs">
+                          <span className="size-1.5 rounded-full bg-brand-pine" />
+                          {m.name}
+                          {typeof m.requiredQuantity === 'number' && m.requiredQuantity > 0 ? (
+                            <span className="tabular font-semibold text-brand-pine">×{m.requiredQuantity}</span>
+                          ) : null}
+                          <span className="text-muted-foreground font-normal">({m.unit})</span>
+                          {allocated ? (
+                            <span className="tabular text-[11px] font-semibold text-emerald-600">
+                              {t('features.tasks.allocatedOf', {
+                                allocated,
+                                required: m.requiredQuantity ?? 0,
+                              })}
+                            </span>
+                          ) : null}
+                        </span>
+                      )
+                    })
+                  ) : allocatedMaterials.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">{t('features.tasks.materialNone')}</span>
+                  ) : null}
                 </div>
+                {/* MO đã cấp vật tư cho việc (`GET /material-allocations?taskId=…`). */}
+                {allocatedMaterials.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-semibold text-muted-foreground">
+                      {t('features.tasks.allocatedTitle')}
+                    </span>
+                    {allocatedMaterials.map((row) => (
+                      <span
+                        key={row.materialId}
+                        className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300"
+                      >
+                        {row.name}
+                        <span className="tabular">×{row.quantity}</span>
+                        <span className="font-normal opacity-75">({row.unit})</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </Card>
@@ -330,7 +392,7 @@ export default function TaskDetailPage() {
                 <p className="lbl-mono text-sm font-semibold text-foreground">{t('features.tasks.completionCriteriaTitle')}</p>
                 <p className="text-xs text-muted-foreground">{t('features.tasks.completionCriteriaSub')}</p>
               </div>
-              {!readOnly && (
+              {canEditPlanning && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -354,95 +416,655 @@ export default function TaskDetailPage() {
               </p>
             )}
           </Card>
+
+          {/* Tiến độ & nghiệm thu: GET /tasks/{taskId}/progress */}
+          <Card className="p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="lbl-mono text-sm font-semibold text-foreground">
+                  {t('features.tasks.progressTitle')}
+                </p>
+                <p className="text-xs text-muted-foreground">{t('features.tasks.progressSub')}</p>
+              </div>
+              {reviewPackage && (
+                <span className="tabular shrink-0 rounded-full bg-brand-pine/10 px-2.5 py-1 text-xs font-semibold text-brand-pine">
+                  {t('features.tasks.approvedHoursValue', { hours: reviewPackage.approvedHours })}
+                </span>
+              )}
+            </div>
+            {progressPending ? (
+              <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
+            ) : progress.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">{t('features.tasks.progressEmpty')}</p>
+            ) : (
+              <ol className="space-y-3">
+                {progress.map((entry) => (
+                  <li
+                    key={entry.id}
+                    className="rounded-md border border-border/60 bg-muted/20 p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="tabular font-semibold text-foreground">
+                        {entry.percentComplete}%
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {viDateTime(entry.submittedAt)}
+                      </span>
+                    </div>
+                    {entry.note && (
+                      <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{entry.note}</p>
+                    )}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                      {entry.isSubmission && (
+                        <span className="rounded-full bg-brand-gold/20 px-2 py-0.5 font-semibold text-amber-900 dark:text-amber-200">
+                          {t('features.tasks.progressSubmission')}
+                        </span>
+                      )}
+                      {entry.evidence.map((file) => (
+                        <button
+                          key={file.fileId}
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 font-semibold text-foreground hover:bg-muted/30"
+                          onClick={async () => {
+                            try {
+                              const url = await getTaskEvidenceUrl(task.id, entry.id, file.fileId)
+                              window.open(url, '_blank', 'noopener,noreferrer')
+                            } catch (error) {
+                              toast(
+                                error instanceof ApiError ? error.message : t('common.error'),
+                                'alert',
+                              )
+                            }
+                          }}
+                        >
+                          <Package className="size-3" aria-hidden />
+                          {file.caption || t('features.tasks.progressEvidenceOne')}
+                        </button>
+                      ))}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </Card>
         </div>
 
-        {/* Phải: assignees + thao tác leader. */}
+        {/* Phải: phân công tình nguyện viên + thao tác trạng thái. */}
         <div className="space-y-6">
+          {/* Đơn đăng ký của TNV — duyệt/từ chối ngay trong chi tiết việc. */}
+          {!readOnly && isAreaLeader && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between gap-3">
+                <p className="lbl-mono">
+                  {t('features.tasks.applicationsTitle')} ({pendingApplications.length})
+                </p>
+                {reviewedApplications.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => navigate('/leader/regs')}
+                  >
+                    <ClipboardCheck className="size-3.5" />
+                    {t('features.tasks.applicationsHistory')}
+                  </Button>
+                )}
+              </div>
+              {applicationsPending ? (
+                <p className="mt-2 text-xs text-muted-foreground">{t('common.loading')}</p>
+              ) : pendingApplications.length === 0 ? (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  {t('features.tasks.applicationsEmpty')}
+                </p>
+              ) : (
+                <ul className="mt-3 space-y-2">
+                  {pendingApplications.map((application) => (
+                    <li
+                      key={application.id}
+                      className="rounded-md border border-border/60 bg-muted/20 px-3 py-2"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate text-sm font-semibold text-foreground">
+                          {userNameById.get(application.volunteerId) ?? application.volunteerId}
+                        </span>
+                        {application.requestedAt && (
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {viDateTime(application.requestedAt)}
+                          </span>
+                        )}
+                      </div>
+                      {application.note && (
+                        <p className="mt-1 text-[11px] text-muted-foreground">{application.note}</p>
+                      )}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          disabled={approveApplication.isPending}
+                          onClick={() =>
+                            run(
+                              () =>
+                                approveApplication.mutateAsync({
+                                  applicationId: application.id,
+                                  taskId: task.id,
+                                  version: application.version,
+                                }),
+                              t('features.tasks.applicationApproved', {
+                                name: userNameById.get(application.volunteerId) ?? '',
+                              }),
+                            )
+                          }
+                        >
+                          {t('features.tasks.applicationApprove')}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setRejectReason('')
+                            setRejectTarget(application)
+                          }}
+                        >
+                          {t('features.tasks.applicationReject')}
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+          )}
+
           <Card className="p-6">
             <div className="flex items-center justify-between gap-3">
               <p className="lbl-mono">
-                {t('features.tasks.assignees')}{' '}
-                <span className="tabular">
-                  {task.assignees.length}/{task.volunteersNeeded}
-                </span>
+                {t('features.tasks.assignees')} ({assignments.length}/{task.volunteersNeeded})
               </p>
-              {!readOnly && (
-                <Button size="sm" onClick={() => setAssigning(true)}>
+              {!readOnly && isAreaLeader && (
+                <Button variant="ghost" size="sm" onClick={() => setAssignOpen(true)}>
                   <UserPlus className="size-4" />
-                  {t('features.tasks.assign')}
+                  {t('features.tasks.assignVolunteer')}
                 </Button>
               )}
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {assignees.length ? (
-                assignees.map((u) => (
-                  <AssigneeChip key={u.id} taskId={task.id} user={u} readOnly={readOnly} />
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">{t('features.tasks.assignNone')}</p>
-              )}
-            </div>
+            {assignmentsPending ? (
+              <p className="mt-2 text-xs text-muted-foreground">{t('common.loading')}</p>
+            ) : assignments.length === 0 ? (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {pendingApplications.length > 0
+                  ? t('features.tasks.assignmentsPendingOnly', { n: pendingApplications.length })
+                  : t('features.tasks.assignmentsEmpty')}
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {assignments.map((assignment) => (
+                  <li
+                    key={assignment.id}
+                    className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">
+                        {userNameById.get(assignment.volunteerId) ?? assignment.volunteerId}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {t(
+                          `features.tasks.assignmentType.${String(assignment.assignmentType).toUpperCase()}`,
+                          { defaultValue: assignment.assignmentType },
+                        )}
+                      </p>
+                    </div>
+                    <StatusTag status={assignment.status} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
 
-          {!readOnly && (
+          {!readOnly && isAreaLeader && (
             <Card className="space-y-2 p-6">
               <p className="lbl-mono">{t('common.actions')}</p>
-              {task.status === 'TODO' && (
+              {/* Khi nào việc bắt đầu: `startAt` là lịch dự kiến, còn NOT_STARTED → IN_PROGRESS
+                  xảy ra khi leader duyệt đơn check-in của TNV (POST /attendance-requests/{id}/approve). */}
+              <div className="space-y-0.5 rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                <p className="text-[11px] font-semibold text-foreground">
+                  {t('features.tasks.startPlanTitle')}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {task.startAt ? viDateTime(task.startAt) : t('features.tasks.startDateNone')}
+                </p>
+                {task.backendStatus === 'OPEN' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('features.tasks.startPlanOpen')}
+                  </p>
+                )}
+                {task.backendStatus === 'NOT_STARTED' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('features.tasks.startViaAttendance')}
+                  </p>
+                )}
+                {task.backendStatus === 'IN_PROGRESS' && (
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('features.tasks.startedAlready')}
+                  </p>
+                )}
+              </div>
+              {(task.backendStatus === 'NOT_STARTED' || task.backendStatus === 'IN_PROGRESS') && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate('/leader/timesheets')}
+                >
+                  <ClipboardCheck className="size-4" />
+                  {t('features.tasks.openTimesheets')}
+                </Button>
+              )}
+              {/* POST /tasks/{id}/ready là chuyển trạng thái duy nhất BE hỗ trợ. */}
+              {task.backendStatus === 'OPEN' && (
                 <Button
                   className="w-full"
                   onClick={() =>
                     run(
-                      () => markReady.mutateAsync({ id: task.id, version: task.version }),
-                      t('features.tasks.readyDone', { name: task.title }),
+                      () => ready.mutateAsync({ taskId: task.id, version: task.version }),
+                      t('features.tasks.released', { name: task.title }),
                     )
                   }
                 >
-                  <Check className="size-4" />
-                  {t('features.tasks.markReady')}
+                  {t('features.tasks.release')}
                 </Button>
               )}
-              {task.status === 'READY' && (
-                <Button className="w-full" disabled>
-                  {t('features.tasks.waitingStart')}
-                </Button>
-              )}
-              {task.status === 'DOING' && (
-                <div className="space-y-2">
-                  <Button className="w-full" disabled>
-                    {t('features.tasks.submitReview')}
-                  </Button>
-                  <p className="text-xs text-muted">{t('features.tasks.pendingBackend')}</p>
-                </div>
-              )}
-              {task.status === 'REVIEW' && (
-                <div className="space-y-2">
-                  <Button className="w-full" disabled>
-                    <Check className="size-4" />
+              {task.backendStatus === 'SUBMITTED' && (
+                <>
+                  <Button
+                    className="w-full"
+                    disabled={approveTask.isPending}
+                    onClick={() =>
+                      run(
+                        () =>
+                          approveTask.mutateAsync({
+                            taskId: task.id,
+                            version: task.version,
+                          }),
+                        t('features.tasks.approved', { name: task.title }),
+                      )
+                    }
+                  >
                     {t('features.tasks.approve')}
                   </Button>
-                  <Button variant="outline" className="w-full" disabled>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setRevisionReason('')
+                      setRevisionOpen(true)
+                    }}
+                  >
                     {t('features.tasks.requestRevision')}
                   </Button>
-                  <p className="text-xs text-muted">{t('features.tasks.pendingBackend')}</p>
-                </div>
+                </>
               )}
-              {task.status === 'REVISE' && (
+              {task.backendStatus !== 'OPEN' && task.backendStatus !== 'SUBMITTED' && (
+                <p className="text-[11px] font-medium text-amber-700">
+                  {t('features.tasks.editOnlyWhenOpen')}
+                </p>
+              )}
+              {task.backendStatus !== 'COMPLETED' && task.backendStatus !== 'CANCELLED' && (
                 <Button
+                  variant="outline"
                   className="w-full"
-                  onClick={() =>
-                    run(
-                      () => update.mutateAsync({ id: task.id, status: 'DOING' }),
-                      t('features.tasks.reopened', { name: task.title }),
-                    )
-                  }
+                  onClick={() => {
+                    setCancelReason('')
+                    setCancelOpen(true)
+                  }}
                 >
-                  {t('features.tasks.reopen')}
+                  {t('features.tasks.cancelTask')}
                 </Button>
               )}
+              <p className="text-[11px] text-muted-foreground">
+                {t('features.tasks.reviewApiHint')}
+              </p>
             </Card>
           )}
         </div>
       </div>
+
+      {/* Dialog: Phân công tình nguyện viên — POST /tasks/{taskId}/assignments */}
+      {assignOpen && (
+        <Dialog
+          open
+          onClose={() => setAssignOpen(false)}
+          title={t('features.tasks.assignVolunteer')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setAssignOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!assignVolunteerId || assignVolunteer.isPending}
+                onClick={async () => {
+                  try {
+                    await assignVolunteer.mutateAsync({
+                      taskId: task.id,
+                      volunteerId: assignVolunteerId,
+                      note: assignNote.trim() || null,
+                    })
+                    toast(
+                      t('features.tasks.assigned', {
+                        name: userNameById.get(assignVolunteerId) ?? '',
+                      }),
+                    )
+                    setAssignOpen(false)
+                    setAssignNote('')
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('features.tasks.assignVolunteer')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="task-assign-volunteer">{t('features.tasks.volunteer')}</Label>
+              <select
+                id="task-assign-volunteer"
+                className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground"
+                value={assignVolunteerId}
+                onChange={(e) => setAssignVolunteerId(e.target.value)}
+              >
+                <option value="">{t('common.selectPlaceholder')}</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.name} — {u.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="task-assign-note">{t('features.tasks.assignNote')}</Label>
+              <textarea
+                id="task-assign-note"
+                rows={3}
+                maxLength={2000}
+                className={TEXTAREA_CLS}
+                value={assignNote}
+                onChange={(e) => setAssignNote(e.target.value)}
+              />
+            </div>
+
+            {volunteerMatches.length > 0 && (
+              <div className="space-y-1">
+                <Label>{t('features.tasks.volunteerMatches')}</Label>
+                <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border/60 p-1">
+                  {volunteerMatches.map((match) => (
+                    <li key={match.volunteerId}>
+                      <button
+                        type="button"
+                        onClick={() => setAssignVolunteerId(match.volunteerId)}
+                        className={`flex w-full items-center justify-between gap-2 rounded px-2 py-1 text-left text-xs transition-colors ${
+                          assignVolunteerId === match.volunteerId
+                            ? 'bg-brand-pine/10 font-semibold text-foreground'
+                            : 'text-muted-foreground hover:bg-muted/30'
+                        }`}
+                      >
+                        <span className="truncate">{match.displayName}</span>
+                        <span className="shrink-0">
+                          {match.hasScheduleConflict
+                            ? t('features.tasks.matchConflict')
+                            : match.sameCommunity
+                              ? t('features.tasks.matchSameCommunity')
+                              : ''}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </Dialog>
+      )}
+
+      {/* Dialog: Huỷ việc — POST /tasks/{taskId}/cancel */}
+      {cancelOpen && (
+        <Dialog
+          open
+          onClose={() => setCancelOpen(false)}
+          title={t('features.tasks.cancelTask')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setCancelOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                variant="destructive"
+                disabled={!cancelReason.trim() || cancelTask.isPending}
+                onClick={async () => {
+                  try {
+                    await cancelTask.mutateAsync({
+                      taskId: task.id,
+                      version: task.version,
+                      reason: cancelReason.trim(),
+                    })
+                    toast(t('features.tasks.cancelled', { name: task.title }))
+                    setCancelOpen(false)
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('features.tasks.cancelTask')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <Label htmlFor="cancel-reason">{t('features.tasks.cancelReason')}</Label>
+            <textarea
+              id="cancel-reason"
+              rows={3}
+              maxLength={500}
+              className={TEXTAREA_CLS}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+          </div>
+        </Dialog>
+      )}
+
+      {/* Dialog: Vật tư yêu cầu — PUT /tasks/{taskId}/materials */}
+      {materialsOpen && (
+        <Dialog
+          open
+          onClose={() => setMaterialsOpen(false)}
+          title={t('features.tasks.assignMaterials')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setMaterialsOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={replaceMaterials.isPending}
+                onClick={async () => {
+                  const rows = materialRows.filter(
+                    (row) => row.materialId && Number(row.quantity) > 0,
+                  )
+                  try {
+                    await replaceMaterials.mutateAsync({
+                      taskId: task.id,
+                      version: task.version ?? 1,
+                      materials: rows.map((row) => ({
+                        materialId: row.materialId,
+                        requiredQuantity: Number(row.quantity),
+                      })),
+                    })
+                    setMaterialRows([{ materialId: '', quantity: '1' }])
+                    toast(t('features.tasks.materialsSaved'))
+                    setMaterialsOpen(false)
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('common.save')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            {materialRows.map((row, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <select
+                  aria-label={t('features.tasks.materials')}
+                  className="h-10 flex-1 rounded-md border border-border bg-card px-3 text-sm"
+                  value={row.materialId}
+                  onChange={(e) =>
+                    setMaterialRows((prev) =>
+                      prev.map((item, i) =>
+                        i === index ? { ...item, materialId: e.target.value } : item,
+                      ),
+                    )
+                  }
+                >
+                  <option value="">{t('common.selectPlaceholder')}</option>
+                  {materials.map((material) => (
+                    <option key={material.id} value={material.id}>
+                      {material.name} ({material.unit})
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step="0.01"
+                  aria-label={t('features.inventory.adjustQuantity')}
+                  className="w-24"
+                  value={row.quantity}
+                  onChange={(e) =>
+                    setMaterialRows((prev) =>
+                      prev.map((item, i) =>
+                        i === index ? { ...item, quantity: e.target.value } : item,
+                      ),
+                    )
+                  }
+                />
+              </div>
+            ))}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setMaterialRows((prev) => [...prev, { materialId: '', quantity: '1' }])}
+            >
+              <Plus className="size-4" />
+              {t('features.tasks.addMaterialRow')}
+            </Button>
+          </div>
+        </Dialog>
+      )}
+
+      {/* Dialog: Từ chối đơn đăng ký — POST /task-applications/{id}/reject (lý do bắt buộc). */}
+      {rejectTarget && (
+        <Dialog
+          open
+          onClose={() => setRejectTarget(null)}
+          title={t('features.tasks.applicationRejectTitle')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setRejectTarget(null)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!rejectReason.trim() || rejectApplication.isPending}
+                onClick={async () => {
+                  try {
+                    await rejectApplication.mutateAsync({
+                      applicationId: rejectTarget.id,
+                      taskId: task.id,
+                      version: rejectTarget.version,
+                      reason: rejectReason.trim(),
+                    })
+                    toast(
+                      t('features.tasks.applicationRejected', {
+                        name: userNameById.get(rejectTarget.volunteerId) ?? '',
+                      }),
+                    )
+                    setRejectTarget(null)
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('features.tasks.applicationReject')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {userNameById.get(rejectTarget.volunteerId) ?? rejectTarget.volunteerId}
+            </p>
+            <Label htmlFor="task-application-reject-reason">
+              {t('features.tasks.applicationRejectReason')}
+            </Label>
+            <textarea
+              id="task-application-reject-reason"
+              rows={3}
+              maxLength={1000}
+              className={TEXTAREA_CLS}
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+            />
+          </div>
+        </Dialog>
+      )}
+
+      {/* Dialog: Yêu cầu sửa lại — POST /tasks/{taskId}/request-revision */}
+      {revisionOpen && (
+        <Dialog
+          open
+          onClose={() => setRevisionOpen(false)}
+          title={t('features.tasks.requestRevision')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setRevisionOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                disabled={!revisionReason.trim() || requestRevision.isPending}
+                onClick={async () => {
+                  try {
+                    await requestRevision.mutateAsync({
+                      taskId: task.id,
+                      version: task.version,
+                      reason: revisionReason.trim(),
+                    })
+                    toast(t('features.tasks.revisionRequested', { name: task.title }))
+                    setRevisionOpen(false)
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+                  }
+                }}
+              >
+                {t('features.tasks.requestRevision')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <Label htmlFor="task-revision-reason">{t('features.tasks.revisionNote')}</Label>
+            <textarea
+              id="task-revision-reason"
+              rows={3}
+              maxLength={2000}
+              className={TEXTAREA_CLS}
+              placeholder={t('features.tasks.revisionReasonPlaceholder')}
+              value={revisionReason}
+              onChange={(e) => setRevisionReason(e.target.value)}
+            />
+          </div>
+        </Dialog>
+      )}
 
       {/* Dialog G5: Sửa Tiêu chí hoàn thành */}
       {editingCriteria && (
@@ -461,12 +1083,12 @@ export default function TaskDetailPage() {
                     await replaceCriteria.mutateAsync({
                       taskId: task.id,
                       completionCriteria: criteriaValue.trim() || null,
-                      version: 1,
+                      version: task.version ?? 1,
                     })
                     toast(t('features.tasks.completionCriteriaUpdated'))
                     setEditingCriteria(false)
-                  } catch {
-                    toast(t('common.error'), 'alert')
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
                   }
                 }}
               >
@@ -506,18 +1128,18 @@ export default function TaskDetailPage() {
                   try {
                     const reqSkills = selectedSkills.map(sId => ({
                       skillId: sId,
-                      requiredSkillLevel: 'Standard',
+                      requiredSkillLevel: DEFAULT_TASK_SKILL_LEVEL,
                       requiredVolunteerCount: 1,
                     }))
                     await replaceSkills.mutateAsync({
                       taskId: task.id,
                       skills: reqSkills,
-                      version: 1,
+                      version: task.version ?? 1,
                     })
                     toast(t('features.tasks.skillsUpdated'))
                     setEditingSkills(false)
-                  } catch {
-                    toast(t('common.error'), 'alert')
+                  } catch (error) {
+                    toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
                   }
                 }}
               >
@@ -566,8 +1188,6 @@ export default function TaskDetailPage() {
           </div>
         </Dialog>
       )}
-
-      {assigning && <AssignDialog task={task} onClose={() => setAssigning(false)} />}
     </div>
   )
 }

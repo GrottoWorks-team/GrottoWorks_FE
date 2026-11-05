@@ -27,7 +27,7 @@ describe('App', () => {
     expect(await screen.findByText('Không tìm thấy trang', {}, { timeout: 10_000 })).toBeDefined()
   })
 
-  it('NAV: COMMUNITY có seasons, areas, support, checklist, reports, volunteers và PARISH có seasons, areas, purchases', () => {
+  it('NAV: COMMUNITY có seasons, areas, support, checklist, reports, volunteers; LEADER có trang duyệt mua', () => {
     const commItems = NAV.COMMUNITY.flatMap((g) => g.items)
     const commPaths = commItems.map((i) => i.to)
     expect(commPaths).toContain('/community')
@@ -43,6 +43,11 @@ describe('App', () => {
     const parishPaths = parishItems.map((i) => i.to)
     expect(parishPaths).toContain('/parish/seasons')
     expect(parishPaths).toContain('/parish/areas')
-    expect(parishPaths).toContain('/parish/purchases')
+    // ADMIN không đọc được /purchase-requests (BE trả 403) → không còn mục duyệt mua.
+    expect(parishPaths).not.toContain('/parish/purchases')
+
+    const leaderPaths = NAV.LEADER.flatMap((g) => g.items).map((i) => i.to)
+    // BE chỉ cho LEADER approve/reject → trang duyệt mua thuộc nhánh LEADER.
+    expect(leaderPaths).toContain('/leader/purchases')
   })
 })

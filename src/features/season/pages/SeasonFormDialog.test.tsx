@@ -4,13 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '@/components/ui/toast'
 import { SeasonFormDialog } from './SeasonFormDialog'
 
-vi.mock('@/features/communities/api', () => ({
-  useCommunities: () => ({
-    data: [{ id: 'c1', name: 'Giáo khu Thánh Tâm' }],
-    isPending: false,
-  }),
-}))
-
 vi.mock('@/features/parish/hooks', () => ({
   useCurrentParishId: () => ({ parishId: 'p1', isPending: false }),
 }))
@@ -66,13 +59,15 @@ describe('SeasonFormDialog validation', () => {
     expect(await screen.findByText('Ngày kết thúc phải sau ngày mở')).toBeDefined()
   })
 
-  it('end sau start → submit thành công', async () => {
+  it('không còn trường "Cộng đoàn tham gia" (BE không lưu) và end sau start → submit thành công', async () => {
     setup()
     const nameInput = screen.queryByLabelText(/Tên mùa/i)
     if (nameInput) fireEvent.change(nameInput, { target: { value: 'Mùa 2026' } })
 
     setDate('Ngày mở', '2026-09-15')
     setDate('Ngày kết thúc', '2026-12-24')
+    expect(screen.queryByRole('checkbox')).toBeNull()
+
     submit()
     await waitFor(() =>
       expect((screen.getByRole('button', { name: 'Lưu' }) as HTMLButtonElement).disabled).toBe(

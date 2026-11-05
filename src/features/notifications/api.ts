@@ -1,131 +1,117 @@
-// Nguồn của chuông thông báo trên header.
+// Thông báo — NotificationAudit service (BE đã có đủ API, gateway đã route):
+//   GET    /api/v1/notifications?isRead=&eventType=&page=&size=   (paged)
+//   POST   /api/v1/notifications/{notificationId}/read             (204)
+//   POST   /api/v1/notifications/read-all                          (204)
+//   GET    /api/v1/users/me/notification-preferences
+//   PUT    /api/v1/users/me/notification-preferences
 //
-// BE hiện CHƯA có service Notification:
-//   - `notify_db` tồn tại nhưng 0 bảng, không có project Notification trong solution
-//   - gateway (YarpApiGateway/appsettings.json) không route `/api/v1/notifications`
-//     hay `/api/v1/activity`
-//   - ParishCoordination không có Contracts/event nên thao tác phân công khu vực
-//     (PUT /work-areas/{id}/leader, .../material-officer) KHÔNG phát sự kiện nào
-// → vì vậy chuông không thể lấy "thông báo" từ server. Chi tiết đã ghi trong
-//   BE-gap-requests-activity-flows.md §6.
-//
-// Trong khi chờ BE, feed được SUY RA từ dữ liệu THẬT đang có (không mock):
-//   GET /api/v1/seasons/{seasonId}/work-areas  → khu tôi được phân công
-//                                               (leader/officer) + khu thiếu nhân sự
-//   GET /api/v1/purchase-requests?status=PENDING_APPROVAL → đơn chờ duyệt
-// Mỗi mục có `id` ổn định (khoá localStorage "đã đọc"), nên dot đỏ vẫn đúng.
-import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import { useAuth } from '@/lib/auth'
-import { roleHomePath } from '@/lib/roles'
-import { useAreas } from '@/features/areas/api'
-import { useSeasonContext } from '@/features/season/season-context'
+// Trạng thái "đã đọc" nằm ở server (`isRead`), không còn lưu localStorage.
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, apiPaged } from '@/lib/api'
 
-export type FeedKind =
-  | 'ASSIGNED_LEADER'
-  | 'ASSIGNED_OFFICER'
-  | 'AREA_MISSING_LEADER'
-  | 'AREA_MISSING_OFFICER'
-  | 'PURCHASE_PENDING'
-
-export interface FeedItem {
-  /** Id ổn định — dùng để so "đã đọc" (không phụ thuộc đồng hồ). */
+export interface NotificationDto {
   id: string
-  kind: FeedKind
-  areaName?: string
-  areaStatus?: string
-  count?: number
-  /** Bấm vào mục thì mở trang nghiệp vụ tương ứng. */
-  href?: string
+  eventType: string
+  title: string
+  body: string
+  referenceType?: string | null
+  referenceId?: string | null
+  isRead: boolean
+  createdAt: string
+  readAt?: string | null
 }
 
-export interface NotificationFeed {
-  items: FeedItem[]
-  isPending: boolean
+export interface NotificationPreferenceDto {
+  inAppEnabled: boolean
+  pushEnabled: boolean
+  emailEnabled: boolean
 }
 
-/**
- * Gom sự kiện hiển thị ở chuông cho role đang đăng nhập.
- * `key` query của purchase-requests trùng với AppShell (badge) nên React Query
- * chỉ gọi mạng MỘT lần.
- */
-export function useNotificationFeed(): NotificationFeed {
-  const { user } = useAuth()
-  const role = user?.role ?? 'COMMUNITY'
-  const { seasonId } = useSeasonContext()
+export const notificationKeys = {
+  all: ['notifications'] as const,
+  feed: (size: number) => ['notifications', 'feed', size] as const,
+  unread: ['notifications', 'unread'] as const,
+  preferences: ['notifications', 'preferences'] as const,
+}
 
-  // Chỉ 3 role cận nghiệp vụ cần đọc work-areas; PARISH (quản trị) không có
-  // khung chọn mùa nên tránh gọi hết mọi mùa (N+1) trên mọi trang.
-  const needsAreas = role === 'LEADER' || role === 'MATERIAL_OFFICER' || role === 'COMMUNITY'
-  const { data: areas = [], isPending: areasPending } = useAreas(
-    needsAreas ? (seasonId ? [seasonId] : undefined) : [],
-  )
-
-  // Chỉ Trưởng nhóm vật tư có trang "Yêu cầu mua" trong FE → chỉ role này cần
-  // badge/feed đơn chờ duyệt (LEADER/COMMUNITY dùng badge riêng của AppShell).
-  const canReadPurchases = role === 'MATERIAL_OFFICER'
-  const { data: pendingPurchases = [], isPending: purchasesPending } = useQuery({
-    queryKey: ['purchaseRequests', 'pendingApproval'],
-    enabled: canReadPurchases,
-    queryFn: () =>
-      api<{ id: string }[]>('/api/v1/purchase-requests?status=PENDING_APPROVAL&size=50'),
+/** Trang thông báo của user — mới nhất trước (BE sắp xếp sẵn). */
+export function useNotifications(
+  options: { isRead?: boolean; size?: number; enabled?: boolean } = {},
+) {
+  const size = options.size ?? 100
+  return useQuery({
+    queryKey: [...notificationKeys.all, 'list', options.isRead ?? 'ALL', size] as const,
+    queryFn: async () => {
+      const qs = new URLSearchParams({ size: String(size) })
+      if (options.isRead !== undefined) qs.set('isRead', String(options.isRead))
+      const res = await apiPaged<NotificationDto>(`/api/v1/notifications?${qs.toString()}`)
+      return { items: res.data, total: res.page?.totalItems ?? res.data.length }
+    },
+    enabled: options.enabled ?? true,
   })
+}
 
-  const items = useMemo<FeedItem[]>(() => {
-    const out: FeedItem[] = []
-    const uid = user?.id ?? ''
+/** Số thông báo chưa đọc — dùng cho chuông + badge điều hướng. */
+export function useUnreadNotificationCount() {
+  return useQuery({
+    queryKey: notificationKeys.unread,
+    queryFn: async () => {
+      const res = await apiPaged<NotificationDto>('/api/v1/notifications?isRead=false&size=1')
+      return res.page?.totalItems ?? 0
+    },
+    refetchInterval: 60_000,
+  })
+}
 
-    if (role === 'LEADER' || role === 'MATERIAL_OFFICER') {
-      const isLeader = role === 'LEADER'
-      for (const a of areas) {
-        const mine = isLeader ? a.leaderId === uid : a.officerId === uid
-        if (!mine) continue
-        out.push({
-          id: `${isLeader ? 'assigned-leader' : 'assigned-officer'}:${a.id}`,
-          kind: isLeader ? 'ASSIGNED_LEADER' : 'ASSIGNED_OFFICER',
-          areaName: a.name,
-          areaStatus: a.status,
-          href: roleHomePath(role),
-        })
-      }
-    }
+/** Panel chuông: N mục mới nhất — chỉ gọi khi dropdown mở (`enabled`). */
+export function useNotificationFeed(size = 10, enabled = true) {
+  const query = useNotifications({ size, enabled })
+  return {
+    items: query.data?.items ?? [],
+    isPending: query.isPending,
+    refetch: query.refetch,
+  }
+}
 
-    // Ban hành giáo điều phối: nhắc khu còn trống vị trí.
-    if (role === 'COMMUNITY') {
-      for (const a of areas) {
-        if (!a.leaderId) {
-          out.push({
-            id: `missing-leader:${a.id}`,
-            kind: 'AREA_MISSING_LEADER',
-            areaName: a.name,
-            areaStatus: a.status,
-            href: '/community/areas',
-          })
-        }
-        if (!a.officerId) {
-          out.push({
-            id: `missing-officer:${a.id}`,
-            kind: 'AREA_MISSING_OFFICER',
-            areaName: a.name,
-            areaStatus: a.status,
-            href: '/community/areas',
-          })
-        }
-      }
-    }
+function useNotificationMutation<TVars, TResult = void>(fn: (vars: TVars) => Promise<TResult>) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: fn,
+    onSuccess: () => qc.invalidateQueries({ queryKey: notificationKeys.all }),
+  })
+}
 
-    if (canReadPurchases && pendingPurchases.length) {
-      out.push({
-        id: 'purchase-pending',
-        kind: 'PURCHASE_PENDING',
-        count: pendingPurchases.length,
-        href: '/material-officer/purchases',
-      })
-    }
+export function useMarkNotificationRead() {
+  return useNotificationMutation((notificationId: string) =>
+    api<void>(`/api/v1/notifications/${notificationId}/read`, { method: 'POST' }),
+  )
+}
 
-    return out
-  }, [areas, role, user?.id, canReadPurchases, pendingPurchases.length])
+export function useMarkAllNotificationsRead() {
+  return useNotificationMutation(() => api<void>('/api/v1/notifications/read-all', { method: 'POST' }))
+}
 
-  return { items, isPending: areasPending || purchasesPending }
+export function useNotificationPreferences() {
+  return useQuery({
+    queryKey: notificationKeys.preferences,
+    queryFn: async () => {
+      const res = await api<NotificationPreferenceDto | { data?: NotificationPreferenceDto }>(
+        '/api/v1/users/me/notification-preferences',
+      )
+      const dto = (res as { data?: NotificationPreferenceDto }).data ?? (res as NotificationPreferenceDto)
+      return dto
+    },
+  })
+}
+
+export function useUpdateNotificationPreferences() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: NotificationPreferenceDto) =>
+      api<NotificationPreferenceDto>('/api/v1/users/me/notification-preferences', {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: notificationKeys.preferences }),
+  })
 }

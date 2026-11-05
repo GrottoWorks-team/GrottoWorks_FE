@@ -1,4 +1,4 @@
-// Duyệt yêu cầu mua (route /parish/purchases):
+// Duyệt yêu cầu mua (route /leader/purchases — BE chỉ cho LEADER approve/reject):
 // Kết nối GET /api/v1/purchase-requests (F1),
 // hỗ trợ F6 (Duyệt POST /api/v1/purchase-requests/{id}/approve)
 // và F7 (Từ chối POST /api/v1/purchase-requests/{id}/reject kèm reason 1–500 ký tự).
@@ -13,7 +13,9 @@ import { ButtonLink } from '@/components/ui/button-link'
 import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
+import { useAuth } from '@/lib/auth'
 import { viDateTime } from '@/lib/format'
+import { rolePrefix } from '@/lib/roles'
 import {
   useApproveRequest,
   usePurchaseRequests,
@@ -175,7 +177,10 @@ function ApproveDialog({
 
 export default function CommitteeApprovalPage() {
   const { t } = useTranslation()
+  const { user } = useAuth()
   const { data: requests = [], isPending } = usePurchaseRequests()
+  // Trang dùng chung cho nhiều role → link chi tiết phải theo prefix của role hiện tại.
+  const basePath = `/${rolePrefix(user?.role ?? 'LEADER')}/purchases`
 
   const [rejecting, setRejecting] = useState<PurchaseRequestDto | null>(null)
   const [approving, setApproving] = useState<PurchaseRequestDto | null>(null)
@@ -246,7 +251,7 @@ export default function CommitteeApprovalPage() {
         render: (r: PurchaseRequestDto) => (
           <div className="flex items-center gap-1.5 justify-end">
             <ButtonLink
-              to={`/parish/purchases/${r.id}`}
+              to={`${basePath}/${r.id}`}
               variant="outline"
               size="sm"
               title={t('features.purchases.viewDetail')}
@@ -280,7 +285,7 @@ export default function CommitteeApprovalPage() {
         ),
       },
     ],
-    [t],
+    [t, basePath],
   )
 
   return (

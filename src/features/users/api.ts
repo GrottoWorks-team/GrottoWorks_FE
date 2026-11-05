@@ -7,7 +7,7 @@
 // Trước đây gọi `/api/users` của lớp MSW đã bị xoá nên luôn 404.
 import { useQuery } from '@tanstack/react-query'
 import { ApiError, api } from '@/lib/api'
-import { normalizeRole } from '@/lib/auth'
+import { normalizeRole, useAuth } from '@/lib/auth'
 import type { User } from '@/types'
 import type { AdminUserDto } from '@/types/identity'
 
@@ -18,7 +18,6 @@ interface UserSummaryDto {
   phone?: string | null
   role: string
   status: string
-  parishId?: string | null
   communityId?: string | null
   skillIds?: string[]
 }
@@ -28,11 +27,21 @@ interface SkillDto {
   name: string
 }
 
-async function fetchUserDtos(): Promise<(UserSummaryDto & { skillIds?: string[] })[]> {
+/**
+ * `role` đã normalize: `'PARISH'` ở FE = **ADMIN** của BE (xem normalizeRole).
+ * ADMIN không nằm trong policy `listParishUsers` → gọi thẳng `/admin/users`
+ * để không phát sinh một request 403 thừa mỗi lần mở trang.
+ */
+async function fetchUserDtos(role?: User['role']): Promise<(UserSummaryDto & { skillIds?: string[] })[]> {
+  const useAdminEndpoint = role === 'PARISH'
+  if (useAdminEndpoint) {
+    const admins = await api<AdminUserDto[]>('/api/v1/admin/users?size=100')
+    return admins.map((u) => ({ ...u, skillIds: [] }))
+  }
   try {
     return await api<UserSummaryDto[]>('/api/v1/users?size=100')
   } catch (error) {
-    // ADMIN đăng nhập web (role PARISH ở FE) không nằm trong policy listParishUsers.
+    // Chưa biết role (đang boot phiên) mà token là ADMIN → vẫn phải fallback.
     if (error instanceof ApiError && error.status === 403) {
       const admins = await api<AdminUserDto[]>('/api/v1/admin/users?size=100')
       return admins.map((u) => ({ ...u, skillIds: [] }))
@@ -52,6 +61,7 @@ function hueFrom(seed: string): number {
 // đang tải theo kiểu này khi tắt query.
 export function useUsers(options: { enabled?: boolean; withSkills?: boolean } = {}) {
   const withSkills = options.withSkills ?? true
+  const { user } = useAuth()
   return useQuery({
     // 2 biến thể cache riêng để không đá nhau giữa "đủ field" và "chỉ tên".
     queryKey: withSkills ? ['users'] : ['users', 'names'],
@@ -59,7 +69,7 @@ export function useUsers(options: { enabled?: boolean; withSkills?: boolean } = 
     queryFn: async (): Promise<User[]> => {
       // BE trả skillId (GUID) — dịch sang tên để các trang hiển thị như trước.
       const [dtos, skills] = await Promise.all([
-        fetchUserDtos(),
+        fetchUserDtos(user?.role),
         withSkills
           ? api<SkillDto[]>('/api/v1/skills').catch(() => [] as SkillDto[])
           : Promise.resolve([] as SkillDto[]),
@@ -71,7 +81,6 @@ export function useUsers(options: { enabled?: boolean; withSkills?: boolean } = 
         email: dto.email,
         role: normalizeRole(dto.role),
         communityId: dto.communityId ?? undefined,
-        parishId: dto.parishId ?? undefined,
         locked: dto.status?.toUpperCase() === 'LOCKED',
         skills: (dto.skillIds ?? [])
           .map((id) => nameById.get(id))

@@ -1,6 +1,6 @@
-// Dialog tạo/sửa tài khoản (AccountsPage): name, email, role select, giáo khu
-// (bắt buộc khi role ≠ ADMIN), skills multi-checkbox. RHF + zod, message zod =
-// i18n key. Cha mount có điều kiện → mỗi lần mở là form mới create/edit.
+// Dialog tạo/sửa tài khoản (AccountsPage): name, email, role, password.
+// BE `CreateUserRequest`/`UpdateUserRequest` KHÔNG có `communityId` và không có
+// endpoint gán kỹ năng cho user khác → form không hỏi 2 trường này nữa.
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,35 +10,25 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useCommunities } from '@/features/communities/api'
-import { useAdminSkills, useAssignUserRole, useCreateUser, useRoles, useUpdateUser } from '../api'
+import { useAssignUserRole, useCreateUser, useRoles, useUpdateUser } from '../api'
 import { useCurrentParishId } from '../hooks'
 import type { User } from '@/types'
 
-export const SELECT_CLS =
+const SELECT_CLS =
   'flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
-
-const CHECK_CLS = 'size-4 rounded border border-border bg-card accent-primary'
 
 const FALLBACK_ROLES = ['PARISH', 'COMMUNITY', 'LEADER', 'MATERIAL_OFFICER'] as const
 
-const schema = z
-  .object({
-    name: z.string().trim().min(1, 'features.parish.nameRequired'),
-    email: z
-      .string()
-      .trim()
-      .min(1, 'features.parish.emailRequired')
-      .email('features.parish.emailInvalid'),
-    role: z.string().min(1),
-    communityId: z.string(),
-    password: z.string().optional(),
-    skills: z.array(z.string()),
-  })
-  .refine((d) => d.role === 'PARISH' || d.role === 'ADMIN' || d.communityId !== '', {
-    path: ['communityId'],
-    message: 'features.parish.communityRequired',
-  })
+const schema = z.object({
+  name: z.string().trim().min(1, 'features.parish.nameRequired'),
+  email: z
+    .string()
+    .trim()
+    .min(1, 'features.parish.emailRequired')
+    .email('features.parish.emailInvalid'),
+  role: z.string().min(1),
+  password: z.string().optional(),
+})
 
 type FormData = z.infer<typeof schema>
 
@@ -56,8 +46,6 @@ export function AccountFormDialog({
   const update = useUpdateUser()
   const assignRole = useAssignUserRole()
   const { data: rolesData } = useRoles()
-  const { data: communities = [] } = useCommunities()
-  const { data: skills = [] } = useAdminSkills()
   const { parishId } = useCurrentParishId()
 
   const availableRoles = rolesData?.length
@@ -75,11 +63,9 @@ export function AccountFormDialog({
           name: account.name,
           email: account.email,
           role: account.role,
-          communityId: account.communityId ?? '',
           password: '',
-          skills: account.skills,
         }
-      : { name: '', email: '', role: 'LEADER', communityId: '', password: '', skills: [] },
+      : { name: '', email: '', role: 'LEADER', password: '' },
   })
 
   const onSubmit = async (data: FormData) => {
@@ -151,40 +137,15 @@ export function AccountFormDialog({
             <Input id="account-password" type="password" placeholder="Tối thiểu 8 ký tự (hoặc để trống)" {...register('password')} />
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <Label htmlFor="account-role">{t('features.parish.role')}</Label>
-            <select id="account-role" className={SELECT_CLS} {...register('role')}>
-              {availableRoles.map((r) => (
-                <option key={r} value={r}>
-                  {t(`role.${r}`, { defaultValue: r })}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="account-community">{t('features.parish.community')}</Label>
-            <select id="account-community" className={SELECT_CLS} {...register('communityId')}>
-              <option value="">{t('features.parish.selectPlaceholder')}</option>
-              {communities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {err(errors.communityId?.message)}
-          </div>
-        </div>
         <div>
-          <Label>{t('features.parish.skills')}</Label>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {skills.map((s) => (
-              <label key={s} className="flex items-center gap-1.5 text-sm text-foreground">
-                <input type="checkbox" value={s} className={CHECK_CLS} {...register('skills')} />
-                {s}
-              </label>
+          <Label htmlFor="account-role">{t('features.parish.role')}</Label>
+          <select id="account-role" className={SELECT_CLS} {...register('role')}>
+            {availableRoles.map((r) => (
+              <option key={r} value={r}>
+                {t(`role.${r}`, { defaultValue: r })}
+              </option>
             ))}
-          </div>
+          </select>
         </div>
       </form>
     </Dialog>

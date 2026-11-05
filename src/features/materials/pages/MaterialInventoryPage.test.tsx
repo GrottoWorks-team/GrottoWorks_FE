@@ -81,6 +81,10 @@ vi.mock('../api', () => ({
   useRecordOpeningStock: vi.fn(() => ({
     mutateAsync: mockRecordMutation,
   })),
+  useAdjustInventory: vi.fn(() => ({
+    mutateAsync: vi.fn().mockResolvedValue({}),
+    isPending: false,
+  })),
 }))
 
 vi.mock('@/features/season/api', () => ({
@@ -93,10 +97,15 @@ vi.mock('@/features/areas/api', () => ({
   useAreas: vi.fn(() => ({
     data: [{ id: 'area-1', name: 'Khu Hang Đá Bê-lem' }],
   })),
+  useScopedAreas: vi.fn(() => ({
+    data: [{ id: 'area-1', name: 'Khu Hang Đá Bê-lem' }],
+    isPending: false,
+  })),
   useArea: vi.fn(() => ({
     data: { id: 'area-1', name: 'Khu Hang Đá Bê-lem', seasonId: 'season-1', type: 'GROTTO', status: 'IN_PROGRESS' },
     isPending: false,
   })),
+  useAreaProgress: vi.fn(() => ({ data: undefined, isPending: false })),
 }))
 
 vi.mock('react-i18next', () => ({

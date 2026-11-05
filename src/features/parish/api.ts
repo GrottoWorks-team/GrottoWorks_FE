@@ -3,7 +3,7 @@
 // (useUsers/useCommunities giá»¯ nguyÃªn key ['users']/['communities'] gá»‘c â€”
 // invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, apiPaged } from '@/lib/api'
 import type { ActivityLog, Community, Role } from '@/types'
 import type { AdminUserDto, CreateAdminUserRequest, RoleDto } from '@/types/identity'
 import type {
@@ -66,11 +66,83 @@ export const adminKeys = {
 // communities cho trá»n bá»™ import má»™t chá»—.
 export { useCommunities } from '@/features/communities/api'
 
+interface ActivityLogDto {
+  id: string
+  actorUserId?: string | null
+  action: string
+  entityType: string
+  entityId: string
+  createdAt: string
+}
+
 export function useActivityLogs() {
   return useQuery({
     queryKey: adminKeys.activity,
-    // /api/activity = activityLogs 50 dÃ²ng má»›i nháº¥t, má»›i nháº¥t Ä‘á»©ng Ä‘áº§u.
-    queryFn: () => api<ActivityLog[]>('/activity'),
+    // GET /api/v1/activity-logs (NotificationAudit) - paged, moi nhat dung dau.
+    queryFn: async () => {
+      const res = await apiPaged<ActivityLogDto>('/api/v1/activity-logs?size=50')
+      return res.data.map<ActivityRow>((row) => ({
+        id: row.id,
+        at: row.createdAt,
+        actor: row.actorUserId ?? '—',
+        action: row.action,
+        target: row.entityType,
+        entityType: row.entityType,
+        entityId: row.entityId,
+      }))
+    },
+  })
+}
+
+/** Dòng log kèm khoá đối tượng để mở chi tiết / lịch sử. */
+export interface ActivityRow extends ActivityLog {
+  entityType: string
+  entityId: string
+}
+
+export interface ActivityLogDetailDto extends ActivityLogDto {
+  parishId?: string | null
+  seasonId?: string | null
+  oldValue?: unknown
+  newValue?: unknown
+  reason?: string | null
+  correlationId?: string | null
+}
+
+/** GET /api/v1/activity-logs/{logId} — chi tiết một bản ghi audit. */
+export function useActivityLogDetail(logId?: string) {
+  return useQuery({
+    queryKey: ['admin', 'activity', logId ?? ''] as const,
+    queryFn: () => api<ActivityLogDetailDto>(`/api/v1/activity-logs/${logId}`),
+    enabled: Boolean(logId),
+  })
+}
+
+export interface StateChangeDto {
+  logId: string
+  action: string
+  oldValue?: unknown
+  newValue?: unknown
+  reason?: string | null
+  actorUserId?: string | null
+  changedAt: string
+}
+
+/** GET /api/v1/resource-history/{resourceType}/{resourceId} — lịch sử đối tượng. */
+export function useResourceHistory(
+  resourceType?: string,
+  resourceId?: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['admin', 'resource-history', resourceType ?? '', resourceId ?? ''] as const,
+    queryFn: async () => {
+      const res = await api<StateChangeDto[] | { data?: StateChangeDto[] }>(
+        `/api/v1/resource-history/${resourceType}/${resourceId}`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    enabled: Boolean(resourceType && resourceId) && enabled,
   })
 }
 
@@ -191,6 +263,7 @@ export function useAssignUserRole() {
     }),
   )
 }
+// BE KHÔNG có `DELETE` user/community → chỉ khoá/mở user, không xoá.
 export function useRoles() {
   return useQuery({
     queryKey: ['roles'],
@@ -233,41 +306,42 @@ export function useUpdateCommunity() {
   )
 }
 
-// ---- Parish (object Ä‘Æ¡n) + Skills (string[]) ------------------------------
+// BE hiện CHƯA có `DELETE /api/v1/communities/{id}` → không cung cấp hook xoá.
+
+// ---- Parish (object đơn) + Skills (string[]) --------------------------------
 
 export function useCreateSkill() {
   return useAdminMutation([[ 'admin', 'skills' ]], async (name: string) => {
-    const code = name.slice(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'SKL'
+    // `code` bắt buộc ở BE (`CreateSkillRequest`) — sinh từ tên thay vì random
+    // (trùng code thì BE trả 409, người dùng sửa tên/mã).
+    const base = name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/gi, 'd')
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+      .slice(0, 10)
+    const code = base || 'SKL'
     return api<any>('/api/v1/skills', {
       method: 'POST',
-      body: JSON.stringify({ code: `${code}${Math.floor(Math.random() * 899 + 100)}`, name }),
+      body: JSON.stringify({ code, name }),
     })
   })
 }
 
+/** PATCH /api/v1/skills/{skillId} — đổi tên theo GUID (trước đây theo index → sai id). */
 export function useRenameSkill() {
-  return useAdminMutation([[ 'admin', 'skills' ]], async ({ index, name }: { index: number; name: string }) => {
-    try {
-      const skills = await api<any[]>('/api/v1/skills')
-      if (Array.isArray(skills) && skills[index]?.id) {
-        return api<any>(`/api/v1/skills/${skills[index].id}`, {
-          method: 'PATCH',
-          body: JSON.stringify({ name }),
-        })
-      }
-    } catch {
-      // fallback
-    }
-  })
-}
-
-// ---- Backup ----------------------------------------------------------------
-
-export function useBackup() {
-  return useAdminMutation([], () =>
-    api<Record<string, unknown>>('/export/backup', { method: 'POST' }),
+  return useAdminMutation([[ 'admin', 'skills' ]], async ({ id, name }: { id: string; name: string }) =>
+    api<any>(`/api/v1/skills/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name }),
+    }),
   )
 }
+
+// BE KHÔNG có `DELETE /api/v1/skills/{id}` → không cung cấp hook xoá kỹ năng nữa.
+
+// ---- Backup ----------------------------------------------------------------
 
 export function useRoleLabel(): Record<Role, string> {
   return {

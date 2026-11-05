@@ -28,7 +28,7 @@ describe('toCommunity', () => {
 })
 
 describe('toSeason', () => {
-  it('đổi seasonYear → year, estimatedBudget null → 0, communityIds rỗng', () => {
+  it('đổi seasonYear → year, estimatedBudget null → 0', () => {
     const s = toSeason({
       id: 's1', parishId: 'p1', name: 'Mùa Giáng sinh 2026', seasonYear: 2026,
       startDate: '2026-10-01', endDate: '2027-01-15', status: 'PLANNING',
@@ -38,8 +38,8 @@ describe('toSeason', () => {
     expect(s).toEqual({
       id: 's1', parishId: 'p1', name: 'Mùa Giáng sinh 2026', year: 2026,
       startDate: '2026-10-01', endDate: '2027-01-15', status: 'PLANNING',
-      budget: 0, description: undefined, communityIds: [],
-      createdAt: '2026-10-01T00:00:00Z', version: undefined,
+      budget: 0, description: undefined,
+      version: undefined, createdAt: '2026-10-01T00:00:00Z',
     })
   })
 
@@ -66,8 +66,7 @@ describe('toWorkArea', () => {
       id: 'a1', seasonId: 's1', name: 'Khu hang đá', description: 'Trước nhà thờ',
       communityId: undefined, leaderId: '', officerId: 'u9',
       startDate: '2026-10-01', deadline: '2026-12-20', status: 'PLANNED',
-      // BE chưa trả các field dưới — giá trị mặc định để UI không vỡ.
-      type: 'GROTTO', level: 'PARISH', progress: 0, volunteerCount: 0, taskCount: 0,
+      // KHÔNG có type/level/progress/volunteerCount/taskCount — BE không trả.
     })
   })
 

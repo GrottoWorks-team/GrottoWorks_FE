@@ -8,10 +8,12 @@ import { useNavigate } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
+import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSeasons } from '@/features/season/api'
+import { useAreas } from '@/features/areas/api'
 import { useCommunities } from '@/features/communities/api'
 import { useUsers } from '@/features/users/api'
 import { useParish } from '@/features/parish/api'
@@ -23,6 +25,7 @@ export default function ParishOverview() {
   const navigate = useNavigate()
   const { data: parish } = useParish()
   const { data: seasons = [], isPending } = useSeasons()
+  const { data: areas = [] } = useAreas()
   const { data: communities = [] } = useCommunities()
   // Chỉ cần đếm tài khoản → bỏ request danh mục kỹ năng.
   const { data: users = [] } = useUsers({ withSkills: false })
@@ -93,7 +96,29 @@ export default function ParishOverview() {
         </Card>
 
         <Card className="p-5">
-          <p className="text-sm text-muted-foreground">{t('features.dashboards.pendingApi')}</p>
+          <p className="lbl-mono mb-3">{t('features.dashboards.areaStatusBreakdown')}</p>
+          {areas.length === 0 ? (
+            <EmptyState text={t('common.empty')} className="py-6" />
+          ) : (
+            <ul className="space-y-2">
+              {Object.entries(
+                areas.reduce<Record<string, number>>((acc, a) => {
+                  acc[a.status] = (acc[a.status] ?? 0) + 1
+                  return acc
+                }, {}),
+              ).map(([status, count]) => (
+                <li key={status} className="flex items-center justify-between gap-3 text-sm">
+                  <StatusTag status={status} />
+                  <span className="tabular font-semibold text-foreground">
+                    {count} {t('features.dashboards.areaUnit')}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            {t('features.dashboards.adminScopeHint')}
+          </p>
         </Card>
       </div>
     </div>

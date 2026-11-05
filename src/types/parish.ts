@@ -53,11 +53,11 @@ export interface WorkAreaDto {
   id: string
   seasonId: string
   communityId: string | null
+  categoryId?: string | null
   leaderId: string | null
   materialOfficerId: string | null
   name: string
   description?: string | null
-  categoryId?: string | null
   startDate?: string | null
   deadline?: string | null
   status: WorkAreaStatus

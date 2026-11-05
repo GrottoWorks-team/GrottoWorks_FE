@@ -1,7 +1,7 @@
-// Dialog thêm cam kết quyên góp: loại (vật tư của khu officer / tiền),
-// donorName required, promisedQty hoặc monetary, note optional. RHF + zod,
-// message = i18n key. Create POST status PLEDGED (api tự cộng
-// donatedPledged của vật tư).
+// Dialog thêm cam kết quyên góp: BE nhận donor tự động (VolunteerDonorResolver
+// theo user đang đăng nhập) nên không nhập tên người quyên góp.
+//   MATERIAL → workAreaId + material (phải nằm trong nhu cầu ACTIVE của khu)
+//   MONEY    → seasonId + amount
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -11,75 +11,87 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { useCreateDonation } from '../api'
-import type { Material } from '@/types'
+import { useScopedAreas } from '@/features/areas/api'
+import { useWorkAreaRequirements } from '@/features/materials/api'
+import { useSeasons } from '@/features/season/api'
+import { useCreateMaterialPledge, useCreateMonetaryPledge } from '../api'
 
-export const SELECT_CLS =
+const SELECT_CLS =
   'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
+const TEXTAREA_CLS =
+  'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
-// Trống → undefined (báo lỗi thay vì coerce 0); giá trị nếu có phải ≥ 1.
-const numOpt = (key: string) =>
+const numberField = (required: string, invalid: string) =>
   z.preprocess(
     (v) => (v === '' || v == null ? undefined : v),
-    z.coerce.number({ invalid_type_error: key }).min(1, key).optional(),
+    z.coerce.number({ invalid_type_error: invalid }).min(1, invalid).refine((n) => Number.isFinite(n), required),
   )
 
-// Loại quyên góp quyết định field nào bắt buộc (refine gắn lỗi lên field đó).
 const schema = z
   .object({
-    donorName: z.string().trim().min(1, 'features.donations.donorRequired'),
-    kind: z.string().min(1, 'features.donations.kindRequired'),
+    kind: z.enum(['MATERIAL', 'MONEY']),
+    areaId: z.string(),
     materialId: z.string(),
-    promisedQty: numOpt('features.donations.qtyInvalid'),
-    monetary: numOpt('features.donations.monetaryInvalid'),
+    qty: numberField('features.donations.qtyRequired', 'features.donations.qtyInvalid').optional(),
+    seasonId: z.string(),
+    amount: numberField('features.donations.amountRequired', 'features.donations.monetaryInvalid').optional(),
     note: z.string(),
   })
   .superRefine((data, ctx) => {
     if (data.kind === 'MATERIAL') {
+      if (!data.areaId)
+        ctx.addIssue({ code: 'custom', path: ['areaId'], message: 'features.donations.areaRequired' })
       if (!data.materialId)
         ctx.addIssue({ code: 'custom', path: ['materialId'], message: 'features.donations.materialRequired' })
-      if (data.promisedQty == null)
-        ctx.addIssue({ code: 'custom', path: ['promisedQty'], message: 'features.donations.qtyInvalid' })
-    } else if (data.monetary == null) {
-      ctx.addIssue({ code: 'custom', path: ['monetary'], message: 'features.donations.monetaryInvalid' })
+    } else {
+      if (!data.seasonId)
+        ctx.addIssue({ code: 'custom', path: ['seasonId'], message: 'features.donations.seasonRequired' })
     }
   })
+
 type FormData = z.infer<typeof schema>
 
-export function DonationFormDialog({
-  materials,
-  onClose,
-}: {
-  materials: Material[] // vật tư khu officer (page đã lọc)
-  onClose: () => void
-}) {
+export function DonationFormDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const create = useCreateDonation()
+  const { data: areas = [] } = useScopedAreas()
+  const { data: seasons = [] } = useSeasons()
+  const createMaterial = useCreateMaterialPledge()
+  const createMoney = useCreateMonetaryPledge()
 
   const {
     register,
     handleSubmit,
     watch,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    // Cha mount có điều kiện → defaultValues theo prop là đủ.
-    defaultValues: { donorName: '', kind: 'MATERIAL', materialId: '', note: '' },
+    defaultValues: { kind: 'MATERIAL', areaId: '', materialId: '', seasonId: '', note: '' },
   })
+
   const kind = watch('kind')
+  const areaId = watch('areaId')
+  const { data: requirements = [] } = useWorkAreaRequirements(kind === 'MATERIAL' ? areaId || undefined : undefined, 'ACTIVE')
 
   const onSubmit = async (data: FormData) => {
     try {
-      await create.mutateAsync({
-        donorName: data.donorName,
-        status: 'PLEDGED',
-        ...(data.kind === 'MATERIAL'
-          ? { materialId: data.materialId, promisedQty: data.promisedQty }
-          : { monetary: data.monetary }),
-        ...(data.note.trim() ? { note: data.note.trim() } : {}),
-      })
-      toast(t('features.donations.created', { name: data.donorName }))
+      if (data.kind === 'MATERIAL') {
+        await createMaterial.mutateAsync({
+          workAreaId: data.areaId,
+          materialId: data.materialId,
+          pledgedQuantity: data.qty ?? 0,
+          note: data.note || undefined,
+        })
+      } else {
+        await createMoney.mutateAsync({
+          seasonId: data.seasonId,
+          amount: data.amount ?? 0,
+          note: data.note || undefined,
+        })
+      }
+      toast(t('features.donations.created', { name: t('features.donations.selfDonor') }))
+      reset({ kind: data.kind, areaId: '', materialId: '', seasonId: '', note: '' })
       onClose()
     } catch {
       toast(t('common.error'), 'alert')
@@ -91,67 +103,92 @@ export function DonationFormDialog({
 
   return (
     <Dialog
-      open
+      open={open}
       onClose={onClose}
-      size="md"
       title={t('features.donations.createTitle')}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button type="submit" form="donation-form" disabled={isSubmitting}>
+          <Button type="submit" form="donation-create-form" disabled={isSubmitting}>
             {t('common.save')}
           </Button>
         </>
       }
     >
-      <form id="donation-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <div>
-          <Label htmlFor="donation-donor">{t('features.donations.donor')}</Label>
-          <Input id="donation-donor" {...register('donorName')} />
-          {err(errors.donorName?.message)}
-        </div>
+      <form id="donation-create-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        <p className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+          {t('features.donations.selfDonorHint')}
+        </p>
         <div>
           <Label htmlFor="donation-kind">{t('features.donations.kind')}</Label>
           <select id="donation-kind" className={SELECT_CLS} {...register('kind')}>
             <option value="MATERIAL">{t('features.donations.kind.MATERIAL')}</option>
-            <option value="MONETARY">{t('features.donations.kind.MONETARY')}</option>
+            <option value="MONEY">{t('features.donations.kind.MONETARY')}</option>
           </select>
-          {err(errors.kind?.message)}
         </div>
         {kind === 'MATERIAL' ? (
           <>
             <div>
-              <Label htmlFor="donation-material">{t('features.donations.material')}</Label>
-              <select id="donation-material" className={SELECT_CLS} {...register('materialId')}>
+              <Label htmlFor="donation-area">{t('features.allocations.area')}</Label>
+              <select id="donation-area" className={SELECT_CLS} {...register('areaId')}>
                 <option value="">{t('features.tasks.selectPlaceholder')}</option>
-                {materials.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.unit})
+                {areas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
                   </option>
                 ))}
               </select>
+              {err(errors.areaId?.message)}
+            </div>
+            <div>
+              <Label htmlFor="donation-material">{t('features.donations.material')}</Label>
+              <select id="donation-material" className={SELECT_CLS} {...register('materialId')} disabled={!areaId}>
+                <option value="">{t('features.tasks.selectPlaceholder')}</option>
+                {requirements.map((r) => (
+                  <option key={r.materialId} value={r.materialId}>
+                    {r.materialName} ({r.unit})
+                  </option>
+                ))}
+              </select>
+              {areaId && requirements.length === 0 && (
+                <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                  {t('features.donations.noRequirement')}
+                </p>
+              )}
               {err(errors.materialId?.message)}
             </div>
             <div>
               <Label htmlFor="donation-qty">{t('features.donations.qty')}</Label>
-              <Input id="donation-qty" type="number" min={1} step={1} {...register('promisedQty')} />
-              {err(errors.promisedQty?.message)}
+              <Input id="donation-qty" type="number" min={1} step={1} {...register('qty')} />
+              {err(errors.qty?.message)}
             </div>
           </>
         ) : (
-          <div>
-            <Label htmlFor="donation-money">{t('features.donations.monetary')}</Label>
-            {/* min 1 khớp zod .min(1) — tiền 0 vô nghĩa. */}
-            <Input id="donation-money" type="number" min={1} step={1000} {...register('monetary')} />
-            {err(errors.monetary?.message)}
-          </div>
+          <>
+            <div>
+              <Label htmlFor="donation-season">{t('features.donations.season')}</Label>
+              <select id="donation-season" className={SELECT_CLS} {...register('seasonId')}>
+                <option value="">{t('features.tasks.selectPlaceholder')}</option>
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+              {err(errors.seasonId?.message)}
+            </div>
+            <div>
+              <Label htmlFor="donation-amount">{t('features.donations.monetary')}</Label>
+              <Input id="donation-amount" type="number" min={1} step={1000} {...register('amount')} />
+              {err(errors.amount?.message)}
+            </div>
+          </>
         )}
         <div>
           <Label htmlFor="donation-note">{t('features.donations.note')}</Label>
-          <Input id="donation-note" {...register('note')} />
-          {err(errors.note?.message)}
+          <textarea id="donation-note" rows={2} className={TEXTAREA_CLS} {...register('note')} />
         </div>
       </form>
     </Dialog>

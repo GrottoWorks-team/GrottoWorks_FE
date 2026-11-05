@@ -1,6 +1,6 @@
 // Màn hình Tổng hợp nhu cầu mua vật tư mùa vụ (/material-officer/material-needs)
 // E5: GET /api/v1/seasons/{seasonId}/material-needs (PARISH, LEADER, MO)
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AlertCircle,
@@ -19,6 +19,7 @@ import {
   useMaterialCatalog,
 } from '../api'
 import { useSeasons } from '@/features/season/api'
+import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas } from '@/features/areas/api'
 
 const SELECT_CLS =
@@ -36,8 +37,21 @@ export default function SeasonMaterialNeedsPage() {
 
   // Master data for filters
   const { data: seasons = [] } = useSeasons()
+  const { seasonId: headerSeasonId } = useSeasonContext()
   const activeSeason = seasons.find((s) => s.status === 'ACTIVE') || seasons[0]
-  const currentSeasonId = selectedSeason || activeSeason?.id || ''
+  // Ưu tiên: mùa chọn trong trang → mùa đang chọn ở header → ACTIVE (chốt chặn
+  // khi header chưa resolve xong, hoặc trang mount trong unit test không có provider).
+  const currentSeasonId = selectedSeason || headerSeasonId || activeSeason?.id || ''
+
+  // Đổi mùa ở header → trang đi theo (bỏ khu vực đã chọn vì khu thuộc mùa cũ).
+  const headerSeasonRef = useRef(headerSeasonId)
+  useEffect(() => {
+    if (headerSeasonRef.current === headerSeasonId) return
+    headerSeasonRef.current = headerSeasonId
+    setSelectedSeason('')
+    setSelectedWorkArea('')
+    setPage(1)
+  }, [headerSeasonId])
 
   const { data: areas = [] } = useAreas(currentSeasonId ? [currentSeasonId] : undefined)
   const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 100 })

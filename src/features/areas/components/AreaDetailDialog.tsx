@@ -4,7 +4,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { useArea } from '../api'
+import { useArea, useAreaProgress } from '../api'
 import { Calendar, Layers, ShieldCheck, Info, Package } from 'lucide-react'
 import { AreaMaterialsTab } from './AreaMaterialsTab'
 
@@ -17,6 +17,7 @@ interface AreaDetailDialogProps {
 export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProps) {
   const { t } = useTranslation()
   const { data: area, isPending } = useArea(areaId ?? undefined)
+  const { data: progress, isPending: progressPending } = useAreaProgress(areaId ?? undefined)
   const [activeTab, setActiveTab] = useState<'info' | 'materials'>('info')
 
   if (!open) return null
@@ -94,7 +95,9 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
                 <span>Loại phân khu</span>
               </div>
               <p className="mt-1 text-sm font-bold text-foreground">
-                {t(`features.areas.type.${area.type}`, { defaultValue: area.type || 'Hang đá Bê-lem' })}
+                {area.type
+                  ? t(`features.areas.type.${area.type}`, { defaultValue: area.type })
+                  : '—'}
               </p>
             </div>
 
@@ -124,6 +127,40 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
               <span className="text-muted-foreground">Phiên bản dữ liệu:</span>
               <Badge className="font-mono text-[10px]">v1</Badge>
             </div>
+          </div>
+
+          <div className="rounded-lg border border-border/60 p-3">
+            <p className="lbl-mono mb-2">
+              {t('features.areas.progressTitle', { defaultValue: 'Tiến độ công việc' })}
+            </p>
+            {progressPending ? (
+              <p className="text-xs text-muted-foreground">{t('common.loading')}</p>
+            ) : !progress ? (
+              <p className="text-xs text-muted-foreground">
+                {t('features.areas.progressUnavailable', {
+                  defaultValue: 'Chưa có dữ liệu tiến độ cho khu này.',
+                })}
+              </p>
+            ) : (
+              <dl className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+                <div>
+                  <dt className="text-muted-foreground">{t('features.areas.totalTasks', { defaultValue: 'Tổng việc' })}</dt>
+                  <dd className="tabular font-bold text-foreground">{progress.totalTasks}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('features.areas.completedTasks', { defaultValue: 'Hoàn thành' })}</dt>
+                  <dd className="tabular font-bold text-foreground">{progress.completedTasks}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('features.areas.overdueTasks', { defaultValue: 'Trễ hạn' })}</dt>
+                  <dd className="tabular font-bold text-foreground">{progress.overdueTasks}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t('features.areas.cancelledTasks', { defaultValue: 'Đã huỷ' })}</dt>
+                  <dd className="tabular font-bold text-foreground">{progress.cancelledTasks}</dd>
+                </div>
+              </dl>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground/80 pt-1">

@@ -11,11 +11,13 @@ let currentUser = {
   email: 'u27@test.com',
   role: 'VOLUNTEER' as const,
   skills: ['Hàn'],
+  skillIds: ['s1'],
   points: 100,
   avatarHue: 20,
 }
 
 let updatedPayload: any = null
+let skillsPayload: string[] | null = null
 
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({ user: currentUser, isPending: false, refresh: vi.fn().mockResolvedValue({}) }),
@@ -30,27 +32,29 @@ vi.mock('@/features/timesheets/api', () => ({
 }))
 
 vi.mock('@/features/tasks/api', () => ({
-  useSkills: () => ({
-    data: ['Hàn', 'Sơn', 'Mộc'],
+  useSkillsCatalog: () => ({
+    data: [
+      { id: 's1', code: 'HAN', name: 'Hàn', status: 'ACTIVE' },
+      { id: 's2', code: 'SON', name: 'Sơn', status: 'ACTIVE' },
+      { id: 's3', code: 'MOC', name: 'Mộc', status: 'ACTIVE' },
+    ],
     isPending: false,
   }),
 }))
 
 vi.mock('@/features/profile/api', () => ({
-  useUpdateProfile: () => ({
+  useUpdateMyProfile: () => ({
     mutateAsync: vi.fn(async (payload) => {
       updatedPayload = payload
-      currentUser = { ...currentUser, ...payload }
-      return currentUser
+      return payload
     }),
     isPending: false,
   }),
-  useUpdateMyProfile: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
-    isPending: false,
-  }),
   useReplaceMySkills: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
+    mutateAsync: vi.fn(async (ids: string[]) => {
+      skillsPayload = ids
+      return {}
+    }),
     isPending: false,
   }),
   useReplaceMyAvailability: () => ({
@@ -66,10 +70,12 @@ beforeEach(() => {
     email: 'u27@test.com',
     role: 'VOLUNTEER' as const,
     skills: ['Hàn'],
+    skillIds: ['s1'],
     points: 100,
     avatarHue: 20,
   }
   updatedPayload = null
+  skillsPayload = null
 })
 
 function mount() {
@@ -83,16 +89,17 @@ function mount() {
   )
 }
 
-test('hiện điểm vinh danh, giờ công và prefilled tên theo seed (u27)', async () => {
+test('hiện giờ công và prefilled tên theo seed (u27); điểm hiện "—" vì BE chưa có API', async () => {
   mount()
 
-  expect(await screen.findByText('100')).toBeDefined()
+  // Điểm vinh danh: BE chưa có service Reward → hiển thị "—" thay vì 0 giả.
+  expect(await screen.findByText('—')).toBeDefined()
   expect(await screen.findByText('28')).toBeDefined()
   const name = await screen.findByLabelText('Họ tên')
   expect((name as HTMLInputElement).value).toBe('Antôn Trương Minh Nhật')
 })
 
-test('submit → PATCH /api/users/u27 với tên + kỹ năng mới', async () => {
+test('submit → PATCH /users/me (displayName) + PUT /users/me/skills (skillIds)', async () => {
   mount()
   const user = userEvent.setup()
 
@@ -104,6 +111,7 @@ test('submit → PATCH /api/users/u27 với tên + kỹ năng mới', async () =
   await user.click(screen.getByRole('button', { name: 'Lưu' }))
 
   expect(await screen.findByText('Đã cập nhật hồ sơ')).toBeDefined()
-  expect(updatedPayload.name).toBe('Antôn Tên Mới')
-  expect(updatedPayload.skills).toEqual(['Hàn', 'Sơn'])
+  expect(updatedPayload.displayName).toBe('Antôn Tên Mới')
+  // BE nhận GUID kỹ năng, không phải tên → gửi ['s1','s2'].
+  expect(skillsPayload).toEqual(['s1', 's2'])
 })

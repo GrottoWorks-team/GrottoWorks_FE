@@ -1,7 +1,7 @@
 // Tổng quan trưởng khu (route /leader, index route).
 // Một leader CÓ THỂ lãnh nhiều khu → danh sách khu lấy thật từ useScopedAreas()
 // (lọc leaderId + mùa đang chọn), nhiều khu thì hiện select (`?area=`).
-// Không gọi `/api/dashboard/leader` (BE chưa có endpoint này).
+// Số liệu khu đang chọn: GET /api/v1/dashboards/work-area?workAreaId= (Reporting).
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useDashboardData } from './api'
+import { useDashboardData, useWorkAreaDashboard } from './api'
 import type { WorkArea } from '@/types'
 
 const SELECT_CLS =
@@ -27,6 +27,10 @@ export default function LeaderOverview() {
 
   const requestedAreaId = searchParams.get('area')
   const area = areas.find((a) => a.id === requestedAreaId) ?? areas[0] ?? null
+  const { data: workAreaDashboard, isPending: workAreaDashboardPending } = useWorkAreaDashboard(
+    area?.id,
+  )
+  const workAreaSummary = workAreaDashboard?.summary
 
   const selectArea = (areaId: string) => {
     setSearchParams(
@@ -151,7 +155,44 @@ export default function LeaderOverview() {
           </Card>
 
           <Card className="p-5">
-            <p className="text-sm text-muted-foreground">{t('features.dashboards.pendingApi')}</p>
+            <p className="lbl-mono mb-3">{t('features.dashboards.workAreaProgress')}</p>
+            {workAreaDashboardPending || !workAreaSummary ? (
+              <EmptyState text={t('common.loading')} className="py-6" />
+            ) : (
+              <dl className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.taskProgress')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {workAreaSummary.tasks.completed}/{workAreaSummary.tasks.total} ·{' '}
+                    {Math.round(workAreaSummary.tasks.progressPercent)}%
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.lateTasks')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {workAreaSummary.tasks.overdue}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.revisionTasks')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {workAreaSummary.tasks.revisionRequired}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.unassignedTasks')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {workAreaSummary.tasks.unassigned}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.approvedHours')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {workAreaSummary.volunteers.approvedHours}
+                  </dd>
+                </div>
+              </dl>
+            )}
           </Card>
         </div>
       )}

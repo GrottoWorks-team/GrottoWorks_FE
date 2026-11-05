@@ -22,7 +22,7 @@ export function normalizeRole(roleStr?: string): Role {
   if (code === 'ADMIN') return 'PARISH'
   if (code === 'PARISH' || code.includes('COMMUNITY')) return 'COMMUNITY'
   if (code.includes('LEADER')) return 'LEADER'
-  // VOLUNTEER chưa có giao diện web (dùng app mobile) → xem BE-gap-requests-activity-flows.md
+  // VOLUNTEER chưa có giao diện web (dùng app mobile) → xem API-GAP-STATUS-2026-11-04.md §2.2
   return 'COMMUNITY'
 }
 
@@ -53,7 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       rawRole: p.role,
       communityId: p.communityId,
       parishId: p.parishId,
-      skills: p.skillIds ?? p.skills ?? [],
+      // BE chỉ trả `skillIds` (GUID) — tên kỹ năng được dịch ở UI bằng danh mục
+      // /api/v1/skills. Trước đây GUID bị nhét vào `skills` nên UI in ra GUID.
+      skills: [],
+      skillIds: p.skillIds ?? [],
       points: p.points ?? 0,
       avatarHue: 45,
     }

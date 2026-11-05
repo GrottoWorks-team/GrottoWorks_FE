@@ -1,5 +1,6 @@
 // Trang tài khoản (route /parish/accounts): DataTable users + chip lọc role,
-// switch khoá/mở (user bị khoá → login 401), sửa/xoá qua dialog.
+// switch khoá/mở (user bị khoá → login 401), sửa qua dialog.
+// BE không có DELETE user → chỉ khoá/mở, không xoá.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pencil, Plus } from 'lucide-react'

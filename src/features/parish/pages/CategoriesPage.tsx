@@ -1,10 +1,9 @@
 // Trang danh mục (route /parish/categories) — 4 tab theo plan:
-//   • Loại khu vực (areaType): enum WorkArea.type — READ-ONLY + đếm khu theo loại.
-//   • Kỹ năng (skill): db.skills — CRUD thật qua /api/skills; xoá bị mock chặn
-//     409 khi còn user/task tham chiếu (đếm tham chiếu hiển thị trước nút xoá).
-//   • Loại vật tư (unit): đơn vị tính — KHÔNG có model riêng trong seed/types;
-//     lưu localStorage 'grotto-unit-catalog' dạng delta so với 13 unit mặc định.
-//   • Loại đóng góp (donationKind): vật tư / tiền — READ-ONLY + đếm cam kết.
+//   • Hạng mục khu vực: `/api/v1/work-area-categories` (BE thật, có `WorkArea.categoryId`).
+//   • Kỹ năng (skill): `/api/v1/skills` — tạo/sửa theo GUID; BE KHÔNG có DELETE.
+//   • Loại vật tư (unit): BE chưa có danh mục đơn vị → lưu localStorage
+//     'grotto-unit-catalog' dạng delta so với 13 unit mặc định (FE-only).
+//   • Loại đóng góp (donationKind): READ-ONLY + đếm cam kết.
 // Tab readonly: enum cố định trong types (compile-time) → không sửa được.
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -23,19 +22,17 @@ import { useAreas } from '@/features/areas/api'
 import { useDonations } from '@/features/donations/api'
 import { useMaterials } from '@/features/materials/api'
 import { useTasks } from '@/features/tasks/api'
+import { useSkillsCatalog } from '@/features/skills/api'
 import { useUsers } from '@/features/users/api'
 import { cn } from '@/lib/utils'
 import {
-  useAdminSkills,
   useCreateSkill,
   useCreateWorkAreaCategory,
   useRenameSkill,
   useUpdateWorkAreaCategory,
   useWorkAreaCategories,
 } from '../api'
-import type { WorkArea } from '@/types'
 
-const AREA_TYPES: WorkArea['type'][] = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE']
 const DONATION_KINDS = ['MATERIAL', 'MONETARY'] as const
 
 // 13 đơn vị mặc định — localStorage chỉ lưu delta (ẩn mặc định
@@ -215,7 +212,7 @@ export default function CategoriesPage() {
   const { data: materials = [] } = useMaterials()
   const { data: areas = [] } = useAreas()
   const { data: donations = [] } = useDonations()
-  const { data: skills = [] } = useAdminSkills()
+  const { data: skillCatalog = [] } = useSkillsCatalog()
   const { data: areaCategories = [] } = useWorkAreaCategories()
   const createAreaCategory = useCreateWorkAreaCategory()
   const updateAreaCategory = useUpdateWorkAreaCategory()
@@ -246,9 +243,9 @@ export default function CategoriesPage() {
       throw e
     }
   }
-  const renameSkillAt = async (index: number, name: string) => {
+  const renameSkillAt = async (id: string, name: string) => {
     try {
-      await renameSkill.mutateAsync({ index, name })
+      await renameSkill.mutateAsync({ id, name })
       toast(t('features.parish.updated', { name }))
     } catch (e) {
       toast(e instanceof Error ? e.message : t('common.error'), 'alert')
@@ -347,24 +344,21 @@ export default function CategoriesPage() {
           <>
             <p className="lbl-mono mb-2">{t('features.parish.catHint.areaType')}</p>
             <ul>
-              {areaCategories.length > 0
-                ? areaCategories.map((c) => (
-                    <CategoryRow
-                      key={c.id}
-                      name={c.name}
-                      refCount={areas.filter((a) => (a as any).categoryId === c.id).length}
-                      refLabel={t('features.parish.refAreas')}
-                      onRename={(next) => void renameAreaCategory(c.id, next)}
-                    />
-                  ))
-                : AREA_TYPES.map((x) => (
-                    <CategoryRow
-                      key={x}
-                      name={t(`features.areas.areaType.${x}`)}
-                      refCount={areas.filter((a) => a.type === x).length}
-                      refLabel={t('features.parish.refAreas')}
-                    />
-                  ))}
+              {areaCategories.length > 0 ? (
+                areaCategories.map((c) => (
+                  <CategoryRow
+                    key={c.id}
+                    name={c.name}
+                    refCount={areas.filter((a) => a.categoryId === c.id).length}
+                    refLabel={t('features.parish.refAreas')}
+                    onRename={(next) => void renameAreaCategory(c.id, next)}
+                  />
+                ))
+              ) : (
+                <li className="px-4 py-6 text-center text-sm text-muted-foreground">
+                  {t('features.parish.areaCategoriesEmpty', { defaultValue: 'Chưa có hạng mục khu vực nào.' })}
+                </li>
+              )}
             </ul>
             <AddCategoryForm onAdd={addAreaCategory} />
           </>
@@ -373,17 +367,17 @@ export default function CategoriesPage() {
         {tab === 'skill' && (
           <>
             <ul>
-              {skills.map((s, i) => (
+              {skillCatalog.map((s) => (
                 <CategoryRow
-                  key={s}
-                  name={s}
-                  refCount={skillUses(s)}
+                  key={s.id}
+                  name={s.name}
+                  refCount={skillUses(s.name)}
                   refLabel={t('features.parish.refUses')}
-                  onRename={(next) => void renameSkillAt(i, next)}
+                  onRename={(next) => void renameSkillAt(s.id, next)}
                 />
               ))}
             </ul>
-            {!skills.length && <EmptyState text={t('features.parish.empty')} />}
+            {!skillCatalog.length && <EmptyState text={t('features.parish.empty')} />}
             <AddCategoryForm onAdd={addSkill} />
           </>
         )}
@@ -414,7 +408,7 @@ export default function CategoriesPage() {
                 <CategoryRow
                   key={x}
                   name={t(`features.donations.kind.${x}`)}
-                  refCount={donations.filter((d) => (x === 'MATERIAL' ? d.materialId : d.monetary)).length}
+                  refCount={donations.filter((d) => (x === 'MATERIAL' ? d.type === 'MATERIAL' : d.type === 'MONEY')).length}
                   refLabel={t('features.parish.refUses')}
                 />
               ))}

@@ -1,338 +1,293 @@
-// Trang báo cáo tổng kết (route /community/reports) — 4 bảng tổng kết
-// (chi phí, quyên góp, giờ công, nhiệm vụ hoàn thành) + Bảng vinh danh
-// RecognitionBoard. Mỗi bảng có nút "Xuất CSV" dùng exportCsv có sẵn
-// (src/lib/csv.ts — BOM + ';' cho Excel vi). Tổng hợp client-side.
-import { useMemo } from 'react'
-import type { CSSProperties } from 'react'
+// Báo cáo (/community/reports) — BE Reporting `/api/v1/reports/{type}`.
+// ReportDataDto trả columns + rows + totals + notes nên trang render động,
+// không còn gộp 6 endpoint legacy.
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download } from 'lucide-react'
+import { Download, FileSpreadsheet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { Card } from '@/components/ui/card'
-import { StatCard } from '@/components/shared/StatCard'
-import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
+import { useScopedAreas } from '@/features/areas/api'
+import { useSeasons } from '@/features/season/api'
 import { exportCsv } from '@/lib/csv'
-import { viDate } from '@/lib/format'
-import { useReportData } from '../api'
-import { RecognitionBoard } from '../components/RecognitionBoard'
-import type { ContributorRow } from '../api'
+import { ApiError } from '@/lib/api'
+import i18n from '@/lib/i18n'
+import { viDateTime } from '@/lib/format'
+import {
+  downloadReportExport,
+  useCreateReportExport,
+  useReportData,
+  useReportExportJob,
+  type ReportType,
+} from '../api'
+import { useSeasonRecognition } from '@/features/recognition/api'
 
-// Tiêu đề khối bảng: label + nút Xuất CSV (disabled khi hết dữ liệu).
-function Section({
-  title,
-  count,
-  onExport,
-  children,
-  index,
-}: {
-  title: string
-  count: number
-  onExport: () => void
-  children: React.ReactNode
-  index: number
-}) {
-  const { t } = useTranslation()
-  return (
-    <section className="mt-8" style={{ '--d': index } as CSSProperties} data-g-item>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-extrabold tracking-tight text-foreground">
-          {title}
-          <span className="lbl-mono ml-2">{t('common.total', { n: count })}</span>
-        </h2>
-        <Button variant="outline" size="sm" onClick={onExport} disabled={!count}>
-          <Download className="size-4" />
-          {t('features.reports.export')}
-        </Button>
-      </div>
-      {children}
-    </section>
-  )
+const TYPES: ReportType[] = ['TASKS', 'MATERIALS', 'PURCHASES', 'CONTRIBUTIONS', 'ATTENDANCE', 'READINESS']
+
+const SELECT_CLS =
+  'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
+
+function formatValue(value: unknown): string {
+  if (value === null || value === undefined) return '—'
+  if (typeof value === 'number') return value.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')
+  return String(value)
 }
 
 export default function ReportPage() {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data, isPending } = useReportData()
+  const { data: seasons = [] } = useSeasons()
+  const { data: areas = [] } = useScopedAreas()
 
-  // Lookup name: material, user, community — Map để O(1) khi join hàng nghìn dòng.
-  const lookups = useMemo(() => {
-    const material = new Map((data?.materials ?? []).map((m) => [m.id, m]))
-    const user = new Map((data?.users ?? []).map((u) => [u.id, u]))
-    const community = new Map((data?.communities ?? []).map((c) => [c.id, c.name]))
-    const area = new Map((data?.areas ?? []).map((a) => [a.id, a.name]))
-    return { material, user, community, area }
-  }, [data])
+  const [seasonId, setSeasonId] = useState('')
+  const [areaId, setAreaId] = useState('')
+  const [type, setType] = useState<ReportType>('TASKS')
 
-  const onExported = (label: string) => toast(t('features.reports.exported', { label }))
+  const selectedSeason = seasonId || seasons[0]?.id || ''
+  const { data, isPending, isError } = useReportData({
+    type,
+    seasonId: selectedSeason,
+    workAreaId: areaId || undefined,
+  })
 
-  // — Bảng 1: chi phí (purchaseRecords đã duyệt/mua).
-  const purchaseRows = useMemo(
-    () =>
-      (data?.purchaseRecords ?? []).map((p) => ({
-        id: p.id,
-        material: lookups.material.get(p.materialId)?.name ?? p.materialId,
-        qty: p.qty,
-        cost: p.cost,
-        supplier: p.supplier,
-        date: p.date,
-        buyer: lookups.user.get(p.buyerId)?.name ?? p.buyerId,
-        confirmed: p.confirmed,
-      })),
-    [data, lookups],
-  )
+  const rows = useMemo(() => data?.rows ?? [], [data])
 
-  // — Bảng 2: quyên góp (vật tư + tiền mặt).
-  const donationRows = useMemo(
-    () =>
-      (data?.donations ?? []).map((d) => ({
-        id: d.id,
-        donor: d.donorName,
-        material: d.materialId ? lookups.material.get(d.materialId)?.name ?? d.materialId : t('features.donations.money'),
-        promised: d.promisedQty ?? '',
-        received: d.receivedQty ?? '',
-        monetary: d.monetary ?? '',
-        status: d.status,
-      })),
-    [data, lookups, t],
-  )
+  const [jobId, setJobId] = useState<string | undefined>()
+  const createExport = useCreateReportExport()
+  const { data: job, refetch: refetchJob } = useReportExportJob(jobId)
+  const { data: recognition } = useSeasonRecognition(selectedSeason)
 
-  // — Bảng 3: giờ công theo TNV (timesheets aggregate).
-  const hourRows = useMemo(() => {
-    const byVolunteer = new Map<string, { hours: number; sessions: number }>()
-    for (const ts of data?.timesheets ?? []) {
-      const acc = byVolunteer.get(ts.volunteerId) ?? { hours: 0, sessions: 0 }
-      byVolunteer.set(ts.volunteerId, { hours: acc.hours + ts.hours, sessions: acc.sessions + 1 })
-    }
-    return [...byVolunteer.entries()]
-      .map(([volunteerId, { hours, sessions }]) => ({
-        id: volunteerId,
-        volunteer: lookups.user.get(volunteerId)?.name ?? volunteerId,
-        hours,
-        sessions,
-      }))
-      .sort((a, b) => b.hours - a.hours)
-  }, [data, lookups])
+  // BE giới hạn 3 request/phút cho system-jobs → hỏi lại trạng thái một lần sau khi tạo.
+  useEffect(() => {
+    if (!jobId) return
+    const timer = setTimeout(() => void refetchJob(), 10_000)
+    return () => clearTimeout(timer)
+  }, [jobId, refetchJob])
 
-  // — Bảng 4: nhiệm vụ hoàn thành (status DONE).
-  const doneRows = useMemo(
-    () =>
-      (data?.tasks ?? [])
-        .filter((x) => x.status === 'DONE')
-        .map((x) => ({
-          id: x.id,
-          title: x.title,
-          area: lookups.area.get(x.areaId) ?? x.areaId,
-          estimateHours: x.estimateHours,
-          assignees: x.assignees.length
-            ? x.assignees.map((id) => lookups.user.get(id)?.name ?? id).join(', ')
-            : t('features.tasks.assignNone'),
-          dueDate: x.dueDate,
-          photos: x.submittedPhotos,
-        }))
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-    [data, lookups, t],
-  )
-
-  // — RecognitionBoard: điểm + giờ + quà + nhiệm vụ DONE từng TNV.
-  const contributorRows: ContributorRow[] = useMemo(() => {
-    const hours = new Map(hourRows.map((r) => [r.id, r.hours]))
-    const contributions = new Map<string, number>()
-    for (const d of data?.donations ?? []) {
-      if (d.status === 'CANCELED') continue
-      contributions.set(d.donorName, (contributions.get(d.donorName) ?? 0) + 1)
-    }
-    // Donor là tên tự do (không phải user id) — đếm đơn giản theo tên xuất hiện
-    // trong bảng quyên góp; nếu khớp tên user thì cộng vào hàng của user đó.
-    const byName = new Map((data?.users ?? []).map((u) => [u.name, u.id]))
-    const contributionsById = new Map<string, number>()
-    for (const [name, n] of contributions) {
-      const uid = byName.get(name)
-      if (uid) contributionsById.set(uid, n)
-    }
-    const tasksDone = new Map<string, number>()
-    for (const x of data?.tasks ?? []) {
-      if (x.status !== 'DONE') continue
-      for (const id of x.assignees) tasksDone.set(id, (tasksDone.get(id) ?? 0) + 1)
-    }
-    return (data?.users ?? [])
-      .filter((u) => u.role !== 'PARISH' && u.role !== 'COMMUNITY')
-      .map((u) => ({
-        id: u.id,
-        name: (u as any).displayName || u.name || u.email || 'Người dùng',
-        avatarHue: u.avatarHue ?? 45,
-        communityName: u.communityId ? lookups.community.get(u.communityId) ?? '—' : '—',
-        points: u.points ?? 0,
-        hours: hours.get(u.id) ?? 0,
-        contributions: contributionsById.get(u.id) ?? 0,
-        tasksDone: tasksDone.get(u.id) ?? 0,
-      }))
-  }, [data, lookups, hourRows])
-
-  // — Số liệu tổng cho StatCards.
-  const totalCost = useMemo(() => purchaseRows.reduce((s, x) => s + x.cost, 0), [purchaseRows])
-  const totalHours = useMemo(() => hourRows.reduce((s, x) => s + x.hours, 0), [hourRows])
-  const totalMonetary = useMemo(
-    () => (data?.donations ?? []).reduce((s, d) => s + (d.monetary ?? 0), 0),
-    [data],
-  )
-
-
-
-  const doneColumns = useMemo(
-    () => [
-      { key: 'title', header: t('features.tasks.name'), render: (r: (typeof doneRows)[number]) => <span className="font-semibold">{r.title}</span> },
-      { key: 'area', header: t('features.tasks.area') },
-      { key: 'estimateHours', header: t('features.tasks.estimateHours'), align: 'right' as const, render: (r: (typeof doneRows)[number]) => <span className="tabular">{r.estimateHours}</span> },
-      { key: 'assignees', header: t('features.tasks.assignees') },
-      { key: 'dueDate', header: t('features.tasks.dueDate'), render: (r: (typeof doneRows)[number]) => <span className="tabular">{viDate(r.dueDate)}</span> },
-      { key: 'photos', header: t('features.tasks.photos'), align: 'right' as const, render: (r: (typeof doneRows)[number]) => <span className="tabular">{r.photos}</span> },
-    ],
-    [t],
-  )
-
-  // Nút Xuất CSV cho từng bảng — tên file tiếng Việt không dấu, header dùng
-  // label i18n của cột (Excel vi mở thẳng nhờ BOM).
-  const exportPurchases = () => {
+  const onExport = () => {
+    if (!data) return
     exportCsv(
-      'grottoworks-bao-cao-chi-phi.csv',
-      purchaseRows.map((r) => ({
-        [t('features.purchases.material')]: r.material,
-        [t('features.purchases.qty')]: r.qty,
-        [t('features.purchases.cost')]: r.cost,
-        [t('features.purchases.supplier')]: r.supplier,
-        [t('features.purchases.date')]: viDate(r.date),
-        [t('features.purchases.buyer')]: r.buyer,
-        [t('features.purchases.confirmed')]: r.confirmed ? '✓' : '·',
-      })),
+      `grottoworks-bao-cao-${type.toLowerCase()}.csv`,
+      rows.map((row) => {
+        const line: Record<string, string> = {}
+        for (const column of data.columns) line[column.label] = formatValue(row[column.key])
+        return line
+      }),
     )
-    onExported(t('features.reports.purchasesTitle'))
+    toast(t('features.reports.exported', { label: t(`features.reports.type.${type}`) }))
   }
 
-  const exportDonations = () => {
-    exportCsv(
-      'grottoworks-bao-cao-quyen-gop.csv',
-      donationRows.map((r) => ({
-        [t('features.donations.donor')]: r.donor,
-        [t('features.donations.material')]: r.material,
-        [t('features.donations.promised')]: r.promised,
-        [t('features.donations.receivedCol')]: r.received,
-        [t('features.donations.money')]: r.monetary,
-      })),
-    )
-    onExported(t('features.reports.donationsTitle'))
-  }
+  // Xuất bất đồng bộ của BE: tạo job → poll trạng thái → tải tệp khi xong.
+  useEffect(() => {
+    if (!jobId || !job) return
+    if (job.status === 'COMPLETED') {
+      const label = t(`features.reports.type.${job.reportType}`)
+      const name =
+        job.fileName ?? `grottoworks-${job.reportType.toLowerCase()}.${job.format.toLowerCase()}`
+      downloadReportExport(job.id, name)
+        .then(() => toast(t('features.reports.exportedFile', { label })))
+        .catch(() => toast(t('common.error'), 'alert'))
+        .finally(() => setJobId(undefined))
+    } else if (job.status === 'FAILED') {
+      toast(job.errorMessage ?? t('common.error'), 'alert')
+      setJobId(undefined)
+    }
+  }, [job, jobId, t, toast])
 
-  const exportHours = () => {
-    exportCsv(
-      'grottoworks-bao-cao-gio-cong.csv',
-      hourRows.map((r) => ({
-        [t('features.timesheets.volunteer')]: r.volunteer,
-        [t('features.reports.sessions')]: r.sessions,
-        [t('features.timesheets.hours')]: r.hours.toFixed(1),
-      })),
-    )
-    onExported(t('features.reports.hoursTitle'))
+  const onServerExport = async () => {
+    if (!selectedSeason) return
+    try {
+      const created = await createExport.mutateAsync({
+        reportType: type,
+        format: 'XLSX',
+        seasonId: selectedSeason,
+        workAreaId: areaId || undefined,
+      })
+      setJobId(created.id)
+    } catch (error) {
+      toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
+    }
   }
-
-  const exportDone = () => {
-    exportCsv(
-      'grottoworks-bao-cao-nhiem-vu.csv',
-      doneRows.map((r) => ({
-        [t('features.tasks.name')]: r.title,
-        [t('features.tasks.area')]: r.area,
-        [t('features.tasks.estimateHours')]: r.estimateHours,
-        [t('features.tasks.assignees')]: r.assignees,
-        [t('features.tasks.dueDate')]: viDate(r.dueDate),
-        [t('features.tasks.photos')]: r.photos,
-      })),
-    )
-    onExported(t('features.reports.doneTitle'))
-  }
-
-  if (isPending) return <p className="lbl-mono">{t('common.loading')}</p>
 
   return (
     <div>
-      <PageHeader title={t('features.reports.title')} sub={t('features.reports.sub')} />
+      <PageHeader
+        title={t('features.reports.title')}
+        sub={t('features.reports.sub')}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onExport} disabled={!rows.length}>
+              <Download className="size-4" />
+              {t('features.reports.export')}
+            </Button>
+            <Button onClick={onServerExport} disabled={!selectedSeason || !!jobId}>
+              <FileSpreadsheet className="size-4" />
+              {jobId ? t('features.reports.exportRunning') : t('features.reports.exportServer')}
+            </Button>
+            {jobId && (
+              <Button variant="outline" onClick={() => void refetchJob()}>
+                {t('features.parish.jobRefresh')}
+              </Button>
+            )}
+          </div>
+        }
+      />
 
-      <div className="stagger mb-2 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <div style={{ '--d': 0 } as CSSProperties}>
-          <StatCard label={t('features.reports.purchasesTitle')} value={purchaseRows.length} unit={t('features.reports.recordUnit')} tone="ok" />
+      <Card className="mb-6 grid gap-4 p-5 md:grid-cols-2">
+        <div>
+          <label className="lbl-mono text-xs" htmlFor="report-season">
+            {t('features.donations.season')}
+          </label>
+          <select
+            id="report-season"
+            className={SELECT_CLS}
+            value={selectedSeason}
+            onChange={(e) => setSeasonId(e.target.value)}
+          >
+            {seasons.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </div>
-        <div style={{ '--d': 1 } as CSSProperties}>
-          <StatCard label={t('features.reports.totalCost')} value={totalCost} unit="₫" tone="alert" />
+        <div>
+          <label className="lbl-mono text-xs" htmlFor="report-area">
+            {t('features.allocations.area')}
+          </label>
+          <select id="report-area" className={SELECT_CLS} value={areaId} onChange={(e) => setAreaId(e.target.value)}>
+            <option value="">{t('features.reports.allAreas')}</option>
+            {areas.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
         </div>
-        <div style={{ '--d': 2 } as CSSProperties}>
-          <StatCard label={t('features.reports.totalHours')} value={totalHours} unit={t('features.volunteers.hourUnit')} tone="warn" />
-        </div>
-        <div style={{ '--d': 3 } as CSSProperties}>
-          <StatCard label={t('features.reports.totalMonetary')} value={totalMonetary} unit="₫" tone="ok" />
-        </div>
+      </Card>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {TYPES.map((item) => (
+          <Button
+            key={item}
+            size="sm"
+            variant={item === type ? 'default' : 'outline'}
+            onClick={() => setType(item)}
+          >
+            {t(`features.reports.type.${item}`)}
+          </Button>
+        ))}
       </div>
 
-      <Section
-        title={t('features.reports.purchasesTitle')}
-        count={0}
-        onExport={exportPurchases}
-        index={0}
-      >
-        <Card>
-          <EmptyState
-            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-          />
+      {isPending ? (
+        <p className="lbl-mono">{t('common.loading')}</p>
+      ) : isError ? (
+        <EmptyState text={t('features.reports.error')} />
+      ) : !data ? (
+        <EmptyState text={t('features.reports.empty')} />
+      ) : (
+        <>
+          <Card className="mb-4 p-4 text-xs text-muted-foreground">
+            <p>
+              {t('features.reports.scope')}: <span className="font-semibold">{data.scope}</span> ·{' '}
+              {t('features.reports.generatedAt')}: {viDateTime(data.generatedAt)}
+            </p>
+            {data.notes.length > 0 && (
+              <ul className="mt-2 list-disc pl-5">
+                {data.notes.map((note, index) => (
+                  <li key={index}>{note}</li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <div className="overflow-x-auto rounded-card border border-border bg-card">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/40">
+                <tr>
+                  {data.columns.map((column) => (
+                    <th key={column.key} className="px-3 py-2 text-left font-semibold text-foreground">
+                      {column.label}
+                      {column.unit ? ` (${column.unit})` : ''}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={data.columns.length} className="px-3 py-6 text-center text-muted-foreground">
+                      {t('features.reports.noRows')}
+                    </td>
+                  </tr>
+                ) : (
+                  rows.map((row, index) => (
+                    <tr key={index} className="border-t border-border/60">
+                      {data.columns.map((column) => (
+                        <td key={column.key} className="px-3 py-2 tabular">
+                          {formatValue(row[column.key])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+              {Object.keys(data.totals ?? {}).length > 0 && (
+                <tfoot className="border-t border-border bg-muted/20 font-semibold">
+                  <tr>
+                    {data.columns.map((column, index) => (
+                      <td key={column.key} className="px-3 py-2 tabular">
+                        {index === 0
+                          ? t('features.reports.totals')
+                          : formatValue((data.totals as Record<string, unknown>)[column.key])}
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </>
+      )}
+
+      {recognition && recognition.ranking.length > 0 && (
+        <Card className="mt-6 p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="lbl-mono">{t('features.reports.recognitionRanking')}</p>
+            <span className="tabular text-xs text-muted-foreground">
+              {t('features.reports.recognitionTotals', {
+                points: recognition.totalPoints,
+                contributors: recognition.contributors,
+              })}
+            </span>
+          </div>
+          <ol className="space-y-1.5">
+            {recognition.ranking.slice(0, 10).map((row) => (
+              <li
+                key={row.userId}
+                className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-1.5 text-sm"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="tabular w-6 shrink-0 text-xs font-bold text-brand-gold">
+                    #{row.rank}
+                  </span>
+                  <span className="truncate font-semibold">
+                    {row.displayName ?? row.userId.slice(0, 8)}
+                  </span>
+                </span>
+                <span className="tabular shrink-0 text-xs text-muted-foreground">
+                  {t('features.reports.recognitionRow', {
+                    points: row.totalPoints,
+                    contributions: row.contributions,
+                  })}
+                </span>
+              </li>
+            ))}
+          </ol>
         </Card>
-      </Section>
-
-      <Section
-        title={t('features.reports.donationsTitle')}
-        count={0}
-        onExport={exportDonations}
-        index={1}
-      >
-        <Card>
-          <EmptyState
-            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-          />
-        </Card>
-      </Section>
-
-      <Section
-        title={t('features.reports.hoursTitle')}
-        count={0}
-        onExport={exportHours}
-        index={2}
-      >
-        <Card>
-          <EmptyState
-            text={`${t('features.pendingBackend.title')} — ${t('features.pendingBackend.desc')}`}
-          />
-        </Card>
-      </Section>
-
-      <Section
-        title={t('features.reports.doneTitle')}
-        count={doneRows.length}
-        onExport={exportDone}
-        index={3}
-      >
-        <DataTable
-          rows={doneRows}
-          columns={doneColumns}
-          searchKeys={['title', 'area']}
-          emptyText={t('features.reports.emptyDone')}
-        />
-      </Section>
-
-      <section className="mt-8" style={{ '--d': 4 } as CSSProperties} data-g-item>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-extrabold tracking-tight text-foreground">
-            {t('features.reports.recognitionTitle')}
-          </h2>
-        </div>
-        <RecognitionBoard rows={contributorRows} />
-      </section>
+      )}
     </div>
   )
 }

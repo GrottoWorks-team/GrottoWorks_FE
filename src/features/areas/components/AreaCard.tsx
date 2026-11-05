@@ -2,7 +2,7 @@
 // Login), icon theo type, StatusTag, deadline, season badge, thanh tiến độ moss vươn từ 0 (.g-bar).
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Landmark, TreePine, Lightbulb, Trees, Theater, FileImage, Calendar, Info } from 'lucide-react'
+import { Landmark, TreePine, Lightbulb, Trees, Theater, FileImage, Calendar, Info, Mountain } from 'lucide-react'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { viDate } from '@/lib/format'
@@ -35,7 +35,8 @@ export function AreaCard({
   onOpenDetail?: (area: WorkArea) => void
 }) {
   const { t } = useTranslation()
-  const Icon = AREA_ICONS[area.type]
+  // `type` không có trong WorkAreaDto của BE → dùng icon mặc định.
+  const Icon = (area.type && AREA_ICONS[area.type]) || Mountain
   const style = { '--d': index } as CSSProperties
   const displayName = area.name?.trim() || t('features.areas.areaFallback', { id: area.id.slice(0, 8) })
 
@@ -107,29 +108,6 @@ export function AreaCard({
             </div>
           ) : null}
         </div>
-        <div className="mt-4">
-          <div className="flex items-baseline justify-between">
-            <span className="lbl-mono">{t('features.areas.progress')}</span>
-            <span className="tabular text-sm font-extrabold text-foreground">{area.progress}%</span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={area.progress}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={t('features.areas.progress')}
-            className="mt-1.5 h-2 overflow-hidden rounded-full bg-border"
-          >
-            <div
-              className={cn('g-bar h-full rounded-full bg-brand-pine')}
-              style={{ width: `${area.progress}%`, ...style }}
-            />
-          </div>
-        </div>
-        <p className="tabular mt-4 text-xs font-semibold text-muted-foreground">
-          {area.volunteerCount} {t('features.areas.volunteers')} · {area.taskCount}{' '}
-          {t('features.areas.tasks')}
-        </p>
         <div className="mt-4 flex gap-2">
           {onOpenDetail && (
             <Button

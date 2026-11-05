@@ -41,8 +41,8 @@ export function toSeason(dto: SeasonDto): Season {
     status: dto.status,
     budget: dto.estimatedBudget ?? 0,
     description: opt(dto.description),
-    // BE không lưu cộng đoàn trên mùa; trang Mùa suy ra từ work-areas.
-    communityIds: [],
+    // BE không có cộng đoàn trên mùa (quan hệ nằm ở WorkArea.CommunityId) → không
+    // tạo field `communityIds` giả ở đây (trước đây luôn [] khiến UI chặn sai).
     version: dto.version,
     createdAt: dto.createdAt,
   }
@@ -55,22 +55,16 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
     // BE WorkAreaDto (27ed9c8) bat buoc tra Name — khong con can fallback bia ten.
     name: dto.name,
     description: opt(dto.description),
+    categoryId: opt(dto.categoryId),
     communityId: opt(dto.communityId),
     leaderId: dto.leaderId ?? '',
     officerId: dto.materialOfficerId ?? '',
     startDate: opt(dto.startDate),
     deadline: opt(dto.deadline),
-    categoryId: opt(dto.categoryId),
     status: dto.status,
     version: dto.version,
-    // ponytail: BE chưa trả type/level/progress/volunteerCount/taskCount
-    // (những số này thuộc service Task/Volunteer, chưa gắn). Mặc định để UI
-    // render được; gắn service tương ứng thì bỏ các dòng này.
-    type: 'GROTTO',
-    level: 'PARISH',
-    progress: 0,
-    volunteerCount: 0,
-    taskCount: 0,
+    // KHÔNG map type/level/progress/volunteerCount/taskCount: `WorkAreaDto` của BE
+    // không có (trước đây hardcode 'GROTTO'/0 khiến UI hiện dữ liệu giả).
   }
 }
 

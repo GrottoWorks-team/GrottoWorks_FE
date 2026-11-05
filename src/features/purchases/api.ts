@@ -2,7 +2,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { materialKeys } from '@/features/materials/api'
-import type { Material, PurchaseRecord, PurchaseRequest } from '@/types'
+import type { PurchaseRecord } from '@/types'
 
 export type PurchaseRequestStatusType =
   | 'DRAFT'
@@ -32,6 +32,43 @@ export interface PurchaseRequestItemDto {
   shortageOverrideReason?: string | null
 }
 
+export interface PurchaseItemDto {
+  id: string
+  purchaseRequestItemId: string
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  purchasedQuantity: number
+  unitPrice: MoneyDto
+  totalPrice: MoneyDto
+  receivedUsableQuantity?: number | null
+  receivedUnusableQuantity?: number | null
+}
+
+export type PurchaseStatusType = 'SUBMITTED' | 'NEEDS_INFO' | 'CONFIRMED' | 'CANCELLED'
+
+/** Một lần mua thực tế của buyer (`PurchaseDto`) — kho CHƯA tăng cho tới khi MO xác nhận giao. */
+export interface PurchaseDto {
+  id: string
+  purchaseRequestId: string
+  taskId: string
+  buyerUserId: string
+  supplierName?: string | null
+  purchaseDate: string
+  totalCost: MoneyDto
+  status: PurchaseStatusType
+  costOverrun?: boolean | null
+  costOverrunApprovedBy?: string | null
+  costOverrunApprovedAt?: string | null
+  confirmedBy?: string | null
+  confirmedAt?: string | null
+  receiptFileIds: string[]
+  infoRequestReason?: string | null
+  items: PurchaseItemDto[]
+  version: number
+}
+
 export interface PurchaseRequestDto {
   id: string
   workAreaId: string
@@ -49,6 +86,8 @@ export interface PurchaseRequestDto {
   createdAt: string
   updatedAt?: string | null
   version: number
+  /** Chỉ có khi gọi chi tiết (`GET /purchase-requests/{id}`). */
+  purchases?: PurchaseDto[] | null
 }
 
 export interface StateChangeDto {
@@ -105,8 +144,10 @@ export function usePurchaseRequests(filter?: PurchaseRequestFilterParams) {
     queryKey: purchaseRequestKeys.list(filter),
     queryFn: async () => {
       const sp = new URLSearchParams()
+      // BE mặc định size=20 (QueryReader) — trang danh sách/đếm trạng thái cần
+      // toàn bộ đơn của mùa nên xin tối đa 100 (BE chặn size > 100 bằng 400).
+      sp.set('size', String(filter?.size ?? 100))
       if (filter?.page) sp.set('page', String(filter.page))
-      if (filter?.size) sp.set('size', String(filter.size))
       if (filter?.seasonId) sp.set('seasonId', filter.seasonId)
       if (filter?.workAreaId) sp.set('workAreaId', filter.workAreaId)
       if (filter?.status) sp.set('status', filter.status)
@@ -122,14 +163,9 @@ export function usePurchaseRequests(filter?: PurchaseRequestFilterParams) {
 }
 
 /**
- * Mock query cho các luồng cũ (PurchaseConfirmPage) chưa nối backend contract mới.
+ * Mock query cho các luồng cũ — đã bỏ; PurchaseConfirmPage dùng dữ liệu thật từ
+ * `GET /purchase-requests` + chi tiết (field `purchases`).
  */
-export function useMockPurchaseRequests() {
-  return useQuery({
-    queryKey: ['mockPurchaseRequests'] as const,
-    queryFn: () => api<any[]>('/purchaseRequests'),
-  })
-}
 
 /**
  * F3: GET /api/v1/purchase-requests/{requestId}
@@ -166,10 +202,16 @@ export function usePurchaseRequestHistory(requestId?: string) {
   })
 }
 
+/**
+ * BE không có endpoint liệt kê purchase record rời; dữ liệu mua nằm trong
+ * `GET /purchase-requests/{id}` (field `purchases`). Giữ hook trả rỗng để các
+ * màn hình cũ không gọi path legacy.
+ */
 export function usePurchaseRecords() {
   return useQuery({
     queryKey: purchaseRecordKeys.all,
-    queryFn: () => api<PurchaseRecord[]>('/purchaseRecords'),
+    queryFn: async (): Promise<PurchaseRecord[]> => [],
+    staleTime: Infinity,
   })
 }
 
@@ -237,9 +279,46 @@ export function useApproveRequest() {
   )
 }
 
-export function useMockApproveRequest() {
-  return usePurchaseMutation((id: string) =>
-    api<PurchaseRequest>(`/purchaseRequests/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'APPROVED' }) }),
+/**
+ * F10: POST /api/v1/purchases/{purchaseId}/confirm-delivery (MO) — nhập kho phần usable.
+ */
+export function useConfirmPurchaseDelivery() {
+  return usePurchaseMutation(
+    ({
+      purchaseId,
+      version,
+      items,
+    }: {
+      purchaseId: string
+      version: number
+      items: { purchaseItemId: string; receivedUsableQuantity: number; receivedUnusableQuantity: number }[]
+    }) =>
+      api<{ data: PurchaseDto }>(`/api/v1/purchases/${purchaseId}/confirm-delivery`, {
+        method: 'POST',
+        body: JSON.stringify({ version, items }),
+      }),
+  )
+}
+
+/** MO yêu cầu bổ sung thông tin/hóa đơn của lần mua. */
+export function useRequestPurchaseInfo() {
+  return usePurchaseMutation(
+    ({ purchaseId, version, reason }: { purchaseId: string; version: number; reason: string }) =>
+      api<{ data: PurchaseDto }>(`/api/v1/purchases/${purchaseId}/request-info`, {
+        method: 'POST',
+        body: JSON.stringify({ version, reason }),
+      }),
+  )
+}
+
+/** LEADER duyệt chi phí vượt dự toán trước khi MO xác nhận giao. */
+export function useApproveCostOverrun() {
+  return usePurchaseMutation(
+    ({ purchaseId, version, note }: { purchaseId: string; version: number; note?: string | null }) =>
+      api<{ data: PurchaseDto }>(`/api/v1/purchases/${purchaseId}/approve-cost-overrun`, {
+        method: 'POST',
+        body: JSON.stringify({ version, note: note || null }),
+      }),
   )
 }
 
@@ -254,15 +333,7 @@ export function useRejectRequest() {
   )
 }
 
-export function useMockRejectRequest() {
-  return usePurchaseMutation(({ id, reason }: { id: string; reason: string }) =>
-    api<PurchaseRequest>(`/purchaseRequests/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status: 'REJECTED', rejectReason: reason }),
-    }),
-  )
-}
-
+/** @deprecated BE không có /purchaseRecords; buyer ghi mua qua `POST /purchase-requests/{id}/purchases`. */
 export interface NewPurchaseRecord {
   requestId: string
   materialId: string
@@ -275,26 +346,47 @@ export interface NewPurchaseRecord {
   buyerId: string
 }
 
-export function useCreatePurchaseRecord() {
-  return usePurchaseMutation(async (vars: NewPurchaseRecord) => {
-    const record = await api<PurchaseRecord>('/purchaseRecords', {
-      method: 'POST',
-      body: JSON.stringify(vars),
-    })
-    const m = await api<Material>(`/api/v1/materials/${vars.materialId}`)
-    await api<Material>(`/api/v1/materials/${vars.materialId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ purchased: m.purchased + vars.qty }),
-    })
-    return record
-  })
+/** POST /api/v1/purchase-requests/{requestId}/purchase-tasks (LEADER) — tạo việc đi mua cho TNV. */
+export function useCreatePurchaseTask() {
+  return usePurchaseMutation(
+    async ({
+      requestId,
+      name,
+      description,
+      completionCriteria,
+      priority,
+      estimatedMinutes,
+      startAt,
+      deadline,
+    }: {
+      requestId: string
+      name: string
+      description?: string | null
+      completionCriteria?: string | null
+      priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
+      estimatedMinutes: number
+      startAt?: string | null
+      deadline: string
+    }) =>
+      api<{ data: unknown }>(`/api/v1/purchase-requests/${requestId}/purchase-tasks`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name,
+          description: description || null,
+          completionCriteria: completionCriteria || null,
+          priority,
+          estimatedMinutes,
+          startAt: startAt || null,
+          deadline,
+        }),
+      }),
+  )
 }
 
-export function useConfirmPurchase() {
-  return usePurchaseMutation((recordId: string) =>
-    api<PurchaseRecord>(`/purchaseRecords/${recordId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ confirmed: true }),
-    }),
+/** GET /api/v1/purchases/{purchaseId}/receipts/{fileId}/download-url — mở hoá đơn đã đính kèm. */
+export async function openPurchaseReceipt(purchaseId: string, fileId: string): Promise<void> {
+  const res = await api<{ downloadUrl: string; expiresAt: string }>(
+    `/api/v1/purchases/${purchaseId}/receipts/${fileId}/download-url`,
   )
+  window.open(res.downloadUrl, '_blank', 'noopener,noreferrer')
 }

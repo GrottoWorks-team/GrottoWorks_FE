@@ -13,6 +13,8 @@ import { useCurrentParishId } from '@/features/parish/hooks'
 import { useCreateSeason, useSeason, useUpdateSeason } from '../api'
 import type { Season } from '@/types'
 
+// BE `CreateSeasonRequest`/`SeasonDto` KHÔNG có cộng đoàn của mùa (quan hệ nằm ở
+// WorkArea.CommunityId) → form không hỏi trường này nữa.
 const schema = z
   .object({
     name: z.string().trim().min(1, 'common.required').max(150, 'common.required'),

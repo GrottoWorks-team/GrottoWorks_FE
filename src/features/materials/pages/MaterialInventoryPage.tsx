@@ -2,7 +2,7 @@
 // D2: GET /api/v1/inventory (PARISH, LEADER, MO)
 // D1: POST /api/v1/inventory/opening-stock (Dialog)
 // D3: GET /api/v1/materials/{materialId}/allocation-history (Drawer)
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   AlertCircle,
@@ -24,8 +24,10 @@ import {
   type InventoryBalanceDto,
 } from '../api'
 import { useSeasons } from '@/features/season/api'
+import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas } from '@/features/areas/api'
 import { OpeningStockDialog } from './OpeningStockDialog'
+import { InventoryAdjustDialog } from './InventoryAdjustDialog'
 import { MaterialHistoryDrawer } from './MaterialHistoryDrawer'
 import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
 
@@ -38,15 +40,29 @@ export default function MaterialInventoryPage() {
   const [page, setPage] = useState(1)
   const pageSize = 15
 
-  const [selectedSeason, setSelectedSeason] = useState('')
+  // Bộ lọc mùa: mặc định = mùa đang chọn trên header (đồng bộ với các trang role
+  // khác); dropdown của trang vẫn cho đổi riêng — `''` = tất cả mùa.
+  const { seasonId: headerSeasonId } = useSeasonContext()
+  const [selectedSeason, setSelectedSeason] = useState(headerSeasonId ?? '')
   const [selectedWorkArea, setSelectedWorkArea] = useState('')
   const [selectedMaterial, setSelectedMaterial] = useState('')
   const [onlyShortage, setOnlyShortage] = useState(false)
 
   // Sub-dialog & Drawer state
   const [openingStockOpen, setOpeningStockOpen] = useState(false)
+  const [adjustOpen, setAdjustOpen] = useState(false)
   const [historyTarget, setHistoryTarget] = useState<InventoryBalanceDto | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
+
+  // Đổi mùa ở header → đi theo (và bỏ khu vực đã chọn vì khu thuộc mùa cũ).
+  const headerSeasonRef = useRef(headerSeasonId)
+  useEffect(() => {
+    if (headerSeasonRef.current === headerSeasonId) return
+    headerSeasonRef.current = headerSeasonId
+    setSelectedSeason(headerSeasonId ?? '')
+    setSelectedWorkArea('')
+    setPage(1)
+  }, [headerSeasonId])
 
   // Master data for filters
   const { data: seasons = [] } = useSeasons()
@@ -88,13 +104,23 @@ export default function MaterialInventoryPage() {
         title={t('features.inventory.title')}
         sub={t('features.inventory.sub')}
         actions={
-          <Button
-            onClick={() => setOpeningStockOpen(true)}
-            className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="size-4" />
-            {t('features.inventory.openingStockBtn')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setAdjustOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Filter className="size-4" />
+              {t('features.inventory.adjustBtn')}
+            </Button>
+            <Button
+              onClick={() => setOpeningStockOpen(true)}
+              className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="size-4" />
+              {t('features.inventory.openingStockBtn')}
+            </Button>
+          </div>
         }
       />
 
@@ -333,15 +359,30 @@ export default function MaterialInventoryPage() {
         )}
       </div>
 
-      {/* D1: Dialog Nhập tồn đầu kỳ */}
-      <OpeningStockDialog
-        open={openingStockOpen}
-        onClose={() => {
-          setOpeningStockOpen(false)
-          refetch()
-        }}
-        defaultWorkAreaId={selectedWorkArea}
-      />
+      {/* D1: Dialog Nhập tồn đầu kỳ — chỉ mount khi mở để không gọi areas/materials sớm */}
+      {openingStockOpen && (
+        <OpeningStockDialog
+          open
+          onClose={() => {
+            setOpeningStockOpen(false)
+            refetch()
+          }}
+          defaultWorkAreaId={selectedWorkArea}
+        />
+      )}
+
+      {/* D1b: Dialog điều chỉnh tồn kho (hỏng / mất / thanh lý) */}
+      {adjustOpen && (
+        <InventoryAdjustDialog
+          open
+          onClose={() => {
+            setAdjustOpen(false)
+            refetch()
+          }}
+          defaultWorkAreaId={selectedWorkArea}
+          defaultMaterialId={selectedMaterial}
+        />
+      )}
 
       {/* D3: Drawer Lịch sử giao dịch */}
       <MaterialHistoryDrawer

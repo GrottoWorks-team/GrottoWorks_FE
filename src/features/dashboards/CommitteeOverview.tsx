@@ -1,6 +1,6 @@
 // Tổng quan ban hành giáo (route /community, index route).
-// Dữ liệu THẬT của BE: mùa đang chọn (header) → khu vực của mùa + thống kê độ phủ
-// + cộng đoàn. Không gọi `/api/dashboard/*` (BE chưa có endpoint này).
+// Số liệu tổng hợp: GET /api/v1/dashboards/season (Reporting, read-model theo scope).
+// Danh sách khu/cộng đoàn vẫn lấy từ ParishCoordination để hiện tên + phân công.
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -12,7 +12,7 @@ import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSeasonContext } from '@/features/season/season-context'
-import { useDashboardData } from './api'
+import { useDashboardData, useSeasonDashboard } from './api'
 import type { WorkArea } from '@/types'
 
 export default function CommitteeOverview() {
@@ -22,6 +22,8 @@ export default function CommitteeOverview() {
   const { areas, coverage, communities, userNameById, isPending } = useDashboardData({
     withCommunities: true,
   })
+  const { data: dashboard, isPending: dashboardPending } = useSeasonDashboard(season?.id)
+  const summary = dashboard?.summary
 
   const columns = useMemo(
     () => [
@@ -133,9 +135,44 @@ export default function CommitteeOverview() {
             </Card>
 
             <Card className="p-5">
-              <p className="text-sm text-muted-foreground">
-                {t('features.dashboards.pendingApi')}
-              </p>
+              <p className="lbl-mono mb-3">{t('features.dashboards.summaryTitle')}</p>
+              {dashboardPending || !summary ? (
+                <EmptyState text={t('common.loading')} className="py-6" />
+              ) : (
+                <dl className="space-y-2 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">{t('features.dashboards.taskProgress')}</dt>
+                    <dd className="tabular font-semibold text-foreground">
+                      {summary.tasks.completed}/{summary.tasks.total} ·{' '}
+                      {Math.round(summary.tasks.progressPercent)}%
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">{t('features.dashboards.shortageMaterials')}</dt>
+                    <dd className="tabular font-semibold text-foreground">
+                      {summary.materials.linesWithShortage}/{summary.materials.lines}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">{t('features.dashboards.pendingPurchases')}</dt>
+                    <dd className="tabular font-semibold text-foreground">
+                      {summary.purchases.pendingApproval}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">{t('features.dashboards.readyAreas')}</dt>
+                    <dd className="tabular font-semibold text-foreground">
+                      {summary.readiness.ready}/{summary.workAreas}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <dt className="text-muted-foreground">{t('features.dashboards.approvedHours')}</dt>
+                    <dd className="tabular font-semibold text-foreground">
+                      {summary.volunteers.approvedHours}
+                    </dd>
+                  </div>
+                </dl>
+              )}
             </Card>
           </div>
         </div>

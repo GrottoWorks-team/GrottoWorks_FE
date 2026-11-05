@@ -1,12 +1,14 @@
-// Dashboard dùng dữ liệu THẬT hiện có của BE:
+// Dashboard dùng dữ liệu THẬT của BE:
+//   GET /api/v1/dashboards/season?seasonId=      (PARISH — ban hành giáo)
+//   GET /api/v1/dashboards/work-area?workAreaId= (LEADER của khu)
+//   GET /api/v1/dashboards/materials?seasonId=|workAreaId= (MO)
 //   GET /api/v1/seasons                          (mùa — nguồn của header chọn mùa)
 //   GET /api/v1/seasons/{seasonId}/work-areas     (khu vực của mùa đang chọn)
 //   GET /api/v1/users                             (tên leader/officer; ADMIN → /admin/users)
 //   GET /api/v1/parishes/{parishId}/communities   (cộng đoàn)
 //
-// Các chỉ số còn thiếu endpoint ở BE (vật tư thiếu, đơn mua chờ duyệt, % quyên góp,
-// giờ công tuần, checklist…) — xem BE-gap-requests-activity-flows.md §2 — nên
-// dashboard KHÔNG hiển thị số giả, chỉ hiện phần suy ra được từ dữ liệu thật.
+// Các chỉ số tính từ read-model của Reporting; khi read-model chưa nhận event
+// (task_projection rỗng) BE trả 0 chứ không phải số giả.
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
@@ -14,24 +16,167 @@ import { useAuth } from '@/lib/auth'
 import { useScopedAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
 import { useCommunities } from '@/features/communities/api'
-import type { ActivityLog, WorkArea } from '@/types'
+import type { WorkArea } from '@/types'
 
 export const dashboardKeys = {
   activity: ['activity'] as const,
+  season: (seasonId: string) => ['dashboards', 'season', seasonId] as const,
+  workArea: (workAreaId: string) => ['dashboards', 'work-area', workAreaId] as const,
+  materials: (seasonId?: string, workAreaId?: string) =>
+    ['dashboards', 'materials', seasonId ?? '', workAreaId ?? ''] as const,
 }
 
-// BE chưa có Reporting service → `/api/activity` chưa tồn tại. Để false để không
-// gọi 404 trên MỌI trang (mọi trang đều render NotificationsDropdown).
-const ACTIVITY_API_AVAILABLE = false
+export interface TaskSummaryDto {
+  total: number
+  byStatus: Record<string, number>
+  unassigned: number
+  overdue: number
+  revisionRequired: number
+  completed: number
+  progressPercent: number
+}
 
-// 50 dòng activity mới nhất (GET /api/activity) — bật khi BE có endpoint.
-export function useActivity() {
+export interface MaterialSummaryDto {
+  lines: number
+  linesWithShortage: number
+  pledgedLines: number
+}
+
+export interface PurchaseSummaryDto {
+  pendingApproval: number
+  inProgress: number
+  completed: number
+  rejected: number
+  estimatedApproved: number
+  actualCost: number
+}
+
+export interface DonationSummaryDto {
+  openPledges: number
+  openPledgedMoney: number
+  receivedMoney: number
+  receivedUsableQuantity: number
+  receivedUnusableQuantity: number
+}
+
+export interface VolunteerSummaryDto {
+  assigned: number
+  withApprovedHours: number
+  approvedHours: number
+  participationPercent: number
+}
+
+export interface ReadinessSummaryDto {
+  ready: number
+  needsCorrection: number
+  reopened: number
+  withoutResult: number
+  failedMandatoryItems: number
+}
+
+export interface AreaSummaryDto {
+  workAreas: number
+  workAreasByStatus: Record<string, number>
+  tasks: TaskSummaryDto
+  materials: MaterialSummaryDto
+  purchases: PurchaseSummaryDto
+  donations: DonationSummaryDto
+  volunteers: VolunteerSummaryDto
+  readiness: ReadinessSummaryDto
+  notAvailable: string[]
+}
+
+export interface CommunityProgressDto {
+  communityId?: string | null
+  workAreas: number
+  tasks: number
+  completed: number
+  progressPercent: number
+}
+
+export interface WorkAreaProgressDto {
+  workAreaId: string
+  name: string
+  status: string
+  tasks: number
+  completed: number
+  progressPercent: number
+  readiness?: string | null
+}
+
+export interface SeasonDashboardDto {
+  seasonId: string
+  parishId: string
+  generatedAt: string
+  summary: AreaSummaryDto
+  communities: CommunityProgressDto[]
+  workAreas: WorkAreaProgressDto[]
+}
+
+export interface WorkAreaDashboardDto {
+  workAreaId: string
+  name: string
+  status: string
+  seasonId: string
+  generatedAt: string
+  summary: AreaSummaryDto
+}
+
+export interface MaterialLineDto {
+  workAreaId: string
+  workAreaName: string
+  materialId: string
+  materialCode?: string | null
+  materialName?: string | null
+  unit?: string | null
+  required: number
+  confirmedAvailable: number
+  shortage: number
+  pledged: number
+  donatedUsable: number
+  purchasedUsable: number
+}
+
+export interface MaterialDashboardDto {
+  seasonId: string
+  generatedAt: string
+  workAreaIds: string[]
+  lines: MaterialLineDto[]
+  purchases: PurchaseSummaryDto
+  donations: DonationSummaryDto
+}
+
+export function useSeasonDashboard(seasonId?: string) {
   return useQuery({
-    queryKey: dashboardKeys.activity,
-    enabled: ACTIVITY_API_AVAILABLE,
-    queryFn: () => api<ActivityLog[]>('/activity'),
+    queryKey: dashboardKeys.season(seasonId ?? ''),
+    queryFn: () =>
+      api<SeasonDashboardDto>(`/api/v1/dashboards/season?seasonId=${seasonId}`),
+    enabled: Boolean(seasonId),
   })
 }
+
+export function useWorkAreaDashboard(workAreaId?: string) {
+  return useQuery({
+    queryKey: dashboardKeys.workArea(workAreaId ?? ''),
+    queryFn: () =>
+      api<WorkAreaDashboardDto>(`/api/v1/dashboards/work-area?workAreaId=${workAreaId}`),
+    enabled: Boolean(workAreaId),
+  })
+}
+
+export function useMaterialDashboard(params: { seasonId?: string; workAreaId?: string }) {
+  const { seasonId, workAreaId } = params
+  const qs = workAreaId ? `workAreaId=${workAreaId}` : `seasonId=${seasonId}`
+  return useQuery({
+    queryKey: dashboardKeys.materials(seasonId, workAreaId),
+    queryFn: () => api<MaterialDashboardDto>(`/api/v1/dashboards/materials?${qs}`),
+    enabled: Boolean(seasonId || workAreaId),
+  })
+}
+
+// Activity log đã có API thật ở NotificationAudit (`/api/v1/activity-logs`) và
+// được dùng qua `useActivityLogs` ở trang /parish/activity. Dashboard không gọi
+// endpoint riêng nữa.
 
 export interface AreaCoverage {
   total: number

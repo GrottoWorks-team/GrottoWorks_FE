@@ -65,18 +65,6 @@ export default function TaskListPage() {
             <span className="font-semibold text-foreground hover:text-brand-pine transition-colors">
               {x.title}
             </span>
-            {x.skills && x.skills.length > 0 && (
-              <div className="flex flex-wrap gap-1 pt-0.5">
-                {x.skills.map((s) => (
-                  <span
-                    key={s}
-                    className="inline-flex items-center rounded-full bg-brand-gold/10 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300"
-                  >
-                    {s}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         ),
       },
@@ -95,26 +83,13 @@ export default function TaskListPage() {
         render: (x: Task) => <span className="tabular text-sm font-medium">{viDate(x.dueDate)}</span>,
       },
       {
-        key: 'assignees',
-        header: t('features.tasks.assignees'),
+        // BE không có `assignees` trong TaskDto → chỉ hiển thị số TNV cần.
+        key: 'volunteersNeeded',
+        header: t('features.tasks.volunteersNeeded'),
         align: 'right' as const,
-        render: (x: Task) => {
-          const ratio = Math.min(100, Math.round((x.assignees.length / x.volunteersNeeded) * 100))
-          const isFull = x.assignees.length >= x.volunteersNeeded
-          return (
-            <div className="flex flex-col items-end gap-1">
-              <span className={cn('tabular text-xs font-bold', isFull ? 'text-brand-pine' : 'text-amber-700')}>
-                {x.assignees.length}/{x.volunteersNeeded} TNV
-              </span>
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-border">
-                <div
-                  className={cn('h-full rounded-full transition-all', isFull ? 'bg-brand-pine' : 'bg-brand-warm')}
-                  style={{ width: `${ratio}%` }}
-                />
-              </div>
-            </div>
-          )
-        },
+        render: (x: Task) => (
+          <span className="tabular text-sm font-medium">{x.volunteersNeeded}</span>
+        ),
       },
       { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} scope="task" /> },
       ...(readOnly
@@ -125,18 +100,21 @@ export default function TaskListPage() {
               header: t('common.actions'),
               render: (x: Task) => (
                 <div className="flex justify-end gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t('common.edit')}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setEditing(x)
-                      setFormOpen(true)
-                    }}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
+                  {/* BE chỉ cho sửa task khi còn OPEN (sau POST /ready = 409 TASK_INVALID_STATE). */}
+                  {x.backendStatus === 'OPEN' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('common.edit')}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setEditing(x)
+                        setFormOpen(true)
+                      }}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                  )}
                 </div>
               ),
             },

@@ -1,37 +1,60 @@
-// Phân bổ vật tư domain — query key ['allocations']. available = received −
-// tổng đã phân bổ của vật tư (client tính, validate trước khi POST).
+// Phân bổ vật tư — BE Resource `MaterialAllocation` (API Contract v1.3.2).
+// Một phiếu gắn với Work Area nguồn (+ Task tùy chọn) và nhiều dòng vật tư.
+// Số khả dụng lấy từ `GET /api/v1/inventory` (field `unallocated`), KHÔNG tự
+// cộng trừ ở client — BE kiểm tra lại trong transaction và trả 409 nếu vượt.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
-import type { Allocation, Material } from '@/types'
+import { api, apiPaged } from '@/lib/api'
+import type { Allocation } from '@/types'
 
 export const allocationKeys = { all: ['allocations'] as const }
 
-export function useAllocations() {
+export interface AllocationQuery {
+  page?: number
+  size?: number
+  seasonId?: string
+  workAreaId?: string
+  taskId?: string
+  materialId?: string
+}
+
+export function useAllocations(params?: AllocationQuery, enabled = true) {
   return useQuery({
-    queryKey: allocationKeys.all,
-    queryFn: () => api<Allocation[]>('/allocations'),
+    queryKey: [...allocationKeys.all, params ?? {}],
+    queryFn: async () => {
+      const q = new URLSearchParams({ size: String(params?.size ?? 100) })
+      if (params?.page) q.set('page', String(params.page))
+      if (params?.seasonId) q.set('seasonId', params.seasonId)
+      if (params?.workAreaId) q.set('workAreaId', params.workAreaId)
+      if (params?.taskId) q.set('taskId', params.taskId)
+      if (params?.materialId) q.set('materialId', params.materialId)
+      const res = await apiPaged<Allocation>(`/api/v1/material-allocations?${q.toString()}`)
+      return res.data
+    },
+    enabled,
   })
 }
 
-// Map materialId → số còn khả dụng để phân bổ.
-export function availableMap(
-  materials: Material[],
-  allocations: Allocation[],
-): Record<string, number> {
-  const allocated: Record<string, number> = {}
-  for (const a of allocations) allocated[a.materialId] = (allocated[a.materialId] ?? 0) + a.qty
-  return Object.fromEntries(
-    materials.map((m) => [m.id, Math.max(0, m.received - (allocated[m.id] ?? 0))]),
-  )
+export interface CreateAllocationInput {
+  workAreaId: string
+  taskId?: string
+  items: { materialId: string; quantity: number }[]
+  allocationDate?: string
+  note?: string
 }
 
-// byUserId optional (pattern createdBy của useCreatePurchaseRequest): mock
-// POST persist nguyên body — thiếu key thì ActivityLog suy actor 'u1'.
+/** POST /api/v1/material-allocations — 409 MATERIAL_INSUFFICIENT_AVAILABLE khi vượt `unallocated`. */
 export function useCreateAllocation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: Omit<Allocation, 'id' | 'byUserId'> & { byUserId?: string }) =>
-      api<Allocation>('/allocations', { method: 'POST', body: JSON.stringify(data) }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: allocationKeys.all }),
+    mutationFn: (input: CreateAllocationInput) =>
+      api<Allocation>('/api/v1/material-allocations', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: allocationKeys.all })
+      // Cấp phát làm giảm `unallocated` → làm mới tồn kho.
+      void qc.invalidateQueries({ queryKey: ['materials'] })
+    },
   })
 }

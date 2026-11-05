@@ -20,15 +20,6 @@ vi.mock('@/features/tasks/api', () => ({
   }),
 }))
 
-const createRegistrationMock = vi.fn().mockResolvedValue({ id: 'r1' })
-
-vi.mock('./api', () => ({
-  useCreateRegistration: () => ({
-    mutateAsync: createRegistrationMock,
-    isPending: false,
-  }),
-}))
-
 function renderPage() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -50,7 +41,7 @@ test('gửi mà thiếu thông tin → báo lỗi trường bắt buộc', async
   expect(screen.getByText('Vui lòng chọn giáo khu')).toBeDefined()
 })
 
-test('điền đủ thông tin → gửi thành công, hiện xác nhận', async () => {
+test('điền đủ thông tin → báo chức năng đang chờ BE, không hiện xác nhận giả', async () => {
   const user = userEvent.setup()
   renderPage()
 
@@ -63,9 +54,12 @@ test('điền đủ thông tin → gửi thành công, hiện xác nhận', asyn
 
   await user.click(screen.getByRole('button', { name: 'Gửi đăng ký' }))
 
-  await waitFor(() => expect(screen.getByText('Đã gửi đăng ký!')).toBeDefined())
-  expect(
-    screen.getByText('Cảm ơn bạn. Ban điều hành giáo xứ sẽ liên hệ trong thời gian sớm nhất.'),
-  ).toBeDefined()
-  expect(createRegistrationMock).toHaveBeenCalled()
+  await waitFor(() =>
+    expect(
+      screen.getByText(
+        'Chức năng đăng ký đồng hành đang chờ BE bổ sung API — vui lòng liên hệ ban hành giáo.',
+      ),
+    ).toBeDefined(),
+  )
+  expect(screen.queryByText('Đã gửi đăng ký!')).toBeNull()
 })

@@ -1,6 +1,7 @@
 // Tổng quan trưởng nhóm vật tư (route /material-officer, index route).
 // Dữ liệu THẬT: khu vực mình phụ trách vật tư trong mùa đang chọn + độ phủ
-// leader/hạn. Số liệu vật tư / đơn mua / quyên góp chưa có endpoint (BE-gap §2).
+// leader/hạn; số liệu vật tư/mua sắm/quyên góp lấy từ
+// GET /api/v1/dashboards/materials (Reporting, scope = khu mình phụ trách).
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -11,7 +12,7 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useDashboardData } from './api'
+import { useDashboardData, useMaterialDashboard } from './api'
 import type { WorkArea } from '@/types'
 
 const SELECT_CLS =
@@ -25,6 +26,9 @@ export default function OfficerOverview() {
 
   const requestedAreaId = searchParams.get('area')
   const area = areas.find((a) => a.id === requestedAreaId) ?? areas[0] ?? null
+  const { data: materialDashboard, isPending: materialPending } = useMaterialDashboard({
+    workAreaId: area?.id,
+  })
 
   const selectArea = (areaId: string) => {
     setSearchParams(
@@ -135,7 +139,44 @@ export default function OfficerOverview() {
           </Card>
 
           <Card className="p-5">
-            <p className="text-sm text-muted-foreground">{t('features.dashboards.pendingApi')}</p>
+            <p className="lbl-mono mb-3">{t('features.dashboards.materialsSummary')}</p>
+            {materialPending || !materialDashboard ? (
+              <EmptyState text={t('common.loading')} className="py-6" />
+            ) : (
+              <dl className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.shortageItems')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {materialDashboard.lines.filter((line) => line.shortage > 0).length}/
+                    {materialDashboard.lines.length}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.pendingPurchases')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {materialDashboard.purchases.pendingApproval}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.purchasesInProgress')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {materialDashboard.purchases.inProgress}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.openPledges')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {materialDashboard.donations.openPledges}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-muted-foreground">{t('features.dashboards.receivedMoney')}</dt>
+                  <dd className="tabular font-semibold text-foreground">
+                    {materialDashboard.donations.receivedMoney.toLocaleString('vi-VN')}
+                  </dd>
+                </div>
+              </dl>
+            )}
           </Card>
         </div>
       )}

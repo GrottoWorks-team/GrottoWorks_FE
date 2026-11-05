@@ -14,8 +14,7 @@ import { useAuth } from '@/lib/auth'
 import { api } from '@/lib/api'
 import { roleHomePath } from '@/lib/roles'
 import { SeasonProvider, SeasonSelect } from '@/features/season/season-context'
-import { useNotificationFeed } from '@/features/notifications/api'
-import { useSeenIds } from '@/features/notifications/seen'
+import { useUnreadNotificationCount } from '@/features/notifications/api'
 import { NAV } from './nav-config'
 import { NotificationsDropdown } from './NotificationsDropdown'
 import { Avatar } from '@/components/ui/avatar'
@@ -50,8 +49,8 @@ export function AppShell({ role }: { role?: Role }) {
   // Badge điều hướng:
   // - purchases: endpoint THẬT (chỉ PARISH/LEADER/MO đọc được → ADMIN không bật,
   //   tránh 403 mọi trang).
-  // - support: BE chưa có endpoint `/support-requests` → không gọi mạng (xem
-  //   BE-gap-requests-activity-flows.md), badge luôn 0.
+  // - support: chưa nối badge (có thể đếm bằng `GET /support-requests?status=OPEN&size=1`
+  //   lấy page.totalItems) → hiện giữ 0.
   const canReadPurchases =
     r === 'COMMUNITY' || r === 'LEADER' || r === 'MATERIAL_OFFICER'
   const { data: pendingPurchases = [] } = useQuery({
@@ -61,11 +60,9 @@ export function AppShell({ role }: { role?: Role }) {
       api<{ id: string }[]>('/api/v1/purchase-requests?status=PENDING_APPROVAL&size=50'),
   })
 
-  // Badge "Thông báo" = số mục chưa đọc của feed (dùng chung store 'đã đọc'
-  // với chuông nên bấm "Đọc tất cả" là badge về 0).
-  const { items: feedItems } = useNotificationFeed()
-  const seenIds = useSeenIds()
-  const unreadCount = feedItems.filter((i) => !seenIds.includes(i.id)).length
+  // Badge "Thông báo" = số thông báo chưa đọc theo server (NotificationAudit);
+  // bấm "Đọc tất cả" ở chuông là badge về 0 sau khi query invalidate.
+  const { data: unreadCount = 0 } = useUnreadNotificationCount()
 
   const badgeCount = (kind?: 'support' | 'purchases' | 'notifications') =>
     kind === 'purchases'

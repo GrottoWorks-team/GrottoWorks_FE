@@ -16,7 +16,6 @@ const mockSeasons = [
     status: 'ACTIVE' as const,
     budget: 100_000_000,
     description: 'Mùa 2026',
-    communityIds: ['c1', 'c2', 'c3'],
   },
   {
     id: 's-planned',
@@ -28,7 +27,6 @@ const mockSeasons = [
     status: 'PLANNING' as const,
     budget: 80_000_000,
     description: 'Mùa dự kiến 2027',
-    communityIds: ['c1'],
   },
 ]
 
@@ -84,13 +82,13 @@ function setup() {
 }
 
 describe('SeasonListPage (Flow 4 + Flow 6)', () => {
-  it('hiển thị danh sách mùa kèm cột Cộng đoàn và Mô tả', async () => {
+  it('hiển thị danh sách mùa kèm cột Mô tả và cột Cộng đoàn (suy ra từ khu vực)', async () => {
     setup()
     const elements2026 = await screen.findAllByText(/2026/)
     expect(elements2026.length).toBeGreaterThan(0)
-    expect(screen.getByText('Cộng đoàn')).toBeDefined()
     expect(screen.getByText('Mô tả')).toBeDefined()
-    expect(await screen.findAllByText(/3 Cộng đoàn/)).toBeDefined()
+    // BE không lưu cộng đoàn trên mùa, cột này suy ra từ khu vực của mùa.
+    expect(screen.getByText('Cộng đoàn')).toBeDefined()
   })
 
   it('mùa PLANNED có nút Kích hoạt (Rocket); bấm Kích hoạt mở dialog kiểm tra điều kiện', async () => {

@@ -26,7 +26,12 @@ export interface User {
   id: string; name: string; email: string; role: Role; communityId?: string;
   /** Giáo xứ của user — BE dùng để chặn truy cập chéo giáo xứ (403). */
   parishId?: string;
-  locked?: boolean; skills: string[]; points: number; avatarHue: number;
+  locked?: boolean;
+  /** Tên kỹ năng để hiển thị (dịch từ `skillIds` qua danh mục /api/v1/skills). */
+  skills: string[];
+  /** GUID kỹ năng — dùng khi gửi PUT /users/me/skills (BE nhận `skillIds`). */
+  skillIds?: string[];
+  points: number; avatarHue: number;
   /** Role gốc BE trả từ Identity service, ví dụ 'VOLUNTEER'. */
   rawRole?: string;
 }
@@ -41,8 +46,6 @@ export interface Season {
   status: SeasonStatus
   budget: number
   description?: string
-  /** BE không lưu cộng đoàn trên mùa — suy ra từ WorkArea.CommunityId. */
-  communityIds?: string[]
   /** Dùng cho If-Match khi PATCH/activate/complete — BE chặn ghi đè bằng 412. */
   version?: number
   createdAt?: string
@@ -53,17 +56,23 @@ export type AreaType = 'GROTTO' | 'TREE' | 'LIGHTING' | 'YARD' | 'STAGE'
 export interface WorkArea {
   id: string
   name: string
-  type: AreaType
-  level: 'PARISH' | 'COMMUNITY'
+  /**
+   * `type` / `level` / `progress` / `volunteerCount` / `taskCount` KHÔNG có trong
+   * `WorkAreaDto` của BE (thuộc service Task/Volunteer chưa gắn) → optional, UI
+   * phải hiển thị "—" thay vì bịa giá trị.
+   */
+  type?: AreaType
+  level?: 'PARISH' | 'COMMUNITY'
+  /** Hạng mục khu vực (`work-area-categories`) — BE trả `categoryId`. */
+  categoryId?: string
   communityId?: string
   leaderId: string
   officerId: string
-  progress: number
-  volunteerCount: number
-  taskCount: number
+  progress?: number
+  volunteerCount?: number
+  taskCount?: number
   status: WorkAreaStatus
   seasonId?: string
-  categoryId?: string
   startDate?: string
   deadline?: string
   description?: string
@@ -90,12 +99,22 @@ export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface Task {
   id: string; areaId: string; title: string; description: string; skills: string[];
+  /** Kỹ năng yêu cầu dạng GUID (`TaskDto.skills` của TaskExecution) — hiển thị qua danh mục `/api/v1/skills`. */
+  skillIds?: string[];
+  /** Nhu cầu vật tư chi tiết (`TaskDto.materials`) — dùng để prefill dialog gán vật tư. */
+  materialRequirements?: Array<{ materialId: string; requiredQuantity: number; note?: string | null }>;
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
   status: 'TODO' | 'READY' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
+  /** Ngày bắt đầu dự kiến (`TaskDto.startAt`) — việc chuyển IN_PROGRESS khi leader duyệt check-in. */
+  startAt?: string | null;
+  /**
+   * Trạng thái gốc của TaskExecution (OPEN | NOT_STARTED | IN_PROGRESS | …).
+   * Cần để biết có gọi được POST /tasks/{id}/ready (chỉ OPEN → NOT_STARTED) hay không.
+   */
+  backendStatus?: 'OPEN' | 'NOT_STARTED' | 'IN_PROGRESS' | 'SUBMITTED' | 'REVISION_REQUIRED' | 'COMPLETED' | 'CANCELLED';
   submittedPhotos: number; submittedNotes?: string;
   /** Ưu tiên từ TaskExecution (LOW|MEDIUM|HIGH|CRITICAL) — BE trả sẵn trong TaskDto. */
   priority?: TaskPriority;
-  startAt?: string;
   version?: number;
 }
 
@@ -129,21 +148,124 @@ export interface PurchaseRecord {
   supplier: string; date: string; receiptPhoto?: string; confirmed: boolean; buyerId: string;
 }
 
+/** Một dòng vật tư của đơn quyên góp (`DonationItemDto`). */
+export interface DonationItem {
+  id: string; materialId: string; materialCode: string; materialName: string; unit: string;
+  pledgedQuantity: number; receivedQuantity: number; unusableQuantity: number; usableQuantity: number;
+  /** Trạng thái suy ra của dòng (BE: PLEDGED | PARTIALLY_RECEIVED | RECEIVED | OVER_RECEIVED). */
+  status: string; note?: string;
+}
+
+/** Đơn quyên góp (`DonationDto`, API Contract v1.3.2). */
 export interface Donation {
-  id: string; materialId?: string; monetary?: number; donorName: string;
-  status: 'PLEDGED' | 'RECEIVED_FULL' | 'RECEIVED_PARTIAL' | 'UNUSABLE' | 'CANCELED';
-  promisedQty?: number; receivedQty?: number; note?: string;
+  id: string; donorId: string; donorName: string; seasonId: string; workAreaId?: string;
+  type: 'MONEY' | 'MATERIAL';
+  status: 'PLEDGED' | 'PARTIALLY_RECEIVED' | 'RECEIVED' | 'CANCELLED';
+  pledgedAmount?: number; receivedAmount?: number;
+  donationDate: string; items: DonationItem[]; note?: string; cancelReason?: string;
+  version: number;
 }
 
+/** Người quyên góp (`DonorDto`). */
+export interface Donor {
+  id: string; donorName: string; phone?: string; email?: string; address?: string; note?: string;
+}
+
+export type BorrowedItemStatus = 'OFFERED' | 'ACCEPTED' | 'REJECTED' | 'ISSUED' | 'IN_USE' | 'RETURNED'
+export type ReturnCondition = 'GOOD' | 'DAMAGED' | 'LOST'
+
+export interface BorrowTransaction {
+  id: string
+  borrowDate: string
+  returnDate?: string
+  condition?: ReturnCondition
+  quantity?: number
+  kind: 'ISSUE' | 'RETURN' | 'INCIDENT' | string
+  recordedBy?: string
+  note?: string
+}
+
+/** Đồ mượn / chào cho mượn (`BorrowedItemDto`). */
 export interface BorrowedItem {
-  id: string; name: string; owner: string; expectedReturn: string;
-  returnedCondition?: 'GOOD' | 'DAMAGED' | 'LOST'; areaId: string;
+  id: string
+  seasonId: string
+  workAreaId?: string
+  taskId?: string
+  offeredBy: string
+  acceptedBy?: string
+  ownerName: string
+  ownerPhone?: string
+  ownerAddress?: string
+  ownerNote?: string
+  itemName: string
+  quantity: number
+  description?: string
+  initialCondition?: string
+  expectedReturnDate: string
+  status: BorrowedItemStatus
+  overdue: boolean
+  rejectionReason?: string
+  acceptedAt?: string
+  createdAt: string
+  transactions: BorrowTransaction[]
+  version: number
 }
 
-/** Phân bổ vật tư đã nhận cho nhiệm vụ/khu (đích: task hoặc khu khác). */
+/** Một dòng vật tư của phiếu cấp phát (`MaterialAllocationItemDto`). */
+export interface AllocationItem {
+  materialId: string; materialCode: string; materialName: string; unit: string;
+  /** Số lượng đã cấp — BE giữ nguyên lịch sử, không sửa ngược. */
+  allocatedQuantity: number;
+}
+
+/** Phiếu cấp phát từ kho của một Work Area (`MaterialAllocationDto`). */
 export interface Allocation {
-  id: string; materialId: string; targetTaskId?: string; targetAreaId?: string;
-  qty: number; date: string; byUserId: string;
+  id: string; workAreaId: string; workAreaName: string;
+  taskId?: string; taskName?: string;
+  allocatedBy: string; allocationDate: string; note?: string;
+  items: AllocationItem[];
+}
+
+export type AttendanceRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type AttendanceCorrectionStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+/** Đơn xin check-in của TNV (`AttendanceRequestDto`). */
+export interface AttendanceRequest {
+  id: string
+  assignmentId: string
+  type: string
+  requestedAt: string
+  status: AttendanceRequestStatus
+  note?: string
+  attendanceId?: string
+  reviewedBy?: string
+  reviewNote?: string
+  reviewedAt?: string
+  version: number
+}
+
+/** Đơn xin sửa giờ sau khi phiên công đã đóng (`AttendanceCorrectionDto`). */
+export interface AttendanceCorrection {
+  id: string
+  attendanceId: string
+  requestedBy: string
+  reviewedBy?: string
+  originalCheckInAt: string
+  originalCheckOutAt?: string
+  requestedCheckInAt: string
+  requestedCheckOutAt: string
+  reason: string
+  status: AttendanceCorrectionStatus
+  reviewNote?: string
+  createdAt: string
+  reviewedAt?: string
+  version: number
+}
+
+export interface WorkingHourSummary {
+  volunteerId: string
+  approvedMinutes: number
+  approvedHours: number
 }
 
 export interface Timesheet {
@@ -151,34 +273,143 @@ export interface Timesheet {
   hours: number; correctionRequest?: string; status: 'OPEN' | 'CLOSED' | 'PENDING_FIX';
 }
 
-/** Mức đáp ứng nhân lực: 0 người → OPEN; < cần → PARTIAL; ≥ cần → FULFILLED. */
-export type SupportFulfill = 'OPEN' | 'PARTIAL' | 'FULFILLED';
+export type SupportType = 'STAFFING' | 'MATERIAL' | 'MIXED'
+export type SupportStatus =
+  | 'PLANNING' | 'PUBLISHED' | 'PARTIALLY_FULFILLED' | 'FULFILLED' | 'CLOSED' | 'CANCELLED'
 
+export interface SupportPositionSkill {
+  skillId: string
+  requiredSkillLevel?: string
+}
+
+export interface SupportPosition {
+  id: string
+  name: string
+  requiredVolunteerCount: number
+  note?: string
+  skills: SupportPositionSkill[]
+}
+
+export interface SupportMaterial {
+  id: string
+  materialId: string
+  requiredQuantity: number
+  note?: string
+}
+
+/** Yêu cầu hỗ trợ chéo cộng đoàn (`SupportRequestDto`). */
 export interface SupportRequest {
-  id: string; areaId: string; kind: 'PEOPLE' | 'SKILL' | 'MATERIAL';
-  detail: string; status: 'OPEN' | 'COORDINATED' | 'RESOLVED'; assigneeId?: string;
-  /** Cộng đoàn của khu cần hỗ trợ — TNV cộng đoàn KHÁC thấy để đăng ký. */
-  communityId?: string;
-  /** Số TNV cần huy động (0 với kind MATERIAL). */
-  volunteersNeeded?: number;
-  /** Kỹ năng cần có (kind SKILL) — lọc TNV phù hợp. */
-  skills?: string[];
-  /** Thời gian hỗ trợ dự kiến (label tự do). */
-  supportTime?: string;
-  /** Khu nhiệm vụ đích để gán TNV được duyệt (thường trùng areaId). */
-  taskAreaId?: string;
-  /** Mức đáp ứng theo số người đã xác nhận. */
-  fulfill?: SupportFulfill;
+  id: string
+  seasonId: string
+  workAreaId: string
+  requestedBy: string
+  supportType: SupportType
+  description?: string
+  deadline?: string
+  status: SupportStatus
+  createdAt: string
+  updatedAt?: string
+  version: number
+  positions: SupportPosition[]
+  materials: SupportMaterial[]
+  responses?: SupportResponse[]
 }
 
-/** Đơn TNV (cộng đoàn khác) đăng ký tham gia yêu cầu hỗ trợ. */
-export interface SupportReg {
-  id: string; requestId: string; volunteerId: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  note?: string; rejectReason?: string; at?: string;
+export interface SupportResponseMember {
+  id: string
+  positionId: string
+  volunteerId: string
+  status: string
+  assignmentId?: string | null
+  version: number
+  reviewedBy?: string | null
+  reviewedAt?: string | null
+  reason?: string | null
 }
 
-export interface ChecklistItem { id: string; areaId: string; label: string; done: boolean; note?: string }
+export interface SupportResponseMaterial {
+  id: string
+  requestMaterialId: string
+  sourceWorkAreaId: string
+  materialId: string
+  offeredQuantity: number
+  approvedQuantity?: number | null
+  receivedUsableQuantity?: number | null
+  receivedUnusableQuantity?: number | null
+  status: string
+  version: number
+  note?: string | null
+  reviewReason?: string | null
+}
+
+export interface SupportResponse {
+  id: string
+  requestId: string
+  volunteerId?: string | null
+  respondingCommunityId?: string | null
+  status: string
+  responseQuantity: number
+  note?: string | null
+  createdAt: string
+  version: number
+  members: SupportResponseMember[]
+  materials: SupportResponseMaterial[]
+}
+
+export type ReadinessCheckStatus =
+  | 'PLANNING' | 'IN_REVIEW' | 'NEEDS_CORRECTION' | 'READY' | 'REOPENED'
+export type ReadinessItemStatus =
+  | 'PENDING' | 'PASSED' | 'FAILED' | 'CORRECTIVE_ACTION' | 'RECHECK'
+
+export interface ReadinessItem {
+  id: string
+  name: string
+  description?: string
+  mandatory: boolean
+  status: ReadinessItemStatus
+  correctiveTaskId?: string
+  checkedBy?: string
+  checkedAt?: string
+  note?: string
+  evidenceFileIds: string[]
+  /** Version của cả phiếu sau thay đổi — dùng cho If-Match lần tiếp theo. */
+  checkVersion: number
+}
+
+export interface ReadinessCheck {
+  id: string
+  workAreaId: string
+  workAreaName: string
+  seasonId: string
+  name: string
+  status: ReadinessCheckStatus
+  reopenReason?: string
+  completedBy?: string
+  completedAt?: string
+  items: ReadinessItem[]
+  version: number
+}
+
+export interface WorkAreaReadiness {
+  workAreaId: string
+  workAreaName: string
+  workAreaStatus: string
+  readinessCheckId?: string
+  checklistStatus?: ReadinessCheckStatus
+  totalItems: number
+  mandatoryItems: number
+  passedItems: number
+  failedItems: number
+  pendingItems: number
+  ready: boolean
+}
+
+export interface SeasonReadiness {
+  seasonId: string
+  workAreas: number
+  readyWorkAreas: number
+  areas: WorkAreaReadiness[]
+}
 
 export interface ActivityLog { id: string; at: string; actor: string; action: string; target: string }
 
