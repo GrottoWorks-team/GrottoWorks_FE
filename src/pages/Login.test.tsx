@@ -64,7 +64,9 @@ test('đăng nhập bằng form → vào shell với nav Trưởng khu', async (
   const user = userEvent.setup()
   render(<App />)
   await user.type(await screen.findByLabelText(/Email/i), 'leader.demo@grottoworks.local')
-  await user.type(screen.getByLabelText(/^Mật khẩu/i), 'ChangeMe!123456')
+  // api() bị mock nên mật khẩu ở đây chỉ cần đúng định dạng, không phải
+  // mật khẩu thật — mật khẩu thật nằm trong .env.local, không vào git.
+  await user.type(screen.getByLabelText(/^Mật khẩu/i), 'test-password-123')
   await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
   expect(await screen.findByText('Giuse Trần Văn Bình', {}, { timeout: 10_000 })).toBeDefined()
   // LEADER không có mục "Khu vực công tác"; nav của họ bắt đầu bằng Nhiệm vụ.
