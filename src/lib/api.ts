@@ -22,7 +22,7 @@ let isRefreshing = false
 //   - Không có              → gọi tương đối để Vite proxy / vite preview chuyển
 //     tiếp tới VITE_API_TARGET (localhost, docker, ...).
 // Biến VITE_* là công khai phía client nên tuyệt đối không đặt secret ở đây.
-const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').trim().replace(/\/+$/, '')
 
 /** Ghép đường dẫn API với gateway. Rỗng → giữ nguyên đường dẫn tương đối. */
 export function apiUrl(path: string): string {
