@@ -39,6 +39,7 @@
   "login.submit": "Sign in",
   "login.loggingIn": "Signing in…",
   "login.demoAccounts": "Demo accounts — password: {{password}}",
+  "login.demoAccountsNoPassword": "Demo accounts — password goes in .env.local",
   "login.invalid": "Wrong email or password",
   "login.subtitle": "Running the nativity grotto & Christmas scenery",
   "error.notFoundTitle": "Page not found",

@@ -39,6 +39,7 @@
   "login.submit": "Đăng nhập",
   "login.loggingIn": "Đang đăng nhập…",
   "login.demoAccounts": "Tài khoản demo — mật khẩu: {{password}}",
+  "login.demoAccountsNoPassword": "Tài khoản demo — nhập mật khẩu trong .env.local",
   "login.invalid": "Email hoặc mật khẩu không đúng",
   "login.subtitle": "Điều hành hang đá & cảnh tuyển Giáng sinh",
   "error.notFoundTitle": "Không tìm thấy trang",

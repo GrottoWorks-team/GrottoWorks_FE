@@ -5,7 +5,7 @@
 // field nhập tay.
 // Bổ sung C1..C6: Resource Catalog (categories + materials) nối BE thật.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '@/lib/api'
+import { api, apiUrl } from '@/lib/api'
 import type { Material } from '@/types'
 
 export interface MaterialCategoryDto {
@@ -443,7 +443,9 @@ export function useMaterialCatalog(params?: {
         const token = localStorage.getItem('grotto-token')
         const headers: Record<string, string> = { 'Content-Type': 'application/json' }
         if (token) headers['Authorization'] = `Bearer ${token}`
-        const res = await fetch(`/api/v1/materials${qs}`, { headers })
+        // Dùng apiUrl() thay vì fetch tương đối: khi FE trỏ VPS thì đường dẫn
+        // tương đối sẽ gọi nhầm vào chính dev server thay vì Gateway.
+        const res = await fetch(apiUrl(`/api/v1/materials${qs}`), { headers })
         if (!res.ok) throw new Error('Không thể tải danh sách vật tư')
         return res.json() as Promise<PagedResult<MaterialCatalogItemDto>>
     },

@@ -52,10 +52,12 @@ const DEMO: DemoRoleConfig[] = [
   { role: 'VOLUNTEER', email: 'volunteer.demo@grottoworks.local', icon: HeartHandshake, color: 'text-emerald-700' },
 ]
 
-// Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md` (BE yêu cầu ≥ 8 ký tự,
-// có ít nhất 1 chữ và 1 số nên `grotto` không hợp lệ). Đổi bằng biến môi trường
-// VITE_DEMO_PASSWORD nếu seed ở máy bạn dùng mật khẩu khác.
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'ChangeMe!123456'
+// Mật khẩu của các tài khoản demo/test. Đặt trong `.env.local` (đã gitignore)
+// qua VITE_DEMO_PASSWORD — KHÔNG ghim mật khẩu vào mã nguồn, vì file này đẩy
+// lên GitHub. Thiếu biến thì nút điền nhanh chỉ điền email và ẩn phần mật khẩu
+// khỏi nhãn; người dùng tự nhập mật khẩu.
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? ''
+const HAS_DEMO_PASSWORD = DEMO_PASSWORD.length > 0
 
 export default function Login() {
   const { t } = useTranslation()
@@ -82,7 +84,7 @@ export default function Login() {
 
   const fillDemo = (email: string) => {
     setValue('email', email)
-    setValue('password', DEMO_PASSWORD)
+    if (HAS_DEMO_PASSWORD) setValue('password', DEMO_PASSWORD)
     setServerError('')
     setActiveDemo(email)
     if (timerRef.current) clearTimeout(timerRef.current)
@@ -118,7 +120,9 @@ export default function Login() {
           <div className="flex items-center justify-between mb-2">
             <span className="lbl-mono flex items-center gap-1.5 font-bold text-slate-600">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
-              {t('login.demoAccounts', { password: DEMO_PASSWORD })}
+              {HAS_DEMO_PASSWORD
+                ? t('login.demoAccounts', { password: DEMO_PASSWORD })
+                : t('login.demoAccountsNoPassword')}
             </span>
             <span className="text-[10px] text-slate-500 font-medium">Bấm để tự điền</span>
           </div>

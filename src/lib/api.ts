@@ -15,6 +15,25 @@ export class ApiError extends Error {
 
 let isRefreshing = false
 
+// Địa chỉ Gateway BE. Hai chế độ:
+//   - Có VITE_API_BASE_URL  → gọi thẳng VPS (https://...), cần CORS bên BE cho
+//     đúng origin; KHÔNG dùng proxy của Vite nên chạy `npm run dev` hay build
+//     tĩnh đều như nhau.
+//   - Không có              → gọi tương đối để Vite proxy / vite preview chuyển
+//     tiếp tới VITE_API_TARGET (localhost, docker, ...).
+// Biến VITE_* là công khai phía client nên tuyệt đối không đặt secret ở đây.
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/+$/, '')
+
+/** Ghép đường dẫn API với gateway. Rỗng → giữ nguyên đường dẫn tương đối. */
+export function apiUrl(path: string): string {
+  const fullPath = path.startsWith('/api/')
+    ? path
+    : path === '/api'
+      ? '/api'
+      : `/api/v1${path.startsWith('/') ? path : '/' + path}`
+  return API_BASE ? API_BASE + fullPath : location.origin + fullPath
+}
+
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem('grotto-token')
   const headers = new Headers(init?.headers)
@@ -23,12 +42,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const fullPath = path.startsWith('/api/')
-    ? path
-    : path === '/api'
-      ? '/api'
-      : `/api/v1${path.startsWith('/') ? path : '/' + path}`
-  const url = location.origin + fullPath
+  const url = apiUrl(path)
 
   const res = await fetch(url, { ...init, headers })
 
@@ -38,7 +52,7 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
       if (refreshToken && !path.includes('/auth/refresh') && !path.includes('/auth/login') && !isRefreshing) {
         isRefreshing = true
         try {
-          const refreshRes = await fetch(location.origin + '/api/v1/auth/refresh', {
+          const refreshRes = await fetch(apiUrl('/api/v1/auth/refresh'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken }),
