@@ -37,75 +37,7 @@ import {
   useReopenReadinessCheck,
   useReplaceReadinessItems,
 } from '../api'
-import type { ChecklistStatus, ItemStatus, ReadinessCheckDto, ReadinessItemDto } from '@/types'
-
-// Demo initial checklist if backend has no data yet
-const DEMO_CHECKLIST: ReadinessCheckDto = {
-  id: 'check-1',
-  workAreaId: 'area-1',
-  workAreaName: 'Hang đá Bê-lem',
-  seasonId: 'season-2026',
-  name: 'Kiểm tra an toàn kết cấu & Điều kiện sẵn sàng phân khu Bê-lem',
-  status: 'InReview',
-  reopenReason: null,
-  completedBy: null,
-  completedAt: null,
-  version: 1,
-  items: [
-    {
-      id: 'item-101',
-      name: 'Kiểm tra kết cấu chịu lực giàn giáo & khung vòm hang đá',
-      description: 'Chân đế giàn giáo vững chãi, bu lông và khớp nối siết đủ lực, không cong võng',
-      mandatory: true,
-      status: 'Passed',
-      correctiveTaskId: null,
-      checkedBy: 'Trưởng khu Bê-lem',
-      checkedAt: '2026-11-10T08:30:00Z',
-      note: 'Đã siết toàn bộ 24 khoá cùm giàn giáo, kiểm tra độ nghiêng đạt chuẩn 0°',
-      evidenceFileIds: ['file-evidence-101'],
-      checkVersion: 1,
-    },
-    {
-      id: 'item-102',
-      name: 'Hệ thống điện nguồn & tủ ngắt CB chống rò rỉ an toàn',
-      description: 'Dây dẫn bọc ruột gà cách điện, tủ điện có nắp đậy chống nước, CB chống giật 30mA',
-      mandatory: true,
-      status: 'Failed',
-      correctiveTaskId: 'task-corr-102',
-      checkedBy: 'Trưởng khu Bê-lem',
-      checkedAt: '2026-11-10T09:15:00Z',
-      note: 'Phát hiện đoạn dây cấp điện đèn led vòm bị trầy vỏ bảo vệ gần máng nước',
-      evidenceFileIds: ['file-evidence-102'],
-      checkVersion: 1,
-    },
-    {
-      id: 'item-103',
-      name: 'Bình chữa cháy CO2 và bảng nội quy an toàn hiện trường',
-      description: 'Bố trí 02 bình bột ABC/CO2 còn hạn kiểm định, biển cảnh báo vị trí dễ quan sát',
-      mandatory: true,
-      status: 'Recheck',
-      correctiveTaskId: null,
-      checkedBy: null,
-      checkedAt: null,
-      note: 'Đã thay mới 02 bình CO2 theo yêu cầu, chờ kiểm tra lại',
-      evidenceFileIds: [],
-      checkVersion: 1,
-    },
-    {
-      id: 'item-104',
-      name: 'Hệ thống chiếu sáng cảnh quan và đèn rọi ngôi sao Bê-lem',
-      description: 'Kiểm tra thẩm mỹ chiếu sáng đêm, độ rọi đồng đều không chói mắt khách viếng',
-      mandatory: false,
-      status: 'Pending',
-      correctiveTaskId: null,
-      checkedBy: null,
-      checkedAt: null,
-      note: null,
-      evidenceFileIds: [],
-      checkVersion: 1,
-    },
-  ],
-}
+import type { ChecklistStatus, ItemStatus, ReadinessItemDto } from '@/types'
 
 function getStatusBadge(status: ChecklistStatus) {
   const norm = String(status).toUpperCase()
@@ -153,8 +85,7 @@ export default function ReadinessPage() {
   const params = useParams<{ id?: string; checkId?: string }>()
   const activeCheckId = params.checkId || params.id || 'check-1'
 
-  const { data: serverData, isLoading } = useReadinessCheck(activeCheckId)
-  const checklist = serverData && serverData.items && serverData.items.length > 0 ? serverData : DEMO_CHECKLIST
+  const { data: checklist, isLoading } = useReadinessCheck(activeCheckId)
 
   // Mutations
   const recordResultMut = useRecordReadinessResult()
@@ -181,17 +112,18 @@ export default function ReadinessPage() {
   const [newItemDesc, setNewItemDesc] = useState('')
   const [newItemMandatory, setNewItemMandatory] = useState(true)
 
-  const items = checklist.items || []
+  const items = checklist?.items || []
   const totalItems = items.length
   const mandatoryItems = items.filter((i) => i.mandatory).length
   const passedItems = items.filter((i) => String(i.status).toUpperCase() === 'PASSED').length
   const failedItems = items.filter((i) => String(i.status).toUpperCase() === 'FAILED').length
   const pendingItems = items.filter((i) => String(i.status).toUpperCase() === 'PENDING').length
 
-  const isReady = String(checklist.status).toUpperCase() === 'READY'
+  const isReady = checklist ? String(checklist.status).toUpperCase() === 'READY' : false
 
   // Action: Mark Pass
   const handleMarkPass = async (item: ReadinessItemDto) => {
+    if (!checklist) return
     try {
       await recordResultMut.mutateAsync({
         checkId: checklist.id,
@@ -211,7 +143,7 @@ export default function ReadinessPage() {
 
   // Action: Mark Fail (Submit from dialog)
   const handleSubmitFail = async () => {
-    if (!selectedItem) return
+    if (!checklist || !selectedItem) return
     try {
       await recordResultMut.mutateAsync({
         checkId: checklist.id,
@@ -234,6 +166,7 @@ export default function ReadinessPage() {
 
   // Action: Recheck Item
   const handleRecheck = async (item: ReadinessItemDto) => {
+    if (!checklist) return
     try {
       await recheckMut.mutateAsync({
         checkId: checklist.id,
@@ -253,7 +186,7 @@ export default function ReadinessPage() {
 
   // Action: Link Corrective Task
   const handleLinkTask = async () => {
-    if (!selectedItem || !correctiveTaskId.trim()) return
+    if (!checklist || !selectedItem || !correctiveTaskId.trim()) return
     try {
       await linkTaskMut.mutateAsync({
         checkId: checklist.id,
@@ -272,7 +205,7 @@ export default function ReadinessPage() {
 
   // Action: Attach Evidence
   const handleAttachEvidence = async () => {
-    if (!selectedItem || !newFileId.trim()) return
+    if (!checklist || !selectedItem || !newFileId.trim()) return
     try {
       await attachEvidenceMut.mutateAsync({
         checkId: checklist.id,
@@ -290,6 +223,7 @@ export default function ReadinessPage() {
 
   // Action: Download Evidence URL
   const handleDownloadEvidence = async (itemId: string, fileId: string) => {
+    if (!checklist) return
     try {
       const res = await getReadinessEvidenceDownloadUrl(checklist.id, itemId, fileId)
       if (res?.downloadUrl) {
@@ -304,6 +238,7 @@ export default function ReadinessPage() {
 
   // Action: Confirm Readiness
   const handleConfirmReadiness = async () => {
+    if (!checklist) return
     try {
       await confirmMut.mutateAsync({
         checkId: checklist.id,
@@ -318,7 +253,7 @@ export default function ReadinessPage() {
 
   // Action: Reopen Checklist
   const handleReopenChecklist = async () => {
-    if (!reopenReason.trim()) return
+    if (!checklist || !reopenReason.trim()) return
     try {
       await reopenMut.mutateAsync({
         checkId: checklist.id,
@@ -335,7 +270,7 @@ export default function ReadinessPage() {
 
   // Action: Add Item (Replace Items API)
   const handleAddItem = async () => {
-    if (!newItemName.trim()) return
+    if (!checklist || !newItemName.trim()) return
     try {
       const newItems = [
         ...items.map((i) => ({
@@ -368,6 +303,28 @@ export default function ReadinessPage() {
       <div className="space-y-6">
         <PageHeader title={t('features.readiness.title')} sub={t('common.loading')} />
         <Card className="p-8 text-center text-muted-foreground">{t('common.loading')}</Card>
+      </div>
+    )
+  }
+
+  if (!checklist) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="size-8 p-0"
+            aria-label={t('common.back')}
+          >
+            <ArrowLeft className="size-4" />
+          </Button>
+          <PageHeader title={t('features.readiness.title')} sub={t('features.readiness.sub')} />
+        </div>
+        <Card className="p-8">
+          <EmptyState text={t('features.readiness.empty')} />
+        </Card>
       </div>
     )
   }
