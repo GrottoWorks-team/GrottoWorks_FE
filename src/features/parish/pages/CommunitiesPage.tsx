@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Pencil,
   Plus,
@@ -23,7 +23,6 @@ import {
   Check,
   ShieldCheck,
   Map as MapIcon,
-  UserPlus,
   ListChecks,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -41,8 +40,7 @@ import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { useAreas, useSeasons, useUsers } from '@/features/areas/api'
-import { AreaFormDialog, SELECT_CLS } from '@/features/areas/pages/AreaFormDialog'
-import { AreaAssignDialog } from '@/features/areas/pages/AreaAssignDialog'
+import { SELECT_CLS } from '@/features/areas/pages/AreaFormDialog'
 import {
   useCommunities,
   useCreateCommunity,
@@ -506,10 +504,12 @@ function CommunitiesPanel({ parishId, canEdit }: { parishId: string; canEdit: bo
   )
 }
 
-// Tab Khu vực công tác — bảng khu vực của giáo xứ (trước đây là /parish/areas).
+// Tab Khu vực công tác — CHỈ XEM với admin (11/11/2026): việc tạo/sửa và phân
+// công trưởng khu, trưởng nhóm vật tư thuộc Ban hành giáo (role FE `COMMUNITY`,
+// trang /community/areas). Admin dùng tab này để theo dõi toàn bộ giáo xứ.
 const areaLabel = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
 
-function AreasPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean }) {
+function AreasPanel({ parishId }: { parishId: string }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { data: seasons = [], isPending: seasonsPending } = useSeasons()
@@ -530,19 +530,12 @@ function AreasPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean 
   )
   const { data: areas = [], isPending: areasPending } = useAreas(seasonIds)
 
-  const [formOpen, setFormOpen] = useState(false)
-  const [editing, setEditing] = useState<WorkArea | null>(null)
-  const [assigning, setAssigning] = useState<WorkArea | null>(null)
-
   const seasonMap = useMemo(() => new Map(parishSeasons.map((s) => [s.id, s])), [parishSeasons])
   const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
   const communityNameById = useMemo(
     () => new Map(communities.map((c) => [c.id, c.name])),
     [communities],
   )
-
-  // Khu vực mới mặc định thuộc mùa đang lọc (hoặc mùa mới nhất của giáo xứ).
-  const defaultSeasonId = selectedSeason !== 'all' ? selectedSeason : parishSeasons[0]?.id
 
   const columns = useMemo(
     () => [
@@ -616,38 +609,11 @@ function AreasPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean 
             >
               <ListChecks className="size-4" />
             </Button>
-            {canEdit && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('features.areas.assign')}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setAssigning(a)
-                  }}
-                >
-                  <UserPlus className="size-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('common.edit')}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setEditing(a)
-                    setFormOpen(true)
-                  }}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-              </>
-            )}
           </div>
         ),
       },
     ],
-    [t, seasonMap, userNameById, communityNameById, navigate, canEdit],
+    [t, seasonMap, userNameById, communityNameById, navigate],
   )
 
   const isPending = seasonsPending || areasPending
@@ -677,31 +643,11 @@ function AreasPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean 
             {t('common.total', { n: areas.length })}
           </span>
         </div>
-        {canEdit && (
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-            disabled={parishSeasons.length === 0}
-            title={
-              parishSeasons.length === 0 ? t('features.parish.noSeasonHint') : undefined
-            }
-          >
-            <Plus className="size-4 mr-1.5" />
-            {t('features.areas.create')}
-          </Button>
-        )}
       </div>
 
-      {canEdit && parishSeasons.length === 0 && (
-        <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          {t('features.parish.noSeasonHint')}{' '}
-          <Link to="/parish/seasons" className="font-semibold text-primary hover:underline">
-            {t('nav.parish.seasons')}
-          </Link>
-        </p>
-      )}
+      <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        {t('features.parish.areasReadOnly')}
+      </p>
 
       {isPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
@@ -713,18 +659,6 @@ function AreasPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean 
           emptyText={t('features.parish.emptyAreas')}
           onRowClick={(a) => navigate(`/parish/areas/${a.id}/tasks`)}
         />
-      )}
-
-      {formOpen && (
-        <AreaFormDialog
-          area={editing}
-          defaultSeasonId={defaultSeasonId}
-          parishId={parishId}
-          onClose={() => setFormOpen(false)}
-        />
-      )}
-      {assigning && (
-        <AreaAssignDialog area={assigning} parishId={parishId} onClose={() => setAssigning(null)} />
       )}
     </div>
   )
@@ -837,7 +771,7 @@ export default function CommunitiesPage() {
           <CommunitiesPanel parishId={parishId} canEdit={canEdit} />
         ) : null
       ) : parishId ? (
-        <AreasPanel parishId={parishId} canEdit={canEdit} />
+        <AreasPanel parishId={parishId} />
       ) : null}
 
       {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}

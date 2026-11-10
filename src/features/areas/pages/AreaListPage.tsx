@@ -1,5 +1,7 @@
-// Trang khu vực công tác (COMMITTEE/PARISH): filter mùa, grid AreaCard + DataTable (toggle),
+// Trang khu vực công tác (COMMITTEE): filter mùa, grid AreaCard + DataTable (toggle),
 // tạo/sửa qua AreaFormDialog (prefill mùa), phân công qua AreaAssignDialog.
+// 11/11/2026: quyền tạo/điều chỉnh/phân công thuộc **Ban hành giáo (COMMUNITY)**;
+// ADMIN (FE `PARISH`) chỉ xem (bảng khu vực nằm trong hub “Giáo xứ & cộng đoàn”).
 // BE chưa có DELETE /work-areas → không có nút xoá.
 // Click card/row → /community/areas/:id/tasks hoặc /parish/areas/:id/tasks (TaskListPage).
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -33,9 +35,9 @@ export default function AreaListPage() {
   // PARISH (quản trị) vẫn xem/duyệt bản thiết kế.
   const { user } = useAuth()
   const canViewDesign = user?.role !== 'COMMUNITY'
-  // Từ 10/11/2026: admin (role FE `PARISH`) là người tạo/sửa/phân công khu vực và
-  // quản sơ đồ giáo xứ; ban hành giáo chỉ xem (quyền thật phải do BE chốt).
-  const canEdit = user?.role === 'PARISH'
+  // Từ 11/11/2026: Ban hành giáo (role FE `COMMUNITY`, BE `PARISH`) là người tạo/sửa/
+  // phân công khu vực (trưởng khu + trưởng nhóm vật tư); ADMIN (FE `PARISH`) chỉ xem.
+  const canEdit = user?.role === 'COMMUNITY'
 
   // Mùa lấy từ header (SeasonProvider). URL vẫn là nguồn sự thật: dropdown của
   // trang và khung chọn mùa trên header cùng ghi `?season=`.
@@ -263,7 +265,7 @@ export default function AreaListPage() {
 
       {!canEdit && (
         <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-          {t('features.areas.adminOnlyHint')}
+          {t('features.areas.parishOnlyHint')}
         </p>
       )}
 

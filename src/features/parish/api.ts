@@ -363,12 +363,16 @@ export const workAreaCategoryKeys = {
   list: (status?: string) => ['workAreaCategories', { status }] as const,
 }
 
-/** GET /api/v1/work-area-categories — Lấy danh sách danh mục khu vực thi công (B4) */
+/**
+ * GET /api/v1/work-area-categories — Lấy danh sách danh mục khu vực thi công (B4).
+ * `status` lọc theo enum BE (`WorkAreaCategoryStatus.Active|Inactive`) — gửi đúng
+ * casing của enum, nếu gửi "ACTIVE" thì binder trả 400 (phát hiện 11/11/2026).
+ */
 export function useWorkAreaCategories(status?: 'ACTIVE' | 'INACTIVE') {
   return useQuery({
     queryKey: workAreaCategoryKeys.list(status),
     queryFn: () => {
-      const qs = status ? `?status=${status}` : ''
+      const qs = status ? `?status=${status === 'ACTIVE' ? 'Active' : 'Inactive'}` : ''
       return api<WorkAreaCategoryDto[]>(`/api/v1/work-area-categories${qs}`)
     },
   })

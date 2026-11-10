@@ -157,20 +157,24 @@ thông báo, UI hiện lỗi thay vì im lặng.
 
 ### S10 — Khu vực theo mùa
 **API:** `GET /api/v1/seasons/{id}/work-areas?size=100`, `GET /api/v1/work-areas/{id}`.
-**Bước:** `/parish/areas` (và `/community/areas`) → đổi select mùa → mở chi tiết 1 khu.
+**Bước:** `/parish/communities?tab=areas` (hub admin, chỉ đọc — lọc theo giáo xứ `?parish=` + `?season=`) và
+`/community/areas` (ban hành giáo) → đổi select mùa → mở chi tiết 1 khu.
 **Mong đợi:** chỉ còn khu của mùa đang chọn, URL có `?season=`; số request = số mùa được chọn (không fan-out
 thừa); card/bảng hiện đúng trạng thái + trưởng khu + trưởng nhóm vật tư. Khu chưa có tên hiện
 `Khu vực #<8 ký tự id>` (BE không trả `name` — không phải lỗi FE).
 
-### S11 — Tạo / sửa khu vực
+### S11 — Tạo / sửa khu vực (ban hành giáo)
 **API:** `POST /api/v1/seasons/{id}/work-areas`, `PATCH /api/v1/work-areas/{id}` (`If-Match`).
-**Bước:** `/parish/areas` → "Thêm khu vực" (mùa đang chọn, tên, mô tả, ngày bắt đầu/hạn) → Lưu; sau đó Sửa tên.
+**Role:** chỉ **COMMUNITY** (BE `PARISH`); admin không có nút tạo/sửa (hub chỉ đọc).
+**Bước:** `/community/areas` → "Tạo khu vực" (mùa đang chọn, tên, mô tả, ngày bắt đầu/hạn) → Lưu; sau đó Sửa tên.
 **Mong đợi:** 201/200, khu xuất hiện trong danh sách của đúng mùa; sửa bằng version cũ → 412.
+**Lưu ý:** mùa đang ACTIVE → BE trả 409 "Mùa đã kích hoạt — không thể thêm khu vực mới" (đúng nghiệp vụ).
 **Không thuộc kịch bản:** nút **Xoá khu vực** — BE chưa có `DELETE /work-areas/{id}` (§4 – L4).
 
 ### S12 — Phân công khu vực (cộng đoàn / trưởng khu / trưởng nhóm vật tư)
 **API:** tuần tự `PATCH /api/v1/work-areas/{id}` → `PUT …/community` → `PUT …/leader` → `PUT …/material-officer`.
-**Bước:** `/parish/areas` → khu vực → "Phân công" → chọn cộng đoàn + trưởng khu + trưởng nhóm vật tư → Lưu.
+**Role:** chỉ **COMMUNITY** (ban hành giáo); admin chỉ xem ở hub.
+**Bước:** `/community/areas` → khu vực → "Phân công" → chọn cộng đoàn + trưởng khu + trưởng nhóm vật tư → Lưu.
 **Mong đợi:** cả 3 PUT trả 200; tên người được gán hiện đúng trên card/bảng. Một khu vẫn chỉ có 1 leader +
 1 MO (BR-06), nhưng cùng một người có thể lãnh nhiều khu (dòng "Bạn đang phụ trách N khu vực" ở dashboard).
 
@@ -182,8 +186,8 @@ thừa); card/bảng hiện đúng trạng thái + trưởng khu + trưởng nh�
 
 ### S14 — Thông tin giáo xứ + tạo giáo xứ
 **API:** `GET /api/v1/parishes?size=100`, `GET/PATCH /api/v1/parishes/{id}`, `POST /api/v1/parishes`.
-**Bước:** `/parish/communities` → khối Giáo xứ → sửa tên/địa chỉ/điện thoại → Lưu; nếu là ADMIN cấp hệ thống →
-tạo giáo xứ mới.
+**Bước:** `/parish/communities` → tab Giáo xứ → sửa tên/địa chỉ/điện thoại → Lưu; nếu là ADMIN cấp hệ thống →
+chọn giáo xứ ở ô "Chọn giáo xứ đang xem" (`?parish=`) và tạo giáo xứ mới.
 **Mong đợi:** PARISH chỉ thấy giáo xứ của mình, ADMIN thấy danh sách; PATCH 200 với `If-Match` (thiếu/lệch → 400/412);
 POST giáo xứ 201 và dữ liệu mới xuất hiện sau khi refresh.
 

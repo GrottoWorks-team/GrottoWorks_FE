@@ -498,32 +498,36 @@ export function AreaFormDialog({
           {err(errors.description?.message)}
         </div>
 
-        {/* Ghim vị trí trên sơ đồ — tuỳ chọn, cùng một lần lưu với khu vực. */}
-        <div className="space-y-2">
-          <Label>{t('features.map.pinSection')}</Label>
-          {mapImageUrl ? (
-            <>
-              <MapPinPicker src={mapImageUrl} pin={pin} onPick={pickPin} />
-              <div className="flex items-start gap-2">
-                <p className="flex-1 text-[11px] text-muted-foreground">
-                  {pin ? t('features.map.pinPicked') : t('features.map.pinHint')}
-                </p>
-                {pin && (
-                  <Button type="button" size="sm" variant="outline" onClick={clearPin}>
-                    {t('features.map.clearPosition')}
-                  </Button>
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">
-              {t('features.map.pinNoMap')}{' '}
-              <a href={mapHref} className="font-semibold text-primary hover:underline">
-                {t('features.map.pinNoMapAction')}
-              </a>
-            </p>
-          )}
-        </div>
+        {/* Ghim vị trí trên sơ đồ — tuỳ chọn, cùng một lần lưu với khu vực.
+            CHỈ admin (chủ sơ đồ) thấy: 11/11/2026 khu vực do Ban hành giáo tạo, còn
+            ảnh mặt bằng + ghim vị trí thuộc ADMIN (xem `ParishMapPage`). */}
+        {user?.role === 'PARISH' && (
+          <div className="space-y-2">
+            <Label>{t('features.map.pinSection')}</Label>
+            {mapImageUrl ? (
+              <>
+                <MapPinPicker src={mapImageUrl} pin={pin} onPick={pickPin} />
+                <div className="flex items-start gap-2">
+                  <p className="flex-1 text-[11px] text-muted-foreground">
+                    {pin ? t('features.map.pinPicked') : t('features.map.pinHint')}
+                  </p>
+                  {pin && (
+                    <Button type="button" size="sm" variant="outline" onClick={clearPin}>
+                      {t('features.map.clearPosition')}
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                {t('features.map.pinNoMap')}{' '}
+                <a href={mapHref} className="font-semibold text-primary hover:underline">
+                  {t('features.map.pinNoMapAction')}
+                </a>
+              </p>
+            )}
+          </div>
+        )}
       </form>
     </Dialog>
   )

@@ -3,8 +3,12 @@
 Ngày: 03/11/2026 · Phạm vi: `ParishCoordination` (BE) + `GrottoWorks_FE`
 Cập nhật: 09/11/2026 — chốt **form-first** cho khu vực, khung ảnh sơ đồ cố định,
 và phân vai system ADMIN / ban hành giáo.
-Cập nhật: **11/11/2026** — chốt **chỉ ADMIN ghi sơ đồ + quản khu vực** (ban hành giáo
-chỉ đọc) và **ghim nằm trong form tạo/sửa khu vực** (pin tuỳ chọn). Xem §2.4–§2.5.
+Cập nhật: **11/11/2026** — chốt **chỉ ADMIN ghi sơ đồ** (ban hành giáo chỉ đọc)
+và **ghim nằm trong form tạo/sửa khu vực** (pin tuỳ chọn). Xem §2.4–§2.5.
+Cập nhật lần 2: **11/11/2026** — **đảo lại quyền khu vực**: ADMIN **chỉ xem** khu
+vực công tác; việc tạo/sửa và phân công trưởng khu / trưởng nhóm vật tư thuộc
+**ban hành giáo (PARISH)**. Sơ đồ (ảnh + ghim) vẫn của ADMIN và được thao tác ở
+trang con `Bản đồ giáo xứ`; ghim không còn nằm trong form của ban hành giáo.
 
 Mục tiêu: (A) tạo lại mùa Giáng sinh mới giữ nguyên/tuỳ chỉnh khu vực, (B) admin
 thêm bản đồ giáo xứ — khuôn viên nhà thờ. Tài liệu ghi **cách làm** và **các lỗi
@@ -284,15 +288,17 @@ Validation (1 lượt, `422` kèm `errors`):
   MAP_FRAME_CONFLICT`. BE tự tăng `map_frame_version` khi ảnh/crop đổi — client
   không được đặt số version.
 
-Quyền (chốt 11/11/2026): sơ đồ thuộc **một giáo xứ** và **chỉ ADMIN** được tải/thay
-ảnh, ghim, xoá sơ đồ — đúng với việc ADMIN cũng là người tạo/sửa/phân công khu
-vực. Mapping role ở [lib/auth.tsx](../../src/lib/auth.tsx): BE `ADMIN` → FE `PARISH`
-(là role được thao tác); BE `PARISH` (ban hành giáo) → FE `COMMUNITY` chỉ **xem**.
-ADMIN có `parishId = null` nên phải chọn giáo xứ trước khi quản lý sơ đồ.
+Quyền (chốt lại 11/11/2026): sơ đồ thuộc **một giáo xứ** và **chỉ ADMIN** được
+tải/thay ảnh, ghim, xoá sơ đồ. **Khu vực công tác thì ngược lại**: ban hành giáo
+(BE `PARISH` → FE `COMMUNITY`) tạo/sửa/phân công; ADMIN chỉ xem (tab “Khu vực
+công tác” trong hub `Giáo xứ & cộng đoàn`). Mapping role ở
+[lib/auth.tsx](../../src/lib/auth.tsx): BE `ADMIN` → FE `PARISH`; BE `PARISH`
+(ban hành giáo) → FE `COMMUNITY`.
 
-> Trạng thái code 11/11: UI đã chặn theo đúng chốt này (`ParishMapPage.canEdit`,
-> `AreaListPage.canEdit`), nhưng BE chưa có endpoint và chưa siết policy khu vực —
-> xem `GrottoWorks_BE/docs/BE-TODO-demo-2026-11-10.md` §1–§2.
+> Trạng thái code 12/11: `ParishMapPage.canEdit = role === 'PARISH'` (ảnh + ghim);
+> `AreaListPage.canEdit = role === 'COMMUNITY'` (tạo/sửa/phân công); hub admin
+> `AreasPanel` chỉ đọc. BE chưa có endpoint map và **chưa siết policy khu vực**
+> (vẫn cho `Admin` ghi) — xem `GrottoWorks_BE/docs/BE-TODO-demo-2026-11-10.md` §1–§2.
 
 ### 2.5. Luồng FE (không quá 3 request cho 1 lần lưu ảnh)
 
