@@ -31,6 +31,7 @@ const schema = z
       .trim()
       .min(1, 'features.parish.emailRequired')
       .email('features.parish.emailInvalid'),
+    phone: z.string().optional(),
     role: z.string().min(1),
     communityId: z.string(),
     password: z.string().optional(),
@@ -75,12 +76,13 @@ export function AccountFormDialog({
       ? {
           name: account.name,
           email: account.email,
+          phone: (account as any).phone ?? '',
           role: account.role,
           communityId: account.communityId ?? '',
           password: '',
           skills: account.skills,
         }
-      : { name: '', email: '', role: 'LEADER', communityId: '', password: '', skills: [] },
+      : { name: '', email: '', phone: '', role: 'LEADER', communityId: '', password: '', skills: [] },
   })
 
   const onSubmit = async (data: FormData) => {
@@ -90,6 +92,7 @@ export function AccountFormDialog({
           id: account.id,
           displayName: data.name,
           email: data.email,
+          phone: data.phone?.trim() || null,
         })
         if (data.role !== account.role) {
           await assignRole.mutateAsync({
@@ -145,6 +148,10 @@ export function AccountFormDialog({
           <Label htmlFor="account-email">{t('features.parish.email')}</Label>
           <Input id="account-email" type="email" {...register('email')} />
           {err(errors.email?.message)}
+        </div>
+        <div>
+          <Label htmlFor="account-phone">{t('features.accounts.phone')}</Label>
+          <Input id="account-phone" type="tel" {...register('phone')} />
         </div>
         {!editing && (
           <div>
