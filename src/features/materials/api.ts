@@ -1,5 +1,5 @@
-// Materials domain — query key ['materials']. Lọc theo khu ở client
-// (select) — mock trả nguyên mảng, không cần endpoint theo khu.
+// Materials domain — query key ['materials']. BE trả danh mục phẳng;
+// lọc theo khu ở client (select).
 // POST/PATCH materials: handler tự tính lại received + status
 // (received = existing + purchased + donatedReceived) — client chỉ gửi
 // field nhập tay.

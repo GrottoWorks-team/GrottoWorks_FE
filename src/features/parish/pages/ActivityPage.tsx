@@ -13,7 +13,7 @@ import { useUsers } from '@/features/users/api'
 import { Avatar } from '@/components/ui/avatar'
 import { viDate, viDateTime } from '@/lib/format'
 
-// ISO datetime → "dd/MM/yyyy HH:mm" (local display, mock layer bỏ Z).
+// ISO datetime → "dd/MM/yyyy HH:mm" (giờ máy người dùng).
 function stamp(at: string): string {
   const d = new Date(at)
   if (Number.isNaN(d.getTime())) return at
