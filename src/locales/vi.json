@@ -1487,6 +1487,8 @@
   "priority.MEDIUM": "Trung bình",
   "priority.HIGH": "Cao",
   "priority.CRITICAL": "Khẩn",
+  "shell.collapseSidebar": "Thu gọn thanh bên",
+  "shell.expandSidebar": "Mở rộng thanh bên",
   "shell.roleNote.PARISH": "Quản trị hệ thống: tạo mùa Giáng sinh, quản lý giáo xứ, khu vực, tài khoản và cấu hình dùng chung.",
   "shell.roleNote.COMMUNITY": "Điều phối cả giáo xứ trong mùa: nắm tiến độ từng khu, duyệt yêu cầu mua và tổng kết sau mùa.",
   "shell.roleNote.LEADER": "Phụ trách khu được giao: lập công việc, phân công tình nguyện viên, chấm công và chốt kết quả khu.",

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +7,7 @@ import {
   LogOut, LayoutDashboard, Calendar, MapPin, Users, ShoppingCart, LifeBuoy,
   ListChecks, FileText, ClipboardList, ClipboardCheck, UserPlus, Inbox, Clock,
   Package, Gift, Backpack, Boxes, UserCog, Church, Tags, Star, History, Database,
-  MapPinned, Info, Bell,
+  MapPinned, Info, Bell, PanelLeft, PanelLeftClose,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
@@ -33,6 +33,8 @@ const ICONS: Record<string, LucideIcon> = {
   assign: UserPlus, confirm: ClipboardCheck, map: MapPinned, bell: Bell,
 }
 
+const COLLAPSE_KEY = 'grotto-sidebar-collapsed'
+
 export function AppShell({ role }: { role?: Role }) {
   const { user, logout } = useAuth()
   const { t } = useTranslation()
@@ -42,6 +44,20 @@ export function AppShell({ role }: { role?: Role }) {
   const groups = NAV[r]
   // Dashboard là mục duy nhất dùng khớp CHÍNH XÁC; các mục còn lại so prefix.
   const homePath = roleHomePath(r)
+
+  const [collapsed, setCollapsed] = useState(() => {
+    const saved = localStorage.getItem(COLLAPSE_KEY)
+    if (saved !== null) return saved === '1'
+    return typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(max-width: 1280px)').matches
+      : false
+  })
+
+  const toggle = () =>
+    setCollapsed((v) => {
+      localStorage.setItem(COLLAPSE_KEY, v ? '0' : '1')
+      return !v
+    })
 
   // Khung chọn mùa chỉ đặt ở 3 role vận hành theo mùa; PARISH quản lý mùa ở
   // trang "Mùa Giáng sinh" nên không cần.
@@ -89,23 +105,39 @@ export function AppShell({ role }: { role?: Role }) {
   return (
     <SeasonProvider scoped={showSeasonPicker}>
       <div className="flex h-screen overflow-hidden">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
-        <div className="flex items-center gap-3 border-b border-border px-5 py-5">
+      <aside
+        className={cn(
+          'flex shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200 ease-out',
+          collapsed ? 'w-[72px]' : 'w-64',
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center border-b border-border py-5',
+            collapsed ? 'justify-center px-2' : 'gap-3 px-5',
+          )}
+        >
           <div className="grid size-11 shrink-0 place-items-center rounded-card bg-primary text-lg font-extrabold text-primary-foreground">
             G
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-base font-extrabold leading-tight tracking-tight text-foreground">
-              {t('app.name')}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">{t('app.parish')}</p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-base font-extrabold leading-tight tracking-tight text-foreground">
+                {t('app.name')}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{t('app.parish')}</p>
+            </div>
+          )}
         </div>
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        <nav className={cn('flex-1 space-y-5 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
           {groups.map((g) => (
             <div key={g.section || 'main'}>
               {g.section && (
-                <p className="lbl-mono !mb-1.5 !px-3">{t(g.section)}</p>
+                collapsed ? (
+                  <div className="my-2 h-px bg-border" />
+                ) : (
+                  <p className="lbl-mono !mb-1.5 !px-3">{t(g.section)}</p>
+                )
               )}
               <div className="space-y-1">
                 {g.items.map((item) => {
@@ -116,10 +148,13 @@ export function AppShell({ role }: { role?: Role }) {
                       key={item.to}
                       to={item.to}
                       end={item.to === homePath}
+                      title={t(item.label)}
+                      aria-label={n > 0 ? `${t(item.label)} (${n})` : t(item.label)}
                       style={{ '--d': delayOf(item.to) } as CSSProperties}
                       className={({ isActive }) =>
                         cn(
-                          'g-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold transition-colors',
+                          'g-item flex items-center rounded-md text-sm font-semibold transition-colors',
+                          collapsed ? 'justify-center px-0 py-2.5' : 'gap-2.5 px-3 py-2',
                           isActive
                             ? 'bg-primary text-primary-foreground shadow-card'
                             : 'text-muted-foreground hover:bg-background hover:text-foreground',
@@ -127,8 +162,8 @@ export function AppShell({ role }: { role?: Role }) {
                       }
                     >
                       {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
-                      <span className="flex-1 truncate">{t(item.label)}</span>
-                      {n > 0 && (
+                      {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
+                      {!collapsed && n > 0 && (
                         <span className="rounded-full bg-brand-gold px-1.5 py-0.5 text-[10px] font-bold text-foreground">
                           {n}
                         </span>
@@ -142,25 +177,43 @@ export function AppShell({ role }: { role?: Role }) {
         </nav>
 
         {/* Ghi chú cuối sidebar: mục đích của role đang đăng nhập. */}
-        <div className="shrink-0 border-t border-border p-3">
-          <div className="rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2.5">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-pine">
-              <Info className="size-3.5 shrink-0" aria-hidden />
-              <span className="truncate">{t(`role.${r}`)}</span>
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-brand-pine/80">
-              {t(`shell.roleNote.${r}`)}
-            </p>
+        {!collapsed && (
+          <div className="shrink-0 border-t border-border p-3">
+            <div className="rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-pine">
+                <Info className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{t(`role.${r}`)}</span>
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-brand-pine/80">
+                {t(`shell.roleNote.${r}`)}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6">
-          <div className="lbl-mono flex items-center gap-2">
-            <span className="text-primary">{t('app.name')}</span>
-            <span aria-hidden>/</span>
-            <span>{crumb}</span>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggle}
+              aria-label={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+              title={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+              aria-expanded={!collapsed}
+            >
+              {collapsed ? (
+                <PanelLeft className="size-4 text-muted-foreground" />
+              ) : (
+                <PanelLeftClose className="size-4 text-muted-foreground" />
+              )}
+            </Button>
+            <div className="lbl-mono flex items-center gap-2">
+              <span className="text-primary">{t('app.name')}</span>
+              <span aria-hidden>/</span>
+              <span>{crumb}</span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {showSeasonPicker && <SeasonSelect />}

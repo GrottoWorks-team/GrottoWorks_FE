@@ -1487,6 +1487,8 @@
   "priority.MEDIUM": "Medium",
   "priority.HIGH": "High",
   "priority.CRITICAL": "Critical",
+  "shell.collapseSidebar": "Collapse sidebar",
+  "shell.expandSidebar": "Expand sidebar",
   "shell.roleNote.PARISH": "System administrator: create Christmas seasons and manage the parish, work areas, accounts and shared settings.",
   "shell.roleNote.COMMUNITY": "Coordinate the whole parish in the season: track progress per area, approve purchase requests and wrap up afterwards.",
   "shell.roleNote.LEADER": "Own the assigned areas: create tasks, assign volunteers, log timesheets and report results.",
