@@ -28,14 +28,17 @@ type FormData = z.infer<typeof schema>
 export function AreaAssignDialog({
   onClose,
   area,
+  parishId,
 }: {
   onClose: () => void
   area: WorkArea
+  /** Giáo xứ đang quản lý (ADMIN xem nhiều giáo xứ); bỏ trống = giáo xứ trong hồ sơ. */
+  parishId?: string
 }) {
   const { t } = useTranslation()
   const toast = useToast()
   const { data: users = [] } = useUsers()
-  const { data: communities = [] } = useCommunities()
+  const { data: communities = [] } = useCommunities({ parishId })
   const updateArea = useUpdateArea()
 
   const leaders = users.filter((u) => u.role === 'LEADER')

@@ -146,13 +146,17 @@ export function useResourceHistory(
   })
 }
 
-/** GET /api/v1/parishes/{id} â€” giÃ¡o xá»© Ä‘ang thao tÃ¡c. */
-export function useParish() {
-  const { parishId } = useCurrentParishId()
+/**
+ * GET /api/v1/parishes/{id} — giáo xứ đang thao tác.
+ * `parishId` cho phép ADMIN xem giáo xứ khác giáo xứ mặc định.
+ */
+export function useParish(parishId?: string) {
+  const current = useCurrentParishId()
+  const id = parishId ?? current.parishId
   return useQuery({
-    queryKey: parishKeys.detail(parishId ?? ''),
-    queryFn: async () => toParish(await api<ParishDto>(`/api/v1/parishes/${parishId}`)),
-    enabled: Boolean(parishId),
+    queryKey: parishKeys.detail(id ?? ''),
+    queryFn: async () => toParish(await api<ParishDto>(`/api/v1/parishes/${id}`)),
+    enabled: Boolean(id),
   })
 }
 

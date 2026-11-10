@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react'
 import type { ComponentType } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/components/shared/AppShell'
@@ -66,8 +66,6 @@ const GrottoDesignerPage = lazy(() => import('@/features/designer/pages/GrottoDe
 // Task 5+ thÃªm dáº§n vÃ o map nÃ y (pattern lazy page).
 const PAGES: Record<string, ComponentType> = {
   '/parish/seasons': SeasonListPage,
-  '/parish/areas': AreaListPage,
-  '/parish/map': ParishMapPage,
   '/community/seasons': SeasonListPage,
   '/community/areas': AreaListPage,
   '/community/map': ParishMapPage,
@@ -130,6 +128,11 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
   ],
   PARISH: [
     { path: 'purchases/:id', Page: PurchaseDetailPage },
+    // Bản đồ giáo xứ = TRANG CON của "Giáo xứ & cộng đoàn" (11/11/2026).
+    { path: 'communities/map', Page: ParishMapPage },
+    // URL cũ vẫn mở được → chuyển về hub đúng tab/trang con.
+    { path: 'areas', Page: LegacyParishAreasRedirect },
+    { path: 'map', Page: LegacyParishMapRedirect },
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
@@ -149,6 +152,17 @@ const queryClient = new QueryClient({
     },
   },
 })
+// URL cũ của admin: `/parish/areas` → tab "Khu vực công tác" trong hub,
+// `/parish/map` → trang con bản đồ (giữ nguyên `?parish=`).
+function LegacyParishAreasRedirect() {
+  return <Navigate to="/parish/communities?tab=areas" replace />
+}
+
+function LegacyParishMapRedirect() {
+  const { search } = useLocation()
+  return <Navigate to={`/parish/communities/map${search}`} replace />
+}
+
 const ROLES: Role[] = ['COMMUNITY', 'LEADER', 'MATERIAL_OFFICER', 'PARISH']
 
 // Placeholder lazy cho má»i route con â€” Task 4+ thay báº±ng page tháº­t.

@@ -115,10 +115,11 @@ export const NAV: Record<Role, NavGroup[]> = {
       items: [
         { label: 'nav.parish.dashboard', to: '/parish', icon: 'dashboard' },
         { label: 'nav.parish.seasons', to: '/parish/seasons', icon: 'calendar' },
-        { label: 'nav.parish.areas', to: '/parish/areas', icon: 'areas' },
-        { label: 'nav.parish.map', to: '/parish/map', icon: 'map' },
-        { label: 'nav.parish.accounts', to: '/parish/accounts', icon: 'accounts' },
+        // Hub duy nhất cho giáo xứ: tab Giáo xứ / Cộng đoàn / Khu vực công tác
+        // + trang con Bản đồ (`/parish/communities/map`). Bỏ mục menu riêng của
+        // "khu vực công tác" và "bản đồ giáo xứ" (yêu cầu 11/11/2026).
         { label: 'nav.parish.communities', to: '/parish/communities', icon: 'church' },
+        { label: 'nav.parish.accounts', to: '/parish/accounts', icon: 'accounts' },
         { label: 'nav.parish.categories', to: '/parish/categories', icon: 'tags' },
         { label: 'nav.parish.point-rules', to: '/parish/point-rules', icon: 'star' },
         { label: 'nav.parish.notifications', to: '/parish/notifications', icon: 'bell' },

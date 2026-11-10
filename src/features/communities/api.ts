@@ -6,15 +6,19 @@ import type { CommunityDto } from '@/types/parish'
 import { toCommunity } from '@/features/parish/mappers'
 import { useCurrentParishId } from '@/features/parish/hooks'
 
-/** GET /api/v1/parishes/{parishId}/communities — BE trả mảng thẳng, không phân trang. */
-export function useCommunities(options: { enabled?: boolean } = {}) {
-  const { parishId, isPending } = useCurrentParishId()
+/**
+ * GET /api/v1/parishes/{parishId}/communities — BE trả mảng thẳng, không phân trang.
+ * ADMIN xem nhiều giáo xứ → truyền `parishId` để đổi phạm vi (mặc định: hồ sơ).
+ */
+export function useCommunities(options: { enabled?: boolean; parishId?: string } = {}) {
+  const current = useCurrentParishId()
+  const parishId = options.parishId ?? current.parishId
   return useQuery({
     queryKey: ['communities', parishId ?? ''],
     queryFn: async () => {
       const list = await api<CommunityDto[]>(`/api/v1/parishes/${parishId}/communities`)
       return list.map(toCommunity)
     },
-    enabled: (options.enabled ?? true) && Boolean(parishId) && !isPending,
+    enabled: (options.enabled ?? true) && Boolean(parishId),
   })
 }

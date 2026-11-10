@@ -1,9 +1,11 @@
-// Bản đồ mặt bằng giáo xứ (route /community/map + /parish/map).
+// Bản đồ mặt bằng giáo xứ — TRANG CON của "Giáo xứ & cộng đoàn"
+// (`/parish/communities/map?parish=<id>`, cũng mở được ở `/community/map`).
 //
 // ADMIN (role FE `PARISH`) là người TẢI ảnh mặt bằng/sơ đồ giáo xứ và GHIM từng
 // khu vực công tác lên đó bằng toạ độ chuẩn hoá 0..1. Ban hành giáo (COMMUNITY)
 // chỉ XEM — không upload, không ghim (yêu cầu 10/11/2026). Trang này KHÔNG liên
-// quan tới bản thiết kế công trình (design review).
+// quan tới bản thiết kế công trình (design review). ADMIN xem nhiều giáo xứ nên
+// mỗi giáo xứ có ảnh + ghim riêng (`?parish=`).
 //
 // ⚠️ TẠM THỜI (FE-only): BE chưa có endpoint `/parishMaps` → metadata bản đồ +
 // toạ độ ghim lưu ở localStorage (features/map/localStore), ảnh ở IndexedDB
@@ -11,7 +13,8 @@
 // %), KHÔNG dùng thư viện bản đồ ngoài.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Trash2, Upload } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, MapPin, Trash2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Card } from '@/components/ui/card'
@@ -20,8 +23,10 @@ import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { getBlob, newBlobKey, putBlob } from '@/lib/blobStore'
 import { useAuth } from '@/lib/auth'
-import { useAreas } from '@/features/areas/api'
+import { useAreas, useSeasons } from '@/features/areas/api'
 import { useSeasonContext } from '@/features/season/season-context'
+import { useParishScope } from '@/features/parish/hooks'
+import { ParishSwitcher } from '@/features/parish/components/ParishSwitcher'
 import { AREA_ICONS } from '@/features/areas/components/AreaCard'
 import { ImageReviewCanvas } from '@/features/designs/components/ImageReviewCanvas'
 import type { CanvasMarker } from '@/features/designs/components/ImageReviewCanvas'
@@ -45,14 +50,22 @@ export default function ParishMapPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
+  const scope = useParishScope()
+  const { parishId, parish, canPickParish } = scope
   // Bản đồ của một mùa: role có khung chọn mùa chỉ lấy khu vực của mùa đó;
-  // role không có picker (PARISH) vẫn xem toàn bộ như trước.
+  // ADMIN xem mọi khu của giáo xứ đang chọn.
   const { seasonId } = useSeasonContext()
-  const { data: areas = [] } = useAreas(seasonId ? [seasonId] : undefined)
-  const { data: mapRecord, isPending: mapPending } = useParishMap()
-  const saveMap = useSaveParishMap()
-  const { data: pins = {} } = useMapPins()
-  const setPin = useSetMapPin()
+  const { data: seasons = [] } = useSeasons()
+  const seasonIds = useMemo(() => {
+    if (seasonId) return [seasonId]
+    const ids = seasons.filter((s) => s.parishId === parishId).map((s) => s.id)
+    return ids.length > 0 ? ids : undefined
+  }, [seasonId, seasons, parishId])
+  const { data: areas = [] } = useAreas(seasonIds)
+  const { data: mapRecord, isPending: mapPending } = useParishMap(parishId)
+  const saveMap = useSaveParishMap(parishId)
+  const { data: pins = {} } = useMapPins(parishId)
+  const setPin = useSetMapPin(parishId)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Chỉ admin (role FE `PARISH`) được tải ảnh + ghim; ban hành giáo chỉ xem.
@@ -157,28 +170,40 @@ export default function ParishMapPage() {
 
   return (
     <div>
+      {canPickParish && (
+        <Link
+          to={`/parish/communities${parishId ? `?parish=${encodeURIComponent(parishId)}` : ''}`}
+          className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="size-3.5" />
+          {t('features.parish.backToHub')}
+        </Link>
+      )}
       <PageHeader
-        title={t('features.map.title')}
+        title={parish?.name ? `${t('features.map.title')} — ${parish.name}` : t('features.map.title')}
         sub={t('features.map.sub')}
         actions={
-          canEdit ? (
-            <>
-              <input
-                ref={fileRef}
-                type="file"
-                accept={IMAGE_ACCEPT_ATTR}
-                className="hidden"
-                onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)}
-              />
-              <Button
-                variant={mapRecord ? 'outline' : 'default'}
-                onClick={() => fileRef.current?.click()}
-              >
-                <Upload className="size-4" />
-                {mapRecord ? t('features.map.replace') : t('features.map.upload')}
-              </Button>
-            </>
-          ) : undefined
+          <div className="flex flex-wrap items-center gap-2">
+            <ParishSwitcher scope={scope} />
+            {canEdit && (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept={IMAGE_ACCEPT_ATTR}
+                  className="hidden"
+                  onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)}
+                />
+                <Button
+                  variant={mapRecord ? 'outline' : 'default'}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Upload className="size-4" />
+                  {mapRecord ? t('features.map.replace') : t('features.map.upload')}
+                </Button>
+              </>
+            )}
+          </div>
         }
       />
 

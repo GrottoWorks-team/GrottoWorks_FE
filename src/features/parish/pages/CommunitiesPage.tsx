@@ -1,13 +1,31 @@
-// Trang giáo xứ & cộng đoàn (route /parish/communities): chỉnh tên giáo xứ
-// (parish object đơn — PATCH /api/parish) + CRUD giáo khu (communities) qua
-// bảng + dialog. Xoá giáo khu bị chặn khi còn user/area tham chiếu (client
-// check trước khi gọi API → toast alert, không mutate).
+// Trang "Giáo xứ & cộng đoàn" (route /parish/communities) — HUB của admin:
+//   • Tab Giáo xứ: thông tin + đổi tên giáo xứ (PATCH /api/v1/parishes/{id}).
+//   • Tab Cộng đoàn: CRUD giáo khu (communities) qua bảng + dialog.
+//   • Tab Khu vực công tác: bảng khu vực của giáo xứ (trước đây là trang riêng
+//     `/parish/areas`), tạo/sửa/phân công qua dialog.
+// Bản đồ giáo xứ không còn là mục menu riêng mà là TRANG CON
+// `/parish/communities/map?parish=<id>` (xem `features/map/pages/ParishMapPage`).
+//
+// ADMIN không thuộc giáo xứ nào (BR-67) → chọn giáo xứ ở `?parish=` để xem được
+// nhiều giáo xứ trên cùng một màn hình (xem `useParishScope`).
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, Church, MapPin, Info, Check, ShieldCheck } from 'lucide-react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import {
+  Pencil,
+  Plus,
+  Church,
+  MapPin,
+  Info,
+  Check,
+  ShieldCheck,
+  Map as MapIcon,
+  UserPlus,
+  ListChecks,
+} from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -19,8 +37,12 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
-import { useAreas } from '@/features/areas/api'
-import { useUsers } from '@/features/users/api'
+import { viDate } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/lib/auth'
+import { useAreas, useSeasons, useUsers } from '@/features/areas/api'
+import { AreaFormDialog, SELECT_CLS } from '@/features/areas/pages/AreaFormDialog'
+import { AreaAssignDialog } from '@/features/areas/pages/AreaAssignDialog'
 import {
   useCommunities,
   useCreateCommunity,
@@ -29,8 +51,9 @@ import {
   useUpdateParish,
   useUpdateCommunity,
 } from '../api'
-import { useCurrentParishId } from '../hooks'
-import type { Community } from '@/types'
+import { useParishScope } from '../hooks'
+import { ParishSwitcher } from '../components/ParishSwitcher'
+import type { Community, WorkArea } from '@/types'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
@@ -40,16 +63,17 @@ type FormData = z.infer<typeof schema>
 
 // Dialog tạo/sửa giáo khu — mount có điều kiện.
 function CommunityFormDialog({
+  parishId,
   onClose,
   community,
 }: {
+  parishId: string
   onClose: () => void
   community?: Community | null
 }) {
   const { t } = useTranslation()
   const toast = useToast()
   const editing = Boolean(community)
-  const { parishId } = useCurrentParishId()
   const create = useCreateCommunity()
   const update = useUpdateCommunity()
 
@@ -76,7 +100,7 @@ function CommunityFormDialog({
         })
         toast(t('features.parish.updated', { name: data.name }))
       } else {
-        await create.mutateAsync({ name: data.name, parishId: parishId! })
+        await create.mutateAsync({ name: data.name, parishId })
         toast(t('features.parish.created', { name: data.name }))
       }
       onClose()
@@ -140,7 +164,6 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation()
   const toast = useToast()
   const create = useCreateParish()
-
   const {
     register,
     handleSubmit,
@@ -220,10 +243,10 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
 }
 
 // Card thông tin giáo xứ — Layout 2 cột trên desktop (thông tin + tổng quan điều phối)
-function ParishCard() {
+function ParishCard({ parishId }: { parishId: string }) {
   const { t } = useTranslation()
   const toast = useToast()
-  const { data: parish } = useParish()
+  const { data: parish } = useParish(parishId)
   const updateParish = useUpdateParish()
   const [name, setName] = useState<string | null>(null)
   const isDirty = name !== null && name.trim() !== (parish?.name ?? '')
@@ -248,7 +271,7 @@ function ParishCard() {
   }
 
   return (
-    <Card className="mb-6 overflow-hidden border border-border p-5 shadow-card transition-shadow hover:shadow-hover">
+    <Card className="overflow-hidden border border-border p-5 shadow-card transition-shadow hover:shadow-hover">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
         {/* Cột trái: Tên giáo xứ, địa chỉ, mô tả */}
         <div className="space-y-4 md:col-span-7 lg:col-span-8">
@@ -355,14 +378,19 @@ function ParishCard() {
   )
 }
 
-export default function CommunitiesPage() {
+// Tab Cộng đoàn — bảng giáo khu + CRUD.
+function CommunitiesPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean }) {
   const { t } = useTranslation()
-  const { data: communities = [], isPending } = useCommunities()
+  const { data: communities = [], isPending } = useCommunities({ parishId })
   const { data: users = [] } = useUsers()
-  const { data: areas = [] } = useAreas()
+  const { data: seasons = [] } = useSeasons()
+  const seasonIds = useMemo(
+    () => seasons.filter((s) => s.parishId === parishId).map((s) => s.id),
+    [seasons, parishId],
+  )
+  const { data: areas = [] } = useAreas(seasonIds)
 
   const [formOpen, setFormOpen] = useState(false)
-  const [parishCreateOpen, setParishCreateOpen] = useState(false)
   const [editing, setEditing] = useState<Community | null>(null)
 
   const columns = useMemo(
@@ -409,56 +437,44 @@ export default function CommunitiesPage() {
       {
         key: 'actions',
         header: t('common.actions'),
-        render: (c: Community) => (
-          <div className="flex justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.edit')}
-              onClick={(e) => {
-                e.stopPropagation()
-                setEditing(c)
-                setFormOpen(true)
-              }}
-            >
-              <Pencil className="size-4" />
-            </Button>
-          </div>
-        ),
+        render: (c: Community) =>
+          canEdit ? (
+            <div className="flex justify-end gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('common.edit')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setEditing(c)
+                  setFormOpen(true)
+                }}
+              >
+                <Pencil className="size-4" />
+              </Button>
+            </div>
+          ) : null,
       },
     ],
-    [t, users, areas],
+    [t, users, areas, canEdit],
   )
 
   return (
     <div>
-      <PageHeader
-        title={t('features.parish.communitiesTitle')}
-        sub={t('features.parish.communitiesSub')}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setParishCreateOpen(true)}
-              className="border-brand-pine/30 text-brand-pine hover:bg-brand-pine/10"
-            >
-              <Church className="size-4 mr-1.5" />
-              {t('features.parish.createParish', { defaultValue: 'Tạo giáo xứ mới' })}
-            </Button>
-            <Button
-              onClick={() => {
-                setEditing(null)
-                setFormOpen(true)
-              }}
-            >
-              <Plus className="size-4 mr-1.5" />
-              {t('features.parish.createCommunity')}
-            </Button>
-          </div>
-        }
-      />
-
-      <ParishCard />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">{t('features.parish.communitiesSub')}</p>
+        {canEdit && (
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setFormOpen(true)
+            }}
+          >
+            <Plus className="size-4 mr-1.5" />
+            {t('features.parish.createCommunity')}
+          </Button>
+        )}
+      </div>
 
       {isPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
@@ -468,15 +484,363 @@ export default function CommunitiesPage() {
           columns={columns}
           searchKeys={['name']}
           emptyText={t('features.parish.empty')}
-          onRowClick={(c) => {
-            setEditing(c)
-            setFormOpen(true)
-          }}
+          onRowClick={
+            canEdit
+              ? (c) => {
+                  setEditing(c)
+                  setFormOpen(true)
+                }
+              : undefined
+          }
         />
       )}
 
+      {formOpen && (
+        <CommunityFormDialog
+          parishId={parishId}
+          community={editing}
+          onClose={() => setFormOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Tab Khu vực công tác — bảng khu vực của giáo xứ (trước đây là /parish/areas).
+const areaLabel = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
+
+function AreasPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { data: seasons = [], isPending: seasonsPending } = useSeasons()
+  const { data: users = [] } = useUsers()
+  const { data: communities = [] } = useCommunities({ parishId })
+
+  const parishSeasons = useMemo(
+    () => seasons.filter((s) => s.parishId === parishId),
+    [seasons, parishId],
+  )
+  const [selectedSeason, setSelectedSeason] = useState('all')
+  const seasonIds = useMemo(
+    () =>
+      selectedSeason === 'all'
+        ? parishSeasons.map((s) => s.id)
+        : [selectedSeason].filter((id) => parishSeasons.some((s) => s.id === id)),
+    [selectedSeason, parishSeasons],
+  )
+  const { data: areas = [], isPending: areasPending } = useAreas(seasonIds)
+
+  const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<WorkArea | null>(null)
+  const [assigning, setAssigning] = useState<WorkArea | null>(null)
+
+  const seasonMap = useMemo(() => new Map(parishSeasons.map((s) => [s.id, s])), [parishSeasons])
+  const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
+  const communityNameById = useMemo(
+    () => new Map(communities.map((c) => [c.id, c.name])),
+    [communities],
+  )
+
+  // Khu vực mới mặc định thuộc mùa đang lọc (hoặc mùa mới nhất của giáo xứ).
+  const defaultSeasonId = selectedSeason !== 'all' ? selectedSeason : parishSeasons[0]?.id
+
+  const columns = useMemo(
+    () => [
+      {
+        key: 'name',
+        header: t('features.areas.name'),
+        render: (a: WorkArea) => (
+          <div>
+            <span className="font-semibold text-foreground">{areaLabel(a)}</span>
+            {a.description ? (
+              <p className="line-clamp-1 text-xs text-muted-foreground" title={a.description}>
+                {a.description}
+              </p>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: 'season',
+        header: t('features.areas.season'),
+        render: (a: WorkArea) => {
+          const season = seasonMap.get(a.seasonId ?? '')
+          return (
+            <span className="inline-flex items-center rounded-full border border-border bg-background px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+              {season ? t('features.areas.seasonBadge', { year: season.year }) : '—'}
+            </span>
+          )
+        },
+      },
+      {
+        key: 'community',
+        header: t('features.parish.community'),
+        render: (a: WorkArea) => (
+          <span className="text-xs font-medium text-muted-foreground">
+            {communityNameById.get(a.communityId ?? '') ?? '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'leaderId',
+        header: t('features.areas.leader'),
+        render: (a: WorkArea) => userNameById.get(a.leaderId ?? '') ?? '—',
+      },
+      {
+        key: 'deadline',
+        header: t('features.areas.deadline'),
+        render: (a: WorkArea) => (
+          <span className="tabular text-xs font-medium text-muted-foreground">
+            {a.deadline ? viDate(a.deadline) : '—'}
+          </span>
+        ),
+      },
+      {
+        key: 'status',
+        header: t('common.status'),
+        render: (a: WorkArea) => <StatusTag status={a.status} />,
+      },
+      {
+        key: 'actions',
+        header: t('common.actions'),
+        render: (a: WorkArea) => (
+          <div className="flex justify-end gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t('features.areas.viewTasks')}
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/parish/areas/${a.id}/tasks`)
+              }}
+            >
+              <ListChecks className="size-4" />
+            </Button>
+            {canEdit && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('features.areas.assign')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setAssigning(a)
+                  }}
+                >
+                  <UserPlus className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('common.edit')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setEditing(a)
+                    setFormOpen(true)
+                  }}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [t, seasonMap, userNameById, communityNameById, navigate, canEdit],
+  )
+
+  const isPending = seasonsPending || areasPending
+
+  return (
+    <div>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <label htmlFor="hub-area-season" className="lbl-mono cursor-pointer">
+            {t('features.areas.seasonFilter')}:
+          </label>
+          <select
+            id="hub-area-season"
+            aria-label={t('features.areas.seasonFilter')}
+            value={selectedSeason}
+            onChange={(e) => setSelectedSeason(e.target.value)}
+            className={cn(SELECT_CLS, 'h-9 w-auto min-w-[200px] text-xs font-medium')}
+          >
+            <option value="all">{t('features.areas.allSeasons')}</option>
+            {parishSeasons.map((s) => (
+              <option key={s.id} value={s.id}>
+                {t('features.areas.seasonBadge', { year: s.year })} ({t(`status.${s.status}`, s.status)})
+              </option>
+            ))}
+          </select>
+          <span className="tabular text-xs font-semibold text-muted-foreground">
+            {t('common.total', { n: areas.length })}
+          </span>
+        </div>
+        {canEdit && (
+          <Button
+            onClick={() => {
+              setEditing(null)
+              setFormOpen(true)
+            }}
+            disabled={parishSeasons.length === 0}
+            title={
+              parishSeasons.length === 0 ? t('features.parish.noSeasonHint') : undefined
+            }
+          >
+            <Plus className="size-4 mr-1.5" />
+            {t('features.areas.create')}
+          </Button>
+        )}
+      </div>
+
+      {canEdit && parishSeasons.length === 0 && (
+        <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {t('features.parish.noSeasonHint')}{' '}
+          <Link to="/parish/seasons" className="font-semibold text-primary hover:underline">
+            {t('nav.parish.seasons')}
+          </Link>
+        </p>
+      )}
+
+      {isPending ? (
+        <p className="lbl-mono">{t('common.loading')}</p>
+      ) : (
+        <DataTable
+          rows={areas}
+          columns={columns}
+          searchKeys={['name']}
+          emptyText={t('features.parish.emptyAreas')}
+          onRowClick={(a) => navigate(`/parish/areas/${a.id}/tasks`)}
+        />
+      )}
+
+      {formOpen && (
+        <AreaFormDialog
+          area={editing}
+          defaultSeasonId={defaultSeasonId}
+          parishId={parishId}
+          onClose={() => setFormOpen(false)}
+        />
+      )}
+      {assigning && (
+        <AreaAssignDialog area={assigning} parishId={parishId} onClose={() => setAssigning(null)} />
+      )}
+    </div>
+  )
+}
+
+const TABS = [
+  { key: 'parish', labelKey: 'features.parish.tabParish' },
+  { key: 'communities', labelKey: 'features.parish.tabCommunities' },
+  { key: 'areas', labelKey: 'features.parish.tabAreas' },
+] as const
+type TabKey = (typeof TABS)[number]['key']
+
+export default function CommunitiesPage() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const [params, setParams] = useSearchParams()
+  const scope = useParishScope()
+  const { parishId, canPickParish } = scope
+  const { user } = useAuth()
+  const canEdit = user?.role === 'PARISH'
+  const [parishCreateOpen, setParishCreateOpen] = useState(false)
+
+  const tabFromUrl = params.get('tab')
+  const tab: TabKey =
+    pathname.endsWith('/areas')
+      ? 'areas'
+      : TABS.some((x) => x.key === tabFromUrl)
+        ? (tabFromUrl as TabKey)
+        : 'communities'
+
+  const setTab = (next: TabKey) => {
+    setParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev)
+        nextParams.set('tab', next)
+        return nextParams
+      },
+      { replace: true },
+    )
+  }
+
+  const mapHref = `/parish/communities/map${parishId ? `?parish=${encodeURIComponent(parishId)}` : ''}`
+
+  return (
+    <div>
+      <PageHeader
+        title={t('features.parish.hubTitle')}
+        sub={t('features.parish.hubSub')}
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ParishSwitcher scope={scope} />
+            <Button variant="outline" onClick={() => navigate(mapHref)}>
+              <MapIcon className="size-4 mr-1.5" />
+              {t('features.parish.openMap')}
+            </Button>
+            {canPickParish && (
+              <Button
+                variant="outline"
+                onClick={() => setParishCreateOpen(true)}
+                className="border-brand-pine/30 text-brand-pine hover:bg-brand-pine/10"
+              >
+                <Church className="size-4 mr-1.5" />
+                {t('features.parish.createParish', { defaultValue: 'Tạo giáo xứ mới' })}
+              </Button>
+            )}
+          </div>
+        }
+      />
+
+      {/* Sub-tabs: Giáo xứ / Cộng đoàn / Khu vực công tác */}
+      <div
+        role="tablist"
+        aria-label={t('features.parish.hubTitle')}
+        className="mb-5 flex flex-wrap gap-1 border-b border-border"
+      >
+        {TABS.map((item) => {
+          const active = tab === item.key
+          return (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => setTab(item.key)}
+              className={cn(
+                '-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors',
+                active
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {t(item.labelKey)}
+            </button>
+          )
+        })}
+      </div>
+
+      {!parishId && !scope.isPending ? (
+        <Card className="p-6 text-sm text-muted-foreground">{t('features.parish.noParish')}</Card>
+      ) : tab === 'parish' ? (
+        parishId ? (
+          <div className="space-y-4">
+            <ParishCard parishId={parishId} />
+            <p className="text-xs text-muted-foreground">{t('features.parish.hubParishHint')}</p>
+          </div>
+        ) : null
+      ) : tab === 'communities' ? (
+        parishId ? (
+          <CommunitiesPanel parishId={parishId} canEdit={canEdit} />
+        ) : null
+      ) : parishId ? (
+        <AreasPanel parishId={parishId} canEdit={canEdit} />
+      ) : null}
+
       {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}
-      {formOpen && <CommunityFormDialog community={editing} onClose={() => setFormOpen(false)} />}
     </div>
   )
 }

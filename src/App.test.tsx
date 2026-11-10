@@ -42,7 +42,11 @@ describe('App', () => {
     const parishItems = NAV.PARISH.flatMap((g) => g.items)
     const parishPaths = parishItems.map((i) => i.to)
     expect(parishPaths).toContain('/parish/seasons')
-    expect(parishPaths).toContain('/parish/areas')
+    // 11/11/2026: khu vực công tác + bản đồ nằm trong hub "Giáo xứ & cộng đoàn"
+    // (không còn là mục menu riêng).
+    expect(parishPaths).toContain('/parish/communities')
+    expect(parishPaths).not.toContain('/parish/areas')
+    expect(parishPaths).not.toContain('/parish/map')
     // ADMIN không đọc được /purchase-requests (BE trả 403) → không còn mục duyệt mua.
     expect(parishPaths).not.toContain('/parish/purchases')
 

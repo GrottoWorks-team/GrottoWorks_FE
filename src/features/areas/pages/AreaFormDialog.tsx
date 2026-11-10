@@ -85,10 +85,13 @@ export function AreaFormDialog({
   onClose,
   area,
   defaultSeasonId,
+  parishId,
 }: {
   onClose: () => void
   area?: WorkArea | null // null/undefined = create
   defaultSeasonId?: string
+  /** Giáo xứ đang quản lý (ADMIN xem nhiều giáo xứ); bỏ trống = giáo xứ trong hồ sơ. */
+  parishId?: string
 }) {
   const { t } = useTranslation()
   const toast = useToast()
@@ -97,7 +100,7 @@ export function AreaFormDialog({
   // không có communityId → xử lý như cấp giáo xứ (được chọn cộng đoàn tự do).
   const isCommunity = user?.role === 'COMMUNITY' && Boolean(user?.communityId)
   const { data: users = [] } = useUsers()
-  const { data: communities = [] } = useCommunities()
+  const { data: communities = [] } = useCommunities({ parishId })
   const { data: seasons = [] } = useSeasons()
   // Khi SỬA: lấy mọi trạng thái để không mất hạng mục đã gán (BE chặn gán hạng mục
   // INACTIVE nhưng vẫn phải hiển thị giá trị hiện tại); khi TẠO: chỉ lấy ACTIVE.
@@ -106,16 +109,30 @@ export function AreaFormDialog({
   const update = useUpdateArea()
   const editing = Boolean(area)
 
+  // Mùa mặc định: ưu tiên season của area, defaultSeasonId prop, hoặc mùa ACTIVE/PLANNED đầu tiên
+  const initialSeasonId = useMemo(() => {
+    if (area?.seasonId) return area.seasonId
+    if (defaultSeasonId) return defaultSeasonId
+    const activeOrPlanned = seasons.find((s) => s.status === 'ACTIVE' || s.status === 'PLANNING')
+    return activeOrPlanned?.id ?? seasons[0]?.id ?? 's1'
+  }, [area?.seasonId, defaultSeasonId, seasons])
+
   // ── Ghim vị trí trên sơ đồ ngay trong form ───────────────────────────────
   // Sơ đồ + khu vực do admin (PARISH) quản lý, nên ghim nằm cùng form. Pin vẫn
-  // lưu ở `features/map` (localStorage) cho tới khi BE có API bản đồ.
-  const { data: mapRecord } = useParishMap()
-  const { data: pins = {} } = useMapPins()
-  const setPin = useSetMapPin()
+  // lưu ở `features/map` (localStorage) cho tới khi BE có API bản đồ. ADMIN xem
+  // nhiều giáo xứ → ghim phải theo giáo xứ của mùa đang chọn.
+  const mapParishId =
+    seasons.find((s) => s.id === initialSeasonId)?.parishId ?? parishId ?? user?.parishId ?? ''
+  const { data: mapRecord } = useParishMap(mapParishId)
+  const { data: pins = {} } = useMapPins(mapParishId)
+  const setPin = useSetMapPin(mapParishId)
   const [pin, setPinValue] = useState<NormalizedPoint | null>(null)
   const [pinTouched, setPinTouched] = useState(false)
   const [mapImageUrl, setMapImageUrl] = useState('')
-  const mapHref = user?.role === 'PARISH' ? '/parish/map' : '/community/map'
+  const mapHref =
+    user?.role === 'PARISH'
+      ? `/parish/communities/map?parish=${encodeURIComponent(mapParishId)}`
+      : '/community/map'
 
   // Ảnh sơ đồ: blob IndexedDB → object URL (thu hồi khi đóng dialog).
   const urlRef = useRef('')
@@ -160,14 +177,6 @@ export function AreaFormDialog({
   // giáo xứ với khu vực (xem mục 4.1 báo cáo E2E).
   const leaders = users.filter((u) => u.role === 'LEADER')
   const officers = users.filter((u) => u.role === 'MATERIAL_OFFICER')
-
-  // Mùa mặc định: ưu tiên season của area, defaultSeasonId prop, hoặc mùa ACTIVE/PLANNED đầu tiên
-  const initialSeasonId = useMemo(() => {
-    if (area?.seasonId) return area.seasonId
-    if (defaultSeasonId) return defaultSeasonId
-    const activeOrPlanned = seasons.find((s) => s.status === 'ACTIVE' || s.status === 'PLANNING')
-    return activeOrPlanned?.id ?? seasons[0]?.id ?? 's1'
-  }, [area?.seasonId, defaultSeasonId, seasons])
 
   const schema = useMemo(() => createSchema(seasons), [seasons])
 
