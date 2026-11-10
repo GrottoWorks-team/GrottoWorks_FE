@@ -99,6 +99,7 @@ export interface Task {
   priority?: TaskPriority;
   startAt?: string;
   version?: number;
+  teamLeaderAssignmentId?: string | null;
 }
 
 export interface VolunteerReg { id: string; taskId: string; volunteerId: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' }
@@ -490,3 +491,124 @@ export interface RecognitionRuleDto {
   version: number;
 }
 
+
+// ══════ [fe-api-gap] Đợt A–E ══════
+
+export interface TaskApplicationDto {
+  id: string;
+  taskId: string;
+  volunteerId: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | string;
+  note?: string | null;
+  version: number;
+  requestedAt?: string | null;
+  reviewedAt?: string | null;
+  reason?: string | null;
+}
+
+export interface AssignmentDto {
+  id: string;
+  taskId: string;
+  volunteerId: string;
+  assignmentType: 'DIRECT' | 'APPLICATION' | 'SUPPORT' | string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | string;
+  note?: string | null;
+  version: number;
+  requestedAt?: string | null;
+  assignedAt?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  warnings: string[];
+  responseReason?: string | null;
+}
+
+export interface TaskMaterialReportItemDto {
+  id: string;
+  materialAllocationItemId: string;
+  materialId: string;
+  materialCode: string;
+  materialName: string;
+  unit: string;
+  allocatedQuantity: number;
+  reportedRemainingQuantity: number;
+  reportedDamagedQuantity: number;
+  reportedLostQuantity: number;
+  verifiedRemainingQuantity?: number | null;
+  verifiedDamagedQuantity?: number | null;
+  verifiedLostQuantity?: number | null;
+  usedQuantity?: number | null;
+  note?: string | null;
+}
+
+export interface TaskMaterialReportDto {
+  id: string;
+  taskId: string;
+  taskName: string;
+  workAreaId: string;
+  reportedBy: string;
+  verifiedBy?: string | null;
+  status: 'DRAFT' | 'SUBMITTED' | 'VERIFIED' | 'REVISION_REQUESTED' | string;
+  note?: string | null;
+  revisionReason?: string | null;
+  reportedAt: string;
+  verifiedAt?: string | null;
+  items: TaskMaterialReportItemDto[];
+  version: number;
+}
+
+export interface ProgressEvidence {
+  id: string;
+  progressId: string;
+  fileId: string;
+  caption?: string | null;
+  uploadedAt: string;
+}
+
+export interface TaskProgressDto {
+  id: string;
+  taskId: string;
+  submittedByUserId: string;
+  percentComplete: number;
+  note?: string | null;
+  submittedAt: string;
+  isSubmission: boolean;
+  approvedByUserId?: string | null;
+  approvedAt?: string | null;
+  evidence: ProgressEvidence[];
+}
+
+export interface TaskCompletionReview {
+  id: string;
+  taskId: string;
+  progressId: string;
+  reviewedByUserId: string;
+  approved: boolean;
+  reason?: string | null;
+  reviewedAt: string;
+}
+
+export interface TaskReviewPackage {
+  task: any;
+  completionCriteria?: string | null;
+  progress: TaskProgressDto[];
+  reviews: TaskCompletionReview[];
+  approvedHours: number;
+  materialSummary?: any;
+}
+
+export interface VolunteerMatchDto {
+  volunteerId: string;
+  displayName: string;
+  communityId?: string | null;
+  sameCommunity: boolean;
+  availabilityMatched?: boolean | null;
+  hasScheduleConflict: boolean;
+  warnings: string[];
+}
+
+export interface FileDownload {
+  downloadUrl: string;
+  expiresAt: string;
+}
+
+// ══════ [/fe-api-gap] ══════

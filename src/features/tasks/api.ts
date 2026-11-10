@@ -1,7 +1,15 @@
-// Tasks API hooks — Group G: TaskExecution backend integration
+// Tasks API hooks — Group G: TaskExecution backend integration & Đợt A full endpoints
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Task } from '@/types'
+import type {
+  AssignmentDto,
+  FileDownload,
+  Task,
+  TaskApplicationDto,
+  TaskMaterialReportDto,
+  TaskReviewPackage,
+  VolunteerMatchDto,
+} from '@/types'
 
 export type TaskBackendStatus =
   | 'DRAFT'
@@ -32,6 +40,7 @@ export interface TaskDto {
   deadline?: string | null
   status: TaskBackendStatus
   version: number
+  teamLeaderAssignmentId?: string | null
   createdAt: string
   updatedAt?: string | null
 }
@@ -87,6 +96,7 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     submittedPhotos: 0,
     submittedNotes: dto.completionCriteria || undefined,
     version: dto.version,
+    teamLeaderAssignmentId: dto.teamLeaderAssignmentId ?? null,
   }
 }
 
@@ -94,6 +104,14 @@ export const taskKeys = {
   all: ['tasks'] as const,
   byArea: (workAreaId: string) => ['tasks', 'area', workAreaId] as const,
   detail: (taskId: string) => ['tasks', 'detail', taskId] as const,
+  applications: (taskId: string) => ['tasks', 'applications', taskId] as const,
+  assignments: (taskId: string) => ['tasks', 'assignments', taskId] as const,
+  materialReports: (taskId: string) => ['tasks', 'material-reports', taskId] as const,
+  reviewPackage: (taskId: string) => ['tasks', 'review-package', taskId] as const,
+  volunteerMatches: (taskId: string, communityId?: string, limit?: number) =>
+    ['tasks', 'volunteer-matches', taskId, communityId ?? '', limit ?? 20] as const,
+  evidenceDownload: (taskId: string, progressId: string, fileId: string) =>
+    ['tasks', 'evidence-download', taskId, progressId, fileId] as const,
 }
 
 /**
@@ -279,15 +297,361 @@ export function useReplaceTaskSkills() {
   )
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// Đợt A: Nhiệm vụ — Duyệt ứng viên, phân công, nghiệm thu & vật tư
+// ══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/v1/tasks/{taskId}/applications — Danh sách đơn xin tham gia nhiệm vụ (Leader)
+ */
+export function useTaskApplications(taskId?: string) {
+  return useQuery({
+    queryKey: taskId ? taskKeys.applications(taskId) : ['tasks', 'applications'],
+    queryFn: async () => {
+      if (!taskId) return []
+      const res = await api<{ items?: TaskApplicationDto[]; data?: TaskApplicationDto[] } | TaskApplicationDto[]>(
+        `/api/v1/tasks/${taskId}/applications?size=100`,
+      )
+      if (Array.isArray(res)) return res
+      return res?.items ?? res?.data ?? []
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+/**
+ * POST /api/v1/task-applications/{applicationId}/approve — Leader duyệt đơn ứng tuyển
+ */
+export function useApproveTaskApplication() {
+  return useTaskMutation(
+    async ({ applicationId, version }: { applicationId: string; version?: number }) => {
+      const headers: Record<string, string> = {}
+      if (version !== undefined && version !== null) {
+        headers['If-Match'] = `"${version}"`
+      }
+      return api<AssignmentDto>(`/api/v1/task-applications/${applicationId}/approve`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ version }),
+      })
+    },
+  )
+}
+
+/**
+ * POST /api/v1/task-applications/{applicationId}/reject — Leader từ chối đơn ứng tuyển
+ */
+export function useRejectTaskApplication() {
+  return useTaskMutation(
+    async ({
+      applicationId,
+      reason,
+      version,
+    }: {
+      applicationId: string
+      reason: string
+      version?: number
+    }) => {
+      const headers: Record<string, string> = {}
+      if (version !== undefined && version !== null) {
+        headers['If-Match'] = `"${version}"`
+      }
+      return api<TaskApplicationDto>(`/api/v1/task-applications/${applicationId}/reject`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason, version }),
+      })
+    },
+  )
+}
+
+/**
+ * GET /api/v1/tasks/{taskId}/assignments — Danh sách phân công nhiệm vụ (Leader)
+ */
+export function useTaskAssignments(taskId?: string) {
+  return useQuery({
+    queryKey: taskId ? taskKeys.assignments(taskId) : ['tasks', 'assignments'],
+    queryFn: async () => {
+      if (!taskId) return []
+      const res = await api<{ items?: AssignmentDto[]; data?: AssignmentDto[] } | AssignmentDto[]>(
+        `/api/v1/tasks/${taskId}/assignments`,
+      )
+      if (Array.isArray(res)) return res
+      return res?.items ?? res?.data ?? []
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+/**
+ * POST /api/v1/tasks/{taskId}/assignments — Phân công TNV trực tiếp (Leader)
+ */
+export function useAssignVolunteerDirect() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      volunteerId,
+      note,
+      overrideCapacity,
+      overrideSkillMismatch,
+      overrideReason,
+    }: {
+      taskId: string
+      volunteerId: string
+      note?: string | null
+      overrideCapacity?: boolean
+      overrideSkillMismatch?: boolean
+      overrideReason?: string | null
+    }) => {
+      return api<AssignmentDto>(`/api/v1/tasks/${taskId}/assignments`, {
+        method: 'POST',
+        body: JSON.stringify({
+          volunteerId,
+          note: note ?? null,
+          overrideCapacity: Boolean(overrideCapacity),
+          overrideSkillMismatch: Boolean(overrideSkillMismatch),
+          overrideReason: overrideReason ?? null,
+        }),
+      })
+    },
+  )
+}
+
+/**
+ * Compatibility wrapper cho component cũ
+ */
 export function useAssignVolunteer(taskId: string, volunteerId: string) {
-  return useTaskMutation(async () => {
-    // Client-side mock fallback cho tới khi BE hỗ trợ assignment
-    return { taskId, volunteerId }
+  return useTaskMutation(async (note?: string) => {
+    return api<AssignmentDto>(`/api/v1/tasks/${taskId}/assignments`, {
+      method: 'POST',
+      body: JSON.stringify({
+        volunteerId,
+        note: note ?? null,
+      }),
+    })
   })
 }
 
 export function useUnassign(taskId: string, volunteerId: string) {
   return useTaskMutation(async () => {
     return { taskId, volunteerId }
+  })
+}
+
+/**
+ * POST /api/v1/tasks/{taskId}/cancel — Leader huỷ nhiệm vụ
+ */
+export function useCancelTask() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      reason,
+      version,
+    }: {
+      taskId: string
+      reason: string
+      version?: number
+    }) => {
+      const headers: Record<string, string> = {}
+      if (version !== undefined && version !== null) {
+        headers['If-Match'] = `"${version}"`
+      }
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/cancel`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason, version }),
+      })
+    },
+  )
+}
+
+/**
+ * GET /api/v1/tasks/{taskId}/material-reports — Báo cáo vật tư theo nhiệm vụ (Leader, MO)
+ */
+export function useTaskMaterialReports(taskId?: string) {
+  return useQuery({
+    queryKey: taskId ? taskKeys.materialReports(taskId) : ['tasks', 'material-reports'],
+    queryFn: async () => {
+      if (!taskId) return []
+      const res = await api<{ items?: TaskMaterialReportDto[]; data?: TaskMaterialReportDto[] } | TaskMaterialReportDto[]>(
+        `/api/v1/tasks/${taskId}/material-reports`,
+      )
+      if (Array.isArray(res)) return res
+      return res?.items ?? res?.data ?? []
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+/**
+ * PUT /api/v1/tasks/{taskId}/materials — Cập nhật danh sách vật tư yêu cầu cho nhiệm vụ (Leader)
+ */
+export function useReplaceTaskMaterials() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      materials,
+      version = 1,
+    }: {
+      taskId: string
+      materials: Array<{
+        materialId: string
+        requiredQuantity: number
+        note?: string | null
+      }>
+      version?: number
+    }) => {
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/materials`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify(materials),
+      })
+    },
+  )
+}
+
+/**
+ * GET /api/v1/tasks/{taskId}/review-package — Gói nghiệm thu nhiệm vụ (Leader)
+ */
+export function useTaskReviewPackage(taskId?: string) {
+  return useQuery({
+    queryKey: taskId ? taskKeys.reviewPackage(taskId) : ['tasks', 'review-package'],
+    queryFn: async () => {
+      if (!taskId) return null
+      return api<TaskReviewPackage>(`/api/v1/tasks/${taskId}/review-package`)
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+/**
+ * POST /api/v1/tasks/{taskId}/approve — Leader duyệt hoàn thành nhiệm vụ
+ */
+export function useApproveTaskCompletion() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      reason,
+      version,
+    }: {
+      taskId: string
+      reason?: string | null
+      version?: number
+    }) => {
+      const headers: Record<string, string> = {}
+      if (version !== undefined && version !== null) {
+        headers['If-Match'] = `"${version}"`
+      }
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/approve`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason: reason ?? null, version }),
+      })
+    },
+  )
+}
+
+/**
+ * POST /api/v1/tasks/{taskId}/request-revision — Leader yêu cầu sửa đổi/chỉnh sửa lại nhiệm vụ
+ */
+export function useRequestTaskRevision() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      reason,
+      version,
+    }: {
+      taskId: string
+      reason: string
+      version?: number
+    }) => {
+      const headers: Record<string, string> = {}
+      if (version !== undefined && version !== null) {
+        headers['If-Match'] = `"${version}"`
+      }
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/request-revision`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ reason, version }),
+      })
+    },
+  )
+}
+
+/**
+ * PUT /api/v1/tasks/{taskId}/team-leader — Leader chỉ định trưởng nhóm cho nhiệm vụ
+ */
+export function useSetTaskTeamLeader() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      teamLeaderAssignmentId,
+      version,
+    }: {
+      taskId: string
+      teamLeaderAssignmentId: string
+      version: number
+    }) => {
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/team-leader`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ teamLeaderAssignmentId }),
+      })
+    },
+  )
+}
+
+/**
+ * DELETE /api/v1/tasks/{taskId}/team-leader — Leader gỡ bỏ trưởng nhóm của nhiệm vụ
+ */
+export function useClearTaskTeamLeader() {
+  return useTaskMutation(
+    async ({
+      taskId,
+      version,
+    }: {
+      taskId: string
+      version: number
+    }) => {
+      return api<TaskDto>(`/api/v1/tasks/${taskId}/team-leader`, {
+        method: 'DELETE',
+        headers: { 'If-Match': `"${version}"` },
+      })
+    },
+  )
+}
+
+/**
+ * GET /api/v1/tasks/{taskId}/volunteer-matches — Gợi ý ghép TNV phù hợp kỹ năng & lịch rảnh (Leader)
+ */
+export function useVolunteerMatches(taskId?: string, communityId?: string, limit: number = 20) {
+  return useQuery({
+    queryKey: taskId ? taskKeys.volunteerMatches(taskId, communityId, limit) : ['tasks', 'volunteer-matches'],
+    queryFn: async () => {
+      if (!taskId) return []
+      const params = new URLSearchParams()
+      if (communityId) params.set('communityId', communityId)
+      params.set('limit', String(limit))
+      const res = await api<{ items?: VolunteerMatchDto[]; data?: VolunteerMatchDto[] } | VolunteerMatchDto[]>(
+        `/api/v1/tasks/${taskId}/volunteer-matches?${params.toString()}`,
+      )
+      if (Array.isArray(res)) return res
+      return res?.items ?? res?.data ?? []
+    },
+    enabled: Boolean(taskId),
+  })
+}
+
+/**
+ * GET /api/v1/tasks/{taskId}/progress/{progressId}/evidence/{fileId}/download-url
+ */
+export function useTaskEvidenceDownloadUrl(taskId?: string, progressId?: string, fileId?: string) {
+  return useQuery({
+    queryKey: taskId && progressId && fileId ? taskKeys.evidenceDownload(taskId, progressId, fileId) : ['tasks', 'evidence-download'],
+    queryFn: async () => {
+      if (!taskId || !progressId || !fileId) return null
+      return api<FileDownload>(`/api/v1/tasks/${taskId}/progress/${progressId}/evidence/${fileId}/download-url`)
+    },
+    enabled: Boolean(taskId && progressId && fileId),
   })
 }
