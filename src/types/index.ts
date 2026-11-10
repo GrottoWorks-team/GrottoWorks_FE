@@ -549,6 +549,107 @@ export interface ReviewCorrectionRequest {
   version?: number
   reviewNote?: string
 }
+
+// File contracts (Đợt H)
+export type FilePurpose = 'ProgressEvidence' | 'ReadinessEvidence' | 'PurchaseReceipt' | 'Other' | string
+
+export interface CreateUploadRequestDto {
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  purpose: FilePurpose
+  checksum?: string | null
+}
+
+export interface UploadRequestDto {
+  fileId: string
+  uploadUrl: string
+  method: string
+  headers?: Record<string, string>
+  expiresAt: string
+}
+
+export interface CompleteUploadRequestDto {
+  checksum?: string | null
+}
+
+export interface FileReferenceDto {
+  id: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+}
+
+export interface FileDownloadDto {
+  downloadUrl: string
+  expiresAt: string
+}
+
+// Report and System Exports (Đợt H)
+export type ReportExportFormat = 'Xlsx' | 'Pdf' | 'Csv' | 'XLSX' | 'PDF' | 'CSV'
+
+export type ReportExportType =
+  | 'Tasks'
+  | 'Materials'
+  | 'Purchases'
+  | 'Contributions'
+  | 'Attendance'
+  | 'Readiness'
+  | 'Recognition'
+  | string
+
+export interface CreateReportExportRequest {
+  reportType: ReportExportType
+  format?: ReportExportFormat
+  seasonId: string
+  workAreaId?: string | null
+  communityId?: string | null
+  from?: string | null
+  to?: string | null
+}
+
+export type ExportJobStatus = 'Queued' | 'Running' | 'Succeeded' | 'Failed' | 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+
+export interface ReportExportJobDto {
+  id: string
+  reportType: string
+  format: string
+  status: ExportJobStatus | string
+  filters?: {
+    seasonId?: string
+    workAreaId?: string | null
+    communityId?: string | null
+    from?: string | null
+    to?: string | null
+  }
+  fileName?: string | null
+  contentType?: string | null
+  fileSize?: number | null
+  downloadUrl?: string | null
+  errorCode?: string | null
+  errorMessage?: string | null
+  createdAt: string
+  startedAt?: string | null
+  completedAt?: string | null
+}
+
+export interface SystemExportRequest {
+  services?: string[] | null
+}
+
+export interface SystemJobDto {
+  jobId: string
+  status: string
+  services: string[]
+  createdAt: string
+  startedAt?: string | null
+  finishedAt?: string | null
+  attempts: number
+  fileId?: string | null
+  expiresAt?: string | null
+  errorCode?: string | null
+  manifest?: unknown
+}
 // ══════ [/fe-api-gap-2] ══════
 
 

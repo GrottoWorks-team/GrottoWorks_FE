@@ -2,23 +2,34 @@
 // (chi phí, quyên góp, giờ công, nhiệm vụ hoàn thành) + Bảng vinh danh
 // RecognitionBoard. Mỗi bảng có nút "Xuất CSV" dùng exportCsv có sẵn
 // (src/lib/csv.ts — BOM + ';' cho Excel vi). Tổng hợp client-side.
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Download } from 'lucide-react'
+import { Download, FileSpreadsheet, Database, Loader2, DownloadCloud } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Card } from '@/components/ui/card'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
+import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
 import { exportCsv } from '@/lib/csv'
 import { viDate } from '@/lib/format'
-import { useReportData } from '../api'
+import {
+  useReportData,
+  useCreateReportExport,
+  useReportExportJob,
+  useCreateSystemDataExport,
+  getReportExportFileUrl,
+} from '../api'
 import { useSeasonContext } from '@/features/season/season-context'
+import { useAuth } from '@/lib/auth'
 import { RecognitionBoard } from '../components/RecognitionBoard'
+import { FileUploadButton } from '@/components/shared/FileUploadButton'
 import type { ContributorRow } from '../api'
+import type { ReportExportFormat, ReportExportType } from '@/types'
 
 // Tiêu đề khối bảng: label + nút Xuất CSV (disabled khi hết dữ liệu).
 function Section({
@@ -55,10 +66,50 @@ function Section({
 export default function ReportPage() {
   const { t } = useTranslation()
   const toast = useToast()
+  const { user } = useAuth()
   // Báo cáo luôn theo mùa đang chọn ở header — trước đây ghim cứng một UUID
   // mùa demo nên số liệu không đổi khi người dùng đổi mùa.
   const { seasonId } = useSeasonContext()
   const { data, isPending } = useReportData(seasonId)
+
+  // Server Export state (Đợt H)
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [selectedReportType, setSelectedReportType] = useState<ReportExportType>('Tasks')
+  const [selectedFormat, setSelectedFormat] = useState<ReportExportFormat>('Xlsx')
+  const [activeJobId, setActiveJobId] = useState<string | null>(null)
+
+  const createReportExportMutation = useCreateReportExport()
+  const createSystemExportMutation = useCreateSystemDataExport()
+  const { data: activeJob } = useReportExportJob(activeJobId ?? undefined)
+
+  const handleStartReportExport = async () => {
+    if (!seasonId) {
+      toast('Vui lòng chọn mùa trước khi xuất dữ liệu')
+      return
+    }
+    try {
+      const res = await createReportExportMutation.mutateAsync({
+        reportType: selectedReportType,
+        format: selectedFormat,
+        seasonId,
+      })
+      setActiveJobId(res.id)
+      toast('Đã tạo yêu cầu xuất báo cáo, đang xử lý...')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast(`Lỗi tạo yêu cầu xuất: ${msg}`)
+    }
+  }
+
+  const handleSystemDataExport = async () => {
+    try {
+      const res = await createSystemExportMutation.mutateAsync({})
+      toast(`Đã khởi tạo xuất dữ liệu hệ thống (Mã công việc: ${res.jobId || 'thành công'})`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      toast(`Lỗi xuất dữ liệu hệ thống: ${msg}`)
+    }
+  }
 
   // Lookup name: material, user, community — Map để O(1) khi join hàng nghìn dòng.
   const lookups = useMemo(() => {
@@ -291,7 +342,45 @@ export default function ReportPage() {
 
   return (
     <div>
-      <PageHeader title={t('features.reports.title')} sub={t('features.reports.sub')} />
+      <PageHeader
+        title={t('features.reports.title')}
+        sub={t('features.reports.sub')}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <FileUploadButton
+              purpose="Other"
+              label={t('features.files.upload')}
+              showDownloadLink
+              size="sm"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportDialogOpen(true)}
+              data-testid="open-export-dialog-btn"
+            >
+              <FileSpreadsheet className="size-4" />
+              <span>Xuất file máy chủ</span>
+            </Button>
+            {user?.role === 'PARISH' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSystemDataExport}
+                disabled={createSystemExportMutation.isPending}
+                data-testid="system-data-export-btn"
+              >
+                {createSystemExportMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Database className="size-4" />
+                )}
+                <span>Xuất dữ liệu hệ thống</span>
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       <div className="stagger mb-2 grid grid-cols-2 gap-4 xl:grid-cols-4">
         <div style={{ '--d': 0 } as CSSProperties}>
@@ -429,6 +518,103 @@ export default function ReportPage() {
         </div>
         <RecognitionBoard rows={contributorRows} />
       </section>
+
+      <Dialog
+        open={exportDialogOpen}
+        onClose={() => setExportDialogOpen(false)}
+        title="Xuất báo cáo máy chủ"
+        size="md"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
+              Đóng
+            </Button>
+            <Button
+              onClick={handleStartReportExport}
+              disabled={createReportExportMutation.isPending || !seasonId}
+              data-testid="start-export-btn"
+            >
+              {createReportExportMutation.isPending && (
+                <Loader2 className="size-4 animate-spin" />
+              )}
+              Tạo file xuất
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-1">
+              Loại báo cáo
+            </label>
+            <select
+              value={selectedReportType}
+              onChange={(e) => setSelectedReportType(e.target.value as ReportExportType)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-brand-pine"
+              data-testid="export-report-type-select"
+            >
+              <option value="Tasks">Nhiệm vụ thi công</option>
+              <option value="Materials">Vật tư công trình</option>
+              <option value="Purchases">Chi phí mua sắm</option>
+              <option value="Contributions">Đóng góp & Quyên góp</option>
+              <option value="Attendance">Chấm công tình nguyện</option>
+              <option value="Readiness">Kiểm tra sẵn sàng</option>
+              <option value="Recognition">Bảng vinh danh</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-1">
+              Định dạng xuất
+            </label>
+            <select
+              value={selectedFormat}
+              onChange={(e) => setSelectedFormat(e.target.value as ReportExportFormat)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-brand-pine"
+              data-testid="export-format-select"
+            >
+              <option value="Xlsx">Microsoft Excel (.xlsx)</option>
+              <option value="Pdf">Tài liệu PDF (.pdf)</option>
+              <option value="Csv">Bảng dữ liệu CSV (.csv)</option>
+            </select>
+          </div>
+
+          {activeJob && (
+            <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 space-y-2" data-testid="export-job-status-card">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground">Trạng thái xử lý:</span>
+                <Badge className="font-mono text-xs">
+                  {activeJob.status}
+                </Badge>
+              </div>
+              {activeJob.fileName && (
+                <div className="text-xs text-foreground">
+                  <span className="text-muted-foreground">Tệp: </span>
+                  <span className="font-semibold">{activeJob.fileName}</span>
+                </div>
+              )}
+              {activeJob.status?.toUpperCase() === 'SUCCEEDED' && (
+                <div className="pt-2">
+                  <a
+                    href={getReportExportFileUrl(activeJob.id)}
+                    download={activeJob.fileName ?? 'report.xlsx'}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-brand-pine px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-pineHover"
+                    data-testid="download-export-file-btn"
+                  >
+                    <DownloadCloud className="size-4" />
+                    Tải file báo cáo ({activeJob.format})
+                  </a>
+                </div>
+              )}
+              {activeJob.status?.toUpperCase() === 'FAILED' && (
+                <p className="text-xs text-destructive">
+                  {activeJob.errorMessage || 'Xử lý file thất bại trên máy chủ'}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </Dialog>
     </div>
   )
 }

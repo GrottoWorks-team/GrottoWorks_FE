@@ -41,14 +41,38 @@ const mockReportData = {
 
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({
-    user: { id: 'u2', role: 'COMMUNITY', name: 'Giuse Bình' },
+    user: { id: 'u2', role: 'PARISH', name: 'Giuse Bình' },
     isPending: false,
   }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
+vi.mock('@/features/season/season-context', () => ({
+  useSeasonContext: () => ({
+    seasonId: 's1',
+    season: { id: 's1', name: 'Giáng sinh 2026' },
+  }),
+}))
+
+const mockMutateReportExport = vi.fn()
+const mockMutateSystemExport = vi.fn()
+let mockActiveJob: any = null
+
 vi.mock('../api', () => ({
   useReportData: () => ({ data: mockReportData, isPending: false }),
+  useCreateReportExport: () => ({
+    mutateAsync: mockMutateReportExport,
+    isPending: false,
+  }),
+  useCreateSystemDataExport: () => ({
+    mutateAsync: mockMutateSystemExport,
+    isPending: false,
+  }),
+  useReportExportJob: () => ({
+    data: mockActiveJob,
+    isPending: false,
+  }),
+  getReportExportFileUrl: (id: string) => `/api/v1/report-exports/${id}/file`,
 }))
 
 function mount() {
@@ -116,6 +140,87 @@ test('Xuất CSV bảng nhiệm vụ hoàn thành: đúng tên file + BOM UTF-8'
   expect(filename).toBe('grottoworks-bao-cao-nhiem-vu.csv')
   const bytes = await blobBytes(captured!)
   expect([bytes[0], bytes[1], bytes[2]]).toEqual([0xef, 0xbb, 0xbf])
-  vi.unstubAllGlobals()
-  vi.restoreAllMocks()
+  // Khôi phục mock mà không làm mất matchMedia của test-setup
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia
 })
+
+test('mở dialog xuất báo cáo máy chủ và kích hoạt useCreateReportExport', async () => {
+  mount()
+  const user = userEvent.setup()
+
+  mockMutateReportExport.mockResolvedValueOnce({
+    id: 'job-999',
+    reportType: 'Materials',
+    format: 'Pdf',
+    status: 'Queued',
+  })
+
+  const openBtn = screen.getByTestId('open-export-dialog-btn')
+  await user.click(openBtn)
+
+  expect(screen.getByText('Xuất báo cáo máy chủ')).toBeDefined()
+
+  const typeSelect = screen.getByTestId('export-report-type-select')
+  await user.selectOptions(typeSelect, 'Materials')
+
+  const formatSelect = screen.getByTestId('export-format-select')
+  await user.selectOptions(formatSelect, 'Pdf')
+
+  const startBtn = screen.getByTestId('start-export-btn')
+  await user.click(startBtn)
+
+  expect(mockMutateReportExport).toHaveBeenCalledWith({
+    reportType: 'Materials',
+    format: 'Pdf',
+    seasonId: 's1',
+  })
+})
+
+test('kích hoạt xuất dữ liệu toàn hệ thống cho tài khoản Admin/Parish', async () => {
+  mount()
+  const user = userEvent.setup()
+
+  mockMutateSystemExport.mockResolvedValueOnce({
+    jobId: 'sys-job-111',
+    status: 'Queued',
+  })
+
+  const sysBtn = screen.getByTestId('system-data-export-btn')
+  await user.click(sysBtn)
+
+  expect(mockMutateSystemExport).toHaveBeenCalledWith({})
+})
+
+test('hiển thị trạng thái hoàn thành và link tải tệp khi có activeJob thành công', async () => {
+  mockActiveJob = {
+    id: 'job-completed-777',
+    status: 'SUCCEEDED',
+    fileName: 'materials_2026.xlsx',
+    format: 'Xlsx',
+  }
+
+  mount()
+  const user = userEvent.setup()
+
+  const openBtn = screen.getByTestId('open-export-dialog-btn')
+  await user.click(openBtn)
+
+  expect(screen.getByTestId('export-job-status-card')).toBeDefined()
+  expect(screen.getByText('SUCCEEDED')).toBeDefined()
+  expect(screen.getByText('materials_2026.xlsx')).toBeDefined()
+
+  const downloadBtn = screen.getByTestId('download-export-file-btn')
+  expect(downloadBtn.getAttribute('href')).toBe('/api/v1/report-exports/job-completed-777/file')
+
+  mockActiveJob = null
+})
+
