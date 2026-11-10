@@ -29,6 +29,10 @@ export interface User {
   locked?: boolean; skills: string[]; points: number; avatarHue: number;
   /** Role gốc BE trả từ Identity service, ví dụ 'VOLUNTEER'. */
   rawRole?: string;
+  /** [fe-api-gap-2] Trạng thái tài khoản BE Identity: 'Active' | 'Locked' | 'Inactive' | string. */
+  status?: string;
+  /** [fe-api-gap-2] Version dùng cho If-Match (optimistic concurrency) khi lock/unlock/update/assignRole. */
+  version?: number;
   /** Khung giờ rảnh — BE `UserProfileDto.Availability`. Chỉ TNV mới có. */
   availability?: { availableFrom: string; availableTo: string; note?: string | null }[];
 }

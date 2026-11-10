@@ -21,7 +21,7 @@ export const SELECT_CLS =
 
 const CHECK_CLS = 'size-4 rounded border border-border bg-card accent-primary'
 
-const FALLBACK_ROLES = ['PARISH', 'COMMUNITY', 'LEADER', 'MATERIAL_OFFICER'] as const
+const FALLBACK_ROLES = ['ADMIN', 'PARISH', 'LEADER', 'MO', 'VOLUNTEER'] as const
 
 const schema = z
   .object({
@@ -77,7 +77,7 @@ export function AccountFormDialog({
           name: account.name,
           email: account.email,
           phone: (account as any).phone ?? '',
-          role: account.role,
+          role: account.rawRole ?? (account.role === 'MATERIAL_OFFICER' ? 'MO' : account.role),
           communityId: account.communityId ?? '',
           password: '',
           skills: account.skills,
@@ -90,13 +90,16 @@ export function AccountFormDialog({
       if (editing && account) {
         await update.mutateAsync({
           id: account.id,
+          version: account.version,
           displayName: data.name,
           email: data.email,
           phone: data.phone?.trim() || null,
         })
-        if (data.role !== account.role) {
+        const currentRole = account.rawRole ?? (account.role === 'MATERIAL_OFFICER' ? 'MO' : account.role)
+        if (data.role !== currentRole && data.role !== account.role) {
           await assignRole.mutateAsync({
             id: account.id,
+            version: account.version,
             role: data.role,
             parishId: data.role === 'ADMIN' ? null : parishId ?? null,
           })

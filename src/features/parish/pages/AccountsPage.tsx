@@ -11,7 +11,7 @@ import { useToast } from '@/components/ui/toast'
 import { useCommunities } from '@/features/communities/api'
 import { useUsers } from '@/features/users/api'
 import { cn } from '@/lib/utils'
-import { useAssignUserRole, useLockUser, useUnlockUser } from '../api'
+import { useAssignUserRole, useLockUser, useRoles, useUnlockUser } from '../api'
 import { AccountFormDialog } from './AccountFormDialog'
 import type { User } from '@/types'
 import { errorMessage } from '@/lib/errorMessage'
@@ -19,10 +19,12 @@ import { errorMessage } from '@/lib/errorMessage'
 // Switch khoá/mở — pattern trang Checklist.
 function LockSwitch({
   checked,
+  disabled,
   label,
   onToggle,
 }: {
   checked: boolean
+  disabled?: boolean
   label: string
   onToggle: () => void
 }) {
@@ -30,12 +32,19 @@ function LockSwitch({
     <button
       type="button"
       role="switch"
+      disabled={disabled}
       aria-checked={checked}
       aria-label={label}
-      onClick={onToggle}
+      aria-disabled={disabled}
+      title={disabled ? 'Tài khoản vô hiệu hoá (INACTIVE) không thể khoá/mở khoá' : label}
+      onClick={disabled ? undefined : onToggle}
       className={cn(
         'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors',
-        checked ? 'border-destructive bg-destructive' : 'border-border bg-brand-pine',
+        disabled
+          ? 'cursor-not-allowed opacity-40 border-stone-300 bg-stone-200'
+          : checked
+            ? 'border-destructive bg-destructive'
+            : 'border-border bg-brand-pine',
       )}
     >
       <span
@@ -54,6 +63,7 @@ export default function AccountsPage() {
   const toast = useToast()
   const { data: users = [], isPending } = useUsers()
   const { data: communities = [] } = useCommunities()
+  const { data: rolesData } = useRoles()
   const lockUser = useLockUser()
   const unlockUser = useUnlockUser()
   const assignRole = useAssignUserRole()
@@ -64,16 +74,26 @@ export default function AccountsPage() {
   const [newRole, setNewRole] = useState<string>('LEADER')
   const [isChangingRole, setIsChangingRole] = useState(false)
 
+  const availableRoles = useMemo(() => {
+    return rolesData?.length
+      ? rolesData.map((r) => r.code)
+      : ['ADMIN', 'PARISH', 'LEADER', 'MO', 'VOLUNTEER']
+  }, [rolesData])
+
   const communityName = (id?: string) => communities.find((c) => c.id === id)?.name ?? '—'
 
-  // Khoá/mở qua POST /api/v1/admin/users/{userId}/lock và /unlock
+  // Khoá/mở qua POST /api/v1/admin/users/{userId}/lock và /unlock kèm version (If-Match)
   const toggleLock = async (u: User) => {
+    if (u.status?.toUpperCase() === 'INACTIVE') {
+      toast('Tài khoản đã vô hiệu hoá (INACTIVE), không thể thao tác khoá/mở khoá', 'alert')
+      return
+    }
     try {
       if (u.locked) {
-        await unlockUser.mutateAsync({ id: u.id, reason: 'Mở khoá tài khoản từ trang quản trị' })
+        await unlockUser.mutateAsync({ id: u.id, version: u.version, reason: 'Mở khoá tài khoản từ trang quản trị' })
         toast(t('features.parish.unlocked', { name: u.name }))
       } else {
-        await lockUser.mutateAsync({ id: u.id, reason: 'Khoá tài khoản từ trang quản trị' })
+        await lockUser.mutateAsync({ id: u.id, version: u.version, reason: 'Khoá tài khoản từ trang quản trị' })
         toast(t('features.parish.locked', { name: u.name }))
       }
     } catch (err) {
@@ -97,15 +117,24 @@ export default function AccountsPage() {
         key: 'locked',
         header: t('features.parish.lockedCol'),
         align: 'center' as const,
-        render: (u: User) => (
-          <div className="flex justify-center">
-            <LockSwitch
-              checked={Boolean(u.locked)}
-              label={t('features.parish.lockSwitch', { name: u.name })}
-              onToggle={() => void toggleLock(u)}
-            />
-          </div>
-        ),
+        render: (u: User) => {
+          const isInactive = u.status?.toUpperCase() === 'INACTIVE'
+          return (
+            <div className="flex justify-center items-center gap-1.5">
+              <LockSwitch
+                checked={Boolean(u.locked)}
+                disabled={isInactive}
+                label={t('features.parish.lockSwitch', { name: u.name })}
+                onToggle={() => void toggleLock(u)}
+              />
+              {isInactive && (
+                <span className="text-[10px] font-medium text-stone-500 uppercase">
+                  Inactive
+                </span>
+              )}
+            </div>
+          )
+        },
       },
       {
         key: 'actions',
@@ -119,7 +148,8 @@ export default function AccountsPage() {
               title={t('features.accounts.changeRole')}
               onClick={() => {
                 setRoleTarget(u)
-                setNewRole(u.role)
+                const initialRole = u.rawRole ?? (u.role === 'MATERIAL_OFFICER' ? 'MO' : u.role)
+                setNewRole(initialRole)
               }}
             >
               <UserCog className="size-4 text-emerald-700" />
@@ -192,6 +222,7 @@ export default function AccountsPage() {
                   try {
                     await assignRole.mutateAsync({
                       id: roleTarget.id,
+                      version: roleTarget.version,
                       role: newRole,
                       parishId: newRole === 'ADMIN' ? null : roleTarget.parishId ?? null,
                     })
@@ -223,7 +254,7 @@ export default function AccountsPage() {
                 onChange={(e) => setNewRole(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground"
               >
-                {['ADMIN', 'PARISH', 'COMMUNITY', 'LEADER', 'MATERIAL_OFFICER'].map((r) => (
+                {availableRoles.map((r) => (
                   <option key={r} value={r}>
                     {t(`role.${r}`, { defaultValue: r })}
                   </option>

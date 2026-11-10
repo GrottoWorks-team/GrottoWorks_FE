@@ -21,6 +21,7 @@ interface UserSummaryDto {
   parishId?: string | null
   communityId?: string | null
   skillIds?: string[]
+  version?: number
 }
 
 interface SkillDto {
@@ -28,7 +29,7 @@ interface SkillDto {
   name: string
 }
 
-async function fetchUserDtos(): Promise<(UserSummaryDto & { skillIds?: string[] })[]> {
+async function fetchUserDtos(): Promise<(UserSummaryDto & { skillIds?: string[]; version?: number })[]> {
   try {
     return await api<UserSummaryDto[]>('/api/v1/users?size=100')
   } catch (error) {
@@ -70,9 +71,12 @@ export function useUsers(options: { enabled?: boolean; withSkills?: boolean } = 
         name: dto.displayName || dto.email,
         email: dto.email,
         role: (normalizeRole(dto.role) ?? 'COMMUNITY') as Role,
+        rawRole: dto.role,
+        status: dto.status,
         communityId: dto.communityId ?? undefined,
         parishId: dto.parishId ?? undefined,
         locked: dto.status?.toUpperCase() === 'LOCKED',
+        version: dto.version,
         skills: (dto.skillIds ?? [])
           .map((id) => nameById.get(id))
           .filter((name): name is string => Boolean(name)),
