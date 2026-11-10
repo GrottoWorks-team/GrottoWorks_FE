@@ -1,9 +1,9 @@
 // Bản đồ mặt bằng giáo xứ (route /community/map + /parish/map).
 //
-// Ban hành giáo (COMMUNITY) tải ảnh mặt bằng/sơ đồ giáo xứ rồi GHIM từng khu
-// vực công tác lên đó bằng toạ độ chuẩn hoá 0..1. PARISH (quản trị) xem/duyệt
-// được. Trang này KHÔNG liên quan tới bản thiết kế công trình (design review) —
-// theo yêu cầu nghiệp vụ committee không đụng design.
+// ADMIN (role FE `PARISH`) là người TẢI ảnh mặt bằng/sơ đồ giáo xứ và GHIM từng
+// khu vực công tác lên đó bằng toạ độ chuẩn hoá 0..1. Ban hành giáo (COMMUNITY)
+// chỉ XEM — không upload, không ghim (yêu cầu 10/11/2026). Trang này KHÔNG liên
+// quan tới bản thiết kế công trình (design review).
 //
 // ⚠️ TẠM THỜI (FE-only): BE chưa có endpoint `/parishMaps` → metadata bản đồ +
 // toạ độ ghim lưu ở localStorage (features/map/localStore), ảnh ở IndexedDB
@@ -55,16 +55,13 @@ export default function ParishMapPage() {
   const setPin = useSetMapPin()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Ban hành giáo + quản trị được phân bổ; các vai trò khác (nếu tới được) chỉ xem.
-  const canEdit = user?.role === 'COMMUNITY' || user?.role === 'PARISH'
+  // Chỉ admin (role FE `PARISH`) được tải ảnh + ghim; ban hành giáo chỉ xem.
+  // Quyền thật phải do BE chốt khi có `/parishes/{id}/map` — xem
+  // GrottoWorks_BE/docs/BE-TODO-demo-2026-11-10.md.
+  const canEdit = user?.role === 'PARISH'
 
-  // Ban hành giáo chỉ phân bổ khu vực mình quản lý — khớp bộ lọc AreaListPage.
   // Giữ nguyên thứ tự tạo: khu tạo trước ở trên, tạo sau ở dưới.
-  const scopedAreas = useMemo(() => {
-    return user?.role === 'COMMUNITY' && user.communityId
-      ? areas.filter((a) => a.communityId === user.communityId)
-      : areas
-  }, [areas, user])
+  const scopedAreas = useMemo(() => areas, [areas])
 
   // Số thứ tự 1..n hiển thị đồng bộ giữa marker trên bản đồ và danh sách bên phải.
   const numbered = useMemo(() => scopedAreas.map((area, i) => ({ area, n: i + 1 })), [scopedAreas])
@@ -184,6 +181,12 @@ export default function ParishMapPage() {
           ) : undefined
         }
       />
+
+      {!canEdit && mapRecord && (
+        <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {t('features.map.readOnlyHint')}
+        </p>
+      )}
 
       {!mapRecord ? (
         <Card className="p-8 text-center">

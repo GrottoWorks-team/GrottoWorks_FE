@@ -60,6 +60,7 @@ const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
 const DesignReviewPage = lazy(() => import('@/features/designs/pages/DesignReviewPage'))
 const BuilderPage = lazy(() => import('@/features/builder/pages/BuilderPage'))
 const ParishMapPage = lazy(() => import('@/features/map/pages/ParishMapPage'))
+const SceneSharePage = lazy(() => import('@/features/builder/pages/SceneSharePage'))
 const GrottoDesignerPage = lazy(() => import('@/features/designer/pages/GrottoDesignerPage'))
 
 // Trang tháº­t theo route `to` cá»§a nav-config; má»¥c chÆ°a cÃ³ â†’ Placeholder.
@@ -267,6 +268,8 @@ export default function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/register-account" element={<UserRegister />} />
                 <Route path="/volunteer" element={<VolunteerNotice />} />
+                {/* Chia sẻ mô hình 3D cho TNV (app mobile mở bằng trình duyệt). */}
+                <Route path="/share/scene/:areaId" element={<SceneSharePage />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 {/* Alias tương thích link cũ (/join, /signup) ở landing + Login. */}

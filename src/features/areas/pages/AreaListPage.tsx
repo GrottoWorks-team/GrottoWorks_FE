@@ -33,6 +33,9 @@ export default function AreaListPage() {
   // PARISH (quản trị) vẫn xem/duyệt bản thiết kế.
   const { user } = useAuth()
   const canViewDesign = user?.role !== 'COMMUNITY'
+  // Từ 10/11/2026: admin (role FE `PARISH`) là người tạo/sửa/phân công khu vực và
+  // quản sơ đồ giáo xứ; ban hành giáo chỉ xem (quyền thật phải do BE chốt).
+  const canEdit = user?.role === 'PARISH'
 
   // Mùa lấy từ header (SeasonProvider). URL vẫn là nguồn sự thật: dropdown của
   // trang và khung chọn mùa trên header cùng ghi `?season=`.
@@ -173,35 +176,39 @@ export default function AreaListPage() {
                 <FileImage className="size-4" />
               </Button>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('features.areas.assign')}
-              onClick={(e) => {
-                e.stopPropagation()
-                setAssigning(a)
-              }}
-            >
-              <UserPlus className="size-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.edit')}
-              onClick={() => {
-                setEditing(a)
-                setFormOpen(true)
-              }}
-            >
-              <Pencil className="size-4" />
-            </Button>
+            {/* Tạo/sửa/phân công chỉ dành cho admin (PARISH). */}
+            {canEdit && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('features.areas.assign')}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setAssigning(a)
+                  }}
+                >
+                  <UserPlus className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t('common.edit')}
+                  onClick={() => {
+                    setEditing(a)
+                    setFormOpen(true)
+                  }}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              </>
+            )}
           </div>
         ),
       },
     ],
-    [t, users, seasonMap, navigate, pathname, canViewDesign],
+    [t, users, seasonMap, navigate, pathname, canViewDesign, canEdit],
   )
-
   const isPending = isAreasPending || isSeasonsPending
 
   return (
@@ -239,18 +246,26 @@ export default function AreaListPage() {
                 </button>
               ))}
             </div>
-            <Button
-              onClick={() => {
-                setEditing(null)
-                setFormOpen(true)
-              }}
-            >
-              <Plus className="size-4" />
-              {t('features.areas.create')}
-            </Button>
+            {canEdit && (
+              <Button
+                onClick={() => {
+                  setEditing(null)
+                  setFormOpen(true)
+                }}
+              >
+                <Plus className="size-4" />
+                {t('features.areas.create')}
+              </Button>
+            )}
           </>
         }
       />
+
+      {!canEdit && (
+        <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {t('features.areas.adminOnlyHint')}
+        </p>
+      )}
 
       {/* Filter bar */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card/60 px-4 py-3">

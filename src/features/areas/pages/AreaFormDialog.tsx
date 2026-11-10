@@ -1,7 +1,11 @@
 // Dialog tạo/sửa khu vực — RHF + zod: seasonId, name, type, level (PARISH/COMMUNITY +
 // communityId khi COMMUNITY), leaderId (LEADER), officerId (OFFICER), deadline, description.
 // Select dùng <select> native — style trùng Input (không thêm dependency).
-import { useEffect, useMemo } from 'react'
+//
+// GHIM VỊ TRÍ: tạo và ghim nằm chung một form (không phải mở trang Bản đồ riêng).
+// Pin chỉ là tuỳ chọn — chưa có ảnh sơ đồ vẫn tạo được khu vực (form-first, xem
+// docs/specs/2026-11-03-clone-season-and-parish-map.md §2.2).
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -13,8 +17,12 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { getBlob } from '@/lib/blobStore'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
 import { useWorkAreaCategories } from '@/features/parish/api'
+import { useMapPins, useParishMap, useSetMapPin } from '@/features/map/api'
+import { MapPinPicker } from '@/features/map/components/MapPinPicker'
+import type { NormalizedPoint } from '@/features/designs/coords'
 import type { Season, WorkArea } from '@/types'
 
 const AREA_TYPES = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE'] as const
@@ -98,7 +106,58 @@ export function AreaFormDialog({
   const update = useUpdateArea()
   const editing = Boolean(area)
 
-  // Select options: lọc theo role — leader từ LEADER, officer từ OFFICER.
+  // ── Ghim vị trí trên sơ đồ ngay trong form ───────────────────────────────
+  // Sơ đồ + khu vực do admin (PARISH) quản lý, nên ghim nằm cùng form. Pin vẫn
+  // lưu ở `features/map` (localStorage) cho tới khi BE có API bản đồ.
+  const { data: mapRecord } = useParishMap()
+  const { data: pins = {} } = useMapPins()
+  const setPin = useSetMapPin()
+  const [pin, setPinValue] = useState<NormalizedPoint | null>(null)
+  const [pinTouched, setPinTouched] = useState(false)
+  const [mapImageUrl, setMapImageUrl] = useState('')
+  const mapHref = user?.role === 'PARISH' ? '/parish/map' : '/community/map'
+
+  // Ảnh sơ đồ: blob IndexedDB → object URL (thu hồi khi đóng dialog).
+  const urlRef = useRef('')
+  useEffect(() => {
+    let cancelled = false
+    setMapImageUrl('')
+    void (async () => {
+      if (!mapRecord?.imageKey) return
+      const blob = await getBlob(mapRecord.imageKey).catch(() => null)
+      if (cancelled || !blob) return
+      const url = URL.createObjectURL(blob)
+      urlRef.current = url
+      setMapImageUrl(url)
+    })()
+    return () => {
+      cancelled = true
+      if (urlRef.current) {
+        URL.revokeObjectURL(urlRef.current)
+        urlRef.current = ''
+      }
+    }
+  }, [mapRecord?.imageKey])
+
+  // Khi SỬA: nạp ghim hiện có (một lần, không ghi đè lựa chọn của người dùng).
+  useEffect(() => {
+    if (!editing || !area || pinTouched) return
+    const existing = pins[area.id]
+    if (existing) setPinValue({ x: existing.x, y: existing.y })
+  }, [editing, area, pins, pinTouched])
+
+  const pickPin = (point: NormalizedPoint) => {
+    setPinValue(point)
+    setPinTouched(true)
+  }
+  const clearPin = () => {
+    setPinValue(null)
+    setPinTouched(true)
+  }
+
+  // Lead/officer options: lọc theo role VÀ theo giáo xứ của mùa đang chọn —
+  // BE chặn gán chéo giáo xứ (`PARISH_ACCESS_DENIED`), nên danh sách phải cùng
+  // giáo xứ với khu vực (xem mục 4.1 báo cáo E2E).
   const leaders = users.filter((u) => u.role === 'LEADER')
   const officers = users.filter((u) => u.role === 'MATERIAL_OFFICER')
 
@@ -152,6 +211,25 @@ export function AreaFormDialog({
   const level = watch('level')
   const currentSeasonId = watch('seasonId')
 
+  // Chỉ hiện trưởng khu/MO thuộc đúng giáo xứ của mùa đang chọn (BE trả
+  // `PARISH_ACCESS_DENIED` nếu lệch). Giữ lại người đang gán khi SỬA để không
+  // mất giá trị đã lưu nếu mùa đổi giáo xứ.
+  const seasonParishId = seasons.find((s) => s.id === currentSeasonId)?.parishId
+  const leaderOptions = useMemo(() => {
+    const inParish = (u: { parishId?: string }) =>
+      !seasonParishId || !u.parishId || u.parishId === seasonParishId
+    const list = leaders.filter(inParish)
+    const kept = area?.leaderId ? users.find((u) => u.id === area.leaderId) : undefined
+    return kept && !list.some((u) => u.id === kept.id) ? [...list, kept] : list
+  }, [leaders, users, seasonParishId, area?.leaderId])
+  const officerOptions = useMemo(() => {
+    const inParish = (u: { parishId?: string }) =>
+      !seasonParishId || !u.parishId || u.parishId === seasonParishId
+    const list = officers.filter(inParish)
+    const kept = area?.officerId ? users.find((u) => u.id === area.officerId) : undefined
+    return kept && !list.some((u) => u.id === kept.id) ? [...list, kept] : list
+  }, [officers, users, seasonParishId, area?.officerId])
+
   // Cập nhật seasonId khi seasons load xong nếu chưa có giá trị
   useEffect(() => {
     if (!currentSeasonId && initialSeasonId) {
@@ -187,6 +265,14 @@ export function AreaFormDialog({
           leaderId: data.leaderId || undefined,
           officerId: data.officerId || undefined,
         })
+        // Ghim/bỏ ghim chỉ gọi khi người dùng thực sự đổi vị trí.
+        if (pinTouched) {
+          try {
+            await setPin.mutateAsync({ areaId: area.id, pin })
+          } catch {
+            toast(t('features.map.pinSaveFailed'), 'alert')
+          }
+        }
         toast(t('features.areas.updated', { name: data.name }))
       } else {
         const created = await create.mutateAsync({
@@ -210,6 +296,14 @@ export function AreaFormDialog({
             })
           } catch {
             toast(t('features.areas.assignAfterCreateFailed'), 'alert')
+          }
+          // Ghim ngay sau khi có id — cùng một lần bấm Lưu của người dùng.
+          if (pin) {
+            try {
+              await setPin.mutateAsync({ areaId: created.id, pin })
+            } catch {
+              toast(t('features.map.pinSaveFailed'), 'alert')
+            }
           }
         }
         toast(t('features.areas.created', { name: data.name }))
@@ -343,19 +437,24 @@ export function AreaFormDialog({
             <Label htmlFor="area-leader">{t('features.areas.leader')}</Label>
             <select id="area-leader" className={SELECT_CLS} {...register('leaderId')}>
               <option value="">{t('features.areas.selectPlaceholder')}</option>
-              {leaders.map((u) => (
+              {leaderOptions.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>
               ))}
             </select>
+            {leaderOptions.length <= 1 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('features.areas.noLeaderInParish')}
+              </p>
+            )}
             {err(errors.leaderId?.message)}
           </div>
           <div>
             <Label htmlFor="area-officer">{t('features.areas.officer')}</Label>
             <select id="area-officer" className={SELECT_CLS} {...register('officerId')}>
               <option value="">{t('features.areas.selectPlaceholder')}</option>
-              {officers.map((u) => (
+              {officerOptions.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.name}
                 </option>
@@ -388,6 +487,33 @@ export function AreaFormDialog({
             {...register('description')}
           />
           {err(errors.description?.message)}
+        </div>
+
+        {/* Ghim vị trí trên sơ đồ — tuỳ chọn, cùng một lần lưu với khu vực. */}
+        <div className="space-y-2">
+          <Label>{t('features.map.pinSection')}</Label>
+          {mapImageUrl ? (
+            <>
+              <MapPinPicker src={mapImageUrl} pin={pin} onPick={pickPin} />
+              <div className="flex items-start gap-2">
+                <p className="flex-1 text-[11px] text-muted-foreground">
+                  {pin ? t('features.map.pinPicked') : t('features.map.pinHint')}
+                </p>
+                {pin && (
+                  <Button type="button" size="sm" variant="outline" onClick={clearPin}>
+                    {t('features.map.clearPosition')}
+                  </Button>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              {t('features.map.pinNoMap')}{' '}
+              <a href={mapHref} className="font-semibold text-primary hover:underline">
+                {t('features.map.pinNoMapAction')}
+              </a>
+            </p>
+          )}
         </div>
       </form>
     </Dialog>
