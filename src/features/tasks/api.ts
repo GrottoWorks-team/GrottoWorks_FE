@@ -33,6 +33,8 @@ export interface TaskDto {
   version: number
   createdAt: string
   updatedAt?: string | null
+  /** Assignment được chỉ định làm trưởng nhóm của task (BE `PUT /tasks/{id}/team-leader`). */
+  teamLeaderAssignmentId?: string | null
   /** `GET /tasks/{id}` trả kèm yêu cầu kỹ năng (danh sách rỗng nếu chưa gắn). */
   skills?: TaskSkillDto[]
   /** `GET /tasks/{id}` trả kèm nhu cầu vật tư của task. */
@@ -85,6 +87,8 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     uiStatus = 'REVISE'
   } else if (st === 'COMPLETED') {
     uiStatus = 'DONE'
+  } else if (st === 'CANCELLED') {
+    uiStatus = 'CANCELLED'
   }
 
   return {
@@ -107,6 +111,7 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     submittedPhotos: 0,
     submittedNotes: dto.completionCriteria || undefined,
     version: dto.version,
+    teamLeaderAssignmentId: dto.teamLeaderAssignmentId ?? null,
   }
 }
 
@@ -201,7 +206,9 @@ export function useCreateTask() {
     // BE bắt buộc `deadline` (CreateTaskRequest) và domain chặn
     // deadline <= startAt → không gửi null, mặc định cuối ngày của dueDate
     // hoặc +7 ngày nếu người dùng để trống.
-    const start = new Date()
+    // `startAt` phải theo lịch người dùng chọn; nếu gửi "bây giờ" thì domain
+    // TASK_DATE_OUT_OF_SEASON sẽ chặn mọi việc thuộc mùa chưa/đã qua.
+    const start = data.startAt ? new Date(data.startAt) : new Date()
     const deadline = endOfDay(data.dueDate) ?? new Date(start.getTime() + 7 * 86_400_000)
     const payload = {
       name: data.title,
@@ -449,7 +456,14 @@ export function useRequestTaskRevision() {
 //   POST     /api/v1/task-applications/{id}/approve|reject (LEADER)
 // ---------------------------------------------------------------------------
 
-export type AssignmentStatus = 'PENDING' | 'APPROVED' | 'DECLINED' | 'CANCELLED'
+export type AssignmentStatus =
+  | 'PENDING'
+  | 'ACCEPTED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'APPROVED'
+  | 'DECLINED'
+  | 'CANCELLED'
 
 export interface AssignmentDto {
   id: string
@@ -521,6 +535,42 @@ export function useAssignVolunteer() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: assignmentKeys.list(vars.taskId) })
       qc.invalidateQueries({ queryKey: taskKeys.detail(vars.taskId) })
+    },
+  })
+}
+
+/**
+ * `PUT /api/v1/tasks/{taskId}/team-leader` — LEADER chọn 1 assignment đã ACCEPTED/
+ * IN_PROGRESS làm trưởng nhóm. Bắt buộc `If-Match` version của task (lệch → 412).
+ */
+export function useSetTaskTeamLeader() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { taskId: string; assignmentId: string; version: number }) =>
+      api<TaskDto>(`/api/v1/tasks/${input.taskId}/team-leader`, {
+        method: 'PUT',
+        headers: { 'If-Match': `"${input.version}"` },
+        body: JSON.stringify({ teamLeaderAssignmentId: input.assignmentId }),
+      }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: taskKeys.detail(vars.taskId) })
+      qc.invalidateQueries({ queryKey: assignmentKeys.list(vars.taskId) })
+    },
+  })
+}
+
+/** `DELETE /api/v1/tasks/{taskId}/team-leader` — bỏ chỉ định trưởng nhóm. */
+export function useClearTaskTeamLeader() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { taskId: string; version: number }) =>
+      api<TaskDto>(`/api/v1/tasks/${input.taskId}/team-leader`, {
+        method: 'DELETE',
+        headers: { 'If-Match': `"${input.version}"` },
+      }),
+    onSuccess: (_data, vars) => {
+      qc.invalidateQueries({ queryKey: taskKeys.detail(vars.taskId) })
+      qc.invalidateQueries({ queryKey: assignmentKeys.list(vars.taskId) })
     },
   })
 }

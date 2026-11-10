@@ -104,7 +104,7 @@ export interface Task {
   /** Nhu cầu vật tư chi tiết (`TaskDto.materials`) — dùng để prefill dialog gán vật tư. */
   materialRequirements?: Array<{ materialId: string; requiredQuantity: number; note?: string | null }>;
   estimateHours: number; volunteersNeeded: number; assignees: string[]; materialIds: string[];
-  status: 'TODO' | 'READY' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE'; dueDate: string;
+  status: 'TODO' | 'READY' | 'DOING' | 'REVIEW' | 'DONE' | 'REVISE' | 'CANCELLED'; dueDate: string;
   /** Ngày bắt đầu dự kiến (`TaskDto.startAt`) — việc chuyển IN_PROGRESS khi leader duyệt check-in. */
   startAt?: string | null;
   /**
@@ -116,6 +116,8 @@ export interface Task {
   /** Ưu tiên từ TaskExecution (LOW|MEDIUM|HIGH|CRITICAL) — BE trả sẵn trong TaskDto. */
   priority?: TaskPriority;
   version?: number;
+  /** Assignment được chỉ định làm trưởng nhóm của task (`TaskDto.teamLeaderAssignmentId`). */
+  teamLeaderAssignmentId?: string | null;
 }
 
 export interface VolunteerReg { id: string; taskId: string; volunteerId: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' }

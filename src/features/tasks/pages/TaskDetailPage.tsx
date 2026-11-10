@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, CalendarClock, ClipboardCheck, Clock, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarClock, ClipboardCheck, Clock, Crown, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -27,6 +27,8 @@ import {
   useApproveApplication,
   useApproveTask,
   useAssignVolunteer,
+  useClearTaskTeamLeader,
+  useSetTaskTeamLeader,
   useCancelTask,
   useReadyTask,
   useRejectApplication,
@@ -104,15 +106,30 @@ export default function TaskDetailPage() {
     Boolean(task?.id),
   )
   const assignVolunteer = useAssignVolunteer()
+  const setTeamLeader = useSetTaskTeamLeader()
+  const clearTeamLeader = useClearTaskTeamLeader()
   const cancelTask = useCancelTask()
   const replaceMaterials = useReplaceTaskMaterials()
   const { data: users = [] } = useUsers({ withSkills: false })
   const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
+
+  // Trưởng nhóm nhiệm vụ: chỉ assignment đã ACCEPTED/IN_PROGRESS mới chọn được
+  // (BE `TaskTeamLeaderEligibility`). Task COMPLETED/CANCELLED không đổi được.
+  const leaderAssignment = assignments.find((a) => a.id === task?.teamLeaderAssignmentId)
+  const eligibleForLeader = assignments.filter((a) =>
+    ['ACCEPTED', 'IN_PROGRESS'].includes(String(a.status).toUpperCase()),
+  )
+  const leaderEditable =
+    !readOnly &&
+    isAreaLeader &&
+    task?.backendStatus !== 'COMPLETED' &&
+    task?.backendStatus !== 'CANCELLED'
   const { data: skillsCatalog = [] } = useSkillsCatalog()
   const [editingCriteria, setEditingCriteria] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
   const [assignVolunteerId, setAssignVolunteerId] = useState('')
   const [assignNote, setAssignNote] = useState('')
+  const [leaderSelect, setLeaderSelect] = useState('')
   const [cancelOpen, setCancelOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
   const [materialsOpen, setMaterialsOpen] = useState(false)
@@ -579,7 +596,8 @@ export default function TaskDetailPage() {
               <p className="lbl-mono">
                 {t('features.tasks.assignees')} ({assignments.length}/{task.volunteersNeeded})
               </p>
-              {!readOnly && isAreaLeader && (
+              {/* BE chỉ nhận phân công khi việc còn OPEN (`TASK_INVALID_STATE`). */}
+              {!readOnly && isAreaLeader && task.backendStatus === 'OPEN' && (
                 <Button variant="ghost" size="sm" onClick={() => setAssignOpen(true)}>
                   <UserPlus className="size-4" />
                   {t('features.tasks.assignVolunteer')}
@@ -602,8 +620,14 @@ export default function TaskDetailPage() {
                     className="flex items-center justify-between gap-2 rounded-md border border-border/60 bg-muted/20 px-3 py-2"
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-foreground">
+                      <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground">
                         {userNameById.get(assignment.volunteerId) ?? assignment.volunteerId}
+                        {assignment.id === task.teamLeaderAssignmentId && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-brand-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-brand-pine">
+                            <Crown className="size-3" aria-hidden />
+                            {t('features.tasks.teamLeaderBadge')}
+                          </span>
+                        )}
                       </p>
                       <p className="text-[11px] text-muted-foreground">
                         {t(
@@ -616,6 +640,97 @@ export default function TaskDetailPage() {
                   </li>
                 ))}
               </ul>
+            )}
+          </Card>
+
+          {/* Trưởng nhóm nhiệm vụ: BE `PUT/DELETE /tasks/{id}/team-leader` (LEADER).
+              Khi đã chỉ định, chỉ assignment này được gửi tiến độ / nộp hoàn thành. */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between gap-3">
+              <p className="lbl-mono">{t('features.tasks.teamLeaderTitle')}</p>
+              {leaderAssignment && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-brand-gold/20 px-2 py-0.5 text-[10px] font-bold text-brand-pine">
+                  <Crown className="size-3" aria-hidden />
+                  {t('features.tasks.teamLeaderBadge')}
+                </span>
+              )}
+            </div>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {leaderAssignment
+                ? (userNameById.get(leaderAssignment.volunteerId) ?? leaderAssignment.volunteerId)
+                : t('features.tasks.teamLeaderNone')}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {task.backendStatus === 'COMPLETED' || task.backendStatus === 'CANCELLED'
+                ? t('features.tasks.teamLeaderLocked')
+                : t('features.tasks.teamLeaderHint')}
+            </p>
+
+            {leaderEditable && eligibleForLeader.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <select
+                  aria-label={t('features.tasks.teamLeaderTitle')}
+                  className="h-9 rounded-md border border-border bg-card px-2.5 text-xs text-foreground"
+                  value={leaderSelect}
+                  onChange={(e) => setLeaderSelect(e.target.value)}
+                >
+                  <option value="">{t('features.tasks.teamLeaderPick')}</option>
+                  {eligibleForLeader.map((assignment) => (
+                    <option key={assignment.id} value={assignment.id}>
+                      {userNameById.get(assignment.volunteerId) ?? assignment.volunteerId}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  size="sm"
+                  disabled={
+                    !leaderSelect ||
+                    leaderSelect === task.teamLeaderAssignmentId ||
+                    setTeamLeader.isPending ||
+                    task.version === undefined
+                  }
+                  onClick={async () => {
+                    if (task.version === undefined) return
+                    try {
+                      await setTeamLeader.mutateAsync({
+                        taskId: task.id,
+                        assignmentId: leaderSelect,
+                        version: task.version,
+                      })
+                      setLeaderSelect('')
+                      toast(t('features.tasks.teamLeaderSaved'))
+                    } catch {
+                      toast(t('common.error'), 'alert')
+                    }
+                  }}
+                >
+                  <Crown className="size-4" />
+                  {t('features.tasks.teamLeaderSet')}
+                </Button>
+                {leaderAssignment && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={clearTeamLeader.isPending || task.version === undefined}
+                    onClick={async () => {
+                      if (task.version === undefined) return
+                      try {
+                        await clearTeamLeader.mutateAsync({ taskId: task.id, version: task.version })
+                        toast(t('features.tasks.teamLeaderCleared'))
+                      } catch {
+                        toast(t('common.error'), 'alert')
+                      }
+                    }}
+                  >
+                    {t('features.tasks.teamLeaderClear')}
+                  </Button>
+                )}
+              </div>
+            )}
+            {leaderEditable && eligibleForLeader.length === 0 && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                {t('features.tasks.teamLeaderNoneEligible')}
+              </p>
             )}
           </Card>
 

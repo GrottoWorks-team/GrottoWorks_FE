@@ -68,6 +68,8 @@ vi.mock('../api', () => ({
   }),
   useRejectApplication: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useAssignVolunteer: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useSetTaskTeamLeader: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useClearTaskTeamLeader: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useCancelTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReplaceTaskMaterials: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useVolunteerMatches: () => ({ data: [], isPending: false }),
