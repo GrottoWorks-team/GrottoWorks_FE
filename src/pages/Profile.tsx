@@ -1,11 +1,12 @@
 // Hồ sơ cá nhân — RHF + zod: sửa tên + kỹ năng (PUT /users/me/skills), email readonly,
 // Thời gian rảnh (PUT /users/me/availability).
 import type { CSSProperties } from 'react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
+import { Bell, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { Avatar } from '@/components/ui/avatar'
@@ -24,6 +25,10 @@ import {
   useUpdateMyProfile,
   useUpdateProfile,
 } from '@/features/profile/api'
+import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from '@/features/notifications/api'
 import type { User } from '@/types'
 import { errorMessage } from '@/lib/errorMessage'
 
@@ -228,6 +233,121 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
   )
 }
 
+function NotificationPreferencesCard() {
+  const toast = useToast()
+  const { data: prefs, isLoading } = useNotificationPreferences()
+  const updateMutation = useUpdateNotificationPreferences()
+
+  const [inApp, setInApp] = useState(true)
+  const [push, setPush] = useState(false)
+  const [email, setEmail] = useState(false)
+
+  useEffect(() => {
+    if (prefs) {
+      setInApp(prefs.inAppEnabled)
+      setPush(prefs.pushEnabled)
+      setEmail(prefs.emailEnabled)
+    }
+  }, [prefs])
+
+  const handleSave = async () => {
+    try {
+      await updateMutation.mutateAsync({
+        inAppEnabled: inApp,
+        pushEnabled: push,
+        emailEnabled: email,
+      })
+      toast('Đã cập nhật tuỳ chọn nhận thông báo')
+    } catch {
+      toast('Lỗi cập nhật tuỳ chọn thông báo', 'alert')
+    }
+  }
+
+  return (
+    <Card className="mt-6 p-5" data-testid="notification-preferences-card">
+      <div className="flex items-center gap-2 mb-3">
+        <Bell className="size-4 text-brand-pine" />
+        <h2 className="text-base font-bold text-foreground">Tuỳ chọn nhận thông báo</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Cấu hình kênh nhận thông báo cá nhân cho công việc, vật tư và chấm công.
+      </p>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          <span>Đang tải cấu hình thông báo...</span>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <Label htmlFor="pref-in-app" className="cursor-pointer text-sm font-semibold text-foreground">
+                Thông báo trong ứng dụng (In-app)
+              </Label>
+              <p className="text-xs text-muted-foreground">Nhận thông báo qua biểu tượng chuông trên thanh điều hướng</p>
+            </div>
+            <input
+              id="pref-in-app"
+              type="checkbox"
+              checked={inApp}
+              onChange={(e) => setInApp(e.target.checked)}
+              className="size-4 accent-brand-pine rounded cursor-pointer"
+              data-testid="pref-in-app"
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <Label htmlFor="pref-push" className="cursor-pointer text-sm font-semibold text-foreground">
+                Thông báo đẩy (Push)
+              </Label>
+              <p className="text-xs text-muted-foreground">Nhận cảnh báo trực tiếp qua trình duyệt web / thiết bị di động</p>
+            </div>
+            <input
+              id="pref-push"
+              type="checkbox"
+              checked={push}
+              onChange={(e) => setPush(e.target.checked)}
+              className="size-4 accent-brand-pine rounded cursor-pointer"
+              data-testid="pref-push"
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border p-3">
+            <div>
+              <Label htmlFor="pref-email" className="cursor-pointer text-sm font-semibold text-foreground">
+                Thông báo qua Email
+              </Label>
+              <p className="text-xs text-muted-foreground">Gửi email tóm tắt các sự kiện phân công và duyệt quan trọng</p>
+            </div>
+            <input
+              id="pref-email"
+              type="checkbox"
+              checked={email}
+              onChange={(e) => setEmail(e.target.checked)}
+              className="size-4 accent-brand-pine rounded cursor-pointer"
+              data-testid="pref-email"
+            />
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              onClick={handleSave}
+              disabled={updateMutation.isPending}
+              data-testid="save-notification-prefs-btn"
+            >
+              {updateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+              Lưu tuỳ chọn thông báo
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function Profile() {
   const { t } = useTranslation()
   const { user, refresh } = useAuth()
@@ -251,6 +371,8 @@ export default function Profile() {
       </div>
 
       <ProfileForm user={user} onSaved={refresh} />
+
+      <NotificationPreferencesCard />
     </div>
   )
 }

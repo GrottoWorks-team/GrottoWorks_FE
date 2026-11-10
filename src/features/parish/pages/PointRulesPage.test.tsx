@@ -2,6 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ToastProvider } from '@/components/ui/toast'
 import PointRulesPage from './PointRulesPage'
 import type { RecognitionRuleDto } from '@/types'
 import * as csvModule from '@/lib/csv'
@@ -50,18 +51,25 @@ const mockRules: RecognitionRuleDto[] = [
 
 let rulesData = mockRules
 let isLoading = false
+const mockDeactivate = vi.fn()
 
 vi.mock('@/features/recognition/api', () => ({
   useRecognitionRules: () => ({ data: rulesData, isLoading }),
+  useDeactivateRecognitionRule: () => ({
+    mutateAsync: mockDeactivate,
+    isPending: false,
+  }),
 }))
 
 function mount() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
-        <PointRulesPage />
-      </MemoryRouter>
+      <ToastProvider>
+        <MemoryRouter>
+          <PointRulesPage />
+        </MemoryRouter>
+      </ToastProvider>
     </QueryClientProvider>,
   )
 }
@@ -133,3 +141,25 @@ test('xuất CSV quy tắc tính điểm', async () => {
     ]),
   )
 })
+
+test('bấm nút vô hiệu hoá mở dialog và kích hoạt useDeactivateRecognitionRule', async () => {
+  mockDeactivate.mockResolvedValueOnce(undefined)
+  mount()
+
+  const deactivateBtn = screen.getByTestId('deactivate-rule-btn-r1')
+  fireEvent.click(deactivateBtn)
+
+  expect(screen.getByText('Vô hiệu hoá quy tắc tính điểm')).toBeDefined()
+
+  const input = screen.getByTestId('deactivate-reason-input')
+  fireEvent.change(input, { target: { value: 'Thay thế bằng quy tắc mới' } })
+
+  const confirmBtn = screen.getByTestId('confirm-deactivate-btn')
+  fireEvent.click(confirmBtn)
+
+  expect(mockDeactivate).toHaveBeenCalledWith({
+    id: 'r1',
+    reason: 'Thay thế bằng quy tắc mới',
+  })
+})
+

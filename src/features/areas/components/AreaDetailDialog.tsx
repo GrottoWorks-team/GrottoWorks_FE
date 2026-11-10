@@ -1,11 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusTag } from '@/components/shared/StatusTag'
+import { useToast } from '@/components/ui/toast'
 import { useArea } from '../api'
-import { Calendar, Layers, ShieldCheck, Info, Package } from 'lucide-react'
+import {
+  useWorkAreaProgress,
+  useUpdateWorkAreaProgress,
+  useWorkAreaReadinessChecks,
+} from '../progressApi'
+import { Calendar, Layers, ShieldCheck, Info, Package, TrendingUp, CheckCircle2, Loader2 } from 'lucide-react'
 import { AreaMaterialsTab } from './AreaMaterialsTab'
 
 interface AreaDetailDialogProps {
@@ -14,10 +20,41 @@ interface AreaDetailDialogProps {
   onClose: () => void
 }
 
-export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProps) {
+export function AreaDetailDialog(props: AreaDetailDialogProps) {
+  if (!props.open) return null
+  return <AreaDetailDialogContent {...props} />
+}
+
+function AreaDetailDialogContent({ areaId, open, onClose }: AreaDetailDialogProps) {
   const { t } = useTranslation()
+  const toast = useToast()
   const { data: area, isPending } = useArea(areaId ?? undefined)
-  const [activeTab, setActiveTab] = useState<'info' | 'materials'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'materials' | 'progress'>('info')
+
+  const { data: progressData } = useWorkAreaProgress(areaId ?? undefined)
+  const updateProgressMutation = useUpdateWorkAreaProgress()
+  const { data: readinessChecks = [] } = useWorkAreaReadinessChecks(areaId ?? undefined)
+
+  const [editProgress, setEditProgress] = useState<number>(0)
+
+  useEffect(() => {
+    if (progressData) {
+      setEditProgress(progressData.progressPercentage)
+    }
+  }, [progressData])
+
+  const handleSaveProgress = async () => {
+    if (!areaId) return
+    try {
+      await updateProgressMutation.mutateAsync({
+        workAreaId: areaId,
+        progressPercentage: Number(editProgress),
+      })
+      toast('Đã cập nhật tiến độ khu vực')
+    } catch {
+      toast('Lỗi cập nhật tiến độ khu vực', 'alert')
+    }
+  }
 
   if (!open) return null
 
@@ -58,10 +95,91 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
           <Package className="size-4" />
           <span>{t('features.requirements.tabTitle', { defaultValue: 'Nhu cầu vật tư' })}</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('progress')}
+          className={`flex items-center gap-2 px-4 py-2 border-b-2 text-sm font-semibold transition-colors ${
+            activeTab === 'progress'
+              ? 'border-brand-pine text-brand-pine'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          data-testid="area-progress-tab"
+        >
+          <TrendingUp className="size-4" />
+          <span>Tiến độ & Sẵn sàng</span>
+        </button>
       </div>
 
       {activeTab === 'materials' && areaId ? (
         <AreaMaterialsTab workAreaId={areaId} />
+      ) : activeTab === 'progress' ? (
+        <div className="space-y-4 py-2" data-testid="area-progress-content">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-foreground">Tiến độ thi công khu vực</span>
+              <Badge className="font-mono text-sm font-extrabold text-brand-pine">
+                {progressData?.progressPercentage ?? editProgress}%
+              </Badge>
+            </div>
+
+            <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-brand-pine transition-all duration-300"
+                style={{ width: `${progressData?.progressPercentage ?? editProgress}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <span>
+                Nhiệm vụ hoàn thành: {progressData?.tasksCompleted ?? 0} / {progressData?.tasksTotal ?? 0} việc
+              </span>
+              <span>Cập nhật: {progressData?.updatedAt ? new Date(progressData.updatedAt).toLocaleDateString('vi-VN') : 'Mới nhất'}</span>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2 border-t border-border">
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={editProgress}
+                onChange={(e) => setEditProgress(Number(e.target.value))}
+                className="w-full accent-brand-pine"
+                data-testid="progress-range-input"
+              />
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSaveProgress}
+                disabled={updateProgressMutation.isPending}
+                data-testid="save-progress-btn"
+              >
+                {updateProgressMutation.isPending ? <Loader2 className="size-3.5 animate-spin" /> : 'Lưu'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-4 text-brand-pine" />
+              <h4 className="text-sm font-bold text-foreground">Kiểm tra điều kiện sẵn sàng</h4>
+            </div>
+
+            {readinessChecks.length > 0 ? (
+              <div className="space-y-2 pt-1 max-h-40 overflow-y-auto">
+                {readinessChecks.map((rc: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between rounded border border-border/70 p-2 text-xs">
+                    <span className="font-medium text-foreground">{rc.name ?? rc.title ?? `Mục kiểm tra #${idx + 1}`}</span>
+                    <Badge className="text-[10px]">{rc.status ?? 'PASS'}</Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground pt-1">
+                Chưa có đợt kiểm tra sẵn sàng nào ghi nhận lỗi cho khu vực này.
+              </p>
+            )}
+          </div>
+        </div>
       ) : isPending ? (
         <p className="lbl-mono py-8 text-center">{t('common.loading')}</p>
       ) : !area ? (

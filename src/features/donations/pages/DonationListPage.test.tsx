@@ -62,9 +62,13 @@ const mockDonations: Donation[] = [
 ]
 
 const mockUseDonations = vi.fn()
+const mockUpdateDonor = vi.fn()
+const mockRecordReceipt = vi.fn()
 
 vi.mock('../api', () => ({
   useDonations: () => mockUseDonations(),
+  useUpdateDonor: () => ({ mutateAsync: mockUpdateDonor, isPending: false }),
+  useRecordDonationReceipt: () => ({ mutateAsync: mockRecordReceipt, isPending: false }),
 }))
 
 const mockExportCsv = vi.fn()
@@ -174,4 +178,69 @@ describe('DonationListPage Component', () => {
     const exportBtn = screen.getByRole('button', { name: /Xuất CSV/i }) as HTMLButtonElement
     expect(exportBtn.disabled).toBe(true)
   })
+
+  it('bấm tiếp nhận mở dialog và gọi useRecordDonationReceipt', () => {
+    mockUseDonations.mockReturnValue({
+      data: mockDonations,
+      isPending: false,
+    })
+    mockRecordReceipt.mockResolvedValueOnce(undefined)
+
+    render(
+      <ToastProvider>
+        <DonationListPage />
+      </ToastProvider>,
+    )
+
+    const receiptBtn = screen.getByTestId('record-receipt-btn-don-2')
+    fireEvent.click(receiptBtn)
+
+    expect(screen.getByText('Ghi nhận tiếp nhận thực tế')).toBeDefined()
+
+    const noteInput = screen.getByTestId('receipt-note-input')
+    fireEvent.change(noteInput, { target: { value: 'Đã nhận đủ dây đèn' } })
+
+    const confirmBtn = screen.getByTestId('confirm-receipt-btn')
+    fireEvent.click(confirmBtn)
+
+    expect(mockRecordReceipt).toHaveBeenCalledWith({
+      donationId: 'don-2',
+      payload: {
+        note: 'Đã nhận đủ dây đèn',
+      },
+    })
+  })
+
+  it('bấm sửa nhà hảo tâm mở dialog và gọi useUpdateDonor', () => {
+    mockUseDonations.mockReturnValue({
+      data: mockDonations,
+      isPending: false,
+    })
+    mockUpdateDonor.mockResolvedValueOnce({ id: 'donor-1', donorName: 'Nguyễn Văn A (Updated)' })
+
+    render(
+      <ToastProvider>
+        <DonationListPage />
+      </ToastProvider>,
+    )
+
+    const editBtn = screen.getByTestId('edit-donor-btn-don-1')
+    fireEvent.click(editBtn)
+
+    expect(screen.getByText('Cập nhật thông tin nhà hảo tâm')).toBeDefined()
+
+    const nameInput = screen.getByTestId('donor-name-input')
+    fireEvent.change(nameInput, { target: { value: 'Nguyễn Văn A (Updated)' } })
+
+    const confirmBtn = screen.getByTestId('confirm-update-donor-btn')
+    fireEvent.click(confirmBtn)
+
+    expect(mockUpdateDonor).toHaveBeenCalledWith({
+      donorId: 'donor-1',
+      payload: {
+        name: 'Nguyễn Văn A (Updated)',
+      },
+    })
+  })
 })
+

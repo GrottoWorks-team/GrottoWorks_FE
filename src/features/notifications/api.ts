@@ -13,7 +13,13 @@ import { useAuth } from '@/lib/auth'
 import { roleHomePath, rolePrefix } from '@/lib/roles'
 import { useAreas } from '@/features/areas/api'
 import { useSeasonContext } from '@/features/season/season-context'
-import type { NotificationDto, Role } from '@/types'
+import type {
+  NotificationDto,
+  Role,
+  NotificationPreferenceDto,
+  UpdateNotificationPreferenceRequest,
+  UpdateNotificationRuleRequest,
+} from '@/types'
 import { markSeen } from './seen'
 
 export type { NotificationDto }
@@ -236,3 +242,91 @@ export function useNotificationFeed(): NotificationFeed {
     source: 'DERIVED',
   }
 }
+
+// ══════ [fe-api-gap-2] Tuỳ chọn & Quy tắc thông báo (Đợt I) ══════
+
+/** Lấy cấu hình tuỳ chọn nhận thông báo của người dùng hiện tại (GET /api/v1/users/me/notification-preferences) */
+export async function getNotificationPreferences(): Promise<NotificationPreferenceDto> {
+  return api<NotificationPreferenceDto>('/api/v1/users/me/notification-preferences')
+}
+
+/** Cập nhật tuỳ chọn nhận thông báo (PUT /api/v1/users/me/notification-preferences) */
+export async function updateNotificationPreferences(
+  payload: UpdateNotificationPreferenceRequest,
+): Promise<NotificationPreferenceDto> {
+  return api<NotificationPreferenceDto>('/api/v1/users/me/notification-preferences', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  })
+}
+
+/** Cập nhật quy tắc gửi thông báo Admin (PATCH /api/v1/notification-rules/{id}) */
+export async function updateNotificationRule(
+  ruleId: string,
+  payload: UpdateNotificationRuleRequest,
+  version?: number,
+): Promise<void> {
+  const headers: Record<string, string> = {}
+  if (version !== undefined) {
+    headers['If-Match'] = `"${version}"`
+  }
+  await api(`/api/v1/notification-rules/${ruleId}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(payload),
+  })
+}
+
+/** Xoá quy tắc thông báo Admin (DELETE /api/v1/notification-rules/{id}) */
+export async function deleteNotificationRule(ruleId: string): Promise<void> {
+  await api(`/api/v1/notification-rules/${ruleId}`, {
+    method: 'DELETE',
+  })
+}
+
+export function useNotificationPreferences() {
+  return useQuery({
+    queryKey: ['users', 'me', 'notification-preferences'],
+    queryFn: getNotificationPreferences,
+  })
+}
+
+export function useUpdateNotificationPreferences() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: UpdateNotificationPreferenceRequest) =>
+      updateNotificationPreferences(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users', 'me', 'notification-preferences'] })
+    },
+  })
+}
+
+export function useUpdateNotificationRule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      ruleId,
+      payload,
+      version,
+    }: {
+      ruleId: string
+      payload: UpdateNotificationRuleRequest
+      version?: number
+    }) => updateNotificationRule(ruleId, payload, version),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications', 'rules'] })
+    },
+  })
+}
+
+export function useDeleteNotificationRule() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ruleId: string) => deleteNotificationRule(ruleId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['notifications', 'rules'] })
+    },
+  })
+}
+

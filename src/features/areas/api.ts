@@ -247,3 +247,7 @@ export function useAssignWorkAreaMaterialOfficer() {
     onSuccess: () => qc.invalidateQueries({ queryKey: areaKeys.all }),
   })
 }
+
+// ══════ [fe-api-gap-2] Tiến độ khu vực & Kiểm tra sẵn sàng (Đợt I) ══════
+export * from './progressApi'
+

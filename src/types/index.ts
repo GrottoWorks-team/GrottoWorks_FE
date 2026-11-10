@@ -650,6 +650,89 @@ export interface SystemJobDto {
   errorCode?: string | null
   manifest?: unknown
 }
+
+// ══════ Đợt I — Phần lẻ ══════
+export interface NotificationPreferenceDto {
+  inAppEnabled: boolean
+  pushEnabled: boolean
+  emailEnabled: boolean
+}
+
+export interface UpdateNotificationPreferenceRequest {
+  inAppEnabled?: boolean
+  pushEnabled?: boolean
+  emailEnabled?: boolean
+}
+
+export interface UpdateNotificationRuleRequest {
+  inAppEnabled?: boolean
+}
+
+export interface ActivityLogDetailDto {
+  id: string
+  action: string
+  entityType?: string
+  entityId?: string
+  actorUserId: string
+  timestamp: string
+  metadata?: Record<string, unknown>
+}
+
+export interface StateChangeDto {
+  fieldName: string
+  oldValue?: string | null
+  newValue?: string | null
+  changedAt: string
+  changedBy?: string | null
+}
+
+export interface UpdateDonorRequest {
+  name?: string
+  phone?: string | null
+  email?: string | null
+  note?: string | null
+}
+
+export interface RecordDonationReceiptRequest {
+  receivedAt?: string
+  note?: string | null
+  monetaryAmount?: number | null
+  items?: Array<{ materialId: string; quantity: number }>
+}
+
+export interface BorrowedItemIncidentRequest {
+  condition: 'DAMAGED' | 'LOST' | string
+  quantity?: number
+  date?: string
+  description: string
+}
+
+export interface UpdateContributionTypeRequest {
+  name?: string
+  description?: string
+  status?: string
+}
+
+export interface DeactivateRecognitionRuleRequest {
+  reason: string
+}
+
+export interface WorkAreaProgressDto {
+  workAreaId: string
+  seasonId?: string
+  progressPercentage: number
+  tasksTotal: number
+  tasksCompleted: number
+  updatedAt?: string
+}
+
+export interface InventoryAdjustmentRequest {
+  materialId: string
+  workAreaId?: string
+  reason: 'DAMAGED' | 'LOST' | 'DISPOSED' | string
+  quantity: number
+  notes?: string
+}
 // ══════ [/fe-api-gap-2] ══════
 
 

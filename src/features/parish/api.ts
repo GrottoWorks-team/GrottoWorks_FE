@@ -4,7 +4,7 @@
 // invalidate tá»« admin nháº¯m Ä‘Ãºng key Ä‘Ã³ Ä‘á»ƒ cache ngÆ°á»i khÃ¡c cÅ©ng má»›i).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { ActivityLog, Community, Role } from '@/types'
+import type { ActivityLog, Community, Role, SystemJobDto, ActivityLogDetailDto, StateChangeDto, UpdateContributionTypeRequest } from '@/types'
 import type { AdminUserDto, CreateAdminUserRequest, RoleDto } from '@/types/identity'
 import type {
   CommunityDto,
@@ -264,6 +264,73 @@ export function useBackup() {
   )
 }
 
+/** Khởi tạo tiến trình sao lưu cơ sở dữ liệu hệ thống (POST /api/v1/backups) */
+export async function startBackup(payload?: { services?: string[] }): Promise<SystemJobDto> {
+  return api<SystemJobDto>('/api/v1/backups', {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {}),
+  })
+}
+
+/** Kiểm tra trạng thái sao lưu hệ thống (GET /api/v1/backups/{jobId}) */
+export async function getBackupStatus(jobId: string): Promise<SystemJobDto> {
+  return api<SystemJobDto>(`/api/v1/backups/${jobId}`)
+}
+
+export function useStartBackup() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload?: { services?: string[] }) => startBackup(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'backups'] })
+    },
+  })
+}
+
+export function useBackupStatus(jobId?: string) {
+  return useQuery({
+    queryKey: ['admin', 'backups', jobId],
+    queryFn: () => getBackupStatus(jobId!),
+    enabled: Boolean(jobId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status?.toUpperCase()
+      if (status === 'QUEUED' || status === 'RUNNING') {
+        return 1500
+      }
+      return false
+    },
+  })
+}
+
+/** Lấy chi tiết bản ghi nhật ký hoạt động (GET /api/v1/activity-logs/{id}) */
+export async function getActivityLog(logId: string): Promise<ActivityLogDetailDto> {
+  return api<ActivityLogDetailDto>(`/api/v1/activity-logs/${logId}`)
+}
+
+export function useActivityLogDetail(logId?: string) {
+  return useQuery({
+    queryKey: ['admin', 'activity', logId],
+    queryFn: () => getActivityLog(logId!),
+    enabled: Boolean(logId),
+  })
+}
+
+/** Lấy lịch sử thay đổi trạng thái của tài nguyên (GET /api/v1/resource-history/{type}/{id}) */
+export async function getResourceHistory(
+  resourceType: string,
+  resourceId: string,
+): Promise<StateChangeDto[]> {
+  return api<StateChangeDto[]>(`/api/v1/resource-history/${resourceType}/${resourceId}`)
+}
+
+export function useResourceHistory(resourceType?: string, resourceId?: string) {
+  return useQuery({
+    queryKey: ['admin', 'resource-history', resourceType, resourceId],
+    queryFn: () => getResourceHistory(resourceType!, resourceId!),
+    enabled: Boolean(resourceType && resourceId),
+  })
+}
+
 export function useRoleLabel(): Record<Role, string> {
   return {
     PARISH: 'Quản trị',
@@ -320,4 +387,46 @@ export function useUpdateWorkAreaCategory() {
     },
   })
 }
+
+// ══════ [fe-api-gap-2] Loại đóng góp / Contribution Types (Đợt I) ══════
+
+export interface ContributionTypeDto {
+  id: string
+  code: string
+  name: string
+  description?: string
+  status: string
+}
+
+export const contributionTypeKeys = {
+  all: ['contributionTypes'] as const,
+  list: (status?: string) => ['contributionTypes', { status }] as const,
+}
+
+/** GET /api/v1/contribution-types — Danh sách loại đóng góp */
+export function useContributionTypes(status?: string) {
+  return useQuery({
+    queryKey: contributionTypeKeys.list(status),
+    queryFn: () => {
+      const qs = status ? `?status=${status}` : ''
+      return api<ContributionTypeDto[]>(`/api/v1/contribution-types${qs}`)
+    },
+  })
+}
+
+/** PATCH /api/v1/contribution-types/{id} — Cập nhật loại đóng góp */
+export function useUpdateContributionType() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateContributionTypeRequest }) =>
+      api<ContributionTypeDto>(`/api/v1/contribution-types/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: contributionTypeKeys.all })
+    },
+  })
+}
+
 

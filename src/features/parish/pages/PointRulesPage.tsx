@@ -7,24 +7,51 @@
 // Vì vậy màn hình này hoạt động ở chế độ ĐỌC (read-only), ẩn các nút tạo/sửa.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Award, Download, Info, Layers, Search, ShieldCheck, Sparkles } from 'lucide-react'
+import { Award, Download, Info, Layers, Search, ShieldCheck, Sparkles, Ban, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useToast } from '@/components/ui/toast'
 import { StatCard } from '@/components/shared/StatCard'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { exportCsv } from '@/lib/csv'
 import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { useRecognitionRules } from '@/features/recognition/api'
+import { useRecognitionRules, useDeactivateRecognitionRule } from '@/features/recognition/api'
+import type { RecognitionRuleDto } from '@/types'
 
 export default function PointRulesPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const { data: rules = [], isLoading } = useRecognitionRules()
+  const deactivateMutation = useDeactivateRecognitionRule()
 
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE'>('ALL')
+  const [deactivatingRule, setDeactivatingRule] = useState<RecognitionRuleDto | null>(null)
+  const [deactivateReason, setDeactivateReason] = useState('')
+
+  const handleDeactivate = async () => {
+    if (!deactivatingRule || !deactivateReason.trim()) {
+      toast('Vui lòng nhập lý do vô hiệu hoá', 'alert')
+      return
+    }
+    try {
+      await deactivateMutation.mutateAsync({
+        id: deactivatingRule.id,
+        reason: deactivateReason.trim(),
+      })
+      toast('Đã vô hiệu hoá quy tắc điểm thành công')
+      setDeactivatingRule(null)
+      setDeactivateReason('')
+    } catch {
+      toast('Lỗi vô hiệu hoá quy tắc điểm', 'alert')
+    }
+  }
 
   // Thống kê nhanh
   const stats = useMemo(() => {
@@ -165,7 +192,8 @@ export default function PointRulesPage() {
                   <th className="px-4 py-3 text-center">{t('features.pointRules.points')}</th>
                   <th className="px-4 py-3 text-center">{t('features.pointRules.version')}</th>
                   <th className="px-4 py-3">{t('features.pointRules.effective')}</th>
-                  <th className="px-4 py-3 text-right">{t('features.pointRules.status')}</th>
+                  <th className="px-4 py-3 text-center">{t('features.pointRules.status')}</th>
+                  <th className="px-4 py-3 text-right">Thao tác</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -201,8 +229,26 @@ export default function PointRulesPage() {
                         <div className="text-primary font-medium">Hiện tại</div>
                       )}
                     </td>
-                    <td className="px-4 py-3.5 text-right">
+                    <td className="px-4 py-3.5 text-center">
                       <StatusTag status={rule.status.toUpperCase()} />
+                    </td>
+                    <td className="px-4 py-3.5 text-right">
+                      {rule.status.toUpperCase() === 'ACTIVE' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setDeactivatingRule(rule)
+                            setDeactivateReason('')
+                          }}
+                          data-testid={`deactivate-rule-btn-${rule.id}`}
+                          aria-label="Vô hiệu hoá quy tắc"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Ban className="size-3.5 mr-1" />
+                          <span>Vô hiệu</span>
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -219,6 +265,49 @@ export default function PointRulesPage() {
           />
         )}
       </Card>
+
+      <Dialog
+        open={Boolean(deactivatingRule)}
+        onClose={() => setDeactivatingRule(null)}
+        title="Vô hiệu hoá quy tắc tính điểm"
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeactivatingRule(null)}>
+              Đóng
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeactivate}
+              disabled={deactivateMutation.isPending}
+              data-testid="confirm-deactivate-btn"
+            >
+              {deactivateMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+              Xác nhận vô hiệu hoá
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3 py-2 text-sm">
+          <p className="text-muted-foreground">
+            Bạn có chắc chắn muốn vô hiệu hoá quy tắc{' '}
+            <strong className="text-foreground">{deactivatingRule?.name}</strong>? Quy tắc bị vô hiệu hoá
+            sẽ không thể tích điểm cho các hoạt động tiếp theo.
+          </p>
+          <div>
+            <Label htmlFor="deactivate-reason" className="mb-1 block text-xs">
+              Lý do vô hiệu hoá (Bắt buộc)
+            </Label>
+            <Input
+              id="deactivate-reason"
+              value={deactivateReason}
+              onChange={(e) => setDeactivateReason(e.target.value)}
+              placeholder="VD: Thay thế bằng quy tắc mới theo quyết định của HĐMV..."
+              data-testid="deactivate-reason-input"
+            />
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
 }
