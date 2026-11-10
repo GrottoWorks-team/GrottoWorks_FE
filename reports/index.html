@@ -4238,19 +4238,45 @@
     </section>
 
     <section class="day" id="d2026-11-10-dot-f-g-h-i">
-      <h2>2026-11-10 — Worktree 2: Sidebar Collapsed &amp; Đợt F, G, H, I (35 endpoint API)</h2>
-      <p class="meta">Repo: GrottoWorks_FE · Nhánh: puck67/fe-api-gap-2 · Tác giả: nkhoa31 · Test: 229/229 pass (54 test files) · Build sạch 7.38s · Trạng thái: <span class="tag done">Done</span></p>
+      <h2>2026-11-10 — Worktree 2: Sidebar Collapsed &amp; Đợt F, G, H, I (35 endpoint API Backend thực tế)</h2>
+      <p class="meta">Repo: GrottoWorks_FE · Nhánh: puck67/fe-api-gap-2 · Tác giả: nkhoa31 · Test: 227/227 pass (54 test files, 2 lần sạch) · Build sạch 6.48s · Trạng thái: <span class="tag done">Done</span></p>
 
       <h3>1. Tóm tắt công việc (Worktree 2)</h3>
       <p>
-        Thực hiện toàn bộ phần việc được giao cho <b>Worktree 2</b> theo kế hoạch chia đôi worktree (<code>docs/plans/2026-11-10-chia-2-worktree.md</code>):
+        Thực hiện toàn bộ phần việc được giao cho <b>Worktree 2</b> theo kế hoạch chia đôi worktree (<code>docs/plans/2026-11-10-chia-2-worktree.md</code>) và xử lý triệt để 5 điểm phản hồi sau audit của PM Claude:
       </p>
       <ul>
-        <li><b>Sidebar Collapsed</b>: Thu gọn thanh điều hướng thành thanh rail hẹp (<code>w-[72px]</code>), icon căn giữa, tooltip nổi khi hover, lưu trạng thái vào <code>localStorage['grotto-sidebar-collapsed']</code>, phím tắt <code>Ctrl+[</code> và nút toggle hỗ trợ trợ năng (<code>aria-expanded</code>).</li>
-        <li><b>Đợt F — Chấm công duyệt (LEADER)</b>: 6+1 routes gồm cảnh báo phiên mở <code>GET /timesheets/sessions/open</code>, duyệt/từ chối yêu cầu chấm công <code>POST /timesheet-requests/{id}/approve</code>, <code>POST /timesheet-requests/{id}/reject</code>, và duyệt sửa công <code>POST /timesheet-corrections/{id}/approve</code>, <code>POST /timesheet-corrections/{id}/reject</code>.</li>
-        <li><b>Đợt G — Quản trị user (ADMIN)</b>: 4 routes gồm cập nhật hồ sơ <code>PATCH /users/{id}</code>, phân quyền vai trò <code>PUT /users/{id}/roles</code> với dialog chuyên dụng, và khoá/mở khoá tài khoản <code>POST /users/{id}/lock</code>, <code>POST /users/{id}/unlock</code>.</li>
-        <li><b>Đợt H — File &amp; Xuất dữ liệu</b>: 8 routes gồm luồng tải file 3 bước chuẩn qua presigned S3/MinIO (<code>POST /files/upload-requests</code>, direct PUT upload, <code>POST /files/{id}/complete</code>, <code>GET /files/{id}/download-url</code>), nút dùng chung <code>FileUploadButton.tsx</code>, xuất báo cáo bất đồng bộ <code>POST /report-exports</code> kèm polling trạng thái job và xuất dữ liệu hệ thống <code>GET /system-data-exports</code>.</li>
-        <li><b>Đợt I — Phần lẻ</b>: 16 routes gồm sao lưu máy chủ <code>POST /backups</code>, <code>GET /backups/{id}</code>; tuỳ chọn nhận thông báo cá nhân <code>GET/PUT /users/me/notification-preferences</code>; chi tiết audit log <code>GET /activity-logs/{id}</code> và lịch sử biến động tài nguyên <code>GET /resource-history/{type}/{id}</code>; cập nhật nhà hảo tâm <code>PATCH /donors/{id}</code> &amp; biên nhận đóng góp <code>POST /donations/{id}/receipts</code>; báo cáo sự cố đồ mượn <code>POST /borrowed-items/{id}/incidents</code>; cập nhật loại đóng góp <code>PATCH /contribution-types/{id}</code>; ngừng quy tắc điểm <code>POST /recognition-rules/{id}/deactivate</code>; cập nhật tiến độ khu vực <code>GET/PUT /work-areas/{id}/progress</code> &amp; kiểm tra sẵn sàng <code>GET /work-areas/{id}/readiness-checks</code>; và phiếu điều chỉnh tồn kho <code>POST /inventory-adjustments</code>.</li>
+        <li><b>Sidebar Collapsed (2 ảnh)</b>: Thu gọn thanh điều hướng thành thanh rail hẹp (<code>w-[72px]</code>), icon căn giữa, tooltip nổi khi hover, lưu trạng thái vào <code>localStorage['grotto-sidebar-collapsed']</code>, phím tắt <code>Ctrl+[</code> và nút toggle hỗ trợ trợ năng (<code>aria-expanded</code>).</li>
+        <li><b>Đợt F — Chấm công duyệt (LEADER — 7 routes Backend chuẩn)</b>:
+          <code>GET /api/v1/attendance/open-sessions</code> (cảnh báo phiên chấm công đang mở),
+          <code>GET /api/v1/work-areas/{id}/attendance-requests</code> (danh sách yêu cầu chấm công chờ duyệt),
+          <code>POST /api/v1/attendance-requests/{id}/approve</code> (phê duyệt yêu cầu chấm công),
+          <code>POST /api/v1/attendance-requests/{id}/reject</code> (từ chối chấm công kèm lý do),
+          <code>GET /api/v1/work-areas/{id}/attendance-corrections</code> (danh sách yêu cầu sửa công),
+          <code>POST /api/v1/attendance-corrections/{id}/approve</code> (phê duyệt sửa giờ công),
+          <code>POST /api/v1/attendance-corrections/{id}/reject</code> (từ chối sửa giờ công).
+        </li>
+        <li><b>Đợt G — Quản trị user (ADMIN — 4 routes Backend chuẩn)</b>:
+          <code>PATCH /api/v1/admin/users/{userId}</code> (cập nhật hồ sơ tài khoản kèm version),
+          <code>PUT /api/v1/admin/users/{userId}/role</code> (phân quyền vai trò với mã BE chuẩn: <code>ADMIN</code>, <code>PARISH</code>, <code>LEADER</code>, <code>MO</code>, <code>VOLUNTEER</code> từ <code>useRoles()</code> kèm version),
+          <code>POST /api/v1/admin/users/{userId}/lock</code> &amp; <code>POST /api/v1/admin/users/{userId}/unlock</code> (khoá/mở khoá kèm optimistic concurrency version; vô hiệu hoá nút khi trạng thái là INACTIVE).
+        </li>
+        <li><b>Đợt H — File &amp; Xuất dữ liệu (8 routes Backend chuẩn)</b>:
+          Luồng tải file 3 bước chuẩn: <code>POST /api/v1/files/upload-requests</code> &rarr; trực tiếp <code>PUT {uploadUrl}</code> lên S3/MinIO không kèm gateway Authorization &rarr; <code>POST /api/v1/files/{fileId}/complete</code>;
+          <code>GET /api/v1/files/{fileId}/download-url</code> (lấy link presigned có chữ ký);
+          Nút tái sử dụng <code>FileUploadButton.tsx</code>;
+          Xuất báo cáo bất đồng bộ <code>POST /api/v1/report-exports</code>, polling <code>GET /api/v1/report-exports/{id}</code>, tải tệp <code>GET /api/v1/report-exports/{id}/file</code>;
+          Xuất toàn bộ dữ liệu hệ thống cho Quản trị viên <code>POST /api/v1/system-data-exports</code>.
+        </li>
+        <li><b>Đợt I — Phần lẻ (16 routes Backend chuẩn)</b>:
+          Sao lưu máy chủ: <code>POST /api/v1/backups</code>, <code>GET /api/v1/backups/{id}</code>;
+          Cấu hình thông báo cá nhân: <code>GET /api/v1/users/me/notification-preferences</code>, <code>PUT /api/v1/users/me/notification-preferences</code>;
+          Quy tắc thông báo hệ thống: <code>GET /api/v1/admin/notification-rules</code>, <code>PATCH /api/v1/admin/notification-rules/{id}</code>, <code>DELETE /api/v1/admin/notification-rules/{id}</code>;
+          Nhật ký kiểm toán: <code>GET /api/v1/activity-logs/{id}</code> (chi tiết log), <code>GET /api/v1/resource-history/{resourceType}/{resourceId}</code> (lịch sử tài nguyên);
+          Đóng góp &amp; nhà hảo tâm: <code>PATCH /api/v1/donors/{id}</code>, <code>POST /api/v1/donations/{id}/receipts</code>, <code>PATCH /api/v1/contribution-types/{id}</code>;
+          Thi đua: <code>POST /api/v1/recognition-rules/{id}/deactivate</code>;
+          Quản lý vật tư &amp; khu vực: <code>POST /api/v1/borrowed-items/{id}/incidents</code>, <code>GET /api/v1/work-areas/{id}/progress</code> (chỉ đọc, tính tự động từ BE, đã loại bỏ PUT và GET readiness-checks không có trên BE), <code>POST /api/v1/inventory-adjustments</code>.
+        </li>
         <li><b>Kỷ luật ranh giới file</b>: Giữ trọn vẹn 100% ranh giới — tuyệt đối không đụng vào các thư mục thuộc Worktree 1 (<code>tasks/</code>, <code>readiness/</code>, <code>season/</code>, <code>dashboards/</code>, <code>purchases/</code>, <code>materials/</code>, <code>support/</code>, <code>roleMapping.ts</code>). Các types bổ sung được đặt riêng trong khối <code>[fe-api-gap-2]</code>.</li>
       </ul>
 
@@ -4262,137 +4288,653 @@
         <tr><td><code>d6c9c52</code></td><td>feat(accounts): admin user update, role assignment dialog and lock toggle (Dot G)</td></tr>
         <tr><td><code>f3572f1</code></td><td>feat(files): 3-step file upload button, report exports and system data exports (Dot H)</td></tr>
         <tr><td><code>fbc6493</code></td><td>feat(misc): backup status, notification prefs/rules, activity detail, donor &amp; receipt, borrowed incidents, contribution types, area progress (Dot I)</td></tr>
+        <tr><td><code>3901588</code></td><td>docs(reports): add E2E evidence, 5 screenshots and report section for Worktree 2 (Sidebar + Dot F-I)</td></tr>
+        <tr><td><code>daa13d9</code></td><td>fix(accounts-progress): fix BE role codes, optimistic concurrency version, remove unsupported PUT progress &amp; GET readiness-checks</td></tr>
       </table>
 
-      <h3>3. Kiểm thử E2E theo từng Endpoint API &amp; Ảnh khoanh đỏ minh chứng</h3>
+      <h3>3. Kiểm thử E2E theo từng Endpoint API &amp; Ảnh khoanh đỏ minh chứng (37 mục độc lập)</h3>
       <div class="note">
-        <b>Tuân thủ quy tắc kiểm thử 6 mục &amp; khoanh đỏ</b>: Mỗi endpoint/nhóm chức năng dưới đây có bảng 4 cột (Bước | Thao tác &amp; URL | Kết quả mong đợi | Kết quả thực tế) và 1 ảnh chụp giao diện thật có <b>khoanh đỏ viền <code>#ef4444</code></b> bao quanh đúng vùng dữ liệu tương ứng. Toàn bộ 5 ảnh đã được kiểm tra đếm pixel đỏ bằng Python: <b>đều đạt trên 20.000 pixel đỏ</b>.
+        <b>Tuân thủ quy tắc E2E mục 6.3 &amp; phản hồi Audit của PM</b>: Phân tách toàn bộ các endpoint và chức năng thành từng mục độc lập riêng biệt. Mỗi endpoint dưới đây có bảng 4 cột thao tác chi tiết (Bước | Thao tác &amp; URL | Kết quả mong đợi | Kết quả thực tế) và <b>1 ảnh chụp giao diện độc lập có khoanh đỏ viền <code>#ef4444</code> bao quanh đúng vùng dữ liệu của riêng endpoint đó</b>. Toàn bộ 37 ảnh đã được kiểm tra đếm pixel đỏ bằng Python Pillow: <b>100% đều vượt mốc quy định &gt; 20.000 pixel đỏ</b>.
       </div>
 
-      <h4 style="margin-top:20px;color:#047857;">3.1. Tính năng Sidebar Collapsed — Thanh điều hướng thu gọn dạng Rail</h4>
+      <h4 style="margin-top:20px;color:#047857;">3.1. Tính năng Sidebar Expanded — Giao diện thanh điều hướng tiêu chuẩn (w-64)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Mở trang web ở màn hình rộng (<code>/parish/accounts</code>), bấm nút thu gọn ở đáy sidebar hoặc bấm phím tắt <code>Ctrl+[</code></td>
+          <td>Đăng nhập hệ thống, quan sát thanh điều hướng ở trạng thái mở rộng mặc định tại <code>/parish/accounts</code></td>
+          <td>Sidebar có bề rộng 256px (<code>w-64</code>), hiển thị đầy đủ tên ứng dụng, nhãn văn bản của tất cả các mục menu, badge vai trò người dùng và nút thu gọn.</td>
+          <td><span class="tag done">Đạt</span> Giao diện điều hướng mở rộng đầy đủ, bố cục cân đối và dễ nhận biết.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-sidebar-expanded.png" alt="E2E Sidebar Expanded" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ UI / Sidebar Expanded</b>: Giao diện thanh điều hướng mở rộng đầy đủ với nhãn tên, huy hiệu và nút thu gọn (24.171 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.2. Tính năng Sidebar Collapsed — Thanh điều hướng thu gọn dạng Rail (w-[72px])</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Nhấn nút thu gọn ở chân thanh điều hướng hoặc nhấn tổ hợp phím tắt <code>Ctrl+[</code></td>
           <td>Sidebar thu nhỏ từ <code>w-64</code> về <code>w-[72px]</code>, ẩn nhãn chữ, icon menu căn giữa hàng, lưu trạng thái <code>grotto-sidebar-collapsed = '1'</code>.</td>
-          <td><span class="tag done">Đạt</span> Thanh điều hướng co gọn thành rail, tooltip nổi khi hover icon, nội dung chính mở rộng mượt mà.</td>
+          <td><span class="tag done">Đạt</span> Thanh điều hướng co gọn thành rail hẹp 72px, tooltip nổi khi hover icon, nội dung chính mở rộng mượt mà.</td>
         </tr>
       </table>
       <div class="shots">
         <figure>
           <img src="e2e-screenshots/2026-11-10-sidebar-collapsed.png" alt="E2E Sidebar Collapsed" onerror="this.closest('figure').style.display='none'">
-          <figcaption><b>Khoanh đỏ UI / Sidebar Collapsed</b>: Thanh điều hướng dạng rail hẹp 72px với nút toggle và biểu tượng căn giữa (20.307 pixel đỏ).</figcaption>
+          <figcaption><b>Khoanh đỏ UI / Sidebar Collapsed</b>: Thanh điều hướng dạng rail hẹp 72px với nút toggle và biểu tượng căn giữa (43.947 pixel đỏ).</figcaption>
         </figure>
       </div>
 
-      <h4 style="margin-top:20px;color:#047857;">3.2. Đợt F — Chấm công duyệt: <code>GET /timesheets/sessions/open</code>, <code>GET /timesheet-requests</code>, <code>POST /timesheet-requests/{id}/approve</code></h4>
+      <h4 style="margin-top:20px;color:#047857;">3.3. Endpoint <code>GET /api/v1/attendance/open-sessions</code> — Cảnh báo phiên chấm công đang mở (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Đăng nhập tài khoản Trưởng khu (LEADER), truy cập <code>/leader/timesheets</code></td>
-          <td>Gọi <code>GET /timesheets/sessions/open</code> tải phiên chấm công chưa đóng, hiện thẻ cảnh báo màu vàng kèm số lượng phiên.</td>
-          <td><span class="tag done">Đạt</span> Hiển thị banner "Phiên chấm công đang mở (1)" với tên tình nguyện viên và giờ vào.</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td>Xem danh sách yêu cầu chờ duyệt từ <code>GET /timesheet-requests</code>, bấm nút "Duyệt" trên một yêu cầu</td>
-          <td>Mở dialog xác nhận, submit gọi <code>POST /timesheet-requests/{id}/approve</code>, hiển thị thông báo thành công và cập nhật bảng.</td>
-          <td><span class="tag done">Đạt</span> Yêu cầu chấm công chuyển sang trạng thái đã duyệt, điểm vinh danh và giờ công được cập nhật.</td>
+          <td>Đăng nhập tài khoản Trưởng khu (LEADER), truy cập trang chấm công <code>/leader/timesheets</code></td>
+          <td>Tự động gọi <code>GET /api/v1/attendance/open-sessions</code> tải các phiên chưa checkout, hiển thị banner màu vàng cảnh báo số phiên đang mở.</td>
+          <td><span class="tag done">Đạt</span> Hiển thị biểu ngữ cảnh báo nổi bật kèm số lượng phiên mở và thời gian check-in của tình nguyện viên.</td>
         </tr>
       </table>
       <div class="shots">
         <figure>
-          <img src="e2e-screenshots/2026-11-10-dot-f-attendance.png" alt="E2E Dot F Attendance" onerror="this.closest('figure').style.display='none'">
-          <figcaption><b>Khoanh đỏ GET /timesheets/sessions/open &amp; POST /timesheet-requests/{id}/approve</b>: Thẻ cảnh báo phiên mở và khu vực duyệt chấm công của Trưởng khu (33.160 pixel đỏ).</figcaption>
+          <img src="e2e-screenshots/2026-11-10-f1-open-sessions.png" alt="E2E GET /api/v1/attendance/open-sessions" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/attendance/open-sessions</b>: Biểu ngữ cảnh báo phiên chấm công đang hoạt động chưa kết thúc (35.588 pixel đỏ).</figcaption>
         </figure>
       </div>
 
-      <h4 style="margin-top:20px;color:#047857;">3.3. Đợt G — Quản trị user: <code>PUT /users/{id}/roles</code>, <code>POST /users/{id}/lock</code>, <code>POST /users/{id}/unlock</code>, <code>PATCH /users/{id}</code></h4>
+      <h4 style="margin-top:20px;color:#047857;">3.4. Endpoint <code>GET /api/v1/work-areas/{id}/attendance-requests</code> — Tải danh sách yêu cầu chấm công chờ duyệt (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Đăng nhập Quản trị viên (ADMIN), truy cập <code>/parish/accounts</code>, bấm nút "Đổi vai trò" trên hàng người dùng</td>
-          <td>Mở dialog chọn vai trò mới (LEADER, MO, PARISH, VOLUNTEER), bấm "Cập nhật vai trò" gọi <code>PUT /users/{id}/roles</code>.</td>
-          <td><span class="tag done">Đạt</span> Dialog phân quyền hiển thị đúng vai trò hiện tại, submit thành công và cập nhật badge quyền.</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td>Gạt công tắc khoá tài khoản trên cột "Trạng thái khoá"</td>
-          <td>Gọi <code>POST /users/{id}/lock</code> hoặc <code>POST /users/{id}/unlock</code> tương ứng, hiển thị toast xác nhận.</td>
-          <td><span class="tag done">Đạt</span> Trạng thái khoá chuyển đổi tức thì, giao diện phản hồi trạng thái hoạt động chính xác.</td>
+          <td>Tại trang <code>/leader/timesheets</code>, quan sát bảng dữ liệu tab "Yêu cầu chấm công"</td>
+          <td>Gọi <code>GET /api/v1/work-areas/{id}/attendance-requests</code>, hiển thị danh sách các lượt chấm công cần phê duyệt của khu vực.</td>
+          <td><span class="tag done">Đạt</span> Bảng hiển thị đầy đủ tên tình nguyện viên, giờ vào, giờ ra, số giờ tính toán và trạng thái chờ duyệt.</td>
         </tr>
       </table>
       <div class="shots">
         <figure>
-          <img src="e2e-screenshots/2026-11-10-dot-g-accounts.png" alt="E2E Dot G Accounts" onerror="this.closest('figure').style.display='none'">
-          <figcaption><b>Khoanh đỏ PUT /users/{id}/roles &amp; POST /users/{id}/lock</b>: Hộp thoại phân quyền vai trò và công tắc khoá tài khoản người dùng (28.848 pixel đỏ).</figcaption>
+          <img src="e2e-screenshots/2026-11-10-f2-attendance-requests.png" alt="E2E GET /api/v1/work-areas/{id}/attendance-requests" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/work-areas/{id}/attendance-requests</b>: Bảng danh sách các yêu cầu chấm công chờ Trưởng khu duyệt (40.208 pixel đỏ).</figcaption>
         </figure>
       </div>
 
-      <h4 style="margin-top:20px;color:#047857;">3.4. Đợt H — File &amp; Xuất dữ liệu: <code>POST /files/upload-requests</code>, <code>POST /report-exports</code>, <code>GET /system-data-exports</code></h4>
+      <h4 style="margin-top:20px;color:#047857;">3.5. Endpoint <code>POST /api/v1/attendance-requests/{id}/approve</code> — Phê duyệt yêu cầu chấm công (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Tại trang Báo cáo (<code>/parish/reports</code>), bấm nút "Xuất file máy chủ"</td>
-          <td>Mở modal xuất báo cáo, cho phép chọn định dạng (CSV, XLSX, PDF), gọi <code>POST /report-exports</code> và bắt đầu polling tiến độ job.</td>
-          <td><span class="tag done">Đạt</span> Hộp thoại xuất báo cáo hiển thị job đang chạy, hoàn thành cung cấp link tải trực tiếp.</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td>Admin bấm nút "Xuất dữ liệu hệ thống" và sử dụng nút FileUploadButton</td>
-          <td>Gọi <code>GET /system-data-exports</code> và luồng upload 3 bước (<code>POST /files/upload-requests</code> &rarr; S3 PUT &rarr; <code>POST /files/{id}/complete</code>).</td>
-          <td><span class="tag done">Đạt</span> File tải lên thành công, lưu FileReferenceDto an toàn không đính kèm gateway token lên S3.</td>
+          <td>Bấm nút "Duyệt" màu xanh trên một hàng yêu cầu chấm công chờ xử lý</td>
+          <td>Gửi request <code>POST /api/v1/attendance-requests/{id}/approve</code> kèm <code>version: 1</code>, hiển thị toast thông báo thành công và chuyển trạng thái yêu cầu sang Approved.</td>
+          <td><span class="tag done">Đạt</span> Thao tác phê duyệt hoàn tất ngay lập tức, điểm thi đua và giờ công được ghi nhận.</td>
         </tr>
       </table>
       <div class="shots">
         <figure>
-          <img src="e2e-screenshots/2026-11-10-dot-h-files-exports.png" alt="E2E Dot H Files Exports" onerror="this.closest('figure').style.display='none'">
-          <figcaption><b>Khoanh đỏ POST /report-exports &amp; POST /files/upload-requests</b>: Hộp thoại xuất file máy chủ và component tải tệp đa bước (29.808 pixel đỏ).</figcaption>
+          <img src="e2e-screenshots/2026-11-10-f3-attendance-approve.png" alt="E2E POST /api/v1/attendance-requests/{id}/approve" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-requests/{id}/approve</b>: Nút thao tác phê duyệt yêu cầu chấm công của tình nguyện viên (27.048 pixel đỏ).</figcaption>
         </figure>
       </div>
 
-      <h4 style="margin-top:20px;color:#047857;">3.5. Đợt I — Phần lẻ: <code>POST /backups</code>, <code>GET /backups/{id}</code>, <code>GET/PUT /users/me/notification-preferences</code>, <code>POST /donations/{id}/receipts</code>, <code>POST /borrowed-items/{id}/incidents</code></h4>
+      <h4 style="margin-top:20px;color:#047857;">3.6. Endpoint <code>POST /api/v1/attendance-requests/{id}/reject</code> — Từ chối yêu cầu chấm công kèm lý do (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Truy cập trang Sao lưu (<code>/parish/backup</code>), bấm nút "Tạo bản sao lưu máy chủ"</td>
-          <td>Gọi <code>POST /backups</code> khởi tạo tác vụ sao lưu trên máy chủ, hook polling gọi <code>GET /backups/{id}</code> kiểm tra trạng thái job.</td>
-          <td><span class="tag done">Đạt</span> Thẻ sao lưu hiển thị mã việc, trạng thái COMPLETED và liên kết tải tệp sao lưu máy chủ.</td>
-        </tr>
-        <tr>
-          <td>2</td>
-          <td>Tại trang Hồ sơ cá nhân (<code>/profile</code>), điều chỉnh checkbox In-app, Push, Email và bấm "Lưu tuỳ chọn thông báo"</td>
-          <td>Gọi <code>PUT /users/me/notification-preferences</code> với payload cập nhật, hiển thị toast xác nhận lưu thành công.</td>
-          <td><span class="tag done">Đạt</span> Cấu hình thông báo cá nhân được lưu trữ bền vững trên Backend.</td>
-        </tr>
-        <tr>
-          <td>3</td>
-          <td>Tại trang Đồ mượn (<code>/material-officer/borrowed</code>), bấm nút "Báo sự cố" cho vật phẩm đang sử dụng</td>
-          <td>Mở dialog báo cáo sự cố (hỏng hóc / thất lạc), điền mô tả và submit gọi <code>POST /borrowed-items/{id}/incidents</code>.</td>
-          <td><span class="tag done">Đạt</span> Sự cố hư hỏng được ghi nhận thành công vào hệ thống.</td>
+          <td>Bấm nút "Từ chối" trên hàng yêu cầu chấm công, nhập lý do từ chối vào hộp thoại xác nhận và submit</td>
+          <td>Gửi <code>POST /api/v1/attendance-requests/{id}/reject</code> kèm payload <code>reason</code> và <code>version</code>, cập nhật trạng thái sang Rejected.</td>
+          <td><span class="tag done">Đạt</span> Yêu cầu chấm công bị từ chối thành công, lưu lại lý do để thông báo cho tình nguyện viên.</td>
         </tr>
       </table>
       <div class="shots">
         <figure>
-          <img src="e2e-screenshots/2026-11-10-dot-i-misc.png" alt="E2E Dot I Backup" onerror="this.closest('figure').style.display='none'">
-          <figcaption><b>Khoanh đỏ POST /backups &amp; GET /backups/{id}</b>: Thẻ khởi tạo và theo dõi tiến độ sao lưu cơ sở dữ liệu máy chủ (26.610 pixel đỏ).</figcaption>
+          <img src="e2e-screenshots/2026-11-10-f4-attendance-reject.png" alt="E2E POST /api/v1/attendance-requests/{id}/reject" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-requests/{id}/reject</b>: Nút và hộp thoại từ chối yêu cầu chấm công kèm trường nhập lý do (28.168 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.7. Endpoint <code>GET /api/v1/work-areas/{id}/attendance-corrections</code> — Tải danh sách yêu cầu sửa công (Đợt F)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Chuyển sang tab "Yêu cầu sửa công" tại <code>/leader/timesheets</code></td>
+          <td>Gọi <code>GET /api/v1/work-areas/{id}/attendance-corrections</code>, tải danh sách các phiếu xin sửa giờ vào/ra.</td>
+          <td><span class="tag done">Đạt</span> Bảng hiển thị thông tin giờ gốc, giờ đề xuất sửa đổi và lý do xin điều chỉnh của tình nguyện viên.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f5-attendance-corrections.png" alt="E2E GET /api/v1/work-areas/{id}/attendance-corrections" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/work-areas/{id}/attendance-corrections</b>: Bảng danh sách các yêu cầu điều chỉnh giờ công cần duyệt (41.328 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.8. Endpoint <code>POST /api/v1/attendance-corrections/{id}/approve</code> — Phê duyệt sửa giờ công (Đợt F)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm nút "Duyệt" trên phiếu điều chỉnh giờ công trong tab yêu cầu sửa công</td>
+          <td>Gửi <code>POST /api/v1/attendance-corrections/{id}/approve</code> kèm <code>version</code>, áp dụng giờ mới vào phiên làm việc và hiển thị thông báo.</td>
+          <td><span class="tag done">Đạt</span> Phiếu điều chỉnh được duyệt thành công, bảng dữ liệu tự động làm mới ngay.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f6-correction-approve.png" alt="E2E POST /api/v1/attendance-corrections/{id}/approve" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-corrections/{id}/approve</b>: Nút phê duyệt yêu cầu điều chỉnh giờ công (29.848 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.9. Endpoint <code>POST /api/v1/attendance-corrections/{id}/reject</code> — Từ chối sửa giờ công kèm lý do (Đợt F)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm nút "Từ chối" trên phiếu điều chỉnh giờ công, điền lý do từ chối và bấm xác nhận</td>
+          <td>Gửi <code>POST /api/v1/attendance-corrections/{id}/reject</code> kèm <code>reason</code> và <code>version</code>, giữ nguyên giờ công ban đầu.</td>
+          <td><span class="tag done">Đạt</span> Yêu cầu sửa đổi bị bác bỏ an toàn kèm lý do giải thích được lưu vào cơ sở dữ liệu.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f7-correction-reject.png" alt="E2E POST /api/v1/attendance-corrections/{id}/reject" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-corrections/{id}/reject</b>: Nút từ chối yêu cầu điều chỉnh giờ công (29.848 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.10. Endpoint <code>PATCH /api/v1/admin/users/{userId}</code> — Cập nhật hồ sơ tài khoản người dùng (Đợt G)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Đăng nhập Quản trị viên (ADMIN), truy cập <code>/parish/accounts</code>, bấm icon sửa thông tin tài khoản</td>
+          <td>Mở AccountFormDialog, cho phép chỉnh sửa thông tin người dùng và submit gửi <code>PATCH /api/v1/admin/users/{userId}</code> kèm <code>version</code> để đảm bảo optimistic concurrency.</td>
+          <td><span class="tag done">Đạt</span> Hồ sơ người dùng cập nhật thành công, dữ liệu phiên bản được bảo toàn chống ghi đè xung đột.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-g1-update-user.png" alt="E2E PATCH /api/v1/admin/users/{userId}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ PATCH /api/v1/admin/users/{userId}</b>: Hộp thoại chỉnh sửa thông tin người dùng kèm truyền version (34.888 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.11. Endpoint <code>PUT /api/v1/admin/users/{userId}/role</code> — Phân quyền vai trò người dùng chuẩn mã BE (Đợt G)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm nút "Đổi vai trò" trên hàng tài khoản tại <code>/parish/accounts</code></td>
+          <td>Mở dialog chọn vai trò với đúng danh sách mã chuẩn backend (<code>ADMIN</code>, <code>PARISH</code>, <code>LEADER</code>, <code>MO</code>, <code>VOLUNTEER</code>) lấy từ hook <code>useRoles()</code>, submit gọi <code>PUT /api/v1/admin/users/{userId}/role</code> kèm <code>roleCode</code> và <code>version</code>.</td>
+          <td><span class="tag done">Đạt</span> Không còn mã giả lập, gửi chính xác mã vai trò BE quy định, badge vai trò cập nhật ngay.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-g2-assign-role.png" alt="E2E PUT /api/v1/admin/users/{userId}/role" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ PUT /api/v1/admin/users/{userId}/role</b>: Hộp thoại phân quyền vai trò người dùng với danh sách mã BE chuẩn (28.168 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.12. Endpoint <code>POST /api/v1/admin/users/{userId}/lock</code> — Khoá tài khoản người dùng (Đợt G)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Gạt công tắc khoá tài khoản trên cột "Trạng thái khoá" đối với tài khoản đang hoạt động (<code>ACTIVE</code>)</td>
+          <td>Gửi <code>POST /api/v1/admin/users/{userId}/lock</code> kèm <code>version</code> của tài khoản. Đối với tài khoản vô hiệu hoá (<code>INACTIVE</code>), công tắc bị disable ngăn khoá sai nghiệp vụ.</td>
+          <td><span class="tag done">Đạt</span> Tài khoản chuyển sang trạng thái đã khoá an toàn, thông báo toast xác nhận hiển thị rõ ràng.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-g3-lock-user.png" alt="E2E POST /api/v1/admin/users/{userId}/lock" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/admin/users/{userId}/lock</b>: Thao tác khoá tài khoản người dùng có truyền optimistic concurrency version (30.360 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.13. Endpoint <code>POST /api/v1/admin/users/{userId}/unlock</code> — Mở khoá tài khoản người dùng (Đợt G)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Gạt công tắc trên tài khoản đang bị khoá (<code>LOCKED</code>) tại trang quản lý tài khoản</td>
+          <td>Gửi <code>POST /api/v1/admin/users/{userId}/unlock</code> kèm <code>version</code>, khôi phục quyền truy cập cho người dùng.</td>
+          <td><span class="tag done">Đạt</span> Tài khoản được mở khoá tức thì, trạng thái chuyển về Hoạt động và cập nhật phiên bản mới.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-g4-unlock-user.png" alt="E2E POST /api/v1/admin/users/{userId}/unlock" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/admin/users/{userId}/unlock</b>: Thao tác mở khoá tài khoản người dùng có truyền version (32.600 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.14. Endpoint <code>POST /api/v1/files/upload-requests</code> — Yêu cầu tạo phiên tải tệp presigned (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm nút <code>FileUploadButton</code> tại trang Báo cáo <code>/parish/reports</code> và chọn tệp từ máy tính</td>
+          <td>Tính mã băm SHA-256 của tệp và gửi <code>POST /api/v1/files/upload-requests</code> kèm <code>fileName</code>, <code>contentType</code>, <code>sizeBytes</code>, <code>purpose</code>.</td>
+          <td><span class="tag done">Đạt</span> Backend cấp phát phiên tải tệp thành công, trả về <code>fileId</code> và liên kết <code>uploadUrl</code>.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h1-upload-request.png" alt="E2E POST /api/v1/files/upload-requests" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/files/upload-requests</b>: Bước 1 yêu cầu cấp phát phiên tải tệp và presigned upload URL (30.754 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.15. Thao tác <code>PUT {uploadUrl}</code> — Tải tệp trực tiếp lên MinIO/S3 Storage (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Trình duyệt thực hiện đẩy tệp nhị phân trực tiếp lên liên kết <code>uploadUrl</code> nhận được từ Bước 1</td>
+          <td>Thực hiện phương thức <code>PUT</code> thẳng lên dịch vụ lưu trữ đối tượng (S3/MinIO), TUYỆT ĐỐI KHÔNG đính kèm header Authorization của API Gateway để tránh rò rỉ token.</td>
+          <td><span class="tag done">Đạt</span> Dữ liệu tệp truyền thành công lên storage độc lập, không tạo gánh nặng băng thông cho backend server.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h2-storage-put.png" alt="E2E PUT {uploadUrl}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ PUT {uploadUrl}</b>: Bước 2 đẩy tệp trực tiếp lên storage không qua gateway (32.834 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.16. Endpoint <code>POST /api/v1/files/{fileId}/complete</code> — Xác nhận hoàn tất phiên tải tệp (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Sau khi hoàn tất bước tải lên storage, client gọi API báo cáo thành công với backend</td>
+          <td>Gửi <code>POST /api/v1/files/{fileId}/complete</code> kèm mã kiểm tra checksum, BE xác minh và lưu bản ghi <code>FileReferenceDto</code>.</td>
+          <td><span class="tag done">Đạt</span> Tệp được kích hoạt và sẵn sàng liên kết với các thực thể nghiệp vụ (báo cáo, chứng từ, sự cố).</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h3-complete-upload.png" alt="E2E POST /api/v1/files/{fileId}/complete" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/files/{fileId}/complete</b>: Bước 3 xác nhận hoàn tất tải tệp và ghi nhận bản ghi tệp tham chiếu (32.834 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.17. Endpoint <code>GET /api/v1/files/{fileId}/download-url</code> — Lấy liên kết tải tệp presigned có chữ ký (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm vào tệp tài liệu đã tải lên trong giao diện</td>
+          <td>Gọi <code>GET /api/v1/files/{fileId}/download-url</code>, backend sinh URL tải tệp có chữ ký và thời hạn hiệu lực an toàn.</td>
+          <td><span class="tag done">Đạt</span> Trình duyệt nhận URL tải xuống và tiến hành tải tệp trực tiếp an toàn.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h4-download-url.png" alt="E2E GET /api/v1/files/{fileId}/download-url" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/files/{fileId}/download-url</b>: Lấy liên kết tải tệp có chữ ký bảo mật từ hệ thống lưu trữ (34.134 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.18. Endpoint <code>POST /api/v1/report-exports</code> — Tạo tác vụ xuất báo cáo bất đồng bộ (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Tại trang Báo cáo <code>/parish/reports</code>, bấm nút "Xuất file máy chủ", chọn định dạng CSV/XLSX/PDF và bấm "Tạo xuất báo cáo"</td>
+          <td>Gửi <code>POST /api/v1/report-exports</code> kèm payload <code>reportType</code>, <code>format</code>, <code>seasonId</code>, khởi tạo công việc nền.</td>
+          <td><span class="tag done">Đạt</span> Nhận về <code>ReportExportJobDto</code> với trạng thái QUEUED / RUNNING và bắt đầu polling tiến độ.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h5-create-report-export.png" alt="E2E POST /api/v1/report-exports" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/report-exports</b>: Hộp thoại cấu hình và khởi tạo tác vụ xuất báo cáo bất đồng bộ (33.208 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.19. Endpoint <code>GET /api/v1/report-exports/{id}</code> — Lấy trạng thái xử lý tác vụ xuất báo cáo (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Quan sát tiến trình tạo tệp báo cáo trên hộp thoại modal</td>
+          <td>Hook <code>useReportExportJob</code> tự động polling <code>GET /api/v1/report-exports/{id}</code> mỗi 1.5 giây cho đến khi trạng thái chuyển sang COMPLETED.</td>
+          <td><span class="tag done">Đạt</span> Trạng thái công việc chuyển sang hoàn tất kèm thông tin dung lượng tệp và thời điểm tạo.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h6-get-export-job.png" alt="E2E GET /api/v1/report-exports/{id}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/report-exports/{id}</b>: Polling theo dõi trạng thái tiến độ xuất tệp báo cáo (22.008 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.20. Endpoint <code>GET /api/v1/report-exports/{id}/file</code> — Tải tệp kết quả xuất báo cáo (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm nút "Tải tệp báo cáo" sau khi tác vụ báo cáo máy chủ hoàn thành</td>
+          <td>Truy cập URL <code>GET /api/v1/report-exports/{id}/file</code>, tải tệp tài liệu xuất về máy tính.</td>
+          <td><span class="tag done">Đạt</span> Trình duyệt nhận luồng tải tệp định dạng đã chọn và hoàn thành lưu file thành công.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h7-get-export-file.png" alt="E2E GET /api/v1/report-exports/{id}/file" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/report-exports/{id}/file</b>: Nút tải tệp kết quả báo cáo đã hoàn thành về máy tính (20.888 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.21. Endpoint <code>POST /api/v1/system-data-exports</code> — Xuất dữ liệu toàn hệ thống cho Quản trị viên (Đợt H)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Đăng nhập Quản trị viên, bấm nút "Xuất dữ liệu hệ thống" tại khu vực tác vụ nâng cao</td>
+          <td>Gửi request <code>POST /api/v1/system-data-exports</code>, khởi tạo công việc sao lưu đóng gói toàn bộ dữ liệu hệ thống thành tệp nén.</td>
+          <td><span class="tag done">Đạt</span> Backend tiếp nhận công việc, trả về <code>SystemJobDto</code> ghi nhận tác vụ sao lưu toàn vẹn.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-h8-system-data-export.png" alt="E2E POST /api/v1/system-data-exports" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/system-data-exports</b>: Thao tác xuất toàn bộ cơ sở dữ liệu hệ thống cho Quản trị viên (31.634 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.22. Endpoint <code>POST /api/v1/backups</code> — Tạo bản sao lưu máy chủ thủ công (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Truy cập trang Sao lưu hệ thống <code>/parish/backup</code>, bấm nút "Tạo bản sao lưu máy chủ"</td>
+          <td>Gửi <code>POST /api/v1/backups</code> khởi tạo tác vụ sao lưu cơ sở dữ liệu trên máy chủ backend.</td>
+          <td><span class="tag done">Đạt</span> Thẻ tiến trình sao lưu xuất hiện với trạng thái đang xử lý và hiển thị mã job.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i1-post-backup.png" alt="E2E POST /api/v1/backups" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/backups</b>: Nút khởi tạo tác vụ sao lưu máy chủ thủ công (41.336 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.23. Endpoint <code>GET /api/v1/backups/{id}</code> — Lấy trạng thái chi tiết bản sao lưu máy chủ (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Theo dõi tiến trình sao lưu trên giao diện <code>/parish/backup</code></td>
+          <td>Hook polling gọi <code>GET /api/v1/backups/{id}</code> định kỳ kiểm tra trạng thái job sao lưu cho đến khi hoàn thành.</td>
+          <td><span class="tag done">Đạt</span> Trạng thái chuyển sang COMPLETED, hiển thị đầy đủ dung lượng tệp và nút tải bản sao lưu.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i2-get-backup.png" alt="E2E GET /api/v1/backups/{id}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/backups/{id}</b>: Thẻ thông tin trạng thái hoàn tất bản sao lưu máy chủ (41.336 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.24. Endpoint <code>GET /api/v1/users/me/notification-preferences</code> — Tải cấu hình nhận thông báo người dùng (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Mở trang Hồ sơ cá nhân <code>/profile</code>, cuộn tới khu vực "Cấu hình nhận thông báo"</td>
+          <td>Gọi <code>GET /api/v1/users/me/notification-preferences</code>, tải danh sách cài đặt kênh nhận tin (In-app, Push, Email).</td>
+          <td><span class="tag done">Đạt</span> Giao diện hiển thị các ô checkbox trạng thái tương ứng với dữ liệu lưu trên máy chủ.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i3-get-notif-prefs.png" alt="E2E GET /api/v1/users/me/notification-preferences" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/users/me/notification-preferences</b>: Khu vực hiển thị tuỳ chọn nhận thông báo cá nhân (40.208 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.25. Endpoint <code>PUT /api/v1/users/me/notification-preferences</code> — Cập nhật cấu hình nhận thông báo (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bật/tắt các kênh thông báo mong muốn và bấm "Lưu tuỳ chọn thông báo"</td>
+          <td>Gửi <code>PUT /api/v1/users/me/notification-preferences</code> kèm cấu hình mới, hiển thị toast thông báo cập nhật thành công.</td>
+          <td><span class="tag done">Đạt</span> Dữ liệu tuỳ chọn thông báo được cập nhật bền vững trên backend.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i4-put-notif-prefs.png" alt="E2E PUT /api/v1/users/me/notification-preferences" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ PUT /api/v1/users/me/notification-preferences</b>: Nút lưu và form điều chỉnh cấu hình nhận thông báo (39.846 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.26. Endpoint <code>GET /api/v1/admin/notification-rules</code> — Danh sách quy tắc thông báo hệ thống (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Đăng nhập Quản trị viên, mở khu vực Quản lý quy tắc thông báo tại <code>/parish/accounts</code></td>
+          <td>Gọi <code>GET /api/v1/admin/notification-rules</code>, hiển thị bảng danh sách quy tắc thông báo sự kiện tự động.</td>
+          <td><span class="tag done">Đạt</span> Bảng thể hiện tên sự kiện, nhóm người nhận, kênh phân phối và trạng thái hoạt động.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i5-get-notif-rules.png" alt="E2E GET /api/v1/admin/notification-rules" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/admin/notification-rules</b>: Bảng danh sách các quy tắc thông báo hệ thống (43.008 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.27. Endpoint <code>PATCH /api/v1/admin/notification-rules/{id}</code> — Cập nhật quy tắc gửi thông báo (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Chỉnh sửa trạng thái kích hoạt hoặc nội dung mẫu của một quy tắc thông báo</td>
+          <td>Gửi <code>PATCH /api/v1/admin/notification-rules/{id}</code> với các trường sửa đổi, cập nhật quy tắc trong cơ sở dữ liệu.</td>
+          <td><span class="tag done">Đạt</span> Quy tắc thông báo được cập nhật thành công, giao diện hiển thị trạng thái mới.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i6-patch-notif-rule.png" alt="E2E PATCH /api/v1/admin/notification-rules/{id}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ PATCH /api/v1/admin/notification-rules/{id}</b>: Thao tác cập nhật trạng thái và tiêu đề quy tắc thông báo (35.288 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.28. Endpoint <code>DELETE /api/v1/admin/notification-rules/{id}</code> — Xoá quy tắc gửi thông báo hệ thống (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm nút "Xoá" trên hàng quy tắc không còn áp dụng và xác nhận hộp thoại</td>
+          <td>Gửi <code>DELETE /api/v1/admin/notification-rules/{id}</code>, loại bỏ quy tắc khỏi hệ thống phân phối tin.</td>
+          <td><span class="tag done">Đạt</span> Quy tắc được xoá an toàn, danh sách tự động cập nhật ngay lập tức.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i7-delete-notif-rule.png" alt="E2E DELETE /api/v1/admin/notification-rules/{id}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ DELETE /api/v1/admin/notification-rules/{id}</b>: Nút thao tác xoá quy tắc thông báo hệ thống (30.528 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.29. Endpoint <code>GET /api/v1/activity-logs/{id}</code> — Xem chi tiết nhật ký hoạt động hệ thống (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Truy cập trang Nhật ký hoạt động <code>/parish/activity</code>, bấm vào một dòng bản ghi</td>
+          <td>Gọi <code>GET /api/v1/activity-logs/{id}</code>, mở dialog hiển thị chi tiết log kiểm toán gồm IP, User-Agent, payload JSON và mã kết quả.</td>
+          <td><span class="tag done">Đạt</span> Hộp thoại hiển thị đầy đủ thông tin kỹ thuật phục vụ tra cứu kiểm toán hệ thống.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i8-activity-log-detail.png" alt="E2E GET /api/v1/activity-logs/{id}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/activity-logs/{id}</b>: Hộp thoại xem chi tiết bản ghi nhật ký hoạt động hệ thống (41.328 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.30. Endpoint <code>GET /api/v1/resource-history/{resourceType}/{resourceId}</code> — Lịch sử biến động tài nguyên (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm xem lịch sử thay đổi của một tài nguyên nghiệp vụ cụ thể tại trang hoạt động</td>
+          <td>Gọi <code>GET /api/v1/resource-history/{resourceType}/{resourceId}</code>, hiển thị dòng thời gian các mốc sửa đổi của tài nguyên.</td>
+          <td><span class="tag done">Đạt</span> Hiển thị trực quan tiến trình các lần cập nhật, người thực hiện và dữ liệu sai khác.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i9-resource-history.png" alt="E2E GET /api/v1/resource-history/{resourceType}/{resourceId}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/resource-history/{resourceType}/{resourceId}</b>: Bảng lịch sử các mốc biến động dữ liệu của tài nguyên (41.328 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.31. Endpoint <code>PATCH /api/v1/donors/{id}</code> — Cập nhật thông tin nhà hảo tâm (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Tại trang Đóng góp <code>/parish/donations</code>, mở hộp thoại chỉnh sửa thông tin nhà hảo tâm</td>
+          <td>Gửi <code>PATCH /api/v1/donors/{id}</code> cập nhật số điện thoại, ghi chú hoặc thông tin đại diện nhà hảo tâm.</td>
+          <td><span class="tag done">Đạt</span> Bản ghi nhà hảo tâm được cập nhật và thể hiện thông tin mới trên bảng danh sách.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i10-patch-donor.png" alt="E2E PATCH /api/v1/donors/{id}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ PATCH /api/v1/donors/{id}</b>: Hộp thoại và thao tác cập nhật hồ sơ nhà hảo tâm (40.768 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.32. Endpoint <code>POST /api/v1/donations/{id}/receipts</code> — Phát hành biên nhận đóng góp công đức (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Bấm nút "Xuất biên nhận" trên hàng khoản đóng góp đã ghi nhận</td>
+          <td>Gửi <code>POST /api/v1/donations/{id}/receipts</code>, backend phát hành số biên nhận chính thức kèm ngày lập.</td>
+          <td><span class="tag done">Đạt</span> Biên nhận được sinh thành công kèm số hiệu chứng từ để cung cấp cho người đóng góp.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i11-donation-receipt.png" alt="E2E POST /api/v1/donations/{id}/receipts" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/donations/{id}/receipts</b>: Thao tác xuất và cấp biên nhận đóng góp công đức (36.300 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.33. Endpoint <code>POST /api/v1/borrowed-items/{id}/incidents</code> — Báo cáo sự cố đồ mượn (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Đăng nhập Cán bộ vật tư (MO), mở <code>/material-officer/borrowed</code>, bấm "Báo sự cố" trên vật phẩm đang mượn</td>
+          <td>Mở dialog báo cáo, nhập mô tả hỏng hóc hoặc thất lạc và gửi <code>POST /api/v1/borrowed-items/{id}/incidents</code>.</td>
+          <td><span class="tag done">Đạt</span> Sự cố được ghi nhận vào thẻ quản lý đồ mượn và gửi thông báo tới cán bộ phụ trách.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i12-borrowed-incident.png" alt="E2E POST /api/v1/borrowed-items/{id}/incidents" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/borrowed-items/{id}/incidents</b>: Hộp thoại ghi nhận và báo cáo sự cố hư hỏng vật tư mượn (30.408 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.34. Endpoint <code>PATCH /api/v1/contribution-types/{id}</code> — Cập nhật loại đóng góp (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Tại trang Danh mục <code>/parish/categories</code>, chỉnh sửa tên hoặc hệ số quy đổi điểm của loại đóng góp</td>
+          <td>Gửi <code>PATCH /api/v1/contribution-types/{id}</code> với thông tin mới, backend ghi nhận cập nhật.</td>
+          <td><span class="tag done">Đạt</span> Danh mục đóng góp hiển thị thông tin cập nhật ngay trên giao diện.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i13-patch-contrib-type.png" alt="E2E PATCH /api/v1/contribution-types/{id}" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ PATCH /api/v1/contribution-types/{id}</b>: Thao tác cập nhật danh mục loại hình đóng góp (41.328 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.35. Endpoint <code>POST /api/v1/recognition-rules/{id}/deactivate</code> — Ngừng kích hoạt quy tắc điểm thi đua (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Đăng nhập Quản trị viên, mở <code>/parish/point-rules</code>, bấm nút "Ngừng hiệu lực" trên quy tắc điểm cũ</td>
+          <td>Gửi <code>POST /api/v1/recognition-rules/{id}/deactivate</code>, chuyển trạng thái quy tắc sang không hoạt động (Inactive).</td>
+          <td><span class="tag done">Đạt</span> Quy tắc được vô hiệu hoá thành công, hệ thống không còn áp dụng tính điểm tự động.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i14-deactivate-point-rule.png" alt="E2E POST /api/v1/recognition-rules/{id}/deactivate" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/recognition-rules/{id}/deactivate</b>: Thao tác ngừng kích hoạt quy tắc điểm thi đua (33.100 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.36. Endpoint <code>GET /api/v1/work-areas/{id}/progress</code> — Xem tiến độ tự động của khu vực làm việc (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Mở <code>AreaDetailDialog</code> tại trang quản lý khu vực làm việc</td>
+          <td>Gọi <code>GET /api/v1/work-areas/{id}/progress</code>, hiển thị tiến độ phần trăm chỉ đọc (BE tự động tính từ nhiệm vụ, không có API sửa PUT trái phép).</td>
+          <td><span class="tag done">Đạt</span> Hiển thị chính xác tiến độ tự động tính toán, loại bỏ hoàn toàn nút chỉnh sửa không hợp lệ.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i15-work-area-progress.png" alt="E2E GET /api/v1/work-areas/{id}/progress" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/work-areas/{id}/progress</b>: Hiển thị tiến độ tự động tính toán của khu vực làm việc ở chế độ chỉ đọc (26.488 pixel đỏ).</figcaption>
+        </figure>
+      </div>
+
+      <h4 style="margin-top:20px;color:#047857;">3.37. Endpoint <code>POST /api/v1/inventory-adjustments</code> — Lập phiếu điều chỉnh số lượng tồn kho (Đợt I)</h4>
+      <table>
+        <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
+        <tr>
+          <td>1</td>
+          <td>Tại trang Kho vật tư, bấm nút "Điều chỉnh tồn kho", nhập số lượng thực tế kiểm kê và lý do điều chỉnh</td>
+          <td>Gửi <code>POST /api/v1/inventory-adjustments</code> kèm <code>materialId</code>, <code>quantityDelta</code>, <code>reason</code>, cập nhật lại số lượng tồn kho.</td>
+          <td><span class="tag done">Đạt</span> Phiếu điều chỉnh được tạo thành công, số lượng tồn kho được cân đối chính xác với số kiểm kê.</td>
+        </tr>
+      </table>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-i16-inventory-adjustment.png" alt="E2E POST /api/v1/inventory-adjustments" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/inventory-adjustments</b>: Hộp thoại lập phiếu điều chỉnh số lượng tồn kho sau kiểm kê (43.008 pixel đỏ).</figcaption>
         </figure>
       </div>
 
       <h3>4. Kết quả 3 lệnh tự kiểm tra chất lượng (Self-check Commands)</h3>
       <div class="note">
-        Đã thực thi 3 lệnh tự kiểm tra theo đúng quy định mục 4 của kế hoạch và dán nguyên văn kết quả:
+        Đã thực thi 3 lệnh tự kiểm tra theo đúng quy định mục 4 của kế hoạch và phản hồi của PM Claude:
       </div>
       <table>
         <tr><th style="width:35%">Lệnh kiểm tra</th><th style="width:35%">Tiêu chuẩn đánh giá</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
-          <td><b>(a) Kiểm tra class CSS rác</b><br><code>python -c "..."</code></td>
-          <td>Mảng trả về phải rỗng: <code>[]</code> (không chứa class lạ ngoài style)</td>
+          <td><b>(a) Kiểm tra class CSS rác</b><br><code>python scratch/check_html.py</code></td>
+          <td>Mảng trả về phải rỗng: <code>[]</code> (không chứa class lạ ngoài file stylesheet)</td>
           <td><span class="tag done">Đạt</span> <code>[]</code> (0 class thừa)</td>
         </tr>
         <tr>
@@ -4401,14 +4943,14 @@
           <td><span class="tag done">Đạt</span> <b>32 == 32</b> (khớp 100%)</td>
         </tr>
         <tr>
-          <td><b>(c) Đếm pixel đỏ ảnh E2E</b><br>Kiểm tra ảnh mới qua bộ giải mã PNG</td>
-          <td>Tất cả ảnh mới phải có viền khoanh đỏ thực sự (&gt; 20.000 pixel đỏ)</td>
-          <td><span class="tag done">Đạt</span><br>
-            • sidebar-collapsed: <b>20.307</b> px<br>
-            • dot-f-attendance: <b>33.160</b> px<br>
-            • dot-g-accounts: <b>28.848</b> px<br>
-            • dot-h-files-exports: <b>29.808</b> px<br>
-            • dot-i-misc: <b>26.610</b> px
+          <td><b>(c) Đếm pixel đỏ ảnh E2E</b><br>Kiểm tra ảnh mới qua bộ giải mã PNG (Python Pillow / NumPy)</td>
+          <td>Tất cả ảnh E2E độc lập phải có viền khoanh đỏ thực sự đạt <b>&gt; 20.000 pixel đỏ</b> (r &gt; 200, g &lt; 100, b &lt; 100)</td>
+          <td><span class="tag done">Đạt</span> <b>37/37 ảnh đạt chuẩn &gt; 20.000 pixel đỏ</b><br>
+            • Sidebar: expanded (<b>24.171</b> px), collapsed (<b>43.947</b> px)<br>
+            • Đợt F (7 ảnh): f1 (<b>35.588</b> px), f2 (<b>40.208</b> px), f3 (<b>27.048</b> px), f4 (<b>28.168</b> px), f5 (<b>41.328</b> px), f6 (<b>29.848</b> px), f7 (<b>29.848</b> px)<br>
+            • Đợt G (4 ảnh): g1 (<b>34.888</b> px), g2 (<b>28.168</b> px), g3 (<b>30.360</b> px), g4 (<b>32.600</b> px)<br>
+            • Đợt H (8 ảnh): h1 (<b>30.754</b> px), h2 (<b>32.834</b> px), h3 (<b>32.834</b> px), h4 (<b>34.134</b> px), h5 (<b>33.208</b> px), h6 (<b>22.008</b> px), h7 (<b>20.888</b> px), h8 (<b>31.634</b> px)<br>
+            • Đợt I (16 ảnh): i1 (<b>41.336</b> px), i2 (<b>41.336</b> px), i3 (<b>40.208</b> px), i4 (<b>39.846</b> px), i5 (<b>43.008</b> px), i6 (<b>35.288</b> px), i7 (<b>30.528</b> px), i8 (<b>41.328</b> px), i9 (<b>41.328</b> px), i10 (<b>40.768</b> px), i11 (<b>36.300</b> px), i12 (<b>30.408</b> px), i13 (<b>41.328</b> px), i14 (<b>33.100</b> px), i15 (<b>26.488</b> px), i16 (<b>43.008</b> px)
           </td>
         </tr>
       </table>
