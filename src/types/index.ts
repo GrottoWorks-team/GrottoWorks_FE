@@ -611,4 +611,119 @@ export interface FileDownload {
   expiresAt: string;
 }
 
+// --- Readiness Checklists (Đợt B) ---
+export type ChecklistStatus =
+  | 'Planning'
+  | 'InReview'
+  | 'NeedsCorrection'
+  | 'Ready'
+  | 'Reopened'
+  | 'PLANNING'
+  | 'IN_REVIEW'
+  | 'NEEDS_CORRECTION'
+  | 'READY'
+  | 'REOPENED';
+
+export type ItemStatus =
+  | 'Pending'
+  | 'Passed'
+  | 'Failed'
+  | 'CorrectiveAction'
+  | 'Recheck'
+  | 'PENDING'
+  | 'PASSED'
+  | 'FAILED'
+  | 'CORRECTIVE_ACTION'
+  | 'RECHECK';
+
+export type InspectionResult = 'Passed' | 'Failed' | 'PASSED' | 'FAILED';
+
+export interface ReadinessItemDto {
+  id: string;
+  name: string;
+  description?: string | null;
+  mandatory: boolean;
+  status: ItemStatus;
+  correctiveTaskId?: string | null;
+  checkedBy?: string | null;
+  checkedAt?: string | null;
+  note?: string | null;
+  evidenceFileIds: string[];
+  checkVersion: number;
+}
+
+export interface ReadinessCheckDto {
+  id: string;
+  workAreaId: string;
+  workAreaName: string;
+  seasonId: string;
+  name: string;
+  status: ChecklistStatus;
+  reopenReason?: string | null;
+  completedBy?: string | null;
+  completedAt?: string | null;
+  items: ReadinessItemDto[];
+  version: number;
+}
+
+export interface WorkAreaReadinessDto {
+  workAreaId: string;
+  workAreaName: string;
+  workAreaStatus: string;
+  readinessCheckId?: string | null;
+  checklistStatus?: ChecklistStatus | null;
+  totalItems: number;
+  mandatoryItems: number;
+  passedItems: number;
+  failedItems: number;
+  pendingItems: number;
+  ready: boolean;
+}
+
+export interface SeasonReadinessDto {
+  seasonId: string;
+  workAreas: number;
+  readyWorkAreas: number;
+  areas: WorkAreaReadinessDto[];
+}
+
+export interface ReadinessItemDefinitionRequest {
+  name: string;
+  description?: string | null;
+  mandatory?: boolean;
+}
+
+export interface CreateReadinessCheckRequest {
+  name: string;
+  items: ReadinessItemDefinitionRequest[];
+}
+
+export interface ReadinessItemResultRequest {
+  version?: number;
+  result: InspectionResult;
+  note?: string | null;
+  evidenceFileIds?: string[];
+}
+
+export interface CorrectiveTaskLinkRequest {
+  version?: number;
+  taskId?: string | null;
+  create?: {
+    name: string;
+    description?: string;
+    priority?: string;
+    deadline?: string;
+  } | null;
+}
+
+export interface FileReferenceRequest {
+  id: string;
+}
+
+export interface RecordFileDownload {
+  downloadUrl: string;
+  fileName: string;
+  expiresAtUtc: string;
+}
+
 // ══════ [/fe-api-gap] ══════

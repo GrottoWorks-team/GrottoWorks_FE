@@ -41,7 +41,7 @@ const DonationListPage = lazy(() => import('@/features/donations/pages/DonationL
 const BorrowedListPage = lazy(() => import('@/features/borrowed/pages/BorrowedListPage'))
 const AllocationPage = lazy(() => import('@/features/allocations/pages/AllocationPage'))
 const TimesheetPage = lazy(() => import('@/features/timesheets/pages/TimesheetPage'))
-const ChecklistPage = lazy(() => import('@/features/checklist/pages/ChecklistPage'))
+const ReadinessPage = lazy(() => import('@/features/readiness/pages/ReadinessPage'))
 const ReportPage = lazy(() => import('@/features/reports/pages/ReportPage'))
 const CommitteeOverview = lazy(() => import('@/features/dashboards/CommitteeOverview'))
 const LeaderOverview = lazy(() => import('@/features/dashboards/LeaderOverview'))
@@ -87,8 +87,8 @@ const PAGES: Record<string, ComponentType> = {
   '/parish/purchases': CommitteeApprovalPage,
   '/parish/reports': ReportPage,
   '/leader/timesheets': TimesheetPage,
-  '/leader/checklist': ChecklistPage,
-  '/community/checklist': ChecklistPage,
+  '/leader/checklist': ReadinessPage,
+  '/community/checklist': ReadinessPage,
   '/community/reports': ReportPage,
   '/parish/accounts': AccountsPage,
   '/parish/communities': CommunitiesPage,
@@ -107,11 +107,13 @@ const PAGES: Record<string, ComponentType> = {
 const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = {
   MATERIAL_OFFICER: [
     { path: 'purchases/:id', Page: PurchaseDetailPage },
+    { path: 'readiness/:id', Page: ReadinessPage },
   ],
   LEADER: [
     { path: 'purchases/:id', Page: PurchaseDetailPage },
     { path: 'tasks/:id', Page: TaskDetailPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
+    { path: 'readiness/:id', Page: ReadinessPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
     // 3D Layer Builder (giai đoạn A) — chỉ LEADER, giữ nguyên chính sách quyền hiện có.
     { path: 'areas/:id/builder', Page: BuilderPage },
@@ -121,10 +123,12 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
   COMMUNITY: [
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
+    { path: 'readiness/:id', Page: ReadinessPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
   ],
   PARISH: [
     { path: 'purchases/:id', Page: PurchaseDetailPage },
+    { path: 'readiness/:id', Page: ReadinessPage },
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
