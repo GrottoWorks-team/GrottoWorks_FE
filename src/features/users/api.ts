@@ -8,7 +8,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { ApiError, api } from '@/lib/api'
 import { normalizeRole } from '@/lib/auth'
-import type { User } from '@/types'
+import type { Role, User } from '@/types'
 import type { AdminUserDto } from '@/types/identity'
 
 interface UserSummaryDto {
@@ -69,7 +69,7 @@ export function useUsers(options: { enabled?: boolean; withSkills?: boolean } = 
         id: dto.id,
         name: dto.displayName || dto.email,
         email: dto.email,
-        role: normalizeRole(dto.role),
+        role: (normalizeRole(dto.role) ?? 'COMMUNITY') as Role,
         communityId: dto.communityId ?? undefined,
         parishId: dto.parishId ?? undefined,
         locked: dto.status?.toUpperCase() === 'LOCKED',

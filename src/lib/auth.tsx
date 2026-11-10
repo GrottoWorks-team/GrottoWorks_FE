@@ -5,26 +5,9 @@ import type { ReactNode } from 'react'
 import { api } from './api'
 import type { Role, User } from '../types'
 import type { TokenPair } from '../types/identity'
+import { normalizeRole } from './roleMapping'
 
-// Role code BE phát hành (Identity.Domain/RoleCodes): ADMIN | PARISH | LEADER | MO | VOLUNTEER.
-// Web có 4 nhánh giao diện, nên phải map 1-1 để admin và ban hành giáo KHÔNG dùng
-// chung một UI:
-//   ADMIN   → PARISH            (/parish/*  — quản trị giáo xứ: tài khoản, cộng đoàn,
-//                                danh mục, mùa, duyệt mua)
-//   PARISH  → COMMUNITY         (/community/* — ban hành giáo; spec v1.3 gọi PARISH = "Committee")
-//   LEADER  → LEADER            (/leader/*)
-//   MO      → MATERIAL_OFFICER  (/material-officer/*)
-// Lưu ý `MO` không chứa chữ "OFFICER" nên phải so khớp riêng.
-export function normalizeRole(roleStr?: string): Role {
-  if (!roleStr) return 'COMMUNITY'
-  const code = roleStr.trim().toUpperCase()
-  if (code === 'MO' || code.includes('MATERIAL') || code.includes('OFFICER')) return 'MATERIAL_OFFICER'
-  if (code === 'ADMIN') return 'PARISH'
-  if (code === 'PARISH' || code.includes('COMMUNITY')) return 'COMMUNITY'
-  if (code.includes('LEADER')) return 'LEADER'
-  // VOLUNTEER chưa có giao diện web (dùng app mobile) → xem BE-gap-requests-activity-flows.md
-  return 'COMMUNITY'
-}
+export { normalizeRole } from './roleMapping'
 
 interface AuthContextValue {
   user: User | null
@@ -49,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       id: p.id,
       name: p.displayName ?? p.name ?? 'Người dùng',
       email: p.email,
-      role: normalizeRole(p.role),
+      role: (normalizeRole(p.role) ?? 'COMMUNITY') as Role,
       rawRole: p.role,
       communityId: p.communityId,
       parishId: p.parishId,
