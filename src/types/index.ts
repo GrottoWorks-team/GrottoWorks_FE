@@ -490,3 +490,65 @@ export interface RecognitionRuleDto {
   version: number;
 }
 
+// ══════ [fe-api-gap-2] Đợt F–I ══════
+export type AttendanceRequestStatus =
+  | 'Pending'
+  | 'Approved'
+  | 'Rejected'
+  | 'Cancelled'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+
+export interface AttendanceRequestDto {
+  id: string
+  assignmentId: string
+  type: string
+  requestedAt: string
+  status: AttendanceRequestStatus | string
+  note?: string | null
+  attendanceId?: string | null
+  reviewedBy?: string | null
+  reviewNote?: string | null
+  reviewedAt?: string | null
+  version: number
+}
+
+export type AttendanceCorrectionStatus =
+  | 'Pending'
+  | 'Approved'
+  | 'Rejected'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+
+export interface AttendanceCorrectionDto {
+  id: string
+  attendanceId: string
+  requestedBy: string
+  reviewedBy?: string | null
+  originalCheckInAt: string
+  originalCheckOutAt?: string | null
+  requestedCheckInAt: string
+  requestedCheckOutAt: string
+  reason: string
+  status: AttendanceCorrectionStatus | string
+  reviewNote?: string | null
+  createdAt: string
+  reviewedAt?: string | null
+  version: number
+}
+
+export interface ReviewAttendanceRequest {
+  version?: number
+  reviewNote?: string
+}
+
+export interface ReviewCorrectionRequest {
+  version?: number
+  reviewNote?: string
+}
+// ══════ [/fe-api-gap-2] ══════
+
+
