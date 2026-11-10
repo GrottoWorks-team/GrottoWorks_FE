@@ -404,17 +404,15 @@ còn gọi path legacy không tồn tại ở BE). Khi BE bổ sung endpoint, ch
 
 | Nhóm | Màn hình / nút | Đang dùng | Thiếu ở BE |
 | --- | --- | --- | --- |
-| Thiết kế 2D/3D | `/leader/areas/:id/design`, `/designer`, `/builder` | `localStorage grotto-designs-v1` + IndexedDB (Builder chỉ gọi `GET /work-areas/{id}/tasks` để liên kết nhiệm vụ) | Design / DesignVersion |
-| Bản đồ giáo xứ | `/parish/map`, `/community/map` | `localStorage grotto-parish-map-v1` | Map + pin |
-| Đăng ký tình nguyện viên | `/register`, `/join` | `POST /registrations` (legacy) | Registration |
-| Duyệt đăng ký TNV | `/leader/regs` | `/volunteerRegs` (legacy) | VolunteerRegistration |
-| DS + chi tiết TNV | `/leader/volunteers`, `/community/volunteers`, `…/volunteers/:id` | `/volunteerRegs`, `/timesheets`, `/donations` | Assignment, timesheet |
-| Yêu cầu hỗ trợ | `/leader/support`, `/community/support` | `/supportRequests`, `/supportRegs` | SupportRequest |
-| Chấm công | `/leader/timesheets` | `/timesheets` | Attendance / Timesheet |
-| Checklist | `/leader/checklist`, `/community/checklist` | `/checklists` | Checklist |
-| Báo cáo | `/community/reports` | aggregate legacy (`purchaseRecords`, `donations`, `timesheets`, `tasks`, `communities`, `areas`) | Reporting |
-| Quyên góp / mượn / cấp phát | `/material-officer/donations`, `/borrowed`, `/allocations` | `/donations`, `/borrowedItems`, `/allocations` | Donation / Borrowed / Allocation |
-| Xác nhận mua | `/material-officer/purchases-confirm` | `/purchaseRecords` | Purchase receipt / confirm |
-| Giao việc + duyệt hoàn thành | nút "Bắt đầu làm", "Giao TNV", "Duyệt hoàn thành" ở chi tiết nhiệm vụ | mock phía client | TaskAssignment, TaskProgress |
+| Thiết kế 2D/3D | `/leader/areas/:id/design`, `/designer`, `/builder` | `localStorage grotto-designs-v1` + IndexedDB (Builder chỉ gọi `GET /work-areas/{id}/tasks` để liên kết nhiệm vụ) | Design / DesignVersion / design-scene |
+| Bản đồ giáo xứ | `/parish/map`, `/community/map` | `localStorage grotto-parish-map-v1` + IndexedDB. **Chỉ ADMIN (role FE `PARISH`) được sửa**; ban hành giáo chỉ xem | `GET/PUT/DELETE /parishes/{id}/map` |
+| Ghim vị trí trong form khu vực | `/parish/areas` → nút Tạo/Sửa khu vực | Ghim lưu cùng `localStorage` ở trên (pin tuỳ chọn) | field `mapPin` trong API khu vực hoặc `PUT /parishes/{id}/map` |
+| Đăng ký tình nguyện viên | `/register`, `/join` | Không gọi API (trang báo "chức năng đang chờ") | `POST /registrations` + `GET /public/parishes` |
+| Đơn vị vật tư | — | Đã bỏ UI lưu localStorage | `material-units` |
+
+> Cập nhật 11/11/2026: các dòng trước đây trong bảng này (**duyệt đăng ký TNV, danh sách/chi tiết TNV,
+> yêu cầu hỗ trợ, chấm công, checklist/readiness, báo cáo, quyên góp/đồ mượn/cấp phát, xác nhận mua,
+> giao việc + duyệt hoàn thành**) **đã nối BE thật** — chuyển sang kịch bản §1/§2. Chi tiết endpoint:
+> `API-GAP-STATUS-2026-11-04.md` §2.
 | Hoạt động / sao lưu / điểm thưởng / cài đặt thông báo | `/parish/activity`, `/parish/backup`, `/parish/point-rules`, `/parish/notifications` | `/activity`, `/export/backup`, localStorage | Activity, Backup, PointRule |
 | Xoá dữ liệu | nút Xoá khu vực / cộng đoàn / nhiệm vụ / tài khoản / kỹ năng | path không tồn tại | DELETE endpoints (§4 – L4) |
