@@ -111,15 +111,27 @@ export interface OpenAttendanceSession {
   approvedMinutes: number
   status: string
   version: number
+  /** Ngữ cảnh "phiên của ai / nhiệm vụ nào" (BE bổ sung 11/11/2026). */
+  volunteerId?: string | null
+  taskId?: string | null
+  taskName?: string | null
 }
 
-/** GET /api/v1/attendance/open-sessions — phiên mở quá lâu (LEADER/ADMIN). */
-export function useOpenAttendanceSessions(hours?: number) {
+/**
+ * GET /api/v1/attendance/open-sessions — phiên mở quá lâu (LEADER/ADMIN).
+ * `areaId` lọc theo khu đang chọn để cảnh báo khớp với bảng đơn bên trên.
+ */
+export function useOpenAttendanceSessions(hours?: number, areaId?: string) {
   return useQuery({
-    queryKey: ['attendance', 'open-sessions', hours ?? 'default'] as const,
+    queryKey: ['attendance', 'open-sessions', hours ?? 'default', areaId ?? 'all'] as const,
     queryFn: async () => {
+      const params = new URLSearchParams()
+      if (hours) params.set('hours', String(hours))
+      // BE bind theo tên tham số `workAreaId` (minimal API).
+      if (areaId) params.set('workAreaId', areaId)
+      const qs = params.toString()
       const res = await api<OpenAttendanceSession[] | { data?: OpenAttendanceSession[] }>(
-        `/api/v1/attendance/open-sessions${hours ? `?hours=${hours}` : ''}`,
+        `/api/v1/attendance/open-sessions${qs ? `?${qs}` : ''}`,
       )
       return Array.isArray(res) ? res : (res.data ?? [])
     },

@@ -244,6 +244,11 @@ export interface AttendanceRequest {
   reviewNote?: string
   reviewedAt?: string
   version: number
+  /** Ngữ cảnh "đơn của ai" (BE bổ sung 11/11/2026). */
+  volunteerId?: string | null
+  /** Nhiệm vụ mà đơn thuộc về. */
+  taskId?: string | null
+  taskName?: string | null
 }
 
 /** Đơn xin sửa giờ sau khi phiên công đã đóng (`AttendanceCorrectionDto`). */
