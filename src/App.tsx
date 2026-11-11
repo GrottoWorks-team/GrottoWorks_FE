@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/components/shared/AppShell'
 import { NAV } from '@/components/shared/nav-config'
 import { RequireRole } from '@/routes/RequireRole'
-import { RequireVolunteer } from '@/routes/RequireVolunteer'
 import { AuthProvider, useAuth } from '@/lib/auth'
 import { roleHomePath, rolePrefix } from '@/lib/roles'
 import { ToastProvider } from '@/components/ui/toast'
@@ -22,7 +21,6 @@ const UserRegister = lazy(() => import('@/pages/Register'))
 const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'))
 const ResetPassword = lazy(() => import('@/pages/ResetPassword'))
 const VolunteerNotice = lazy(() => import('@/pages/VolunteerNotice'))
-const VolunteerPurchasesPage = lazy(() => import('@/features/purchases/pages/VolunteerPurchasesPage'))
 const SeasonListPage = lazy(() => import('@/features/season/pages/SeasonListPage'))
 const AreaListPage = lazy(() => import('@/features/areas/pages/AreaListPage'))
 const TaskListPage = lazy(() => import('@/features/tasks/pages/TaskListPage'))
@@ -283,15 +281,7 @@ export default function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/register-account" element={<UserRegister />} />
                 <Route path="/volunteer" element={<VolunteerNotice />} />
-                {/* Người đi mua (VOLUNTEER) ghi nhận mua hàng trên web — F-RES-09. */}
-                <Route
-                  path="/volunteer/purchases"
-                  element={
-                    <RequireVolunteer>
-                      <VolunteerPurchasesPage />
-                    </RequireVolunteer>
-                  }
-                />
+
 
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />

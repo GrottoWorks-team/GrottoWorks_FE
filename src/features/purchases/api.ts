@@ -1,6 +1,6 @@
-// Purchases domain — PurchaseRequest (API Contract v1.3 /api/v1/purchase-requests) + PurchaseRecord
+﻿// Purchases domain — PurchaseRequest (API Contract v1.3 /api/v1/purchase-requests) + PurchaseRecord
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, apiPaged } from '@/lib/api'
+import { api } from '@/lib/api'
 import { materialKeys } from '@/features/materials/api'
 import type { PurchaseRecord } from '@/types'
 
@@ -223,7 +223,6 @@ function usePurchaseMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
       void qc.invalidateQueries({ queryKey: purchaseRequestKeys.all })
       void qc.invalidateQueries({ queryKey: purchaseRecordKeys.all })
       void qc.invalidateQueries({ queryKey: materialKeys.all })
-      void qc.invalidateQueries({ queryKey: ['my-purchase-tasks'] })
     },
   })
 }
@@ -390,71 +389,4 @@ export async function openPurchaseReceipt(purchaseId: string, fileId: string): P
     `/api/v1/purchases/${purchaseId}/receipts/${fileId}/download-url`,
   )
   window.open(res.downloadUrl, '_blank', 'noopener,noreferrer')
-}
-
-// ---------------------------------------------------------------------------
-// Người đi mua (VOLUNTEER) — BR-30: chỉ TNV đã nhận việc mua của đơn mới ghi
-// nhận được. BE không có endpoint "đơn chờ tôi mua" nên lấy việc của tôi
-// (`GET /users/me/tasks?taskType=PURCHASE`) rồi đọc đơn tương ứng.
-// ---------------------------------------------------------------------------
-
-export interface MyPurchaseTaskDto {
-  id: string
-  workAreaId: string
-  name: string
-  taskType: 'WORK' | 'PURCHASE' | 'CORRECTIVE'
-  purchaseRequestId?: string | null
-  status: string
-  deadline?: string | null
-  version: number
-}
-
-/** Việc đi mua được giao cho tôi (chưa huỷ / chưa xong). */
-export function useMyPurchaseTasks() {
-  return useQuery({
-    queryKey: ['my-purchase-tasks'],
-    queryFn: async () => {
-      const res = await apiPaged<MyPurchaseTaskDto>(
-        '/api/v1/users/me/tasks?taskType=PURCHASE&size=100',
-      )
-      return res.data.filter(
-        (task) => task.purchaseRequestId && !['CANCELLED', 'COMPLETED'].includes(task.status.toUpperCase()),
-      )
-    },
-  })
-}
-
-export interface RecordPurchaseLineInput {
-  purchaseRequestItemId: string
-  purchasedQuantity: number
-  unitPrice: number
-}
-
-/** POST /api/v1/purchase-requests/{requestId}/purchases (VOLUNTEER là buyer) — kho CHƯA tăng (BR-26). */
-export function useRecordPurchase() {
-  return usePurchaseMutation(
-    ({
-      requestId,
-      supplierName,
-      purchaseDate,
-      items,
-    }: {
-      requestId: string
-      supplierName?: string | null
-      purchaseDate?: string | null
-      items: RecordPurchaseLineInput[]
-    }) =>
-      api<{ data: PurchaseDto }>(`/api/v1/purchase-requests/${requestId}/purchases`, {
-        method: 'POST',
-        body: JSON.stringify({
-          supplierName: supplierName || null,
-          purchaseDate: purchaseDate || null,
-          items: items.map((item) => ({
-            purchaseRequestItemId: item.purchaseRequestItemId,
-            purchasedQuantity: item.purchasedQuantity,
-            unitPrice: item.unitPrice,
-          })),
-        }),
-      }),
-  )
 }
