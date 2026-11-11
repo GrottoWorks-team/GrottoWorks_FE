@@ -514,7 +514,9 @@ export default function ReadinessPage() {
                     </Button>
                   )}
 
-                  {String(item.status).toUpperCase() === 'RECHECK' && (
+                  {(String(item.status).toUpperCase() === 'RECHECK' ||
+                    String(item.status).toUpperCase() === 'CORRECTIVE_ACTION' ||
+                    String(item.status).toUpperCase() === 'CORRECTIVEACTION') && (
                     <Button
                       size="sm"
                       onClick={() => handleRecheck(item)}
