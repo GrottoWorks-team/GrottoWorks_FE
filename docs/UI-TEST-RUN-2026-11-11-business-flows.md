@@ -222,3 +222,31 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | §8.11 support request | ⏸️ Vẫn chưa chạy (`support_request` = 0) |
 | §8.10 material report | ⏸️ Vẫn chưa chạy (không có report; cần task Completed + allocation) |
 
+---
+
+# ĐỢT 3 — tạo dữ liệu để chạy các luồng phụ thuộc (11/11/2026)
+
+## 9. Đã làm
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| MAT-03 | §8.5 nhập **tồn đầu kỳ** (opening stock) | ✅ PASS | MO → Tồn kho → “Nhập tồn đầu kỳ”: chọn khu **Hang đá trung tâm** + vật tư **Bàn nhựa 1m8 (VAT-009)**, số lượng 100 → `201`, toast “Ghi nhận tồn đầu kỳ thành công…”, bảng cân đối hiện `yêu cầu 0 · sẵn có 100 · đã phân bổ 0 · thiếu hụt 100` |
+| ALLOC-01 | §8.9/BR-33 không phân bổ vượt tồn khả dụng | ✅ PASS (chặn ở UI) | Cùng vật tư (khả dụng 100) nhập **200** → form báo **“vượt mức khả dụng”** và **không gửi request nào** (không có call `POST /material-allocations`). Cần bổ sung test phía BE để chắc chắn guard server-side (xem §10) |
+
+## 10. Còn lại của (c)
+
+| Luồng | Trạng thái | Việc cần làm |
+|---|---|---|
+| BR-33 phía BE | ⏸️ Chưa probe trực tiếp | Gọi thẳng `POST /api/v1/material-allocations` với `quantity > unallocated` (bỏ qua validate UI) và kỳ vọng `409/422` |
+| §8.6 chuỗi mua sắm bước 4–10 | ⏸️ Chưa chạy | MO tạo purchase request cho **Hang đá trung tâm** → leader `ngan.nguyen` duyệt → `POST /purchase-requests/{id}/purchase-tasks` → assign volunteer → volunteer submit purchase → MO `confirm-delivery` → kiểm tra stock tăng + task `COMPLETED` (BR-65) |
+| §8.11 support request | ⏸️ Chưa chạy | Leader tạo + publish → community khác phản hồi → MO nguồn duyệt → MO nhận xác nhận `TRANSFER_IN` |
+| §8.10 material report | ⏸️ Chưa chạy | Sau khi có task `COMPLETED` + allocation (từ chuỗi mua sắm) → volunteer gửi report → MO verify, kiểm tra usable quay lại stock đúng khu |
+
+## 11. Fix đã ship trong lúc test (đợt 3)
+
+- **BR-66 chạy được**: BE thêm `taskType` optional cho `POST /work-areas/{id}/tasks` (cho phép tạo task `CORRECTIVE`);
+  FE `/leader/checklist` lọc dropdown theo `CORRECTIVE` và có nút **“Tạo việc khắc phục”** (tạo + tự gắn).
+  Kiểm chứng: task `CORRECTIVE` `201`, gắn bằng `PUT …/corrective-task` → `200`, `correctiveTaskId` được set.
+  Chi tiết: `GrottoWorks_BE/docs/BE-CHANGELOG.md` mục 7.
+
+
