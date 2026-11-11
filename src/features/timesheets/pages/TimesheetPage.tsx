@@ -3,6 +3,7 @@
 // Check-in/out & gửi đơn sửa thuộc app mobile nên web không tạo bản ghi.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueries } from '@tanstack/react-query'
 import { Check, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
@@ -21,13 +22,16 @@ import { useAuth } from '@/lib/auth'
 import { viDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import {
+  attendanceRequestQuery,
   useAttendanceCorrections,
   useAttendanceRequests,
+  useCloseAttendanceSession,
   useOpenAttendanceSessions,
   useReviewAttendanceRequest,
   useReviewCorrection,
   useWorkingHours,
 } from '../api'
+import type { OpenAttendanceSession } from '../api'
 import type {
   AttendanceCorrection,
   AttendanceCorrectionStatus,
@@ -72,10 +76,14 @@ function StatusTabs<T extends string>({
 
 function ReviewDialog({
   title,
+  label,
+  required,
   onClose,
   onSubmit,
 }: {
   title: string
+  label?: string
+  required?: boolean
   onClose: () => void
   onSubmit: (note: string) => Promise<void>
 }) {
@@ -103,13 +111,13 @@ function ReviewDialog({
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit} disabled={busy}>
+          <Button onClick={submit} disabled={busy || (required && !note.trim())}>
             {t('common.confirm')}
           </Button>
         </>
       }
     >
-      <Label htmlFor="review-note">{t('features.timesheets.reviewNote')}</Label>
+      <Label htmlFor="review-note">{label ?? t('features.timesheets.reviewNote')}</Label>
       <Input id="review-note" value={note} onChange={(e) => setNote(e.target.value)} />
     </Dialog>
   )
@@ -142,6 +150,19 @@ export default function TimesheetPage() {
   const { data: hours = [] } = useWorkingHours(selected?.id)
   const reviewRequest = useReviewAttendanceRequest()
   const reviewCorrection = useReviewCorrection()
+  const closeSession = useCloseAttendanceSession()
+
+  // Đơn chờ ở các khu KHÁC: bảng đơn chỉ theo khu đang chọn nên cần nhắc để leader không bỏ sót.
+  const areaPending = useQueries({
+    queries: myAreas.map((area) => attendanceRequestQuery(area.id, 'PENDING')),
+  })
+  const otherAreasPending = areaPending.reduce(
+    (sum, query, index) =>
+      myAreas[index]?.id === selected?.id ? sum : sum + (query.data?.length ?? 0),
+    0,
+  )
+
+  const [closing, setClosing] = useState<OpenAttendanceSession | null>(null)
 
   const [rejecting, setRejecting] = useState<
     { kind: 'request'; item: AttendanceRequest } | { kind: 'correction'; item: AttendanceCorrection } | null
@@ -341,6 +362,12 @@ export default function TimesheetPage() {
         <StatCard label={t('features.timesheets.totalApprovedHours')} value={totalHours} unit={t('features.timesheets.hours')} tone="ok" />
       </div>
 
+      {otherAreasPending > 0 && (
+        <p className="mb-6 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+          {t('features.timesheets.otherAreasPending', { count: otherAreasPending })}
+        </p>
+      )}
+
       <h2 className="mb-3 font-semibold text-foreground">{t('features.timesheets.requestsHeading')}</h2>
       <StatusTabs
         value={requestStatus}
@@ -408,6 +435,10 @@ export default function TimesheetPage() {
                     <span className="tabular font-semibold text-status-dangerText">
                       {t('features.timesheets.hoursOpen', { hours: hoursOpen.toFixed(1) })}
                     </span>
+                    <Button size="sm" variant="outline" onClick={() => setClosing(session)}>
+                      <Check className="size-3.5" />
+                      {t('features.timesheets.closeSession')}
+                    </Button>
                   </span>
                 </li>
               )
@@ -415,6 +446,27 @@ export default function TimesheetPage() {
           </ul>
         )}
       </Card>
+
+      {closing && (
+        <ReviewDialog
+          title={t('features.timesheets.closeSessionTitle')}
+          label={t('features.timesheets.closeSessionReason')}
+          required
+          onClose={() => setClosing(null)}
+          onSubmit={async (reason) => {
+            try {
+              await closeSession.mutateAsync({
+                attendanceId: closing.id,
+                version: closing.version,
+                reason,
+              })
+              toast(t('features.timesheets.sessionClosed'))
+            } catch {
+              toast(t('common.error'), 'alert')
+            }
+          }}
+        />
+      )}
 
       {rejecting && (
         <ReviewDialog

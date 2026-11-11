@@ -19,19 +19,48 @@ export const attendanceKeys = {
 }
 
 /** Danh sách đơn xin check-in của khu (mặc định PENDING). */
-export function useAttendanceRequests(
+export function attendanceRequestQuery(
   areaId?: string,
   status: AttendanceRequestStatus = 'PENDING',
 ) {
-  return useQuery({
+  return {
     queryKey: attendanceKeys.requests(areaId ?? '', status),
-    queryFn: async () => {
+    queryFn: async (): Promise<AttendanceRequest[]> => {
       const res = await apiPaged<AttendanceRequest>(
         `/api/v1/work-areas/${areaId}/attendance-requests?status=${status}&size=100`,
       )
       return res.data
     },
     enabled: Boolean(areaId),
+  }
+}
+
+export function useAttendanceRequests(
+  areaId?: string,
+  status: AttendanceRequestStatus = 'PENDING',
+) {
+  return useQuery(attendanceRequestQuery(areaId, status))
+}
+
+/** Trưởng khu đóng phiên hộ khi TNV quên check-out (lý do bắt buộc, BE ghi audit). */
+export function useCloseAttendanceSession() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      attendanceId,
+      version,
+      reason,
+    }: {
+      attendanceId: string
+      version: number
+      reason: string
+    }) =>
+      api<OpenAttendanceSession>(`/api/v1/attendance/${attendanceId}/close`, {
+        method: 'POST',
+        headers: { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ version, reason }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance'] }),
   })
 }
 
