@@ -123,6 +123,10 @@ vi.mock('@/features/season/api', () => ({
   useSeasonSupportSummary: () => mockUseSeasonSupportSummary(),
 }))
 
+vi.mock('@/features/readiness/api', () => ({
+  useSeasonReadiness: () => ({ data: undefined }),
+}))
+
 vi.mock('@/features/communities/api', () => ({
   useCommunities: () => ({
     data: [{ id: 'comm-1', name: 'Giới Trẻ' }],

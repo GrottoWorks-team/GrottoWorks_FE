@@ -14,6 +14,7 @@ import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useSeasons, useSeasonSupportSummary } from '@/features/season/api'
+import { useSeasonReadiness } from '@/features/readiness/api'
 import { useCommunities } from '@/features/communities/api'
 import { useUsers } from '@/features/users/api'
 import { useParish } from '@/features/parish/api'
@@ -38,6 +39,7 @@ export default function ParishOverview() {
 
   const { data: dashboard } = useSeasonDashboard(currentSeasonId)
   const { data: supportSummary } = useSeasonSupportSummary(currentSeasonId)
+  const { data: seasonReadiness } = useSeasonReadiness(currentSeasonId)
 
   const communityNameById = useMemo(
     () => new Map(communities.map((c) => [c.id, c.name])),
@@ -109,15 +111,18 @@ export default function ParishOverview() {
       {
         key: 'readiness',
         header: t('features.readiness.title', { defaultValue: 'Điều kiện mặt bằng' }),
-        render: (a: WorkAreaProgressDto) =>
-          a.readiness ? (
-            <StatusTag status={a.readiness} />
+        render: (a: WorkAreaProgressDto) => {
+          const areaRd = seasonReadiness?.areas.find((ar) => ar.workAreaId === a.workAreaId)
+          const status = a.readiness || (areaRd ? (areaRd.ready ? 'READY' : areaRd.checklistStatus) : null)
+          return status ? (
+            <StatusTag status={status} />
           ) : (
             <span className="text-xs text-muted-foreground">—</span>
-          ),
+          )
+        },
       },
     ],
-    [t],
+    [t, seasonReadiness],
   )
 
   const communityProgressColumns = useMemo(
@@ -217,9 +222,14 @@ export default function ParishOverview() {
               />
               <StatCard
                 label={t('features.dashboards.readyWorkAreas', { defaultValue: 'Khu vực sẵn sàng' })}
-                value={dashboard.summary.readiness.ready}
-                unit={`/ ${dashboard.summary.workAreas} khu`}
-                tone={dashboard.summary.readiness.ready === dashboard.summary.workAreas ? 'ok' : 'warn'}
+                value={seasonReadiness?.readyWorkAreas ?? dashboard.summary.readiness.ready}
+                unit={`/ ${seasonReadiness?.workAreas ?? dashboard.summary.workAreas} khu`}
+                tone={
+                  (seasonReadiness?.readyWorkAreas ?? dashboard.summary.readiness.ready) ===
+                  (seasonReadiness?.workAreas ?? dashboard.summary.workAreas)
+                    ? 'ok'
+                    : 'warn'
+                }
                 icon={CheckCircle2}
               />
               <StatCard

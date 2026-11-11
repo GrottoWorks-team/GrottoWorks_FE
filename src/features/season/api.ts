@@ -2,7 +2,7 @@
 //   GET    /api/v1/seasons[/{id}]        POST /api/v1/seasons
 //   PATCH  /api/v1/seasons/{id}          (If-Match bắt buộc)
 //   POST   /api/v1/seasons/{id}/activate (version trong body, If-Match tuỳ chọn)
-//   POST   /api/v1/seasons/{id}/complete | /archive
+//   POST   /api/v1/seasons/{id}/complete | /api/v1/seasons/{id}/archive
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { CreateSeasonRequest, SeasonDto } from '@/types/parish'
