@@ -325,3 +325,15 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | SUP-04e | §8.11 vật tư: offer → duyệt → `TRANSFER_OUT`/`TRANSFER_IN` (BR-63/64/80) | ⏸️ Chưa chạy | Cần work area nguồn có unallocated stock cho vật tư `a8e74f4e…`; response material dùng `{ requestMaterialId, sourceWorkAreaId, offeredQuantity }`, duyệt `POST /support-response-materials/{id}/approve { approvedQuantity, version }`, nhận `…/confirm-receipt` |
 
 **Kết luận §8.11:** chuỗi *tạo → publish → phản hồi → leader xem* chạy đúng; bước **duyệt thành viên bị chặn đúng bởi BR-77** và dữ liệu seed không có ứng viên đủ skill (gắn position với task không ai khớp). Muốn test trọn: chọn task có skill mà seed có TNV sở hữu, hoặc bỏ skill của task rồi publish lại.
+
+## 19. Đợt 3i — SUP-04e: duyệt vật tư hỗ trợ & nhận hàng
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| SUP-04e1 | Work area nguồn có tồn khả dụng | ✅ PASS | `POST /inventory/opening-stock` body `{ workAreaId, materialId, quantity }` → `201` (Bàn nhựa 20 cái vào **Cổng chào và biển báo**) |
+| SUP-04e2 | TNV/MO gửi offer vật tư | ✅ PASS | `POST /support-requests/{id}/responses` với `materials:[{requestMaterialId, sourceWorkAreaId, offeredQuantity:10}]` → `201`, response `3129f4e9…` |
+| SUP-04e3 | **BR-63** LEADER duyệt offer vật tư | ✅ PASS | `POST /support-response-materials/c786ce36…/approve { approvedQuantity:10, version:1 }` → `200 APPROVED` (v3) |
+| SUP-04e4 | **BR-64** MO bên nhận xác nhận → `TRANSFER_OUT`/`TRANSFER_IN` | ⚠️ **BỊ CHẶN** | `POST …/confirm-receipt` với `{ receivedUsableQuantity:10, receivedUnusableQuantity:0, version:3 }` (và thử thêm `If-Match` + version 4) đều trả `412 SUPPORT_TRANSFER_VERSION_MISMATCH`; request vẫn `PUBLISHED`, offer vẫn `APPROVED` |
+| SUP-04e5 | Request chuyển `Partially/Full Filled` | ⏸️ Phụ thuộc SUP-04e4 | — |
+
+**Phân tích SUP-04e4:** `receivedUsableQuantity` là field bắt buộc (thiếu → `422 VALIDATION_FAILED`), nhưng sau khi duyệt (v3) thì `confirm-receipt` luôn `412` dù gửi version 3 hay 4, kèm/không kèm `If-Match`. Nghi vấn: version yêu cầu thuộc **parent SupportResponse** (không phải item), hoặc phải có bước trung gian `TRANSFER_OUT` do Resource thực hiện qua `/internal/support-transfers` (R-13) trước khi `confirm-receipt` hợp lệ. Cần đọc `SupportMaterialReviewEndpoints.ConfirmReceiptAsync` để chốt.
