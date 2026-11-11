@@ -80,7 +80,7 @@ function EvidenceItem({
   return (
     <div className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 text-xs shadow-xs">
       <Camera className="size-3.5 text-brand-pine" />
-      <span className="text-foreground">{caption || fileId.slice(0, 8)}</span>
+      <span className="text-foreground">{caption || (fileId ? fileId.slice(0, 8) : 'file')}</span>
       {download?.downloadUrl && (
         <a
           href={download.downloadUrl}
