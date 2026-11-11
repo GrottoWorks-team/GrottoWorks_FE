@@ -363,3 +363,14 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | MR-12 | UI MO `/material-officer/material-reports` | ✅ PASS | Trang hiển thị dòng "Dựng khung hang đá trung tâm · Hang đá trung tâm · 1 dòng · VERIFIED"; FE gửi `version` của report (xmin) nên khớp `If-Match` |
 
 **Ghi chú kỹ thuật:** (1) `version` của `task_material_report` là token `xmin` (ví dụ `2249`) — FE đã đọc từ DTO nên không lặp lại lỗi như `confirm-receipt`; (2) Resource chỉ biết task đã COMPLETED sau khi nhận event → có độ trễ ~5 giây, cần chờ `task_projection` cập nhật trước khi báo cáo.
+
+## 21. Đợt 3k — sửa 4 lỗi còn lại của báo cáo test (mục 2, 3, 4, 5)
+
+| Mã | Lỗi | Cách sửa | Kiểm chứng |
+|---|---|---|---|
+| FIX-02 | Toast hiện nguyên văn `code`/`detail` tiếng Anh của BE | `src/lib/api.ts` thêm `translateCode()`: tra `errors.<CODE>` trong i18n trước khi dùng `detail`; thêm ~35 mã vào `vi.json`/`en.json` (`WORK_AREA_SCOPE_DENIED`, `CORRECTIVE_TASK_INVALID`, `WORK_AREA_NOT_IN_READINESS_REVIEW`, `TASK_NOT_ALLOCATABLE`, `SUPPORT_TRANSFER_*`, `PURCHASE_NOT_BUYER`, …) | `src/lib/apiErrorCodes.test.ts` **3/3 pass**; `npm run lint` sạch; toàn bộ FE **162 test** (159 + 3) pass |
+| FIX-03 | Không có màn hình cho người đi mua (buyer) | Thêm `useMyPurchaseTasks()` (`GET /users/me/tasks?taskType=PURCHASE`) + `useRecordPurchase()` (`POST /purchase-requests/{id}/purchases`); trang mới `/volunteer/purchases` (`VolunteerPurchasesPage`) + guard `RequireVolunteer`; nút "Ghi nhận mua hàng" ở `/volunteer` | Seed thật: PR `8b4b80cd…` (APPROVED) → việc mua `88aa7d93…` giao TNV `hau.trinh` (ACCEPTED) → UI hiện việc + dialog điền sẵn 3 × 30.000 ₫ → Lưu → toast "Đã ghi nhận lần mua.", PR → `PURCHASED`, purchase `b845e04e…` tổng `90.000 VND`, **kho không đổi** (BR-26) |
+| FIX-04 | Bảng quyên góp thiếu cột "Khu vực nhận" | Thêm cột vào `DonationListPage` (+ CSV export) và **sửa lỗi memo**: `columns` useMemo thiếu `areas` trong deps nên đóng băng danh sách khu rỗng → luôn hiện "—" | Trang `/material-officer/donations` hiện đúng: "Hang đá thiếu nhi", "Gian hàng ẩm thực", "Hang đá trung tâm" |
+| FIX-05 | MO bị 403 ở 3 báo cáo cấp giáo xứ | BE: mở role `MO` cho `GET /dashboards/season`, `GET /seasons/{id}/recognition`, `GET /seasons/{id}/support-summary` + `GetSupportSummaryHandler` chấp nhận MO (vẫn chặn chéo giáo xứ) | MO → **200** cả 3; VOLUNTEER → **403** (đúng); `TaskExecution.UnitTests` **377/377**, `Reporting.UnitTests` **71/71** |
+
+**Ghi chú:** FIX-04 là bug thật phát sinh khi thêm cột (stale closure), đã sửa cùng lúc — nếu chỉ thêm cột mà không thêm `areas` vào deps thì cột luôn rỗng.

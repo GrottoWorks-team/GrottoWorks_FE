@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
-import { Smartphone, LogOut } from 'lucide-react'
+import { Smartphone, LogOut, ShoppingCart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth'
@@ -40,7 +40,11 @@ export default function VolunteerNotice() {
           </div>
         )}
 
-        <div className="pt-2">
+        <div className="pt-2 space-y-2">
+          <Button className="w-full gap-2" onClick={() => navigate('/volunteer/purchases')}>
+            <ShoppingCart className="size-4" />
+            {t('features.volunteerPurchases.open')}
+          </Button>
           <Button variant="outline" className="w-full gap-2" onClick={handleLogout}>
             <LogOut className="size-4" />
             {t('common.logout')}

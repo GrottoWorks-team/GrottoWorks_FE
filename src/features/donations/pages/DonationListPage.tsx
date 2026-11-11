@@ -238,6 +238,10 @@ export default function DonationListPage() {
       ? `${t('features.donations.money')} · ${fmt(d.pledgedAmount ?? 0)} ₫`
       : d.items.map((item) => `${item.materialName} (${item.unit})`).join(', ')
 
+  // "Khu vực nhận" — BE trả `workAreaId`; tên khu lấy từ danh sách khu đã tải.
+  const areaNameOf = (d: Donation) =>
+    d.workAreaId ? (areas.find((a) => a.id === d.workAreaId)?.name ?? '—') : '—'
+
   const pledgedOf = (d: Donation) =>
     d.type === 'MONEY'
       ? `${fmt(d.pledgedAmount ?? 0)} ₫`
@@ -256,6 +260,11 @@ export default function DonationListPage() {
         render: (d: Donation) => <span className="font-semibold text-foreground">{d.donorName}</span>,
       },
       { key: 'material', header: t('features.donations.material'), render: materialSummary },
+      {
+        key: 'workArea',
+        header: t('features.donations.workArea'),
+        render: (d: Donation) => <span className="text-muted-foreground">{areaNameOf(d)}</span>,
+      },
       {
         key: 'promised',
         header: t('features.donations.promised'),
@@ -318,8 +327,11 @@ export default function DonationListPage() {
           ),
       },
     ],
+    // `areas` phải nằm trong deps: cột "Khu vực nhận" tra tên khu từ danh sách
+    // này, mà danh sách về SAU lần render đầu → thiếu deps sẽ đóng băng giá trị
+    // rỗng và luôn hiện "—".
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t],
+    [t, areas],
   )
 
   const onExport = () => {
@@ -328,6 +340,7 @@ export default function DonationListPage() {
       rows.map((d) => ({
         [t('features.donations.donor')]: d.donorName,
         [t('features.donations.material')]: materialSummary(d),
+        [t('features.donations.workArea')]: areaNameOf(d),
         [t('features.donations.promised')]: pledgedOf(d),
         [t('features.donations.receivedCol')]: receivedOf(d),
         [t('common.status')]: t(`status.${d.status}`),

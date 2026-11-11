@@ -1,6 +1,8 @@
 // Fetch wrapper chuẩn: hỗ trợ /api/v1 và /api, unwrap envelope { data },
 // Bearer token + Refresh Token rotation, ProblemDetails error parsing.
 // 401 khi không refresh được → dispatch 'grotto:unauthorized' để App logout.
+import i18n from '@/lib/i18n'
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -11,6 +13,16 @@ export class ApiError extends Error {
     super(message)
     this.name = 'ApiError'
   }
+}
+
+/**
+ * Mã lỗi nghiệp vụ BE (`body.code`) → câu tiếng Việt/Anh dễ hiểu.
+ * Tra trong nhóm i18n `errors.<CODE>`; không có thì dùng `detail` của BE.
+ */
+export function translateCode(code?: string): string | undefined {
+  if (!code) return undefined
+  const key = `errors.${code}`
+  return i18n.exists(key) ? (i18n.t(key) as string) : undefined
 }
 
 let isRefreshing = false
@@ -102,6 +114,8 @@ async function request<T = unknown>(path: string, init?: RequestInit): Promise<T
     } catch {
       // Body không phải JSON
     }
+
+    message = translateCode(code) ?? message
 
     throw new ApiError(res.status, message, code, errors)
   }
