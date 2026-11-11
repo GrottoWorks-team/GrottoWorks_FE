@@ -260,3 +260,12 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | PUR-05 | §8.6 ngoại lệ BR-27 (shortage = 0) | ✅ PASS | Lần đầu tạo PR **không** kèm `shortageOverrideReason` → `409`; thêm lý do override → tạo được (đúng quy tắc “chỉ tạo khi shortage > 0, trừ khi override có lý do”) |
 | PUR-06 | §8.6 bước 3–4 LEADER duyệt + tạo task mua | ✅ PASS | `POST /purchase-requests/{id}/approve` (LEADER `ngan.nguyen`) → `200 APPROVED`; `POST …/purchase-tasks` → `201`, `taskType = PURCHASE` (task `346754c7…`) |
 | PUR-07 | §8.6 bước 5–10 (assign → TNV mua → MO xác nhận giao → BR-65 task tự Completed) | ⏸️ Chưa chạy | Cần payload submit purchase (`items` + giá + hoá đơn) và assign volunteer; dữ liệu PR test: `00e991c6-9445-47b5-b0df-fa9cc31ca6e0` |
+
+## 13. Đợt 3c — chuỗi mua sắm bước 5–6 (assign + accept)
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| PUR-07a | §8.2/§8.6 bước 5: LEADER giao task mua cho TNV | ✅ PASS | `POST /tasks/346754c7…/assignments { volunteerId }` → `201`, assignment `fd7e72b9…` `PENDING` |
+| PUR-07b | TNV chấp nhận assignment | ✅ PASS | `POST /task-assignments/fd7e72b9…/accept` → `200 ACCEPTED` |
+| PUR-07c | §8.6 bước 6: TNV ghi nhận thông tin mua | ⚠️ **BỊ CHẶN** | `POST /purchase-requests/00e991c6…/purchases` (role VOLUNTEER) trả `422` khi thiếu `Items[0].UnitPrice`, và `400 INVALID_REQUEST_BODY` khi gửi `unitPrice: { amount, currency }`. **Chưa có UI web** cho bước này (web chỉ có màn MO xác nhận giao) ⇒ cần chốt lại contract `PurchaseLineRequest` + bổ sung UI (mobile/web) |
+| PUR-07d | §8.6 bước 8–10: MO xác nhận giao → BR-65 task tự `COMPLETED` | ⏸️ Chưa chạy | Phụ thuộc PUR-07c |
