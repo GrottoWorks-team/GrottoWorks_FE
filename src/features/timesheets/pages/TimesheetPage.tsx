@@ -475,6 +475,8 @@ export default function TimesheetPage() {
               ? t('features.timesheets.rejectReqTitle')
               : t('features.timesheets.rejectCorrTitle')
           }
+          label={t('features.timesheets.rejectReason')}
+          required
           onClose={() => setRejecting(null)}
           onSubmit={async (note) => {
             try {

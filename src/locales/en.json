@@ -933,6 +933,7 @@
   "features.timesheets.emptyByStatus": "No requests in this status.",
   "features.timesheets.unknownVolunteer": "Unknown volunteer",
   "features.timesheets.openSessionsHint": "Scoped to the selected work area. Volunteers should check out in the app; if overdue, the leader closes the session with a reason.",
+"features.timesheets.rejectReason": "Rejection reason (required)",
 "features.timesheets.closeSession": "Close session",
 "features.timesheets.closeSessionTitle": "Close the session on the volunteer's behalf",
 "features.timesheets.closeSessionReason": "Reason (required)",

@@ -933,6 +933,7 @@
 "features.timesheets.emptyByStatus": "Không có đơn ở trạng thái này.",
 "features.timesheets.unknownVolunteer": "Không rõ tình nguyện viên",
 "features.timesheets.openSessionsHint": "Cảnh báo theo khu đang chọn. Tình nguyện viên nên tự check-out trên app; nếu quá hạn thì trưởng khu đóng phiên hộ (bắt buộc nêu lý do).",
+"features.timesheets.rejectReason": "Lý do từ chối (bắt buộc)",
 "features.timesheets.closeSession": "Đóng phiên",
 "features.timesheets.closeSessionTitle": "Đóng phiên hộ tình nguyện viên",
 "features.timesheets.closeSessionReason": "Lý do (bắt buộc)",
