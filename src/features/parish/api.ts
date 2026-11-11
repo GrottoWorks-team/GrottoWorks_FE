@@ -69,8 +69,23 @@ export { useCommunities } from '@/features/communities/api'
 export function useActivityLogs() {
   return useQuery({
     queryKey: adminKeys.activity,
-    // /api/activity = activityLogs 50 dÃ²ng má»›i nháº¥t, má»›i nháº¥t Ä‘á»©ng Ä‘áº§u.
-    queryFn: () => api<ActivityLog[]>('/activity'),
+    queryFn: async () => {
+      try {
+        const res = await api<any>('/api/v1/activity-logs')
+        const items = Array.isArray(res) ? res : (res?.data || [])
+        return items.map((x: any) => ({
+          id: x.id,
+          at: x.createdAt || x.timestamp || x.at || new Date().toISOString(),
+          actor: x.actorUserId || x.actor || 'admin',
+          action: x.action || 'system.log',
+          target: `${x.entityType || 'SYSTEM'}:${x.entityId || x.id}`,
+          entityType: x.entityType,
+          entityId: x.entityId,
+        }))
+      } catch {
+        return api<ActivityLog[]>('/activity')
+      }
+    },
   })
 }
 
