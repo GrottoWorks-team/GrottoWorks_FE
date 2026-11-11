@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useMaterials } from '@/features/materials/api'
 import { ApiError } from '@/lib/api'
-import { useConfirmSupportMaterialReceipt, useSupportRequests } from '../api'
+import { useConfirmSupportMaterialReceipt, useSupportRequests, useSupportTransfer } from '../api'
 
 interface PendingReceipt {
   itemId: string
@@ -23,7 +23,6 @@ interface PendingReceipt {
   materialName: string
   unit: string
   approvedQuantity: number
-  version: number
   status: string
 }
 
@@ -40,6 +39,8 @@ export default function MaterialReceiptsPage() {
   const [usable, setUsable] = useState('')
   const [unusable, setUnusable] = useState('0')
   const [note, setNote] = useState('')
+  // Version dùng để If-Match là của phiếu chuyển bên Resource (support_transfer), KHÔNG phải version item TaskExecution.
+  const { data: transfer, isPending: transferPending } = useSupportTransfer(target?.itemId, Boolean(target))
 
   const rows = useMemo<PendingReceipt[]>(() => {
     const materialOf = new Map(materials.map((m) => [m.id, m]))
@@ -56,7 +57,6 @@ export default function MaterialReceiptsPage() {
               materialName: material?.name ?? item.materialId.slice(0, 8),
               unit: material?.unit ?? '',
               approvedQuantity: item.approvedQuantity ?? item.offeredQuantity,
-              version: item.version,
               status: item.status,
             }
           }),
@@ -72,11 +72,11 @@ export default function MaterialReceiptsPage() {
   }
 
   const onSubmit = async () => {
-    if (!target) return
+    if (!target || !transfer) return
     try {
       await confirm.mutateAsync({
         itemId: target.itemId,
-        version: target.version,
+        version: transfer.version,
         usableQuantity: Math.max(0, Number(usable) || 0),
         unusableQuantity: Math.max(0, Number(unusable) || 0),
         note: note.trim() || undefined,
@@ -137,7 +137,7 @@ export default function MaterialReceiptsPage() {
               <Button variant="outline" onClick={() => setTarget(null)}>
                 {t('common.cancel')}
               </Button>
-              <Button disabled={confirm.isPending} onClick={onSubmit}>
+              <Button disabled={confirm.isPending || transferPending} onClick={onSubmit}>
                 {t('common.save')}
               </Button>
             </>

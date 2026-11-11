@@ -332,8 +332,15 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 |---|---|---|---|
 | SUP-04e1 | Work area nguồn có tồn khả dụng | ✅ PASS | `POST /inventory/opening-stock` body `{ workAreaId, materialId, quantity }` → `201` (Bàn nhựa 20 cái vào **Cổng chào và biển báo**) |
 | SUP-04e2 | TNV/MO gửi offer vật tư | ✅ PASS | `POST /support-requests/{id}/responses` với `materials:[{requestMaterialId, sourceWorkAreaId, offeredQuantity:10}]` → `201`, response `3129f4e9…` |
-| SUP-04e3 | **BR-63** LEADER duyệt offer vật tư | ✅ PASS | `POST /support-response-materials/c786ce36…/approve { approvedQuantity:10, version:1 }` → `200 APPROVED` (v3) |
-| SUP-04e4 | **BR-64** MO bên nhận xác nhận → `TRANSFER_OUT`/`TRANSFER_IN` | ⚠️ **BỊ CHẶN** | `POST …/confirm-receipt` với `{ receivedUsableQuantity:10, receivedUnusableQuantity:0, version:3 }` (và thử thêm `If-Match` + version 4) đều trả `412 SUPPORT_TRANSFER_VERSION_MISMATCH`; request vẫn `PUBLISHED`, offer vẫn `APPROVED` |
-| SUP-04e5 | Request chuyển `Partially/Full Filled` | ⏸️ Phụ thuộc SUP-04e4 | — |
+| SUP-04e3 | **BR-63** LEADER duyệt offer vật tư | ✅ PASS | `POST /support-response-materials/c786ce36…/approve { approvedQuantity:10, version:1 }` → `200 APPROVED` (v3); Resource ghi `TRANSFER_OUT −10` ở **Cổng chào và biển báo** |
+| SUP-04e4 | **BR-64** MO bên nhận xác nhận → `TRANSFER_IN` chỉ phần dùng được | ✅ PASS (sau khi sửa BE) | `POST …/confirm-receipt { receivedUsableQuantity:9, receivedUnusableQuantity:1, version:2088 }` → `200 RECEIVED`; ledger `TRANSFER_IN +9` vào **Hang đá trung tâm** (10 gửi − 1 hỏng = 9 vào kho) |
+| SUP-04e5 | Request chuyển `Partially/Full Filled`, item → `TRANSFERRED` | ✅ PASS | `GET /support-requests/1dea1b2b…` → `PARTIALLY_FULFILLED`; item `c786ce36…` → `TRANSFERRED` v4; lần 2 (offer 2, duyệt 2, nhận 2) → item `2e570dd3…` `TRANSFERRED` v4, ledger `−2 / +2` |
+| SUP-04e6 | **UI E2E** `/material-officer/support-materials` | ✅ PASS (sau khi sửa FE) | Bấm "Xác nhận đã nhận" → dialog → Lưu → toast "Đã xác nhận nhận vật tư"; reload trang → "Không có vật tư hỗ trợ nào chờ nhận" |
 
-**Phân tích SUP-04e4:** `receivedUsableQuantity` là field bắt buộc (thiếu → `422 VALIDATION_FAILED`), nhưng sau khi duyệt (v3) thì `confirm-receipt` luôn `412` dù gửi version 3 hay 4, kèm/không kèm `If-Match`. Nghi vấn: version yêu cầu thuộc **parent SupportResponse** (không phải item), hoặc phải có bước trung gian `TRANSFER_OUT` do Resource thực hiện qua `/internal/support-transfers` (R-13) trước khi `confirm-receipt` hợp lệ. Cần đọc `SupportMaterialReviewEndpoints.ConfirmReceiptAsync` để chốt.
+**Nguyên nhân gốc SUP-04e4 (bug thật, đã sửa):** `confirm-receipt` kiểm tra `Version` của bảng **`support_transfer`** (Resource, token `xmin` = `2088`) chứ không phải `version` của `support_response_material` (TaskExecution = `3`). FE gửi version của item ⇒ luôn `412 SUPPORT_TRANSFER_VERSION_MISMATCH`.
+
+**Sửa:**
+- BE (Resource): thêm `GET /api/v1/support-response-materials/{itemId}/support-transfer` (`getSupportMaterialTransfer`, role MO, trả `SupportTransferDto` có `version` thật) + `GetSupportTransferQueryHandler` + đăng ký DI + route YARP `resource-support-material-transfer-route`. Ghi ở `GrottoWorks_BE/docs/BE-CHANGELOG.md` (lần 5, mục 8).
+- FE: `useSupportTransfer()` trong `src/features/support/api.ts`; `MaterialReceiptsPage` lấy `transfer.version` thay cho `item.version` trước khi gọi `confirm-receipt`.
+
+**Kiểm chứng quyền:** `GET …/support-transfer` — MO `200`, LEADER `403` (đúng role-gate).

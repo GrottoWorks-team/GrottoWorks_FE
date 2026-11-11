@@ -247,6 +247,33 @@ export function useSupportSummary(seasonId?: string) {
   })
 }
 
+/** Phiếu chuyển kho của Resource sau khi LEADER duyệt (version là của bảng support_transfer, khác version item). */
+export interface SupportTransfer {
+  supportResponseMaterialId: string
+  sourceWorkAreaId: string
+  targetWorkAreaId: string
+  materialId: string
+  quantity: number
+  status: 'IN_TRANSIT' | 'RECEIVED' | string
+  transferredAt: string
+  receivedUsableQuantity?: number | null
+  receivedUnusableQuantity?: number | null
+  receivedConfirmedBy?: string | null
+  receivedConfirmedAt?: string | null
+  note?: string | null
+  version: number
+}
+
+/** GET /support-response-materials/{itemId}/support-transfer (MO) — phiếu chuyển + version hiện tại để nhận hàng. */
+export function useSupportTransfer(itemId?: string, enabled = true) {
+  return useQuery({
+    queryKey: [...supportKeys.all, 'transfer', itemId ?? ''],
+    queryFn: () => api<SupportTransfer>(`/api/v1/support-response-materials/${itemId}/support-transfer`),
+    enabled: Boolean(itemId) && enabled,
+    retry: false,
+  })
+}
+
 /** POST /support-response-materials/{itemId}/confirm-receipt (MO) — số thực nhận; chỉ usable vào kho. */
 export function useConfirmSupportMaterialReceipt() {
   return useSupportMutation(
