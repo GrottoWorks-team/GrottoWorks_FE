@@ -344,3 +344,22 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 - FE: `useSupportTransfer()` trong `src/features/support/api.ts`; `MaterialReceiptsPage` lấy `transfer.version` thay cho `item.version` trước khi gọi `confirm-receipt`.
 
 **Kiểm chứng quyền:** `GET …/support-transfer` — MO `200`, LEADER `403` (đúng role-gate).
+
+## 20. Đợt 3j — §8.10 Báo cáo vật tư sau thi công (BR-44/45/47/49/50/51)
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| MR-01 | **BR-44** không cấp phát cho task đã COMPLETED/CANCELLED | ✅ PASS (chặn đúng) | `POST /material-allocations` với task `346754c7…` (COMPLETED) → `409 TASK_NOT_ALLOCATABLE` |
+| MR-02 | Cấp phát vật tư gắn task đang chạy | ✅ PASS | `POST /material-allocations { workAreaId: 942fe59a…, taskId: e839cccb…, items:[{ materialId: e53a19fd…, quantity: 6 }] }` → `201`, allocation `f7d9e858…`, item `bd5f5678…` |
+| MR-03 | Hoàn tất task (team leader nộp → leader duyệt) | ✅ PASS | `POST /tasks/e839cccb…/submit` (TNV `tram.do` là team leader được chỉ định) `200` → `SUBMITTED` v14; `POST …/approve` (LEADER) `200` → `COMPLETED` v15 |
+| MR-04 | **BR-44** chỉ báo cáo khi task đã COMPLETED | ✅ PASS (chặn đúng) | Gửi báo cáo ngay sau khi duyệt (projection Resource chưa cập nhật) → `409 TASK_NOT_COMPLETED`; sau khi `task_projection = COMPLETED` thì `201` |
+| MR-05 | **BR-45** TNV báo cáo còn/hỏng/mất theo từng dòng cấp phát | ✅ PASS | `POST /tasks/e839cccb…/material-reports` (TNV `hau.trinh`, ACCEPTED assignment) `{ items:[{ materialAllocationItemId: bd5f5678…, remainingQuantity:4, damagedQuantity:1, lostQuantity:1 }] }` → `201`, report `bb01d9dd…` `SUBMITTED`, item `e5771429…`, `allocatedQuantity: 6` |
+| MR-06 | Người không phải assignee không được báo cáo | ✅ PASS (chặn đúng) | Chỉ TNV có assignment `ACCEPTED` (hoặc MO khi task CANCELLED) mới gọi được — nhánh `MATERIAL_REPORT_NOT_ASSIGNEE` |
+| MR-07 | **BR-47** MO xác nhận số thực tế | ✅ PASS | `POST /task-material-reports/bb01d9dd…/verify` (MO, `If-Match: "2249"`) `{ remainingQuantity:4, damagedQuantity:1, lostQuantity:1 }` → `200 VERIFIED` |
+| MR-08 | **BR-49** phần còn lại nhập lại kho đúng khu, đúng 1 lần | ✅ PASS | Ledger `TASK_RETURN +4` vào **Hang đá trung tâm**, `reference_type = TASK_MATERIAL_REPORT_ITEM`, `reference_id = e5771429…` |
+| MR-09 | **BR-50** hỏng/mất không nhập kho | ✅ PASS | Không có `TASK_RETURN` 5 hay 6; chỉ 1 dòng `+4` (1 hỏng + 1 mất bị loại) |
+| MR-10 | **BR-51** số cấp phát không đổi | ✅ PASS | `material_allocation_item.allocated_quantity` vẫn `6.00` sau khi verify |
+| MR-11 | Verify lần 2 không nhập kho lần nữa | ✅ PASS (chặn đúng) | Verify lại → `409 MATERIAL_REPORT_INVALID_STATE` |
+| MR-12 | UI MO `/material-officer/material-reports` | ✅ PASS | Trang hiển thị dòng "Dựng khung hang đá trung tâm · Hang đá trung tâm · 1 dòng · VERIFIED"; FE gửi `version` của report (xmin) nên khớp `If-Match` |
+
+**Ghi chú kỹ thuật:** (1) `version` của `task_material_report` là token `xmin` (ví dụ `2249`) — FE đã đọc từ DTO nên không lặp lại lỗi như `confirm-receipt`; (2) Resource chỉ biết task đã COMPLETED sau khi nhận event → có độ trễ ~5 giây, cần chờ `task_projection` cập nhật trước khi báo cáo.
