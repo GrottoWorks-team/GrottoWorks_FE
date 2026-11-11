@@ -1,11 +1,11 @@
 // Bản đồ mặt bằng giáo xứ — TRANG CON của "Giáo xứ & cộng đoàn"
 // (`/parish/communities/map?parish=<id>`, cũng mở được ở `/community/map`).
 //
-// ADMIN (role FE `PARISH`) là người TẢI ảnh mặt bằng/sơ đồ giáo xứ và GHIM từng
-// khu vực công tác lên đó bằng toạ độ chuẩn hoá 0..1. Ban hành giáo (COMMUNITY)
-// chỉ XEM — không upload, không ghim (yêu cầu 10/11/2026). Trang này KHÔNG liên
-// quan tới bản thiết kế công trình (design review). ADMIN xem nhiều giáo xứ nên
-// mỗi giáo xứ có ảnh + ghim riêng (`?parish=`).
+// ADMIN (role FE `PARISH`) là người TẢI ảnh mặt bằng/sơ đồ giáo xứ. Quyền GHIM
+// vị trí khu vực công tác lên sơ đồ (toạ độ chuẩn hoá 0..1) thuộc Ban hành giáo
+// (role FE `COMMUNITY`); ADMIN chỉ XEM, không được ghim (yêu cầu 11/11/2026).
+// Trang này KHÔNG liên quan tới bản thiết kế công trình (design review). ADMIN
+// xem nhiều giáo xứ nên mỗi giáo xứ có ảnh + ghim riêng (`?parish=`).
 //
 // ⚠️ TẠM THỜI (FE-only): BE chưa có endpoint `/parishMaps` → metadata bản đồ +
 // toạ độ ghim lưu ở localStorage (features/map/localStore), ảnh ở IndexedDB
@@ -68,10 +68,12 @@ export default function ParishMapPage() {
   const setPin = useSetMapPin(parishId)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // Chỉ admin (role FE `PARISH`) được tải ảnh + ghim; ban hành giáo chỉ xem.
+  // Ảnh sơ đồ: ADMIN (role FE `PARISH`) tải lên. Ghim vị trí khu vực: Ban hành
+  // giáo (role FE `COMMUNITY`) — ADMIN chỉ xem, KHÔNG được ghim (11/11/2026).
   // Quyền thật phải do BE chốt khi có `/parishes/{id}/map` — xem
   // GrottoWorks_BE/docs/BE-TODO-demo-2026-11-10.md.
-  const canEdit = user?.role === 'PARISH'
+  const canUpload = user?.role === 'PARISH'
+  const canPin = user?.role === 'COMMUNITY'
 
   // Giữ nguyên thứ tự tạo: khu tạo trước ở trên, tạo sau ở dưới.
   const scopedAreas = useMemo(() => areas, [areas])
@@ -185,7 +187,7 @@ export default function ParishMapPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <ParishSwitcher scope={scope} />
-            {canEdit && (
+            {canUpload && (
               <>
                 <input
                   ref={fileRef}
@@ -207,7 +209,7 @@ export default function ParishMapPage() {
         }
       />
 
-      {!canEdit && mapRecord && (
+      {!canPin && mapRecord && (
         <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           {t('features.map.readOnlyHint')}
         </p>
@@ -218,7 +220,7 @@ export default function ParishMapPage() {
           <EmptyState
             text={t('features.map.noMap')}
             action={
-              canEdit ? (
+              canUpload ? (
                 <Button onClick={() => fileRef.current?.click()}>
                   <Upload className="size-4" />
                   {t('features.map.upload')}
@@ -226,12 +228,17 @@ export default function ParishMapPage() {
               ) : undefined
             }
           />
-          {canEdit && (
+          {canUpload && (
             <p className="text-xs text-muted-foreground">
               {t('features.map.fileHint', {
                 types: ACCEPTED_IMAGE_TYPES.map((x) => x.replace('image/', '')).join(', '),
                 size: formatBytes(MAX_IMAGE_BYTES),
               })}
+            </p>
+          )}
+          {!canUpload && (
+            <p className="text-xs text-muted-foreground">
+              {t('features.map.uploadedByAdmin')}
             </p>
           )}
         </Card>
@@ -243,9 +250,9 @@ export default function ParishMapPage() {
               <ImageReviewCanvas
                 src={imageUrl}
                 markers={markers}
-                addMode={!!placingId}
+                addMode={canPin && !!placingId}
                 onSelectMarker={(id) => setActiveAreaId(id)}
-                onAddMarker={(point) => void placeAt(point)}
+                onAddMarker={canPin ? (point) => void placeAt(point) : undefined}
                 onLoadError={() => setImageError(true)}
               />
             ) : (
@@ -306,7 +313,7 @@ export default function ParishMapPage() {
                         </span>
                       </button>
 
-                      {canEdit && (
+                      {canPin && (
                         <div className="mt-1 flex gap-2">
                           <Button
                             size="sm"

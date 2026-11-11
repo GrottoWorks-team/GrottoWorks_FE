@@ -409,8 +409,8 @@ còn gọi path legacy không tồn tại ở BE). Khi BE bổ sung endpoint, ch
 | Nhóm | Màn hình / nút | Đang dùng | Thiếu ở BE |
 | --- | --- | --- | --- |
 | Thiết kế 2D/3D | `/leader/areas/:id/design`, `/designer`, `/builder` | `localStorage grotto-designs-v1` + IndexedDB (Builder chỉ gọi `GET /work-areas/{id}/tasks` để liên kết nhiệm vụ) | Design / DesignVersion / design-scene |
-| Bản đồ giáo xứ | `/parish/map`, `/community/map` | `localStorage grotto-parish-map-v1` + IndexedDB. **Chỉ ADMIN (role FE `PARISH`) được sửa**; ban hành giáo chỉ xem | `GET/PUT/DELETE /parishes/{id}/map` |
-| Ghim vị trí trong form khu vực | `/parish/areas` → nút Tạo/Sửa khu vực | Ghim lưu cùng `localStorage` ở trên (pin tuỳ chọn) | field `mapPin` trong API khu vực hoặc `PUT /parishes/{id}/map` |
+| Bản đồ giáo xứ | `/parish/communities/map?parish=`, `/community/map` | `localStorage grotto-parish-map-v1` + IndexedDB. **Ảnh sơ đồ: ADMIN (role FE `PARISH`) tải/thay**; **ghim vị trí: ban hành giáo (role FE `COMMUNITY`)**; ADMIN chỉ xem (không thấy nút ghim) | `GET/PUT/DELETE /parishes/{id}/map` + `PUT /parishes/{id}/map/pins` |
+| Ghim vị trí trong form khu vực | `/community/areas` → nút Tạo/Sửa khu vực | Khối “Vị trí trên sơ đồ” chỉ hiện với ban hành giáo (`COMMUNITY`); ghim lưu cùng `localStorage` ở trên (pin tuỳ chọn) | field `mapPin` trong API khu vực hoặc `PUT /parishes/{id}/map/pins` |
 | Đăng ký tình nguyện viên | `/register`, `/join` | Không gọi API (trang báo "chức năng đang chờ") | `POST /registrations` + `GET /public/parishes` |
 | Đơn vị vật tư | — | Đã bỏ UI lưu localStorage | `material-units` |
 

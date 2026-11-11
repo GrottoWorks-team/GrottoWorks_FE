@@ -118,9 +118,10 @@ export function AreaFormDialog({
   }, [area?.seasonId, defaultSeasonId, seasons])
 
   // ── Ghim vị trí trên sơ đồ ngay trong form ───────────────────────────────
-  // Sơ đồ + khu vực do admin (PARISH) quản lý, nên ghim nằm cùng form. Pin vẫn
-  // lưu ở `features/map` (localStorage) cho tới khi BE có API bản đồ. ADMIN xem
-  // nhiều giáo xứ → ghim phải theo giáo xứ của mùa đang chọn.
+  // Ảnh sơ đồ do ADMIN (role FE `PARISH`) tải lên; quyền GHIM vị trí thuộc Ban
+  // hành giáo (role FE `COMMUNITY`) — 11/11/2026. Pin vẫn lưu ở `features/map`
+  // (localStorage) cho tới khi BE có API bản đồ. ADMIN xem nhiều giáo xứ → ghim
+  // phải theo giáo xứ của mùa đang chọn.
   const mapParishId =
     seasons.find((s) => s.id === initialSeasonId)?.parishId ?? parishId ?? user?.parishId ?? ''
   const { data: mapRecord } = useParishMap(mapParishId)
@@ -499,9 +500,10 @@ export function AreaFormDialog({
         </div>
 
         {/* Ghim vị trí trên sơ đồ — tuỳ chọn, cùng một lần lưu với khu vực.
-            CHỈ admin (chủ sơ đồ) thấy: 11/11/2026 khu vực do Ban hành giáo tạo, còn
-            ảnh mặt bằng + ghim vị trí thuộc ADMIN (xem `ParishMapPage`). */}
-        {user?.role === 'PARISH' && (
+            CHỈ Ban hành giáo (người tạo/điều chỉnh khu vực) thấy: 11/11/2026 ảnh
+            sơ đồ do ADMIN tải lên, nhưng quyền GHIM vị trí thuộc PARISH → ADMIN
+            chỉ xem (xem `ParishMapPage`). */}
+        {user?.role === 'COMMUNITY' && (
           <div className="space-y-2">
             <Label>{t('features.map.pinSection')}</Label>
             {mapImageUrl ? (

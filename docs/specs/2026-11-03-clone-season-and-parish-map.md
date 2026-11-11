@@ -3,12 +3,15 @@
 Ngày: 03/11/2026 · Phạm vi: `ParishCoordination` (BE) + `GrottoWorks_FE`
 Cập nhật: 09/11/2026 — chốt **form-first** cho khu vực, khung ảnh sơ đồ cố định,
 và phân vai system ADMIN / ban hành giáo.
-Cập nhật: **11/11/2026** — chốt **chỉ ADMIN ghi sơ đồ** (ban hành giáo chỉ đọc)
-và **ghim nằm trong form tạo/sửa khu vực** (pin tuỳ chọn). Xem §2.4–§2.5.
+Cập nhật: **11/11/2026** — chốt **chỉ ADMIN ghi ảnh sơ đồ**; ghim vị trí là tuỳ
+chọn, đặt được cả trong form khu vực lẫn trang Bản đồ. Xem §2.4–§2.5.
 Cập nhật lần 2: **11/11/2026** — **đảo lại quyền khu vực**: ADMIN **chỉ xem** khu
 vực công tác; việc tạo/sửa và phân công trưởng khu / trưởng nhóm vật tư thuộc
-**ban hành giáo (PARISH)**. Sơ đồ (ảnh + ghim) vẫn của ADMIN và được thao tác ở
-trang con `Bản đồ giáo xứ`; ghim không còn nằm trong form của ban hành giáo.
+**ban hành giáo (PARISH)**.
+Cập nhật lần 3: **11/11/2026** — **tách quyền trên bản đồ**: ADMIN chỉ **tải/thay
+ảnh sơ đồ** và xem; **ghim vị trí khu vực do ban hành giáo (FE `COMMUNITY`)**
+thực hiện (ở trang `Bản đồ giáo xứ` hoặc ngay trong form khu vực). ADMIN
+**không được ghim**.
 
 Mục tiêu: (A) tạo lại mùa Giáng sinh mới giữ nguyên/tuỳ chỉnh khu vực, (B) admin
 thêm bản đồ giáo xứ — khuôn viên nhà thờ. Tài liệu ghi **cách làm** và **các lỗi
@@ -254,23 +257,29 @@ re-pin** (hoặc chấp nhận reset pin) thay vì lặng lẽ hiển thị lệ
 Đánh đổi: mất FK tới `work_area` → handler phải validate `workAreaId` thuộc giáo
 xứ; clone phải map `sourceAreaId → newAreaId` (đã nằm trong handler clone).
 
-### 2.4. Hợp đồng API (batch — 1 request lưu cả ảnh và mọi ghim)
+### 2.4. Hợp đồng API (ảnh = ADMIN, ghim = ban hành giáo)
 
 ```http
-GET    /api/v1/parishes/{parishId}/map   → 200 { fileId, fileName, imageWidth, imageHeight, frameVersion, metersPerPixel, pins, updatedAt } | 204
-PUT    /api/v1/parishes/{parishId}/map   → 200   (CHỈ ADMIN — ban hành giáo chỉ đọc)
-DELETE /api/v1/parishes/{parishId}/map   → 204   (CHỈ ADMIN)
+GET    /api/v1/parishes/{parishId}/map        → 200 { fileId, fileName, imageWidth, imageHeight, frameVersion, metersPerPixel, pins, updatedAt } | 204
+PUT    /api/v1/parishes/{parishId}/map        → 200   (ảnh + frame — CHỈ ADMIN)
+PUT    /api/v1/parishes/{parishId}/map/pins   → 200   (batch ghim/bỏ ghim — CHỈ PARISH; ADMIN chỉ đọc)
+DELETE /api/v1/parishes/{parishId}/map        → 204   (CHỈ ADMIN)
 ```
 
 ```jsonc
-// PUT body — gửi NGUYÊN trạng thái (idempotent, không PATCH từng ghim)
+// PUT /map body — gửi NGUYÊN trạng thái ảnh (idempotent). PINS KHÔNG nằm ở đây:
+// ghim đi qua PUT /map/pins để tách quyền ADMIN (ảnh) và PARISH (ghim).
 {
   "fileId": "uuid|null",              // null = giữ ảnh hiện tại
   "fileName": "mat-bang-nha-tho.jpg",
   "imageWidth": 2048,                // bắt buộc khi đổi ảnh
   "imageHeight": 1536,
   "expectedFrameVersion": 1,         // version client đang thấy; lệch → 409
-  "metersPerPixel": 0.035,           // tuỳ chọn — căn tỉ lệ cho 3D
+  "metersPerPixel": 0.035            // tuỳ chọn — căn tỉ lệ cho 3D
+}
+
+// PUT /map/pins body — batch, gửi nguyên bộ ghim
+{
   "pins": [
     { "workAreaId": "uuid", "x": 0.42, "y": 0.61 },
     { "workAreaId": "uuid", "x": 0.18, "y": 0.77 }
@@ -288,34 +297,38 @@ Validation (1 lượt, `422` kèm `errors`):
   MAP_FRAME_CONFLICT`. BE tự tăng `map_frame_version` khi ảnh/crop đổi — client
   không được đặt số version.
 
-Quyền (chốt lại 11/11/2026): sơ đồ thuộc **một giáo xứ** và **chỉ ADMIN** được
-tải/thay ảnh, ghim, xoá sơ đồ. **Khu vực công tác thì ngược lại**: ban hành giáo
-(BE `PARISH` → FE `COMMUNITY`) tạo/sửa/phân công; ADMIN chỉ xem (tab “Khu vực
-công tác” trong hub `Giáo xứ & cộng đoàn`). Mapping role ở
+Quyền (chốt lại 11/11/2026, lần 3): sơ đồ thuộc **một giáo xứ**. **ADMIN chỉ
+được tải/thay/xoá ảnh sơ đồ và xem** — **không được ghim vị trí**. **Ghim vị trí
+khu vực do ban hành giáo** (BE `PARISH` → FE `COMMUNITY`) thực hiện, vì họ là
+người tạo/điều chỉnh/phân công khu vực. ADMIN chỉ xem (tab “Khu vực công tác”
+trong hub `Giáo xứ & cộng đoàn`). Mapping role ở
 [lib/auth.tsx](../../src/lib/auth.tsx): BE `ADMIN` → FE `PARISH`; BE `PARISH`
 (ban hành giáo) → FE `COMMUNITY`.
 
-> Trạng thái code 12/11: `ParishMapPage.canEdit = role === 'PARISH'` (ảnh + ghim);
-> `AreaListPage.canEdit = role === 'COMMUNITY'` (tạo/sửa/phân công); hub admin
-> `AreasPanel` chỉ đọc. BE chưa có endpoint map và **chưa siết policy khu vực**
-> (vẫn cho `Admin` ghi) — xem `GrottoWorks_BE/docs/BE-TODO-demo-2026-11-10.md` §1–§2.
+> Trạng thái code 12/11: `ParishMapPage` tách 2 quyền — `canUpload = role ===
+> 'PARISH'` (tải/thay ảnh), `canPin = role === 'COMMUNITY'` (đặt/xoá ghim, nút
+> chỉ hiện với ban hành giáo; ADMIN thấy banner “chỉ xem”); `AreaFormDialog` khối
+> ghim cũng chỉ hiện với `COMMUNITY`. `AreaListPage.canEdit = role ===
+> 'COMMUNITY'` (tạo/sửa/phân công); hub admin `AreasPanel` chỉ đọc. BE chưa có
+> endpoint map và **chưa siết policy khu vực** (vẫn cho `Admin` ghi) — xem
+> `GrottoWorks_BE/docs/BE-TODO-demo-2026-11-10.md` §1–§2.
 
 ### 2.5. Luồng FE (không quá 3 request cho 1 lần lưu ảnh)
 
 ```text
 1. Chọn ảnh → validate (type/size) → POST /files/upload-requests → PUT MinIO
-   → POST /files/{id}/complete                     (3 request, 1 lần/ảnh)
-2. Kéo ghim trên canvas (local state, KHÔNG gọi API)
-3. Bấm "Lưu" → PUT /parishes/{id}/map { fileId, imageWidth, imageHeight, expectedFrameVersion, pins[] }
-                                                    (1 request)
+   → POST /files/{id}/complete                     (3 request, 1 lần/ảnh — ADMIN)
+2. Ghim trên canvas (local state, KHÔNG gọi API) — ban hành giáo
+3. Bấm "Lưu" → PUT /parishes/{id}/map        (ảnh + expectedFrameVersion — ADMIN)
+              → PUT /parishes/{id}/map/pins   (batch pins — ban hành giáo)
 ```
 
 - Tạo khu vực **không phụ thuộc** bản đồ: chưa có ảnh vẫn dùng form bình thường.
 - **Ghim nằm ngay trong form tạo/sửa khu vực** (`AreaFormDialog` → khối "Vị trí trên
-  sơ đồ", component `MapPinPicker`): pin là **tuỳ chọn**, chọn xong thì mới lưu;
-  bỏ trống thì ghim sau ở trang `/parish/map`. Khi có API map, pin gửi kèm trong
-  `PUT /parishes/{id}/map` (batch) — không gọi `PATCH` theo từng ghim (checklist
-  §0 lỗi #5).
+  sơ đồ", component `MapPinPicker`) và cũng đặt được ở trang `Bản đồ giáo xứ`:
+  pin là **tuỳ chọn**; khối này **chỉ hiện với ban hành giáo** (`COMMUNITY`) —
+  ADMIN không ghim. Khi có API map, pin gửi kèm `PUT /parishes/{id}/map/pins`
+  (batch) — không gọi `PATCH` theo từng ghim (checklist §0 lỗi #5).
 - Bỏ `mapStore` (localStorage/IndexedDB) sau khi có API; giữ `ImageReviewCanvas`
   (marker theo %), chỉ đổi nguồn dữ liệu.
 - Thay ảnh khác crop → tăng `frameVersion`; FE hiện banner yêu cầu kiểm tra và
