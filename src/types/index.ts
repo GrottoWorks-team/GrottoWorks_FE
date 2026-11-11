@@ -726,4 +726,176 @@ export interface RecordFileDownload {
   expiresAtUtc: string;
 }
 
+// ══════ Đợt C: Mùa & Bảng điều khiển DTOs ══════
+
+export interface ContributionNeedDto {
+  kind: string;
+  workAreaId: string;
+  workAreaName: string;
+  materialId: string;
+  materialCode: string;
+  materialName: string;
+  unit: string;
+  required: number;
+  shortage: number;
+  pledgedOutstanding: number;
+  remainingNeed: number;
+}
+
+export interface SupportRequestStateTotal {
+  status: string;
+  count: number;
+}
+
+export interface SupportMaterialTotal {
+  sourceWorkAreaId: string;
+  materialId: string;
+  offeredQuantity: number;
+  approvedQuantity: number;
+  receivedUsableQuantity: number;
+  receivedUnusableQuantity: number;
+  pendingSyncItems: number;
+}
+
+export interface SupportCommunityTotal {
+  respondingCommunityId: string | null;
+  responses: number;
+  offeredMembers: number;
+  approvedMembers: number;
+  awaitingConfirmationMembers: number;
+  acceptedMembers: number;
+  completedMembers: number;
+  rejectedMembers: number;
+  cancelledMembers: number;
+  materials: SupportMaterialTotal[];
+}
+
+export interface SupportSummaryDto {
+  seasonId: string;
+  totalRequests: number;
+  requests: SupportRequestStateTotal[];
+  communities: SupportCommunityTotal[];
+  calculatedAt: string;
+}
+
+export interface TaskSummaryDto {
+  total: number;
+  byStatus: Record<string, number>;
+  unassigned: number;
+  overdue: number;
+  revisionRequired: number;
+  completed: number;
+  progressPercent: number;
+}
+
+export interface MaterialSummaryDto {
+  lines: number;
+  linesWithShortage: number;
+  pledgedLines: number;
+}
+
+export interface PurchaseSummaryDto {
+  pendingApproval: number;
+  inProgress: number;
+  completed: number;
+  rejected: number;
+  estimatedApproved: number;
+  actualCost: number;
+}
+
+export interface DonationSummaryDto {
+  openPledges: number;
+  openPledgedMoney: number;
+  receivedMoney: number;
+  receivedUsableQuantity: number;
+  receivedUnusableQuantity: number;
+}
+
+export interface VolunteerSummaryDto {
+  assigned: number;
+  withApprovedHours: number;
+  approvedHours: number;
+  participationPercent: number;
+}
+
+export interface ReadinessSummaryDto {
+  ready: number;
+  needsCorrection: number;
+  reopened: number;
+  withoutResult: number;
+  failedMandatoryItems: number;
+}
+
+export interface AreaSummaryDto {
+  workAreas: number;
+  workAreasByStatus: Record<string, number>;
+  tasks: TaskSummaryDto;
+  materials: MaterialSummaryDto;
+  purchases: PurchaseSummaryDto;
+  donations: DonationSummaryDto;
+  volunteers: VolunteerSummaryDto;
+  readiness: ReadinessSummaryDto;
+  notAvailable: string[];
+}
+
+export interface CommunityProgressDto {
+  communityId: string | null;
+  workAreas: number;
+  tasks: number;
+  completed: number;
+  progressPercent: number;
+}
+
+export interface WorkAreaProgressDto {
+  workAreaId: string;
+  name: string;
+  status: string;
+  tasks: number;
+  completed: number;
+  progressPercent: number;
+  readiness: string | null;
+}
+
+export interface SeasonDashboardDto {
+  seasonId: string;
+  parishId: string;
+  generatedAt: string;
+  summary: AreaSummaryDto;
+  communities: CommunityProgressDto[];
+  workAreas: WorkAreaProgressDto[];
+}
+
+export interface WorkAreaDashboardDto {
+  workAreaId: string;
+  name: string;
+  status: string;
+  seasonId: string;
+  generatedAt: string;
+  summary: AreaSummaryDto;
+}
+
+export interface MaterialLineDto {
+  workAreaId: string;
+  workAreaName: string;
+  materialId: string;
+  materialCode: string | null;
+  materialName: string | null;
+  unit: string | null;
+  required: number;
+  confirmedAvailable: number;
+  shortage: number;
+  pledged: number;
+  donatedUsable: number;
+  purchasedUsable: number;
+}
+
+export interface MaterialDashboardDto {
+  seasonId: string;
+  generatedAt: string;
+  workAreaIds: string[];
+  lines: MaterialLineDto[];
+  purchases: PurchaseSummaryDto;
+  donations: DonationSummaryDto;
+}
+
 // ══════ [/fe-api-gap] ══════
