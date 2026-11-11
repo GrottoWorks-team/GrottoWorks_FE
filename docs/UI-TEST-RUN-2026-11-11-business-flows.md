@@ -250,3 +250,13 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
   Chi tiết: `GrottoWorks_BE/docs/BE-CHANGELOG.md` mục 7.
 
 
+
+## 12. Đợt 3b — chạy chuỗi mua sắm (§8.6 bước 1–4) và BR-33 phía BE
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| ALLOC-02 | BR-33 guard **phía BE** (bỏ qua validate UI) | ✅ PASS | `POST /material-allocations` qty **200** khi khả dụng **100** → `409 material-insufficient-available` |
+| PUR-04 | §8.6 bước 2–3 tạo + gửi duyệt purchase request | ✅ PASS | MO tạo PR cho *Hang đá trung tâm* → `201 PLANNING`; `POST /submit` → `200 PENDING_APPROVAL` |
+| PUR-05 | §8.6 ngoại lệ BR-27 (shortage = 0) | ✅ PASS | Lần đầu tạo PR **không** kèm `shortageOverrideReason` → `409`; thêm lý do override → tạo được (đúng quy tắc “chỉ tạo khi shortage > 0, trừ khi override có lý do”) |
+| PUR-06 | §8.6 bước 3–4 LEADER duyệt + tạo task mua | ✅ PASS | `POST /purchase-requests/{id}/approve` (LEADER `ngan.nguyen`) → `200 APPROVED`; `POST …/purchase-tasks` → `201`, `taskType = PURCHASE` (task `346754c7…`) |
+| PUR-07 | §8.6 bước 5–10 (assign → TNV mua → MO xác nhận giao → BR-65 task tự Completed) | ⏸️ Chưa chạy | Cần payload submit purchase (`items` + giá + hoá đơn) và assign volunteer; dữ liệu PR test: `00e991c6-9445-47b5-b0df-fa9cc31ca6e0` |
