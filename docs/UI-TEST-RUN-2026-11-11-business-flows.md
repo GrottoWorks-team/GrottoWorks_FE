@@ -1,4 +1,4 @@
-# Test nghiệp vụ toàn dự án — 11/11/2026 (đối chiếu `GrottoWorks_Phan_Tich_Nghiep_Vu_Chi_Tiet`)
+﻿# Test nghiệp vụ toàn dự án — 11/11/2026 (đối chiếu `GrottoWorks_Phan_Tich_Nghiep_Vu_Chi_Tiet`)
 
 **Nguồn kịch bản:** `GrottoWorks_Documents/GrottoWorks_Phan_Tich_Nghiep_Vu_Chi_Tiet_v1.2.md`
 (§7 quy trình tổng thể, §8 phân tích chi tiết, §9 vòng đời/trạng thái, §10 quy tắc BR,
@@ -278,4 +278,4 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | PUR-07d | §8.6 bước 8–10: MO xác nhận giao | ✅ PASS | `POST /purchases/2b5d7d19…/confirm-delivery` với `items:[{purchaseItemId, receivedUsableQuantity, receivedUnusableQuantity}]` → `200`; purchase request → **`COMPLETED`** |
 | PUR-08 | BR-65: task mua **tự** `COMPLETED` khi xác nhận giao | ❌ **FAIL** | Ngay sau `confirm-delivery`, purchase task `346754c7…` vẫn **`OPEN`** (đọc lại ngay và kiểm tra DB `task_db.task.task_status = OPEN`) ⇒ BR-65 chưa được thực thi |
 
-**Kết luận chuỗi mua sắm:** tạo PR → submit → LEADER duyệt → tạo task PURCHASE → assign → TNV nhận → TNV ghi mua → MO xác nhận giao → **PR `COMPLETED`** đều chạy đúng. Chỉ còn **BR-65** (task mua tự hoàn thành) chưa đạt.
+**Kết luận chuỗi mua sắm:** tạo PR → submit → LEADER duyệt → tạo task PURCHASE → assign → TNV nhận → TNV ghi mua → MO xác nhận giao → **PR `COMPLETED`** đều chạy đúng. **BR-65 đạt** (task mua tự `COMPLETED` sau khi event đồng bộ).
