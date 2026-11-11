@@ -105,6 +105,7 @@ export function mapTaskDtoToTask(dto: TaskDto): Task {
     materialRequirements: dto.materials ?? [],
     status: uiStatus,
     backendStatus: (st as TaskBackendStatus) ?? undefined,
+    taskType: dto.taskType,
     dueDate: dto.deadline ? dto.deadline.split('T')[0] : '',
     startAt: dto.startAt ?? null,
     priority: dto.priority,
@@ -221,6 +222,8 @@ export function useCreateTask() {
       requiredVolunteers: data.volunteersNeeded || 1,
       startAt: start.toISOString(),
       deadline: deadline.toISOString(),
+      // `WORK` mặc định; `CORRECTIVE` cho việc khắc phục readiness (BR-66).
+      taskType: data.taskType ?? 'WORK',
     }
     return api<TaskDto>(`/api/v1/work-areas/${data.areaId}/tasks`, {
       method: 'POST',

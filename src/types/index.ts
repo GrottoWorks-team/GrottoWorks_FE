@@ -98,6 +98,8 @@ export interface ParishMap {
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface Task {
+  /** Loại task của TaskExecution — `WORK` | `PURCHASE` | `CORRECTIVE` (BR-66 dùng `CORRECTIVE`). */
+  taskType?: 'WORK' | 'PURCHASE' | 'CORRECTIVE'
   id: string; areaId: string; title: string; description: string; skills: string[];
   /** Kỹ năng yêu cầu dạng GUID (`TaskDto.skills` của TaskExecution) — hiển thị qua danh mục `/api/v1/skills`. */
   skillIds?: string[];

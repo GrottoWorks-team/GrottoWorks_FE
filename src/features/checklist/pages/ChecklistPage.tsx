@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
-import { useTasks } from '@/features/tasks/api'
+import { useTasks, useCreateTask } from '@/features/tasks/api'
 import { uploadFile } from '@/lib/files'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -143,17 +143,33 @@ export default function ChecklistPage() {
   const { data: seasonReadiness, isPending: seasonPending } = useSeasonReadiness(selected?.seasonId)
   const row = seasonReadiness?.areas.find((a) => a.workAreaId === selected?.id)
   const { data: check, isPending: checkPending } = useReadinessCheck(row?.readinessCheckId)
+  // Query bị `enabled: false` (khu chưa có phiếu) luôn ở trạng thái pending →
+  // chỉ coi là đang tải khi thực sự có `readinessCheckId` để gọi.
+  const checkLoading = Boolean(row?.readinessCheckId) && checkPending
 
   const record = useRecordReadinessResult()
   const recheck = useRecheckReadinessItem()
   const confirm = useConfirmReadiness()
   const attachEvidence = useAttachReadinessEvidence()
   const linkCorrective = useLinkCorrectiveTask()
+  const createCorrectiveTask = useCreateTask()
   const { data: areaTasks = [] } = useTasks(selected?.id)
+  // BR-66: chỉ task loại `CORRECTIVE` còn mở mới gắn được vào hạng mục bắt buộc bị fail.
+  const correctiveTasks = useMemo(
+    () =>
+      areaTasks.filter(
+        (task) =>
+          task.taskType === 'CORRECTIVE' &&
+          task.backendStatus !== 'COMPLETED' &&
+          task.backendStatus !== 'CANCELLED',
+      ),
+    [areaTasks],
+  )
   const [creating, setCreating] = useState(false)
   const [evidenceBusy, setEvidenceBusy] = useState<string | null>(null)
   const [correctiveTarget, setCorrectiveTarget] = useState<ReadinessItem | null>(null)
   const [correctiveTaskId, setCorrectiveTaskId] = useState('')
+  const [creatingCorrective, setCreatingCorrective] = useState(false)
 
   const fail = (error: unknown) =>
     toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
@@ -196,6 +212,42 @@ export default function ChecklistPage() {
       setCorrectiveTaskId('')
     } catch (error) {
       fail(error)
+    }
+  }
+
+  // BR-66: khu chưa có task CORRECTIVE → tạo mới rồi gắn luôn vào hạng mục đang fail.
+  const createAndLinkCorrective = async () => {
+    if (!check || !correctiveTarget) return
+    setCreatingCorrective(true)
+    try {
+      const task = await createCorrectiveTask.mutateAsync({
+        areaId: check.workAreaId,
+        title: `${t('features.checklist.correctivePrefix')}: ${correctiveTarget.name}`.slice(0, 160),
+        description: correctiveTarget.description ?? '',
+        skills: [],
+        skillIds: [],
+        materialIds: [],
+        assignees: [],
+        estimateHours: 2,
+        volunteersNeeded: 1,
+        status: 'TODO',
+        dueDate: new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10),
+        submittedPhotos: 0,
+        taskType: 'CORRECTIVE',
+      })
+      await linkCorrective.mutateAsync({
+        checkId: check.id,
+        itemId: correctiveTarget.id,
+        version: check.version,
+        taskId: task.id,
+      })
+      toast(t('features.checklist.correctiveLinked'))
+      setCorrectiveTarget(null)
+      setCorrectiveTaskId('')
+    } catch (error) {
+      fail(error)
+    } finally {
+      setCreatingCorrective(false)
     }
   }
 
@@ -351,7 +403,7 @@ export default function ChecklistPage() {
         </select>
       </Card>
 
-      {seasonPending || checkPending ? (
+      {seasonPending || checkLoading ? (
         <p className="lbl-mono">{t('common.loading')}</p>
       ) : !selected ? null : !row?.readinessCheckId ? (
         <div className="space-y-3">
@@ -420,19 +472,34 @@ export default function ChecklistPage() {
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">{correctiveTarget.name}</p>
             <Label htmlFor="corrective-task">{t('features.checklist.correctiveTaskPick')}</Label>
-            <select
-              id="corrective-task"
-              className={SELECT_CLS}
-              value={correctiveTaskId}
-              onChange={(e) => setCorrectiveTaskId(e.target.value)}
-            >
-              <option value="">{t('common.selectPlaceholder')}</option>
-              {areaTasks.map((task) => (
-                <option key={task.id} value={task.id}>
-                  {task.title}
-                </option>
-              ))}
-            </select>
+            {correctiveTasks.length > 0 ? (
+              <select
+                id="corrective-task"
+                className={SELECT_CLS}
+                value={correctiveTaskId}
+                onChange={(e) => setCorrectiveTaskId(e.target.value)}
+              >
+                <option value="">{t('common.selectPlaceholder')}</option>
+                {correctiveTasks.map((task) => (
+                  <option key={task.id} value={task.id}>
+                    {task.title}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                <p className="text-xs text-muted-foreground">{t('features.checklist.correctiveNone')}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={createCorrectiveTask.isPending || creatingCorrective}
+                  onClick={() => void createAndLinkCorrective()}
+                >
+                  <Plus className="size-4" />
+                  {t('features.checklist.correctiveCreate')}
+                </Button>
+              </div>
+            )}
           </div>
         </Dialog>
       )}
