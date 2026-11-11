@@ -299,3 +299,17 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | SUP-04 | §8.11 response → duyệt member/material → `TRANSFER_OUT` → `TRANSFER_IN` | ⏸️ Chưa chạy | Request đã `PUBLISHED`, hiện `GET …/responses` = 0. Cần client khác gửi response với payload `SupportResponseRequest { respondingCommunityId?, members: SupportMemberInput[], materials: SupportMaterialOfferInput[] }`, sau đó duyệt `/support-response-members/{id}/approve`, `/support-response-materials/{id}/approve` và `/confirm-receipt` |
 
 **Kết luận §8.11:** luồng tạo → công bố chạy đúng (kèm ràng buộc **position phải có task**, xem §15 SUP-03). Phần phản hồi/chuyển kho của cộng đoàn khác chưa chạy được trong phiên này.
+
+## 17. Hợp đồng API còn thiếu để chạy nốt SUP-04 và §8.10 (ghi lại để lần sau chạy ngay)
+
+**SUP-04 — phản hồi & chuyển kho hỗ trợ**
+- `POST /api/v1/support-requests/{id}/responses` — role **VOLUNTEER | MATERIAL_OFFICER** (không phải LEADER), body `SupportResponseRequest { respondingCommunityId?, members: SupportMemberInput[], materials: SupportMaterialOfferInput[], note? }`. Hai type input nằm ngoài `SupportResponseEndpoints.cs` (cần tìm trong `Requests/` của TaskExecution).
+- `GET /api/v1/support-requests/{id}/responses` — role **LEADER** (đọc danh sách phản hồi).
+- `POST /api/v1/support-response-members/{memberId}/approve|reject` — role **LEADER**.
+- `POST /api/v1/support-response-materials/{itemId}/approve|reject` — role **LEADER** (`ApproveSupportMaterialRequest`, `ReasonCommandRequest`).
+- Xác nhận nhận vật tư: `POST /api/v1/support-response-materials/{itemId}/confirm-receipt` (MO bên nhận) → sinh `TRANSFER_OUT`/`TRANSFER_IN`.
+- Request đã publish sẵn: `1dea1b2b-c6ea-4bbc-8a55-a0292c9c4a60` (PUBLISHED, v2, khu *Hang đá trung tâm*).
+
+**§8.10 — material report**
+- Endpoint `POST /api/v1/tasks/{taskId}/material-reports` **không nằm trong** `TaskExecution.Api/Endpoints/*` (đã grep `material-reports` = 0 kết quả) ⇒ cần tìm lại: có thể ở service khác hoặc route khác tên. Việc cần làm: grep toàn solution `material-report` rồi xác định service + body `remaining/damaged/lost` theo `material_allocation_item`.
+- Điều kiện dữ liệu: task `COMPLETED` + có allocation. Hiện *Hang đá trung tâm* đã có allocation (`Bàn nhựa` 100 nhập kho, purchase task `346754c7…` đã `COMPLETED`) — cần allocation gắn **task** (không phải chỉ work area) để report có item.
