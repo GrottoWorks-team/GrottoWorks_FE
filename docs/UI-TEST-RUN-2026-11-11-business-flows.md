@@ -162,3 +162,63 @@ Gia đình bà Nguyễn Thị Bạch Tuyết — Tiền mặt — đã nhận 30
   thông báo nghiệp vụ.
 - **1 lỗi nghiệp vụ cần sửa:** phạm vi đọc `GET /purchase-requests` của LEADER (§11, BR-57) — BE đã chặn ghi đúng.
 - **Các luồng còn lại** cần dữ liệu/điều kiện riêng; danh sách + cách chạy đã ghi ở §4 để lần test sau chạy tiếp.
+
+---
+
+# ĐỢT 2 — chạy tiếp các luồng còn lại (11/11/2026, tối)
+
+## 6. Kết quả đợt 2
+
+| Mã | Nghiệp vụ (tài liệu) | Kết quả | Bằng chứng |
+|---|---|---|---|
+| RDY-03 | §8.12/BR-66 mục bắt buộc `Failed` phải gắn corrective task | ❌ **FAIL** (kẹt luồng) | Bấm “Không đạt” mục **Tiểu cảnh hoàn thiện** (mandatory) → item `status = FAILED`, `correctiveTaskId = null`; mở dialog “Việc khắc phục” chỉ liệt kê 2 task **loại WORK** của khu; Lưu → `422 corrective-task-invalid` “Link an open CORRECTIVE task of this work area.” |
+| RDY-04 | §8.12/BR-52 + BR-73 chỉ xác nhận sẵn sàng khi đủ điều kiện | ✅ PASS | Bấm “Xác nhận sẵn sàng” khi còn mục fail/task chưa xong → `409 work-area-not-in-readiness-review` (“every non-cancelled task COMPLETED”) |
+| DON-02 | §8.7/BR-38 chỉ `received − unusable` vào stock, đúng work area nhận | ✅ PASS | Ghi nhận 15 bao, hỏng 3 → donation `fdfdca80…` = `PARTIALLY_RECEIVED`, item `received 15 / unusable 3`; kho **Hang đá thiếu nhi** (đúng `work_area_id` của donation) tăng **12** bao; toast “Đã ghi nhận quyên góp”, HTTP `201` |
+| ALLOC-01 | §8.9/BR-33 không phân bổ vượt tồn khả dụng | ⏸️ Chưa chạy được | Form `/material-officer/allocations`: chọn khu vực trước, danh sách vật tư của khu mặc định **rỗng** ⇒ nút “Phân bổ” luôn `disabled`, không thể nhập số lượng để thử vượt tồn |
+| API-SCOPE-02 | §11 quyền đọc báo cáo của MO | ⚠️ Quan sát | MO `anh.pham`: `GET /dashboards/season` **403**, `GET /seasons/{id}/recognition` **403**, `GET /seasons/{id}/support-summary` **403**; `GET /work-areas/{id}/shortages` **200** |
+
+## 7. Phát hiện mới (đợt 2)
+
+### 7.1. ❌ BR-66 bị kẹt: dialog “Việc khắc phục” chỉ cho chọn task `WORK`
+- **Mô tả:** mục readiness bắt buộc fail cần **task loại CORRECTIVE**. BE kiểm tra đúng
+  (`422 corrective-task-invalid`), nhưng FE lại đổ **toàn bộ task của khu** vào dropdown —
+  seed hiện có `Dựng khung hang đá trung tâm` và `Hoàn thiện tiểu cảnh hang đá`, cả hai `task_type = WORK`.
+  Không có đường nào trong dialog để tạo task CORRECTIVE ⇒ leader **không thể** hoàn tất bước này.
+- **Hướng sửa (chọn 1):**
+  1. FE lọc dropdown theo `type === 'CORRECTIVE'` **và** trạng thái mở; nếu danh sách rỗng thì hiện CTA
+     “Tạo việc khắc phục” (gọi `POST /work-areas/{id}/tasks` với `type = CORRECTIVE`) rồi tự gắn.
+  2. BE cho phép chuyển một task `WORK` thành `CORRECTIVE` khi gắn (kèm audit) — chỉ nên làm nếu BA đồng ý.
+- **Ước lượng:** cách 1 ~2h FE (+0 BE).
+
+### 7.2. Mã lỗi nghiệp vụ chưa được dịch ra thông điệp
+Các trường hợp dưới đây UI chỉ hiện toast chung **“Có lỗi xảy ra — vui lòng thử lại”**:
+| Mã BE | Ngữ cảnh | Nên hiển thị |
+|---|---|---|
+| `work-area-scope-denied` | leader duyệt purchase request ngoài phạm vi | “Bạn không phụ trách khu vực của đề nghị này.” |
+| `corrective-task-invalid` | gắn việc khắc phục sai loại | “Chỉ gắn được task loại Khắc phục đang mở.” |
+| `work-area-not-in-readiness-review` | xác nhận sẵn sàng sai điều kiện | “Còn nhiệm vụ chưa hoàn thành — chưa thể chốt sẵn sàng.” |
+| `attendance-review-note-required` | từ chối đơn không lý do | (đã xử lý ở FE bằng dialog bắt buộc) |
+- **Ước lượng:** ~1h FE (map 3–4 mã trong helper `toastError`).
+
+### 7.3. Bảng quyên góp thiếu “Khu vực nhận”
+BR-37 bắt buộc MATERIAL donation phải xác định work area nhận, nhưng bảng
+`/material-officer/donations` không hiển thị cột này (chỉ thấy khi mở dialog ghi nhận).
+Ví dụ: pledge `Ông Trần Văn Lộc` thực chất nhận về **Hang đá thiếu nhi**, người dùng không thấy trước khi ghi nhận.
+- **Ước lượng:** ~30 phút FE.
+
+### 7.4. ⏸️ Phân bổ (BR-33) chưa test được
+Form phân bổ ở trạng thái mặc định không có vật tư khả dụng (`select` vật tư chỉ có “— Chọn —”), nút “Phân bổ” `disabled`.
+Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận giao hàng) rồi mới thử số lượng vượt tồn.
+
+## 8. Cập nhật danh sách “chưa chạy” sau đợt 2
+
+| Luồng | Trạng thái mới |
+|---|---|
+| §8.12 fail → corrective | ⚠️ Đã chạy, **phát hiện FAIL** (7.1) |
+| §8.12 xác nhận sẵn sàng | ✅ Đã chạy (chặn đúng) |
+| §8.7 ghi nhận donation receipt | ✅ Đã chạy (đúng BR-38) |
+| §8.9 phân bổ vượt tồn | ⏸️ Chặn bởi dữ liệu (7.4) |
+| §8.6 chuỗi mua sắm trọn vẹn | ⏸️ Vẫn chưa chạy (không có purchase; cần MO tạo request trong khu của leader được test) |
+| §8.11 support request | ⏸️ Vẫn chưa chạy (`support_request` = 0) |
+| §8.10 material report | ⏸️ Vẫn chưa chạy (không có report; cần task Completed + allocation) |
+
