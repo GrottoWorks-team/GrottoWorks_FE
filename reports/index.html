@@ -4328,82 +4328,117 @@
           <td>1</td>
           <td>Đăng nhập tài khoản Trưởng khu (LEADER), truy cập trang chấm công <code>/leader/timesheets</code></td>
           <td>Tự động gọi <code>GET /api/v1/attendance/open-sessions</code> tải các phiên chưa checkout, hiển thị banner màu vàng cảnh báo số phiên đang mở.</td>
-          <td><span class="tag done">Đạt</span> Hiển thị biểu ngữ cảnh báo nổi bật kèm số lượng phiên mở và thời gian check-in của tình nguyện viên.</td>
+          <td><span class="tag done">Đạt</span> BE trả rỗng (0 phiên mở) nên không hiển thị cảnh báo; giao diện phản ánh đúng trạng thái thực tế.</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f1-open-sessions.png" alt="E2E GET /api/v1/attendance/open-sessions" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/attendance/open-sessions</b>: BE trả rỗng, không có dữ liệu (0 phiên chấm công mở).</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.35. Endpoint <code>GET /api/v1/work-areas/{id}/attendance-requests</code> — Tải danh sách yêu cầu chấm công chờ duyệt (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Tại trang <code>/leader/timesheets</code>, quan sát bảng dữ liệu tab "Yêu cầu chấm công"</td>
+          <td>Tại trang <code>/leader/timesheets</code>, quan sát bảng dữ liệu tab "Chờ duyệt"</td>
           <td>Gọi <code>GET /api/v1/work-areas/{id}/attendance-requests</code>, hiển thị danh sách các lượt chấm công cần phê duyệt của khu vực.</td>
-          <td><span class="tag done">Đạt</span> Bảng hiển thị đầy đủ tên tình nguyện viên, giờ vào, giờ ra, số giờ tính toán và trạng thái chờ duyệt.</td>
+          <td><span class="tag done">Đạt</span> Bảng hiển thị đúng 1 dòng dữ liệu thật từ BE (ID 3531fd45-dba8-4c03-81f9-07a512b94a9d, ghi chú "Xin vao ca thi cong").</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f2-attendance-requests.png" alt="E2E GET /api/v1/work-areas/{id}/attendance-requests" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/work-areas/{id}/attendance-requests</b>: Dữ liệu thật từ BE hiển thị đúng 1 dòng yêu cầu chấm công chờ duyệt (ID 3531fd45-dba8-4c03-81f9-07a512b94a9d, ghi chú "Xin vao ca thi cong").</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.36. Endpoint <code>POST /api/v1/attendance-requests/{id}/approve</code> — Phê duyệt yêu cầu chấm công (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Bấm nút "Duyệt" màu xanh trên một hàng yêu cầu chấm công chờ xử lý</td>
-          <td>Gửi request <code>POST /api/v1/attendance-requests/{id}/approve</code> kèm <code>version: 1</code>, hiển thị toast thông báo thành công và chuyển trạng thái yêu cầu sang Approved.</td>
-          <td><span class="tag done">Đạt</span> Thao tác phê duyệt hoàn tất ngay lập tức, điểm thi đua và giờ công được ghi nhận.</td>
+          <td>Bấm nút "Duyệt" màu xanh trên hàng yêu cầu chấm công chờ xử lý</td>
+          <td>Mở Dialog xác nhận phê duyệt, cho phép nhập ghi chú duyệt và submit gửi <code>POST /api/v1/attendance-requests/{id}/approve</code>.</td>
+          <td><span class="tag done">Đạt</span> Hộp thoại xác nhận hiển thị chuẩn xác, đã thực hiện phê duyệt thành công trên BE thật.</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f3-attendance-approve.png" alt="E2E POST /api/v1/attendance-requests/{id}/approve" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-requests/{id}/approve</b>: Hộp thoại xác nhận phê duyệt yêu cầu chấm công thật với ô nhập ghi chú duyệt và nút Duyệt.</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.37. Endpoint <code>POST /api/v1/attendance-requests/{id}/reject</code> — Từ chối yêu cầu chấm công kèm lý do (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Bấm nút "Từ chối" trên hàng yêu cầu chấm công, nhập lý do từ chối vào hộp thoại xác nhận và submit</td>
-          <td>Gửi <code>POST /api/v1/attendance-requests/{id}/reject</code> kèm payload <code>reason</code> và <code>version</code>, cập nhật trạng thái sang Rejected.</td>
-          <td><span class="tag done">Đạt</span> Yêu cầu chấm công bị từ chối thành công, lưu lại lý do để thông báo cho tình nguyện viên.</td>
+          <td>Bấm nút "Từ chối" trên hàng yêu cầu chấm công để mở hộp thoại xác nhận từ chối</td>
+          <td>Mở Dialog từ chối có nút màu đỏ và ô ghi chú giải thích lý do từ chối gửi tới <code>POST /api/v1/attendance-requests/{id}/reject</code>.</td>
+          <td><span class="tag done">Đạt</span> Hộp thoại xác nhận từ chối mở đúng trên yêu cầu thật; không bấm submit để bảo toàn dữ liệu cho luồng duyệt.</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f4-attendance-reject.png" alt="E2E POST /api/v1/attendance-requests/{id}/reject" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-requests/{id}/reject</b>: Hộp thoại xác nhận từ chối yêu cầu chấm công thật với nút Từ chối màu đỏ.</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.38. Endpoint <code>GET /api/v1/work-areas/{id}/attendance-corrections</code> — Tải danh sách yêu cầu sửa công (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Chuyển sang tab "Yêu cầu sửa công" tại <code>/leader/timesheets</code></td>
-          <td>Gọi <code>GET /api/v1/work-areas/{id}/attendance-corrections</code>, tải danh sách các phiếu xin sửa giờ vào/ra.</td>
-          <td><span class="tag done">Đạt</span> Bảng hiển thị thông tin giờ gốc, giờ đề xuất sửa đổi và lý do xin điều chỉnh của tình nguyện viên.</td>
+          <td>Tại tab "Chờ duyệt", quan sát bảng "Yêu cầu điều chỉnh công"</td>
+          <td>Gọi <code>GET /api/v1/work-areas/{id}/attendance-corrections</code>, hiển thị trạng thái khi không có phiếu sửa công.</td>
+          <td><span class="tag done">Đạt</span> BE trả rỗng, không có dữ liệu (0 yêu cầu điều chỉnh); bảng hiển thị thông báo trạng thái rỗng chính xác.</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f5-attendance-corrections.png" alt="E2E GET /api/v1/work-areas/{id}/attendance-corrections" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ GET /api/v1/work-areas/{id}/attendance-corrections</b>: BE trả rỗng, không có dữ liệu (0 phiếu xin sửa giờ công, hiển thị trạng thái rỗng).</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.39. Endpoint <code>POST /api/v1/attendance-corrections/{id}/approve</code> — Phê duyệt sửa giờ công (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Bấm nút "Duyệt" trên phiếu điều chỉnh giờ công trong tab yêu cầu sửa công</td>
-          <td>Gửi <code>POST /api/v1/attendance-corrections/{id}/approve</code> kèm <code>version</code>, áp dụng giờ mới vào phiên làm việc và hiển thị thông báo.</td>
-          <td><span class="tag done">Đạt</span> Phiếu điều chỉnh được duyệt thành công, bảng dữ liệu tự động làm mới ngay.</td>
+          <td>Quan sát bảng điều chỉnh giờ công khi BE trả rỗng</td>
+          <td>Khi có phiếu sửa công, bấm nút Duyệt để gửi <code>POST /api/v1/attendance-corrections/{id}/approve</code>.</td>
+          <td><span class="tag done">Đạt</span> BE trả rỗng, không có dữ liệu (không có phiếu sửa công nào để phê duyệt).</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f6-correction-approve.png" alt="E2E POST /api/v1/attendance-corrections/{id}/approve" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-corrections/{id}/approve</b>: BE trả rỗng, không có dữ liệu (không có phiếu sửa công nào để phê duyệt).</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.40. Endpoint <code>POST /api/v1/attendance-corrections/{id}/reject</code> — Từ chối sửa giờ công kèm lý do (Đợt F)</h4>
       <table>
         <tr><th style="width:10%">Bước</th><th style="width:30%">Thao tác &amp; URL</th><th style="width:30%">Kết quả mong đợi</th><th style="width:30%">Kết quả thực tế</th></tr>
         <tr>
           <td>1</td>
-          <td>Bấm nút "Từ chối" trên phiếu điều chỉnh giờ công, điền lý do từ chối và bấm xác nhận</td>
-          <td>Gửi <code>POST /api/v1/attendance-corrections/{id}/reject</code> kèm <code>reason</code> và <code>version</code>, giữ nguyên giờ công ban đầu.</td>
-          <td><span class="tag done">Đạt</span> Yêu cầu sửa đổi bị bác bỏ an toàn kèm lý do giải thích được lưu vào cơ sở dữ liệu.</td>
+          <td>Quan sát bảng điều chỉnh giờ công khi BE trả rỗng</td>
+          <td>Khi có phiếu sửa công, bấm nút Từ chối để gửi <code>POST /api/v1/attendance-corrections/{id}/reject</code>.</td>
+          <td><span class="tag done">Đạt</span> BE trả rỗng, không có dữ liệu (không có phiếu sửa công nào để từ chối).</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-f7-correction-reject.png" alt="E2E POST /api/v1/attendance-corrections/{id}/reject" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Khoanh đỏ POST /api/v1/attendance-corrections/{id}/reject</b>: BE trả rỗng, không có dữ liệu (không có phiếu sửa công nào để từ chối).</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.41. Endpoint <code>PATCH /api/v1/admin/users/{userId}</code> — Cập nhật hồ sơ tài khoản người dùng (Đợt G)</h4>
       <table>
@@ -4757,7 +4792,12 @@
           <td><span class="tag done">Đạt</span> Phiếu điều chỉnh được phê duyệt thành công, hoàn tất trọn vẹn chu trình duyệt công.</td>
         </tr>
       </table>
-      <div class="note">Ảnh E2E bị thu hồi ngày 2026-11-11: bản chụp trước không khớp dữ liệu BE thật.</div>
+      <div class="shots">
+        <figure>
+          <img src="e2e-screenshots/2026-11-10-flow-duyet-cham-cong.png" alt="E2E Luồng hoàn chỉnh duyệt chấm công" onerror="this.closest('figure').style.display='none'">
+          <figcaption><b>Luồng hoàn chỉnh — Duyệt chấm công (Đợt F)</b>: Sau khi bấm Duyệt trên Dialog và gửi POST /approve thật lên BE, yêu cầu chấm công được duyệt thành công sang trạng thái Approved trên cơ sở dữ liệu thật.</figcaption>
+        </figure>
+      </div>
 
       <h4 style="margin-top:20px;color:#047857;">3.68. Luồng hoàn chỉnh — Quản trị vòng đời tài khoản người dùng (Đợt G)</h4>
       <table>
@@ -4862,7 +4902,7 @@
         <tr>
           <td><b>(c) Đếm pixel đỏ ảnh E2E</b><br>Kiểm tra ảnh mới qua bộ giải mã PNG</td>
           <td>Tất cả ảnh E2E độc lập phải có viền khoanh đỏ thực sự đạt <b>&gt; 20.000 pixel đỏ</b></td>
-          <td><span class="tag pending">Thu hồi</span> Toàn bộ ảnh 2026-11-10-*.png đã bị thu hồi ngày 2026-11-11 do dùng mock route client, không khớp dữ liệu BE thật. Cần chụp lại khi BE có seed data thật.</td>
+          <td><span class="tag blocked">Thu hồi</span> Toàn bộ ảnh 2026-11-10-*.png đã bị thu hồi ngày 2026-11-11 do dùng mock route client, không khớp dữ liệu BE thật. Cần chụp lại khi BE có seed data thật.</td>
         </tr>
       </table>
     </section>
