@@ -4531,7 +4531,7 @@
       <div class="shots">
         <figure>
           <img src="e2e-screenshots/2026-11-10-h1-upload-request.png" alt="E2E POST /api/v1/files/upload-requests" onerror="this.onerror=null;this.src='placeholder-preview.svg';">
-          <figcaption><b>Khoanh đỏ POST /api/v1/files/upload-requests</b>: BE trả 500 vì MinIO/S3 không chạy trong môi trường test; nút FileUploadButton sẵn sàng kích hoạt tạo phiên tải tệp presigned.</figcaption>
+          <figcaption><b>Khoanh đỏ POST /api/v1/files/upload-requests</b>: Ảnh chỉ hiển thị nút kích hoạt tải tệp; request POST /api/v1/files/upload-requests trả 500 vì MinIO/S3 không chạy trong môi trường test nên chưa kiểm chứng được.</figcaption>
         </figure>
       </div>
 
