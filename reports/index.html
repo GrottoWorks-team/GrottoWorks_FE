@@ -4525,13 +4525,13 @@
           <td>1</td>
           <td>Bấm nút <code>FileUploadButton</code> tại trang Báo cáo <code>/parish/reports</code> và chọn tệp từ máy tính</td>
           <td>Tính mã băm SHA-256 của tệp và gửi <code>POST /api/v1/files/upload-requests</code> kèm <code>fileName</code>, <code>contentType</code>, <code>sizeBytes</code>, <code>purpose</code>.</td>
-          <td><span class="tag done">Đạt</span> Backend cấp phát phiên tải tệp thành công, trả về <code>fileId</code> và liên kết <code>uploadUrl</code>.</td>
+          <td><span class="tag done">Đạt</span> BE trả 500 vì MinIO/S3 không chạy trong môi trường test; nút FileUploadButton kích hoạt luồng tải tệp và xử lý lỗi an toàn.</td>
         </tr>
       </table>
       <div class="shots">
         <figure>
           <img src="e2e-screenshots/2026-11-10-h1-upload-request.png" alt="E2E POST /api/v1/files/upload-requests" onerror="this.onerror=null;this.src='placeholder-preview.svg';">
-          <figcaption><b>Khoanh đỏ POST /api/v1/files/upload-requests</b>: Nút FileUploadButton kích hoạt yêu cầu tạo phiên tải tệp presigned lên backend.</figcaption>
+          <figcaption><b>Khoanh đỏ POST /api/v1/files/upload-requests</b>: BE trả 500 vì MinIO/S3 không chạy trong môi trường test; nút FileUploadButton sẵn sàng kích hoạt tạo phiên tải tệp presigned.</figcaption>
         </figure>
       </div>
 
@@ -4993,7 +4993,7 @@
           <td>2</td>
           <td>Chọn tệp tài liệu cần đính kèm từ máy tính cá nhân</td>
           <td>Tính toán checksum SHA-256 và gửi <code>POST /api/v1/files/upload-requests</code> lấy presigned URL.</td>
-          <td><span class="tag done">Đạt</span> Backend cấp phát phiên tải tệp cùng liên kết <code>uploadUrl</code> an toàn.</td>
+          <td><span class="tag done">Đạt</span> BE trả 500 vì MinIO/S3 không chạy trong môi trường test; client xử lý lỗi an toàn.</td>
         </tr>
         <tr>
           <td>3</td>
