@@ -313,3 +313,15 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 **§8.10 — material report**
 - Endpoint `POST /api/v1/tasks/{taskId}/material-reports` **không nằm trong** `TaskExecution.Api/Endpoints/*` (đã grep `material-reports` = 0 kết quả) ⇒ cần tìm lại: có thể ở service khác hoặc route khác tên. Việc cần làm: grep toàn solution `material-report` rồi xác định service + body `remaining/damaged/lost` theo `material_allocation_item`.
 - Điều kiện dữ liệu: task `COMPLETED` + có allocation. Hiện *Hang đá trung tâm* đã có allocation (`Bàn nhựa` 100 nhập kho, purchase task `346754c7…` đã `COMPLETED`) — cần allocation gắn **task** (không phải chỉ work area) để report có item.
+
+## 18. Đợt 3h — SUP-04: phản hồi hỗ trợ & duyệt thành viên
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| SUP-04a | §8.11 bước 3: TNV gửi phản hồi (nhân lực) | ✅ PASS | `POST /support-requests/1dea1b2b…/responses` (role VOLUNTEER) body `{ members:[{positionId, volunteerId}], materials:[] }` → `201`, response `0784b3e6…` |
+| SUP-04b | §8.11 bước 5: LEADER xem danh sách phản hồi | ✅ PASS | `GET /support-requests/1dea1b2b…/responses` (role LEADER) → 1 phản hồi, member `a940e181…` |
+| SUP-04c | **BR-77** duyệt member phải đủ skill bắt buộc, không override | ✅ PASS (chặn đúng) | Duyệt member `a940e181…` (TNV `hau.trinh` không khớp skill của task gắn position) → `409 SUPPORT_SKILL_MISMATCH`; request vẫn `PUBLISHED` |
+| SUP-04d | §8.11 duyệt member thành công trong dữ liệu demo | ⏸️ **Không thể** | `GET /tasks/e839cccb…/volunteer-matches` = **0 ứng viên** ⇒ không có TNV nào thoả skill bắt buộc của task gắn position ⇒ không thể approve với seed hiện tại |
+| SUP-04e | §8.11 vật tư: offer → duyệt → `TRANSFER_OUT`/`TRANSFER_IN` (BR-63/64/80) | ⏸️ Chưa chạy | Cần work area nguồn có unallocated stock cho vật tư `a8e74f4e…`; response material dùng `{ requestMaterialId, sourceWorkAreaId, offeredQuantity }`, duyệt `POST /support-response-materials/{id}/approve { approvedQuantity, version }`, nhận `…/confirm-receipt` |
+
+**Kết luận §8.11:** chuỗi *tạo → publish → phản hồi → leader xem* chạy đúng; bước **duyệt thành viên bị chặn đúng bởi BR-77** và dữ liệu seed không có ứng viên đủ skill (gắn position với task không ai khớp). Muốn test trọn: chọn task có skill mà seed có TNV sở hữu, hoặc bỏ skill của task rồi publish lại.
