@@ -279,3 +279,14 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | PUR-08 | BR-65: task mua **tự** `COMPLETED` khi xác nhận giao | ❌ **FAIL** | Ngay sau `confirm-delivery`, purchase task `346754c7…` vẫn **`OPEN`** (đọc lại ngay và kiểm tra DB `task_db.task.task_status = OPEN`) ⇒ BR-65 chưa được thực thi |
 
 **Kết luận chuỗi mua sắm:** tạo PR → submit → LEADER duyệt → tạo task PURCHASE → assign → TNV nhận → TNV ghi mua → MO xác nhận giao → **PR `COMPLETED`** đều chạy đúng. **BR-65 đạt** (task mua tự `COMPLETED` sau khi event đồng bộ).
+
+## 15. Đợt 3e — support request (§8.11) phần tạo & công bố
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| SUP-01 | §8.11 tạo support request MIXED (1 position + 1 material) | ✅ PASS | `POST /support-requests` → `201 PLANNING` (`84323aa9-46e3-4743-8a12-948fc7125c40`) |
+| SUP-02 | BR-62: công bố phải có ≥1 position hoặc ≥1 dòng vật tư | ✅ PASS | Request rỗng (`14d88459…`, 0 position/0 material) → `POST …/publish` trả `422 support-position-required` (chặn đúng **ở bước công bố**, tạo nháp vẫn cho phép) |
+| SUP-03 | §8.11 công bố request có position | ⚠️ **BỊ CHẶN bởi ràng buộc chưa có trong tài liệu** | Publish request `84323aa9…` (position “Thợ mộc”, `taskId = null`) → `422 SUPPORT_POSITION_TASK_REQUIRED`. §8.11 chỉ yêu cầu tên vị trí + số người + skill, **không nói phải gắn task** ⇒ cần chốt lại với BA hoặc bổ sung vào tài liệu |
+| SUP-04 | §8.11 response → duyệt → `TRANSFER_IN` | ⏸️ Chưa chạy | Cần publish thành công trước (gắn `taskId` cho position rồi publish lại) |
+
+**Ghi chú kỹ thuật:** `deadline` của support request nhận **date-only** (`"2026-11-16"`); gửi ISO datetime đầy đủ → `400 INVALID_REQUEST_BODY`.
