@@ -608,14 +608,19 @@ export default function TimesheetPage() {
 
       {activeTab === 'approvals' && (
         <div className="space-y-6">
-          {openSessions.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex items-center gap-3 text-amber-800">
+          {openSessions.length > 0 ? (
+            <div data-testid="open-sessions-alert" className="rounded-lg border border-amber-200 bg-amber-50 p-4 flex items-center gap-3 text-amber-800">
               <AlertTriangle className="size-5 shrink-0 text-amber-600" />
               <div className="text-sm">
                 <span className="font-semibold">
                   {t('features.attendance.openSessionsAlert', { count: openSessions.length })}
                 </span>
               </div>
+            </div>
+          ) : (
+            <div data-testid="open-sessions-empty" className="rounded-lg border border-emerald-200/60 bg-emerald-50/50 p-3.5 flex items-center gap-2.5 text-emerald-800 text-sm">
+              <ShieldCheck className="size-4 shrink-0 text-emerald-600" />
+              <span>Không có phiên chấm công nào mở quá 12 giờ (0 ca mở)</span>
             </div>
           )}
 
