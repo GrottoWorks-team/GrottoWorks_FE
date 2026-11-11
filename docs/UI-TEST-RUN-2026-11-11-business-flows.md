@@ -290,3 +290,12 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | SUP-04 | §8.11 response → duyệt → `TRANSFER_IN` | ⏸️ Chưa chạy | Cần publish thành công trước (gắn `taskId` cho position rồi publish lại) |
 
 **Ghi chú kỹ thuật:** `deadline` của support request nhận **date-only** (`"2026-11-16"`); gửi ISO datetime đầy đủ → `400 INVALID_REQUEST_BODY`.
+
+## 16. Đợt 3f — publish support request sau khi gắn task cho position
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| SUP-03 | §8.11 công bố request khi position có `taskId` | ✅ PASS | Tạo lại với `positions[0].taskId = e839cccb…` → `201 PLANNING`; `POST …/publish` (If-Match version 1) → `200` **`PUBLISHED`** (v2), request `1dea1b2b-c6ea-4bbc-8a55-a0292c9c4a60` |
+| SUP-04 | §8.11 response → duyệt member/material → `TRANSFER_OUT` → `TRANSFER_IN` | ⏸️ Chưa chạy | Request đã `PUBLISHED`, hiện `GET …/responses` = 0. Cần client khác gửi response với payload `SupportResponseRequest { respondingCommunityId?, members: SupportMemberInput[], materials: SupportMaterialOfferInput[] }`, sau đó duyệt `/support-response-members/{id}/approve`, `/support-response-materials/{id}/approve` và `/confirm-receipt` |
+
+**Kết luận §8.11:** luồng tạo → công bố chạy đúng (kèm ràng buộc **position phải có task**, xem §15 SUP-03). Phần phản hồi/chuyển kho của cộng đoàn khác chưa chạy được trong phiên này.
