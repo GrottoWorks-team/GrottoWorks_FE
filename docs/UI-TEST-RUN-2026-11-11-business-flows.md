@@ -269,3 +269,13 @@ Cần: tạo tồn khả dụng cho khu (nhập opening stock hoặc xác nhận
 | PUR-07b | TNV chấp nhận assignment | ✅ PASS | `POST /task-assignments/fd7e72b9…/accept` → `200 ACCEPTED` |
 | PUR-07c | §8.6 bước 6: TNV ghi nhận thông tin mua | ⚠️ **BỊ CHẶN** | `POST /purchase-requests/00e991c6…/purchases` (role VOLUNTEER) trả `422` khi thiếu `Items[0].UnitPrice`, và `400 INVALID_REQUEST_BODY` khi gửi `unitPrice: { amount, currency }`. **Chưa có UI web** cho bước này (web chỉ có màn MO xác nhận giao) ⇒ cần chốt lại contract `PurchaseLineRequest` + bổ sung UI (mobile/web) |
 | PUR-07d | §8.6 bước 8–10: MO xác nhận giao → BR-65 task tự `COMPLETED` | ⏸️ Chưa chạy | Phụ thuộc PUR-07c |
+
+## 14. Đợt 3d — hoàn tất chuỗi mua sắm (bước 6–10)
+
+| Mã | Nghiệp vụ | Kết quả | Bằng chứng |
+|---|---|---|---|
+| PUR-07c | §8.6 bước 6: TNV ghi thông tin mua | ✅ PASS | Contract đúng: `items[].unitPrice` là **decimal** (không phải object). `POST /purchase-requests/00e991c6…/purchases` → `201 SUBMITTED`, purchase `2b5d7d19…` |
+| PUR-07d | §8.6 bước 8–10: MO xác nhận giao | ✅ PASS | `POST /purchases/2b5d7d19…/confirm-delivery` với `items:[{purchaseItemId, receivedUsableQuantity, receivedUnusableQuantity}]` → `200`; purchase request → **`COMPLETED`** |
+| PUR-08 | BR-65: task mua **tự** `COMPLETED` khi xác nhận giao | ❌ **FAIL** | Ngay sau `confirm-delivery`, purchase task `346754c7…` vẫn **`OPEN`** (đọc lại ngay và kiểm tra DB `task_db.task.task_status = OPEN`) ⇒ BR-65 chưa được thực thi |
+
+**Kết luận chuỗi mua sắm:** tạo PR → submit → LEADER duyệt → tạo task PURCHASE → assign → TNV nhận → TNV ghi mua → MO xác nhận giao → **PR `COMPLETED`** đều chạy đúng. Chỉ còn **BR-65** (task mua tự hoàn thành) chưa đạt.
