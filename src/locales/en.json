@@ -640,7 +640,7 @@
   "features.purchases.areaRequired": "Please select a work area",
   "features.purchases.onlyDraftEditable": "Only draft purchase requests can be edited",
   "features.purchases.stats.total": "Total requests",
-  "features.purchases.stats.draft": "Draft",
+  "features.purchases.stats.draft": "Preparing",
   "features.purchases.stats.pending": "Pending approval",
   "features.purchases.stats.approved": "Approved",
   "status.PENDING_APPROVAL": "Pending approval",

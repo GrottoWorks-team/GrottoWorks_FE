@@ -303,7 +303,7 @@ export default function CommitteeApprovalPage() {
             rows={requests}
             columns={columns}
             searchKeys={['workAreaName', 'reason']}
-            filters={[{ key: 'status', options: ['PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'DRAFT'] }]}
+            filters={[{ key: 'status', options: ['PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'PLANNING'] }]}
             emptyText={t('features.purchases.empty')}
           />
         </div>

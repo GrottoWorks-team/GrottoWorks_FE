@@ -1,11 +1,13 @@
 ﻿// Purchases domain — PurchaseRequest (API Contract v1.3 /api/v1/purchase-requests) + PurchaseRecord
+// Lưu ý trạng thái: BE dùng `PurchaseRequestStatus.Planning` → JSON `"PLANNING"` (BA R-12: **không có DRAFT**).
+// Trước 12/11/2026 FE so sánh `'DRAFT'` nên không bao giờ khớp → mất nút "Gửi duyệt".
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { materialKeys } from '@/features/materials/api'
 import type { PurchaseRecord } from '@/types'
 
 export type PurchaseRequestStatusType =
-  | 'DRAFT'
+  | 'PLANNING'
   | 'PENDING_APPROVAL'
   | 'APPROVED'
   | 'REJECTED'
@@ -228,7 +230,7 @@ function usePurchaseMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
 }
 
 /**
- * F2: POST /api/v1/purchase-requests (tạo yêu cầu mua ở trạng thái DRAFT)
+ * F2: POST /api/v1/purchase-requests (tạo yêu cầu mua ở trạng thái PLANNING)
  */
 export function useCreatePurchaseRequest() {
   return usePurchaseMutation(async (data: CreatePurchaseRequestPayload) => {
@@ -240,7 +242,7 @@ export function useCreatePurchaseRequest() {
 }
 
 /**
- * F4: PATCH /api/v1/purchase-requests/{requestId} (chỉnh sửa khi DRAFT, items thay thế toàn bộ dòng)
+ * F4: PATCH /api/v1/purchase-requests/{requestId} (chỉnh sửa khi PLANNING, items thay thế toàn bộ dòng)
  */
 export function useUpdatePurchaseRequest() {
   return usePurchaseMutation(

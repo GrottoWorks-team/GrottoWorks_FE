@@ -140,7 +140,7 @@ export default function PurchaseDetailPage() {
         sub={t('features.purchases.detailSub')}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {request.status === 'DRAFT' && isOfficer && (
+            {request.status === 'PLANNING' && isOfficer && (
               <>
                 <Button
                   variant="outline"
@@ -178,7 +178,7 @@ export default function PurchaseDetailPage() {
               </>
             )}
 
-            {isLeader && request.status !== 'DRAFT' && request.status !== 'REJECTED' && request.status !== 'CANCELLED' && (
+            {isLeader && request.status !== 'PLANNING' && request.status !== 'REJECTED' && request.status !== 'CANCELLED' && (
               <Button
                 variant="outline"
                 onClick={() => {

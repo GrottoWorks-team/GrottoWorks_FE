@@ -1,4 +1,4 @@
-// Dialog tạo (F2) và chỉnh sửa (F4) yêu cầu mua ở trạng thái DRAFT:
+// Dialog tạo (F2) và chỉnh sửa (F4) yêu cầu mua khi còn ở trạng thái PLANNING:
 // Chọn khu vực công tác, nhập lý do chung, thêm các dòng vật tư từ catalog.
 // Tự động kiểm tra số lượng thiếu hụt (Shortages API).
 // Nếu quantity > shortage, bắt buộc nhập shortageOverrideReason (BA 8.6).

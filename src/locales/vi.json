@@ -640,7 +640,7 @@
   "features.purchases.areaRequired": "Vui lòng chọn khu vực",
   "features.purchases.onlyDraftEditable": "Chỉ có thể chỉnh sửa yêu cầu ở trạng thái Nháp",
   "features.purchases.stats.total": "Tổng yêu cầu",
-  "features.purchases.stats.draft": "Đơn nháp",
+  "features.purchases.stats.draft": "Đang chuẩn bị",
   "features.purchases.stats.pending": "Chờ duyệt",
   "features.purchases.stats.approved": "Đã duyệt",
   "status.PENDING_APPROVAL": "Chờ duyệt",

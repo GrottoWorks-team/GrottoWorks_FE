@@ -1,6 +1,6 @@
 // Yêu cầu mua của khu officer phụ trách (route /material-officer/purchases):
 // DataTable đề nghị mua kết nối GET /api/v1/purchase-requests (F1),
-// hỗ trợ tạo DRAFT (F2), xem chi tiết (F3+F8), sửa DRAFT (F4), gửi duyệt (F5).
+// hỗ trợ tạo yêu cầu (F2), xem chi tiết (F3+F8), sửa khi còn PLANNING (F4), gửi duyệt (F5).
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -46,7 +46,7 @@ export default function PurchaseListPage() {
 
   const stats = useMemo(() => {
     const total = requests.length
-    const draft = requests.filter((r) => r.status === 'DRAFT').length
+    const draft = requests.filter((r) => r.status === 'PLANNING').length
     const pending = requests.filter((r) => r.status === 'PENDING_APPROVAL').length
     const approved = requests.filter((r) => r.status === 'APPROVED').length
     return { total, draft, pending, approved }
@@ -132,7 +132,7 @@ export default function PurchaseListPage() {
               <Eye className="size-3.5" />
               <span className="hidden sm:inline">{t('features.purchases.viewDetailAction')}</span>
             </ButtonLink>
-            {r.status === 'DRAFT' && (
+            {r.status === 'PLANNING' && (
               <Button
                 size="sm"
                 aria-label={t('features.purchases.send')}
@@ -200,7 +200,7 @@ export default function PurchaseListPage() {
           onChange={(e) => setSelectedStatus(e.target.value)}
         >
           <option value="">{t('features.purchases.filterAllStatus')}</option>
-          <option value="DRAFT">{t('status.DRAFT')}</option>
+          <option value="PLANNING">{t('status.PLANNING')}</option>
           <option value="PENDING_APPROVAL">{t('status.PENDING_APPROVAL')}</option>
           <option value="APPROVED">{t('status.APPROVED')}</option>
           <option value="REJECTED">{t('status.REJECTED')}</option>
