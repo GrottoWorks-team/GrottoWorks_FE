@@ -65,7 +65,8 @@ const GrottoDesignerPage = lazy(() => import('@/features/designer/pages/GrottoDe
 // Trang tháº­t theo route `to` cá»§a nav-config; má»¥c chÆ°a cÃ³ â†’ Placeholder.
 // Task 5+ thÃªm dáº§n vÃ o map nÃ y (pattern lazy page).
 const PAGES: Record<string, ComponentType> = {
-  '/parish/seasons': SeasonListPage,
+  // Admin (hệ thống) chỉ xem mùa → mùa nằm trong tab của hub "Giáo xứ & cộng đoàn"
+  // (URL cũ `/parish/seasons` xử lý ở DYNAMIC bên dưới).
   '/community/seasons': SeasonListPage,
   '/community/areas': AreaListPage,
   '/community/map': ParishMapPage,
@@ -133,6 +134,7 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     // URL cũ vẫn mở được → chuyển về hub đúng tab/trang con.
     { path: 'areas', Page: LegacyParishAreasRedirect },
     { path: 'map', Page: LegacyParishMapRedirect },
+    { path: 'seasons', Page: LegacyParishSeasonsRedirect },
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'areas/:id/design', Page: DesignReviewPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
@@ -161,6 +163,11 @@ function LegacyParishAreasRedirect() {
 function LegacyParishMapRedirect() {
   const { search } = useLocation()
   return <Navigate to={`/parish/communities/map${search}`} replace />
+}
+
+// URL cũ `/parish/seasons` → tab "Mùa Giáng sinh" trong hub (12/11/2026).
+function LegacyParishSeasonsRedirect() {
+  return <Navigate to="/parish/communities?tab=seasons" replace />
 }
 
 const ROLES: Role[] = ['COMMUNITY', 'LEADER', 'MATERIAL_OFFICER', 'PARISH']

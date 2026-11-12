@@ -40,6 +40,7 @@ import { viDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import { useAreas, useSeasons, useUsers } from '@/features/areas/api'
+import SeasonListPage from '@/features/season/pages/SeasonListPage'
 import { SELECT_CLS } from '@/features/areas/pages/AreaFormDialog'
 import {
   useCommunities,
@@ -667,6 +668,9 @@ function AreasPanel({ parishId }: { parishId: string }) {
 const TABS = [
   { key: 'parish', labelKey: 'features.parish.tabParish' },
   { key: 'communities', labelKey: 'features.parish.tabCommunities' },
+  // 12/11/2026: mùa Giáng sinh gộp vào hub này (ADMIN chỉ xem; ban hành giáo
+  // vẫn dùng trang riêng /community/seasons để tạo & tương tác).
+  { key: 'seasons', labelKey: 'features.parish.tabSeasons' },
   { key: 'areas', labelKey: 'features.parish.tabAreas' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
@@ -770,6 +774,8 @@ export default function CommunitiesPage() {
         parishId ? (
           <CommunitiesPanel parishId={parishId} canEdit={canEdit} />
         ) : null
+      ) : tab === 'seasons' ? (
+        <SeasonListPage embedded />
       ) : parishId ? (
         <AreasPanel parishId={parishId} />
       ) : null}

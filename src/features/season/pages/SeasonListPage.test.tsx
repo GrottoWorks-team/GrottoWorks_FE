@@ -61,7 +61,9 @@ vi.mock('@/features/areas/api', () => ({
   useAreas: () => ({ data: mockAreas, isPending: false }),
 }))
 
-const mockAuthUser = { current: { id: 'u1', role: 'PARISH', parishId: 'p1', name: 'Admin Giáo xứ' } }
+const mockAuthUser = {
+  current: { id: 'u2', role: 'COMMUNITY', parishId: 'p1', name: 'Ban hành giáo' },
+}
 vi.mock('@/lib/auth', () => ({
   useAuth: () => ({
     user: mockAuthUser.current,
@@ -104,11 +106,17 @@ describe('SeasonListPage (Flow 4 + Flow 6)', () => {
     expect(await screen.findByText('Chưa đủ điều kiện kích hoạt mùa')).toBeDefined()
   })
 
-  it('COMMUNITY chỉ xem: ẩn nút Tạo mùa và cột thao tác', async () => {
-    mockAuthUser.current = { id: 'u2', role: 'COMMUNITY', parishId: 'p1', name: 'Ban hành giáo' }
+  it('ADMIN hệ thống chỉ xem: ẩn nút Tạo mùa và cột thao tác (12/11/2026)', async () => {
+    mockAuthUser.current = { id: 'u1', role: 'PARISH', parishId: 'p1', name: 'Admin hệ thống' }
     setup()
     expect(screen.queryByRole('button', { name: 'Tạo mùa' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Tạo mùa mới từ mùa cũ' })).toBeNull()
     expect(screen.queryByText('Thao tác')).toBeNull()
-    mockAuthUser.current = { id: 'u1', role: 'PARISH', parishId: 'p1', name: 'Admin Giáo xứ' }
+    mockAuthUser.current = {
+      id: 'u2',
+      role: 'COMMUNITY',
+      parishId: 'p1',
+      name: 'Ban hành giáo',
+    }
   })
 })

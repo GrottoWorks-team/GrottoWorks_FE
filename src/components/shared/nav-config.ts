@@ -114,10 +114,10 @@ export const NAV: Record<Role, NavGroup[]> = {
       section: '',
       items: [
         { label: 'nav.parish.dashboard', to: '/parish', icon: 'dashboard' },
-        { label: 'nav.parish.seasons', to: '/parish/seasons', icon: 'calendar' },
-        // Hub duy nhất cho giáo xứ: tab Giáo xứ / Cộng đoàn / Khu vực công tác
-        // + trang con Bản đồ (`/parish/communities/map`). Bỏ mục menu riêng của
-        // "khu vực công tác" và "bản đồ giáo xứ" (yêu cầu 11/11/2026).
+        // Hub duy nhất cho giáo xứ: tab Giáo xứ / Cộng đoàn / Mùa Giáng sinh /
+        // Khu vực công tác + trang con Bản đồ (`/parish/communities/map`).
+        // Bỏ mục menu riêng của "khu vực công tác", "bản đồ giáo xứ" (11/11/2026)
+        // và "mùa Giáng sinh" (12/11/2026 — ADMIN chỉ xem, mùa nằm trong hub).
         { label: 'nav.parish.communities', to: '/parish/communities', icon: 'church' },
         { label: 'nav.parish.accounts', to: '/parish/accounts', icon: 'accounts' },
         { label: 'nav.parish.categories', to: '/parish/categories', icon: 'tags' },

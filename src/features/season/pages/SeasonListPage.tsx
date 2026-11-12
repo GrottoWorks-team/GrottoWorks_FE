@@ -26,11 +26,13 @@ import { viDate } from '@/lib/format'
 
 const d = (n: number) => ({ '--d': n }) as CSSProperties
 
-export default function SeasonListPage() {
+export default function SeasonListPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
-  const canManage = user?.role === 'PARISH'
+  // 12/11/2026: chỉ ban hành giáo (COMMUNITY = BE `PARISH`) được tạo/tương tác;
+  // ADMIN hệ thống (FE `PARISH`) chỉ xem — trang được nhúng vào hub "Giáo xứ & cộng đoàn".
+  const canManage = user?.role === 'COMMUNITY'
   const { data: seasons = [], isPending } = useSeasons()
   const { data: communities = [] } = useCommunities()
   const { data: areas = [] } = useAreas()
@@ -239,31 +241,42 @@ export default function SeasonListPage() {
     }
   }
 
+  const manageActions = canManage ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button variant="outline" onClick={() => setCloneOpen(true)}>
+        <Copy className="size-4" />
+        {t('features.season.cloneTitle')}
+      </Button>
+      <Button
+        onClick={() => {
+          setEditing(null)
+          setFormOpen(true)
+        }}
+      >
+        <CalendarPlus className="size-4" />
+        {t('features.season.create')}
+      </Button>
+    </div>
+  ) : undefined
+
   return (
     <div>
-      <PageHeader
-        title={t('features.season.title')}
-        sub={t('features.season.sub')}
-        actions={
-          canManage ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={() => setCloneOpen(true)}>
-                <Copy className="size-4" />
-                {t('features.season.cloneTitle')}
-              </Button>
-              <Button
-                onClick={() => {
-                  setEditing(null)
-                  setFormOpen(true)
-                }}
-              >
-                <CalendarPlus className="size-4" />
-                {t('features.season.create')}
-              </Button>
-            </div>
-          ) : undefined
-        }
-      />
+      {embedded ? (
+        manageActions && <div className="mb-4 flex justify-end">{manageActions}</div>
+      ) : (
+        <PageHeader
+          title={t('features.season.title')}
+          sub={t('features.season.sub')}
+          actions={manageActions}
+        />
+      )}
+
+      {embedded && !canManage && (
+        <p className="mb-4 rounded-card border border-border bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          {t('features.parish.seasonsReadOnly')}
+        </p>
+      )}
+
 
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 stagger">
         <div style={d(0)}>
