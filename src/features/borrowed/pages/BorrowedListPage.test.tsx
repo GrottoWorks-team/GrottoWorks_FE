@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { ToastProvider } from '@/components/ui/toast'
 import BorrowedListPage from './BorrowedListPage'
 import type { BorrowedItem } from '@/types'
 
@@ -53,6 +54,7 @@ const mockItems: BorrowedItem[] = [
 ]
 
 let currentMockData: BorrowedItem[] = mockItems
+const mockRecordIncident = vi.fn().mockResolvedValue({ id: 'incident-1' })
 
 vi.mock('../api', () => ({
   useBorrowedItems: () => ({
@@ -60,14 +62,27 @@ vi.mock('../api', () => ({
     isPending: false,
     error: null,
   }),
+  useRecordBorrowedIncident: () => ({
+    mutateAsync: mockRecordIncident,
+    isPending: false,
+  }),
 }))
+
+function renderComponent() {
+  return render(
+    <ToastProvider>
+      <BorrowedListPage />
+    </ToastProvider>
+  )
+}
 
 beforeEach(() => {
   currentMockData = mockItems
+  mockRecordIncident.mockClear()
 })
 
 test('hiển thị tiêu đề, 4 StatCards và các dòng đồ mượn', () => {
-  render(<BorrowedListPage />)
+  renderComponent()
 
   expect(screen.getByText('Đồ mượn')).toBeDefined()
   expect(screen.getByText('May tron be tong mini')).toBeDefined()
@@ -85,7 +100,7 @@ test('hiển thị tiêu đề, 4 StatCards và các dòng đồ mượn', () =>
 
 test('tìm kiếm đồ mượn theo từ khóa', async () => {
   const user = userEvent.setup()
-  render(<BorrowedListPage />)
+  renderComponent()
 
   const searchInput = screen.getByRole('textbox')
   await user.type(searchInput, 'phat dien')
@@ -97,7 +112,7 @@ test('tìm kiếm đồ mượn theo từ khóa', async () => {
 
 test('lọc đồ mượn theo trạng thái và quá hạn', async () => {
   const user = userEvent.setup()
-  render(<BorrowedListPage />)
+  renderComponent()
 
   // Bấm chip "Quá hạn"
   const overdueChips = screen.getAllByRole('button', { name: /Quá hạn|OVERDUE/i })
@@ -109,10 +124,11 @@ test('lọc đồ mượn theo trạng thái và quá hạn', async () => {
 })
 
 test('xuất file CSV khi bấm nút Xuất CSV', () => {
-  render(<BorrowedListPage />)
+  renderComponent()
 
   const createObjectUrlMock = vi.fn(() => 'blob:mock-url')
   const revokeObjectUrlMock = vi.fn()
+  const clickMock = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
   global.URL.createObjectURL = createObjectUrlMock
   global.URL.revokeObjectURL = revokeObjectUrlMock
 
@@ -121,11 +137,43 @@ test('xuất file CSV khi bấm nút Xuất CSV', () => {
 
   expect(createObjectUrlMock).toHaveBeenCalled()
   expect(revokeObjectUrlMock).toHaveBeenCalled()
+  clickMock.mockRestore()
 })
 
 test('hiển thị thông báo khi không có dữ liệu', () => {
   currentMockData = []
-  render(<BorrowedListPage />)
+  renderComponent()
 
   expect(screen.getByText('Chưa có đồ mượn nào.')).toBeDefined()
+})
+
+test('báo sự cố hư hỏng/mất mát cho đồ mượn', async () => {
+  const user = userEvent.setup()
+  renderComponent()
+
+  // Click on "Báo sự cố" button of item b-2
+  const incidentBtns = screen.getAllByRole('button', { name: /Báo sự cố/i })
+  expect(incidentBtns.length).toBeGreaterThan(0)
+  await user.click(incidentBtns[0])
+
+  expect(screen.getByText('Báo cáo sự cố đồ mượn')).toBeDefined()
+
+  // Fill in description
+  const descInput = screen.getByPlaceholderText(/VD: Bị vỡ trong quá trình vận chuyển/i)
+  fireEvent.change(descInput, { target: { value: 'Bị vỡ cánh quạt làm mát' } })
+
+  // Submit incident dialog
+  const submitBtn = screen.getByRole('button', { name: /Gửi báo cáo sự cố/i })
+  fireEvent.click(submitBtn)
+
+  await waitFor(() => {
+    expect(mockRecordIncident).toHaveBeenCalledWith({
+      itemId: 'b-2',
+      payload: expect.objectContaining({
+        condition: 'DAMAGED',
+        quantity: 1,
+        description: 'Bị vỡ cánh quạt làm mát',
+      }),
+    })
+  })
 })

@@ -1,5 +1,5 @@
 ﻿import { beforeEach, expect, test, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ToastProvider } from '@/components/ui/toast'
@@ -59,6 +59,20 @@ vi.mock('@/features/profile/api', () => ({
   }),
 }))
 
+const mockPrefsData = { inAppEnabled: true, pushEnabled: false, emailEnabled: true }
+const mockUpdatePrefs = vi.fn().mockResolvedValue({})
+
+vi.mock('@/features/notifications/api', () => ({
+  useNotificationPreferences: () => ({
+    data: mockPrefsData,
+    isPending: false,
+  }),
+  useUpdateNotificationPreferences: () => ({
+    mutateAsync: mockUpdatePrefs,
+    isPending: false,
+  }),
+}))
+
 beforeEach(() => {
   currentUser = {
     id: 'u27',
@@ -106,4 +120,28 @@ test('submit → PATCH /api/users/u27 với tên + kỹ năng mới', async () =
   expect(await screen.findByText('Đã cập nhật hồ sơ')).toBeDefined()
   expect(updatedPayload.name).toBe('Antôn Tên Mới')
   expect(updatedPayload.skills).toEqual(['Hàn', 'Sơn'])
+})
+
+test('cập nhật tuỳ chọn nhận thông báo cá nhân', async () => {
+  mount()
+
+  expect(await screen.findByText('Tuỳ chọn nhận thông báo')).toBeDefined()
+  const pushCheckbox = screen.getByTestId('pref-push') as HTMLInputElement
+  expect(pushCheckbox.checked).toBe(false)
+
+  fireEvent.click(pushCheckbox)
+  await waitFor(() => {
+    expect(pushCheckbox.checked).toBe(true)
+  })
+
+  const savePrefsBtn = screen.getByTestId('save-notification-prefs-btn')
+  fireEvent.click(savePrefsBtn)
+
+  await waitFor(() => {
+    expect(mockUpdatePrefs).toHaveBeenCalledWith({
+      inAppEnabled: true,
+      pushEnabled: true,
+      emailEnabled: true,
+    })
+  })
 })

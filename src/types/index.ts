@@ -29,6 +29,10 @@ export interface User {
   locked?: boolean; skills: string[]; points: number; avatarHue: number;
   /** Role gốc BE trả từ Identity service, ví dụ 'VOLUNTEER'. */
   rawRole?: string;
+  /** [fe-api-gap-2] Trạng thái tài khoản BE Identity: 'Active' | 'Locked' | 'Inactive' | string. */
+  status?: string;
+  /** [fe-api-gap-2] Version dùng cho If-Match (optimistic concurrency) khi lock/unlock/update/assignRole. */
+  version?: number;
   /** Khung giờ rảnh — BE `UserProfileDto.Availability`. Chỉ TNV mới có. */
   availability?: { availableFrom: string; availableTo: string; note?: string | null }[];
 }
@@ -367,7 +371,16 @@ export interface SupportReg {
 
 export interface ChecklistItem { id: string; areaId: string; label: string; done: boolean; note?: string }
 
-export interface ActivityLog { id: string; at: string; actor: string; action: string; target: string }
+export interface ActivityLog {
+  id: string
+  at: string
+  actor: string
+  action: string
+  target: string
+  // Có khi BE trả kèm; ActivityPage dùng để mở tab lịch sử tài nguyên.
+  entityType?: string | null
+  entityId?: string | null
+}
 
 /** Hình thức đồng hành đăng ký từ trang landing công khai (chưa có tài khoản). */
 export type RegistrationKind = 'VOLUNTEER' | 'MATERIAL' | 'MONETARY';
@@ -899,3 +912,257 @@ export interface MaterialDashboardDto {
 }
 
 // ══════ [/fe-api-gap] ══════
+
+// ══════ [fe-api-gap-2] Tiến độ khu vực (Đợt I) ══════
+// Khớp nguyên văn ParishCoordination GetWorkAreaProgressResult.WorkAreaProgressDto
+// (WorkAreaId, SeasonId, WorkAreaStatus, TotalTasks, CancelledTasks, EligibleTasks,
+//  CompletedTasks, OverdueTasks, CalculatedAt). KHÔNG dùng chung tên với
+// WorkAreaProgressDto của Reporting (/dashboards/season) — hai DTO khác hình dạng.
+export interface WorkAreaProgressSummaryDto {
+  workAreaId: string
+  seasonId: string
+  workAreaStatus: string
+  totalTasks: number
+  cancelledTasks: number
+  eligibleTasks: number
+  completedTasks: number
+  overdueTasks: number
+  calculatedAt: string
+}
+
+// ══════ [fe-api-gap-2] Đợt F–I ══════
+export type AttendanceRequestStatus =
+  | 'Pending'
+  | 'Approved'
+  | 'Rejected'
+  | 'Cancelled'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'CANCELLED'
+
+export interface AttendanceRequestDto {
+  id: string
+  assignmentId: string
+  type: string
+  requestedAt: string
+  status: AttendanceRequestStatus | string
+  note?: string | null
+  attendanceId?: string | null
+  reviewedBy?: string | null
+  reviewNote?: string | null
+  reviewedAt?: string | null
+  version: number
+}
+
+export type AttendanceCorrectionStatus =
+  | 'Pending'
+  | 'Approved'
+  | 'Rejected'
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+
+export interface AttendanceCorrectionDto {
+  id: string
+  attendanceId: string
+  requestedBy: string
+  reviewedBy?: string | null
+  originalCheckInAt: string
+  originalCheckOutAt?: string | null
+  requestedCheckInAt: string
+  requestedCheckOutAt: string
+  reason: string
+  status: AttendanceCorrectionStatus | string
+  reviewNote?: string | null
+  createdAt: string
+  reviewedAt?: string | null
+  version: number
+}
+
+export interface ReviewAttendanceRequest {
+  version?: number
+  reviewNote?: string
+}
+
+export interface ReviewCorrectionRequest {
+  version?: number
+  reviewNote?: string
+}
+
+// File contracts (Đợt H)
+export type FilePurpose = 'ProgressEvidence' | 'ReadinessEvidence' | 'PurchaseReceipt' | 'Other' | string
+
+export interface CreateUploadRequestDto {
+  fileName: string
+  contentType: string
+  sizeBytes: number
+  purpose: FilePurpose
+  checksum?: string | null
+}
+
+export interface UploadRequestDto {
+  fileId: string
+  uploadUrl: string
+  method: string
+  headers?: Record<string, string>
+  expiresAt: string
+}
+
+export interface CompleteUploadRequestDto {
+  checksum?: string | null
+}
+
+export interface FileReferenceDto {
+  id: string
+  fileName: string
+  contentType: string
+  sizeBytes: number
+}
+
+export interface FileDownloadDto {
+  downloadUrl: string
+  expiresAt: string
+}
+
+// Report and System Exports (Đợt H)
+export type ReportExportFormat = 'Xlsx' | 'Pdf' | 'Csv' | 'XLSX' | 'PDF' | 'CSV'
+
+export type ReportExportType =
+  | 'Tasks'
+  | 'Materials'
+  | 'Purchases'
+  | 'Contributions'
+  | 'Attendance'
+  | 'Readiness'
+  | 'Recognition'
+  | string
+
+export interface CreateReportExportRequest {
+  reportType: ReportExportType
+  format?: ReportExportFormat
+  seasonId: string
+  workAreaId?: string | null
+  communityId?: string | null
+  from?: string | null
+  to?: string | null
+}
+
+export type ExportJobStatus = 'Queued' | 'Running' | 'Succeeded' | 'Failed' | 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED'
+
+export interface ReportExportJobDto {
+  id: string
+  reportType: string
+  format: string
+  status: ExportJobStatus | string
+  filters?: {
+    seasonId?: string
+    workAreaId?: string | null
+    communityId?: string | null
+    from?: string | null
+    to?: string | null
+  }
+  fileName?: string | null
+  contentType?: string | null
+  fileSize?: number | null
+  downloadUrl?: string | null
+  errorCode?: string | null
+  errorMessage?: string | null
+  createdAt: string
+  startedAt?: string | null
+  completedAt?: string | null
+}
+
+export interface SystemExportRequest {
+  services?: string[] | null
+}
+
+export interface SystemJobDto {
+  jobId: string
+  status: string
+  services: string[]
+  createdAt: string
+  startedAt?: string | null
+  finishedAt?: string | null
+  attempts: number
+  fileId?: string | null
+  expiresAt?: string | null
+  errorCode?: string | null
+  manifest?: unknown
+}
+
+// ══════ Đợt I — Phần lẻ ══════
+export interface NotificationPreferenceDto {
+  inAppEnabled: boolean
+  pushEnabled: boolean
+  emailEnabled: boolean
+}
+
+export interface UpdateNotificationPreferenceRequest {
+  inAppEnabled?: boolean
+  pushEnabled?: boolean
+  emailEnabled?: boolean
+}
+
+export interface UpdateNotificationRuleRequest {
+  inAppEnabled?: boolean
+}
+
+export interface ActivityLogDetailDto {
+  id: string
+  action: string
+  entityType?: string
+  entityId?: string
+  actorUserId: string
+  timestamp: string
+  metadata?: Record<string, unknown>
+}
+
+export interface StateChangeDto {
+  fieldName: string
+  oldValue?: string | null
+  newValue?: string | null
+  changedAt: string
+  changedBy?: string | null
+}
+
+export interface UpdateDonorRequest {
+  name?: string
+  phone?: string | null
+  email?: string | null
+  note?: string | null
+}
+
+export interface RecordDonationReceiptRequest {
+  receivedAt?: string
+  note?: string | null
+  monetaryAmount?: number | null
+  items?: Array<{ materialId: string; quantity: number }>
+}
+
+export interface BorrowedItemIncidentRequest {
+  condition: 'DAMAGED' | 'LOST' | string
+  quantity?: number
+  date?: string
+  description: string
+}
+
+export interface UpdateContributionTypeRequest {
+  name?: string
+  description?: string
+  status?: string
+}
+
+export interface DeactivateRecognitionRuleRequest {
+  reason: string
+}
+
+
+export interface InventoryAdjustmentRequest {
+  materialId: string
+  workAreaId?: string
+  reason: 'DAMAGED' | 'LOST' | 'DISPOSED' | string
+  quantity: number
+  notes?: string
+}
+// ══════ [/fe-api-gap-2] ══════

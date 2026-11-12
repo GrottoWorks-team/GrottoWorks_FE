@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type {
   Community,
@@ -9,6 +9,10 @@ import type {
   Timesheet,
   User,
   WorkArea,
+  CreateReportExportRequest,
+  ReportExportJobDto,
+  SystemExportRequest,
+  SystemJobDto,
 } from '@/types'
 
 export const reportKeys = {
@@ -174,3 +178,77 @@ export function useReportData(seasonIdParam?: string) {
     },
   })
 }
+
+// ══════ [fe-api-gap-2] Báo cáo xuất dữ liệu & File (Đợt H) ══════
+
+export const exportKeys = {
+  all: ['report-exports'] as const,
+  detail: (id: string) => ['report-exports', id] as const,
+  systemData: ['system-data-exports'] as const,
+}
+
+/** Tạo yêu cầu xuất báo cáo bất đồng bộ (POST /api/v1/report-exports) */
+export async function createReportExport(
+  payload: CreateReportExportRequest,
+): Promise<ReportExportJobDto> {
+  return api<ReportExportJobDto>('/api/v1/report-exports', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+/** Lấy trạng thái công việc xuất báo cáo (GET /api/v1/report-exports/{id}) */
+export async function getReportExportJob(jobId: string): Promise<ReportExportJobDto> {
+  return api<ReportExportJobDto>(`/api/v1/report-exports/${jobId}`)
+}
+
+/** URL tải tệp báo cáo hoàn thành (GET /api/v1/report-exports/{id}/file) */
+export function getReportExportFileUrl(jobId: string): string {
+  return `/api/v1/report-exports/${jobId}/file`
+}
+
+/** Tạo yêu cầu xuất toàn bộ dữ liệu hệ thống cho Admin (POST /api/v1/system-data-exports) */
+export async function createSystemDataExport(
+  payload?: SystemExportRequest,
+): Promise<SystemJobDto> {
+  return api<SystemJobDto>('/api/v1/system-data-exports', {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {}),
+  })
+}
+
+export function useCreateReportExport() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: CreateReportExportRequest) => createReportExport(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: exportKeys.all })
+    },
+  })
+}
+
+export function useReportExportJob(jobId?: string) {
+  return useQuery({
+    queryKey: exportKeys.detail(jobId || ''),
+    queryFn: () => getReportExportJob(jobId!),
+    enabled: Boolean(jobId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status?.toUpperCase()
+      if (status === 'QUEUED' || status === 'RUNNING') {
+        return 1500
+      }
+      return false
+    },
+  })
+}
+
+export function useCreateSystemDataExport() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload?: SystemExportRequest) => createSystemDataExport(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: exportKeys.systemData })
+    },
+  })
+}
+

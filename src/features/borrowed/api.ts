@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { BorrowedItem, BorrowedItemStatus, ReturnCondition } from '@/types'
+import type {
+  BorrowedItem,
+  BorrowedItemStatus,
+  ReturnCondition,
+  BorrowedItemIncidentRequest,
+} from '@/types'
 
 export interface BorrowedItemFilterParams {
   page?: number
@@ -166,3 +171,31 @@ export function useAssignBorrowedItem() {
     onSuccess: () => qc.invalidateQueries({ queryKey: borrowedKeys.all }),
   })
 }
+
+// ══════ [fe-api-gap-2] Báo cáo sự cố đồ mượn (Đợt I) ══════
+
+/** Báo cáo sự cố hỏng hóc hoặc thất thoát đồ mượn (POST /api/v1/borrowed-items/{id}/incidents) */
+export async function recordBorrowedIncident(
+  itemId: string,
+  payload: BorrowedItemIncidentRequest,
+): Promise<void> {
+  await api(`/api/v1/borrowed-items/${itemId}/incidents`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function useRecordBorrowedIncident() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      itemId,
+      payload,
+    }: {
+      itemId: string
+      payload: BorrowedItemIncidentRequest
+    }) => recordBorrowedIncident(itemId, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: borrowedKeys.all }),
+  })
+}
+

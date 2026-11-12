@@ -3,7 +3,12 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TimesheetPage from './TimesheetPage'
 import { exportCsv } from '@/lib/csv'
-import type { AttendanceDto, WorkingHourSummary } from '@/types'
+import type {
+  AttendanceDto,
+  WorkingHourSummary,
+  AttendanceRequestDto,
+  AttendanceCorrectionDto,
+} from '@/types'
 
 const mockWorkingHours: WorkingHourSummary[] = [
   {
@@ -30,8 +35,56 @@ const mockAttendance: AttendanceDto[] = [
   },
 ]
 
+const mockRequests: AttendanceRequestDto[] = [
+  {
+    id: 'req-1',
+    assignmentId: 'assign-1',
+    type: 'CHECK_IN',
+    requestedAt: '2026-11-10T08:00:00Z',
+    status: 'Pending',
+    note: 'Đến đúng giờ ca sáng',
+    version: 1,
+  },
+]
+
+const mockCorrections: AttendanceCorrectionDto[] = [
+  {
+    id: 'corr-1',
+    attendanceId: 'att-1',
+    requestedBy: 'vol-1',
+    originalCheckInAt: '2026-11-09T08:00:00Z',
+    originalCheckOutAt: '2026-11-09T10:00:00Z',
+    requestedCheckInAt: '2026-11-09T08:00:00Z',
+    requestedCheckOutAt: '2026-11-09T12:00:00Z',
+    reason: 'Quên bấm check-out lúc 12h',
+    status: 'Pending',
+    createdAt: '2026-11-09T13:00:00Z',
+    version: 1,
+  },
+]
+
+const mockOpenSessions: AttendanceDto[] = [
+  {
+    id: 'open-att-1',
+    assignmentId: 'assign-2',
+    checkInAt: '2026-11-09T07:00:00Z',
+    checkOutAt: null,
+    approvedMinutes: 0,
+    status: 'OPEN',
+    version: 1,
+  },
+]
+
 let currentMockHours: WorkingHourSummary[] = mockWorkingHours
 let currentMockAttendance: AttendanceDto[] = mockAttendance
+let currentMockRequests: AttendanceRequestDto[] = mockRequests
+let currentMockCorrections: AttendanceCorrectionDto[] = mockCorrections
+let currentMockOpenSessions: AttendanceDto[] = mockOpenSessions
+
+const mockApproveRequest = vi.fn().mockResolvedValue({})
+const mockRejectRequest = vi.fn().mockResolvedValue({})
+const mockApproveCorrection = vi.fn().mockResolvedValue({})
+const mockRejectCorrection = vi.fn().mockResolvedValue({})
 
 vi.mock('@/lib/csv', () => ({
   exportCsv: vi.fn(),
@@ -72,11 +125,45 @@ vi.mock('../api', () => ({
     isPending: false,
     error: null,
   }),
+  useAttendanceRequests: () => ({
+    data: currentMockRequests,
+    isPending: false,
+    error: null,
+  }),
+  useApproveAttendanceRequest: () => ({
+    mutateAsync: mockApproveRequest,
+    isPending: false,
+  }),
+  useRejectAttendanceRequest: () => ({
+    mutateAsync: mockRejectRequest,
+    isPending: false,
+  }),
+  useAttendanceCorrections: () => ({
+    data: currentMockCorrections,
+    isPending: false,
+    error: null,
+  }),
+  useApproveAttendanceCorrection: () => ({
+    mutateAsync: mockApproveCorrection,
+    isPending: false,
+  }),
+  useRejectAttendanceCorrection: () => ({
+    mutateAsync: mockRejectCorrection,
+    isPending: false,
+  }),
+  useOpenAttendanceSessions: () => ({
+    data: currentMockOpenSessions,
+    isPending: false,
+    error: null,
+  }),
 }))
 
 beforeEach(() => {
   currentMockHours = mockWorkingHours
   currentMockAttendance = mockAttendance
+  currentMockRequests = mockRequests
+  currentMockCorrections = mockCorrections
+  currentMockOpenSessions = mockOpenSessions
   vi.clearAllMocks()
 })
 
@@ -89,7 +176,6 @@ test('hiển thị tiêu đề, 4 StatCards và bảng tổng hợp giờ công 
   expect(screen.getByText('Tổng số phút')).toBeDefined()
   expect(screen.getByText('Trung bình giờ/người')).toBeDefined()
 
-  // Kiểm tra tên tình nguyện viên trong bảng
   expect(screen.getByText('Gioan Baotixita Nguyen')).toBeDefined()
   expect(screen.getByText('Maria Tran Thi Mai')).toBeDefined()
   expect(screen.getByText('4.00 giờ')).toBeDefined()
@@ -115,6 +201,68 @@ test('chuyển đổi qua tab Điểm danh cá nhân và hiển thị dữ liệ
 
   expect(screen.getByText('Mã phiên')).toBeDefined()
   expect(screen.getByText('240 phút')).toBeDefined()
+})
+
+test('chuyển qua tab Chờ duyệt: hiển thị cảnh báo ca mở quá 12h, danh sách yêu cầu và chỉnh sửa', async () => {
+  const user = userEvent.setup()
+  render(<TimesheetPage />)
+
+  const approvalsTab = screen.getByRole('button', { name: /Chờ duyệt/i })
+  await user.click(approvalsTab)
+
+  expect(screen.getByText(/hơn 12 giờ/i)).toBeDefined()
+  expect(screen.getByText('Yêu cầu chấm công')).toBeDefined()
+  expect(screen.getByText('Yêu cầu điều chỉnh công')).toBeDefined()
+  expect(screen.getByText('Đến đúng giờ ca sáng')).toBeDefined()
+  expect(screen.getByText('Quên bấm check-out lúc 12h')).toBeDefined()
+})
+
+test('bấm Duyệt yêu cầu chấm công → mở dialog xác nhận và gửi mutation thành công', async () => {
+  const user = userEvent.setup()
+  render(<TimesheetPage />)
+
+  const approvalsTab = screen.getByRole('button', { name: /Chờ duyệt/i })
+  await user.click(approvalsTab)
+
+  const approveBtns = screen.getAllByRole('button', { name: /^Duyệt$/i })
+  await user.click(approveBtns[0])
+
+  expect(screen.getByText('Xác nhận phê duyệt')).toBeDefined()
+
+  const noteInput = screen.getByPlaceholderText(/Ghi chú duyệt/i)
+  fireEvent.change(noteInput, { target: { value: 'Duyệt ca chuẩn' } })
+
+  const confirmBtn = screen.getByTestId('review-confirm-btn')
+  await user.click(confirmBtn)
+
+  expect(mockApproveRequest).toHaveBeenCalledWith({
+    id: 'req-1',
+    version: 1,
+    reviewNote: 'Duyệt ca chuẩn',
+  })
+})
+
+test('bấm Từ chối yêu cầu sửa công → mở dialog xác nhận và gửi mutation reject', async () => {
+  const user = userEvent.setup()
+  render(<TimesheetPage />)
+
+  const approvalsTab = screen.getByRole('button', { name: /Chờ duyệt/i })
+  await user.click(approvalsTab)
+
+  const rejectBtns = screen.getAllByRole('button', { name: /^Từ chối$/i })
+  // Nút reject thứ 2 là của bảng correction
+  await user.click(rejectBtns[1])
+
+  expect(screen.getByText('Xác nhận từ chối')).toBeDefined()
+
+  const confirmBtn = screen.getByTestId('review-confirm-btn')
+  await user.click(confirmBtn)
+
+  expect(mockRejectCorrection).toHaveBeenCalledWith({
+    id: 'corr-1',
+    version: 1,
+    reviewNote: undefined,
+  })
 })
 
 test('xuất CSV khi bấm nút Xuất CSV', () => {

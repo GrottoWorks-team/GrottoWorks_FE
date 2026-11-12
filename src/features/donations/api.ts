@@ -1,7 +1,14 @@
 // Donations domain — DonationDto & DonorDto (Resource Service /api/v1/donations)
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Donation, DonationType, DonationStatus, ContributionNeedDto } from '@/types'
+import type {
+  Donation,
+  DonationType,
+  DonationStatus,
+  ContributionNeedDto,
+  UpdateDonorRequest,
+  RecordDonationReceiptRequest,
+} from '@/types'
 
 export interface DonationFilterParams {
   page?: number
@@ -171,5 +178,69 @@ export function useContributionNeeds(
     queryKey: ['contribution-needs', seasonId, filter],
     queryFn: () => getContributionNeeds(seasonId!, filter),
     enabled: Boolean(seasonId),
+  })
+}
+
+// ══════ [fe-api-gap-2] Cập nhật Donor & Ghi nhận Receipt (Đợt I) ══════
+
+/** Cập nhật thông tin nhà hảo tâm (PATCH /api/v1/donors/{id}) */
+export async function updateDonor(
+  donorId: string,
+  payload: UpdateDonorRequest,
+  version?: number,
+): Promise<DonorDto> {
+  const headers: Record<string, string> = {}
+  if (version !== undefined) {
+    headers['If-Match'] = `"${version}"`
+  }
+  return api<DonorDto>(`/api/v1/donors/${donorId}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(payload),
+  })
+}
+
+/** Ghi nhận tiếp nhận thực tế cho cam kết quyên góp (POST /api/v1/donations/{id}/receipts) */
+export async function recordDonationReceipt(
+  donationId: string,
+  payload: RecordDonationReceiptRequest,
+): Promise<void> {
+  await api(`/api/v1/donations/${donationId}/receipts`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function useUpdateDonor() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      donorId,
+      payload,
+      version,
+    }: {
+      donorId: string
+      payload: UpdateDonorRequest
+      version?: number
+    }) => updateDonor(donorId, payload, version),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: donorKeys.all })
+    },
+  })
+}
+
+export function useRecordDonationReceipt() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      donationId,
+      payload,
+    }: {
+      donationId: string
+      payload: RecordDonationReceiptRequest
+    }) => recordDonationReceipt(donationId, payload),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: donationKeys.all })
+    },
   })
 }

@@ -32,6 +32,8 @@ import {
   useRenameSkill,
   useUpdateWorkAreaCategory,
   useWorkAreaCategories,
+  useContributionTypes,
+  useUpdateContributionType,
 } from '../api'
 import type { WorkArea } from '@/types'
 import { errorMessage } from '@/lib/errorMessage'
@@ -315,6 +317,18 @@ export default function CategoriesPage() {
     }
   }
 
+  const { data: contributionTypes = [] } = useContributionTypes()
+  const updateContributionTypeMutation = useUpdateContributionType()
+
+  const renameContributionType = async (id: string, name: string) => {
+    try {
+      await updateContributionTypeMutation.mutateAsync({ id, payload: { name } })
+      toast(t('features.parish.updated', { name }))
+    } catch (e) {
+      toast(e instanceof Error ? e.message : errorMessage(e), 'alert')
+    }
+  }
+
   return (
     <div>
       <PageHeader title={t('features.parish.categoriesTitle')} sub={t('features.parish.categoriesSub')} />
@@ -411,14 +425,24 @@ export default function CategoriesPage() {
           <>
             <p className="lbl-mono mb-2">{t('features.parish.catHint.donationKind')}</p>
             <ul>
-              {DONATION_KINDS.map((x) => (
-                <CategoryRow
-                  key={x}
-                  name={t(`features.donations.kind.${x}`)}
-                  refCount={donations.filter((d) => (x === 'MATERIAL' ? (d.type === 'MATERIAL' || !!d.materialId) : (d.type === 'MONEY' || !!d.monetary))).length}
-                  refLabel={t('features.parish.refUses')}
-                />
-              ))}
+              {contributionTypes.length > 0
+                ? contributionTypes.map((ct) => (
+                    <CategoryRow
+                      key={ct.id}
+                      name={ct.name}
+                      refCount={donations.filter((d) => (ct.code === 'MATERIAL' ? (d.type === 'MATERIAL' || !!d.materialId) : (d.type === 'MONEY' || !!d.monetary))).length}
+                      refLabel={t('features.parish.refUses')}
+                      onRename={(next) => void renameContributionType(ct.id, next)}
+                    />
+                  ))
+                : DONATION_KINDS.map((x) => (
+                    <CategoryRow
+                      key={x}
+                      name={t(`features.donations.kind.${x}`)}
+                      refCount={donations.filter((d) => (x === 'MATERIAL' ? (d.type === 'MATERIAL' || !!d.materialId) : (d.type === 'MONEY' || !!d.monetary))).length}
+                      refLabel={t('features.parish.refUses')}
+                    />
+                  ))}
             </ul>
           </>
         )}

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { useArea } from '../api'
-import { Calendar, Layers, ShieldCheck, Info, Package } from 'lucide-react'
+import { useWorkAreaProgress } from '../progressApi'
+import { Calendar, Layers, ShieldCheck, Info, Package, TrendingUp } from 'lucide-react'
 import { AreaMaterialsTab } from './AreaMaterialsTab'
 
 interface AreaDetailDialogProps {
@@ -14,10 +15,17 @@ interface AreaDetailDialogProps {
   onClose: () => void
 }
 
-export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProps) {
+export function AreaDetailDialog(props: AreaDetailDialogProps) {
+  if (!props.open) return null
+  return <AreaDetailDialogContent {...props} />
+}
+
+function AreaDetailDialogContent({ areaId, open, onClose }: AreaDetailDialogProps) {
   const { t } = useTranslation()
   const { data: area, isPending } = useArea(areaId ?? undefined)
-  const [activeTab, setActiveTab] = useState<'info' | 'materials'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'materials' | 'progress'>('info')
+
+  const { data: progressData } = useWorkAreaProgress(areaId ?? undefined)
 
   if (!open) return null
 
@@ -58,10 +66,53 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
           <Package className="size-4" />
           <span>{t('features.requirements.tabTitle', { defaultValue: 'Nhu cầu vật tư' })}</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('progress')}
+          className={`flex items-center gap-2 px-4 py-2 border-b-2 text-sm font-semibold transition-colors ${
+            activeTab === 'progress'
+              ? 'border-brand-pine text-brand-pine'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+          data-testid="area-progress-tab"
+        >
+          <TrendingUp className="size-4" />
+          <span>Tiến độ & Sẵn sàng</span>
+        </button>
       </div>
 
       {activeTab === 'materials' && areaId ? (
         <AreaMaterialsTab workAreaId={areaId} />
+      ) : activeTab === 'progress' ? (
+        <div className="space-y-4 py-2" data-testid="area-progress-content">
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-foreground">Tiến độ thi công khu vực</span>
+              <Badge className="font-mono text-sm font-extrabold text-brand-pine">
+                {progressData?.progressPercentage ?? area?.progress ?? 0}%
+              </Badge>
+            </div>
+
+            <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-brand-pine transition-all duration-300"
+                style={{ width: `${progressData?.progressPercentage ?? area?.progress ?? 0}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+              <span>
+                Nhiệm vụ hoàn thành: {progressData?.tasksCompleted ?? 0} / {progressData?.tasksTotal ?? 0} việc
+              </span>
+              <span>Cập nhật: {progressData?.updatedAt ? new Date(progressData.updatedAt).toLocaleDateString('vi-VN') : 'Mới nhất'}</span>
+            </div>
+
+            <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground flex items-center gap-2">
+              <TrendingUp className="size-4 shrink-0 text-brand-pine" />
+              <span>Tiến độ khu vực được máy chủ Backend tính tự động dựa trên tỷ lệ nhiệm vụ hoàn thành.</span>
+            </div>
+          </div>
+        </div>
       ) : isPending ? (
         <p className="lbl-mono py-8 text-center">{t('common.loading')}</p>
       ) : !area ? (

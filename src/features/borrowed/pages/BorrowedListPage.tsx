@@ -7,6 +7,8 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
@@ -15,21 +17,54 @@ import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog } from '@/components/ui/dialog'
+import { useToast } from '@/components/ui/toast'
+import { useBorrowedItems, useRecordBorrowedIncident } from '../api'
+import type { BorrowedItem, BorrowedItemStatus } from '@/types'
+
 function formatDate(dateStr?: string | null) {
   if (!dateStr) return '—'
   return dateStr.slice(0, 10)
 }
-import { useBorrowedItems } from '../api'
-import type { BorrowedItem, BorrowedItemStatus } from '@/types'
 
 type FilterStatus = 'ALL' | BorrowedItemStatus | 'OVERDUE'
 
 export default function BorrowedListPage() {
   const { t } = useTranslation()
+  const toast = useToast()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('ALL')
 
   const { data: items = [] } = useBorrowedItems()
+  const recordIncidentMutation = useRecordBorrowedIncident()
+
+  const [incidentItem, setIncidentItem] = useState<BorrowedItem | null>(null)
+  const [incidentCondition, setIncidentCondition] = useState<'DAMAGED' | 'LOST'>('DAMAGED')
+  const [incidentQty, setIncidentQty] = useState<string>('1')
+  const [incidentDesc, setIncidentDesc] = useState<string>('')
+
+  const handleRecordIncident = async () => {
+    if (!incidentItem || !incidentDesc.trim()) {
+      toast('Vui lòng nhập mô tả sự cố', 'alert')
+      return
+    }
+    try {
+      await recordIncidentMutation.mutateAsync({
+        itemId: incidentItem.id,
+        payload: {
+          condition: incidentCondition,
+          quantity: Number(incidentQty) || 1,
+          description: incidentDesc.trim(),
+        },
+      })
+      toast('Đã ghi nhận sự cố đồ mượn thành công')
+      setIncidentItem(null)
+      setIncidentDesc('')
+    } catch {
+      toast('Lỗi ghi nhận sự cố', 'alert')
+    }
+  }
 
   // 4 Thẻ thống kê
   const stats = useMemo(() => {
@@ -153,6 +188,25 @@ export default function BorrowedListPage() {
         </span>
       ),
     },
+    {
+      key: 'actions',
+      header: '',
+      render: (row: BorrowedItem) => (
+        <div className="flex justify-end">
+          {(row.status === 'IN_USE' || row.status === 'ISSUED') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIncidentItem(row)}
+              data-testid={`report-incident-btn-${row.id}`}
+            >
+              <AlertCircle className="size-3.5 text-amber-600" />
+              <span>Báo sự cố</span>
+            </Button>
+          )}
+        </div>
+      ),
+    },
   ]
 
   const filterChips: { id: FilterStatus; label: string; count?: number }[] = [
@@ -252,6 +306,76 @@ export default function BorrowedListPage() {
           emptyText={t('features.borrowed.empty')}
         />
       </Card>
+
+      <Dialog
+        open={Boolean(incidentItem)}
+        onClose={() => setIncidentItem(null)}
+        title="Báo cáo sự cố đồ mượn"
+        size="sm"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIncidentItem(null)}>
+              Đóng
+            </Button>
+            <Button
+              onClick={handleRecordIncident}
+              disabled={recordIncidentMutation.isPending}
+              data-testid="confirm-incident-btn"
+            >
+              {recordIncidentMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+              Gửi báo cáo sự cố
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3 py-2 text-sm">
+          <p className="text-muted-foreground">
+            Báo cáo hỏng hóc hoặc mất mát cho vật phẩm{' '}
+            <strong className="text-foreground">{incidentItem?.itemName}</strong> (chủ sở hữu:{' '}
+            {incidentItem?.ownerName}).
+          </p>
+          <div>
+            <Label htmlFor="incident-condition" className="mb-1 block text-xs">
+              Tình trạng sự cố
+            </Label>
+            <select
+              id="incident-condition"
+              value={incidentCondition}
+              onChange={(e) => setIncidentCondition(e.target.value as 'DAMAGED' | 'LOST')}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-brand-pine"
+              data-testid="incident-condition-select"
+            >
+              <option value="DAMAGED">Hỏng hóc (Damaged)</option>
+              <option value="LOST">Thất lạc / Mất (Lost)</option>
+            </select>
+          </div>
+          <div>
+            <Label htmlFor="incident-qty" className="mb-1 block text-xs">
+              Số lượng ảnh hưởng
+            </Label>
+            <Input
+              id="incident-qty"
+              type="number"
+              min="1"
+              value={incidentQty}
+              onChange={(e) => setIncidentQty(e.target.value)}
+              data-testid="incident-qty-input"
+            />
+          </div>
+          <div>
+            <Label htmlFor="incident-desc" className="mb-1 block text-xs">
+              Mô tả chi tiết nguyên nhân sự cố
+            </Label>
+            <Input
+              id="incident-desc"
+              value={incidentDesc}
+              onChange={(e) => setIncidentDesc(e.target.value)}
+              placeholder="VD: Bị vỡ trong quá trình vận chuyển..."
+              data-testid="incident-desc-input"
+            />
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
 }
