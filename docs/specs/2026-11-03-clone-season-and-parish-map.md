@@ -174,6 +174,26 @@ CloneSeasonCommandHandler.HandleAsync
 với 7 khu vực. Chỉ dùng để demo, **không dùng production**: không nguyên tử, lỗi
 giữa đường để lại mùa thiếu khu vực/thiếu người phụ trách → không activate được.
 
+### 1.6. Trạng thái triển khai (12/11/2026)
+
+**Đã xong** (BE `ParishCoordination` + FE):
+
+- `POST /api/v1/seasons/{sourceSeasonId}/clone` — 1 request, 1 transaction
+  (season + N khu vực + outbox), trả `{ season, areas[], warnings[] }`.
+- Validate chép phân công bằng **một** `GET /internal/users?ids=` (`IIdentityUserBatchLookup`);
+  user nghỉ / sai role / khác giáo xứ → bỏ khỏi khu vực đó + trả
+  `warnings[]` (`WORK_AREA_LEADER_NOT_VERIFIED:{khu}`, `WORK_AREA_MATERIAL_OFFICER_NOT_VERIFIED:{khu}`).
+- `dateShift`: `NONE` (bỏ trống ngày khu vực) hoặc `SAME_DAY_OF_SEASON` (giữ offset, clamp trong mùa mới
+  để không sinh `WORK_AREA_DATE_OUT_OF_SEASON` về sau).
+- FE: nút **"Tạo mùa mới từ mùa cũ"** ở `SeasonListPage` → `CloneSeasonDialog`
+  (chọn mùa nguồn, tick khu vực, sửa tên/ngày/ngân sách, chọn kiểu dịch ngày, giữ/tắt phân công).
+  Hook `useCloneSeason()` seed `setQueryData` cho mùa mới + danh sách khu vực → **không GET lại**.
+- Đo thật: mùa 2026 (8 khu) clone → `201`, 8 khu, ngày dịch đúng, `warnings` rỗng.
+
+**Chưa làm**: `copyMapPins` (Tính năng B chưa lưu `map_pins` ở BE — hiện FE vẫn dùng
+`localStorage`/IndexedDB), và chặn double-submit bằng `clone_source_season_id`/`Idempotency-Key`
+(hiện dựa vào unique `name`/`seasonYear` + nút bị disable khi `isPending`).
+
 ---
 
 ## 2. Tính năng B — Bản đồ giáo xứ / khuôn viên nhà thờ

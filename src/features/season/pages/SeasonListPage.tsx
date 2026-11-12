@@ -4,7 +4,7 @@
 import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CalendarPlus, Pencil, LockKeyhole, Rocket, Calendar, Sparkles, Wallet, Clock, Archive } from 'lucide-react'
+import { CalendarPlus, Copy, Pencil, LockKeyhole, Rocket, Calendar, Sparkles, Wallet, Clock, Archive } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -17,6 +17,7 @@ import { useCommunities } from '@/features/communities/api'
 import { useAreas } from '@/features/areas/api'
 import { useSeasons, useCompleteSeason, useActivateSeason, useArchiveSeason } from '../api'
 import { SeasonFormDialog } from './SeasonFormDialog'
+import { CloneSeasonDialog } from './CloneSeasonDialog'
 import { SeasonActivateDialog, validateSeasonActivation } from './SeasonActivateDialog'
 import type { Season } from '@/types'
 import { useAuth } from '@/lib/auth'
@@ -38,6 +39,7 @@ export default function SeasonListPage() {
   const archiveSeason = useArchiveSeason()
 
   const [formOpen, setFormOpen] = useState(false)
+  const [cloneOpen, setCloneOpen] = useState(false)
   const [editing, setEditing] = useState<Season | null>(null)
   const [closing, setClosing] = useState<Season | null>(null)
   const [archiving, setArchiving] = useState<Season | null>(null)
@@ -244,15 +246,21 @@ export default function SeasonListPage() {
         sub={t('features.season.sub')}
         actions={
           canManage ? (
-            <Button
-              onClick={() => {
-                setEditing(null)
-                setFormOpen(true)
-              }}
-            >
-              <CalendarPlus className="size-4" />
-              {t('features.season.create')}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={() => setCloneOpen(true)}>
+                <Copy className="size-4" />
+                {t('features.season.cloneTitle')}
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditing(null)
+                  setFormOpen(true)
+                }}
+              >
+                <CalendarPlus className="size-4" />
+                {t('features.season.create')}
+              </Button>
+            </div>
           ) : undefined
         }
       />
@@ -301,6 +309,7 @@ export default function SeasonListPage() {
       {formOpen && (
         <SeasonFormDialog season={editing} onClose={() => setFormOpen(false)} />
       )}
+      {cloneOpen && <CloneSeasonDialog onClose={() => setCloneOpen(false)} />}
       <ConfirmDialog
         open={Boolean(closing)}
         title={t('features.season.closeTitle')}

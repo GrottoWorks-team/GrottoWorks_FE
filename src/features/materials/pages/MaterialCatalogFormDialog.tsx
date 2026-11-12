@@ -34,6 +34,16 @@ const schema = z.object({
   name: z.string().trim().min(1, 'features.materials.catalog.nameRequired').max(150, 'features.materials.catalog.nameMax'),
   unit: z.string().trim().min(1, 'features.materials.catalog.unitRequired').max(30, 'features.materials.catalog.unitMax'),
   description: z.string().max(2000, 'features.materials.catalog.descMax').optional(),
+  specification: z.string().max(300, 'features.materials.catalog.specMax').optional(),
+  supplierName: z.string().max(150, 'features.materials.catalog.supplierMax').optional(),
+  referenceUnitPrice: z
+    .string()
+    .optional()
+    .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), 'features.materials.catalog.priceInvalid'),
+  minimumStock: z
+    .string()
+    .optional()
+    .refine((v) => !v || (!Number.isNaN(Number(v)) && Number(v) >= 0), 'features.materials.catalog.stockInvalid'),
 })
 
 type FormData = z.infer<typeof schema>
@@ -91,6 +101,11 @@ export function MaterialCatalogFormDialog({
           name: material.name,
           unit: material.unit,
           description: material.description || '',
+          specification: material.specification || '',
+          supplierName: material.supplierName || '',
+          referenceUnitPrice:
+            material.referenceUnitPrice == null ? '' : String(material.referenceUnitPrice),
+          minimumStock: material.minimumStock == null ? '' : String(material.minimumStock),
         }
       : {
           categoryId: categories[0]?.id || '',
@@ -98,6 +113,10 @@ export function MaterialCatalogFormDialog({
           name: '',
           unit: '',
           description: '',
+          specification: '',
+          supplierName: '',
+          referenceUnitPrice: '',
+          minimumStock: '',
         },
   })
 
@@ -111,6 +130,10 @@ export function MaterialCatalogFormDialog({
           name: values.name,
           unit: isUnitLocked ? undefined : values.unit,
           description: values.description || null,
+          specification: values.specification || null,
+          supplierName: values.supplierName || null,
+          referenceUnitPrice: values.referenceUnitPrice ? Number(values.referenceUnitPrice) : null,
+          minimumStock: values.minimumStock ? Number(values.minimumStock) : null,
         })
         toast(t('features.materials.catalog.updated'))
       } else {
@@ -121,6 +144,10 @@ export function MaterialCatalogFormDialog({
           name: values.name,
           unit: values.unit,
           description: values.description || null,
+          specification: values.specification || null,
+          supplierName: values.supplierName || null,
+          referenceUnitPrice: values.referenceUnitPrice ? Number(values.referenceUnitPrice) : null,
+          minimumStock: values.minimumStock ? Number(values.minimumStock) : null,
         })
         toast(t('features.materials.catalog.created'))
       }
@@ -226,6 +253,75 @@ export function MaterialCatalogFormDialog({
           {errors.description && (
             <p className="text-xs text-destructive mt-1">{t(errors.description.message || '')}</p>
           )}
+        </div>
+
+        {/* Chi tiết phục vụ mua hàng: thông số, nhà cung cấp, đơn giá tham khảo, tồn tối thiểu. */}
+        <div>
+          <Label htmlFor="mat-spec">{t('features.materials.catalog.specification')}</Label>
+          <Textarea
+            id="mat-spec"
+            {...register('specification')}
+            rows={2}
+            placeholder={t('features.materials.catalog.specificationPlaceholder')}
+            className="mt-1"
+          />
+          {errors.specification && (
+            <p className="text-xs text-destructive mt-1">{t(errors.specification.message || '')}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <Label htmlFor="mat-supplier">{t('features.materials.catalog.supplier')}</Label>
+            <Input
+              id="mat-supplier"
+              {...register('supplierName')}
+              placeholder={t('features.materials.catalog.supplierPlaceholder')}
+              className="mt-1"
+            />
+            {errors.supplierName && (
+              <p className="text-xs text-destructive mt-1">{t(errors.supplierName.message || '')}</p>
+            )}
+          </div>
+          <div>
+            <Label htmlFor="mat-price">{t('features.materials.catalog.referenceUnitPrice')}</Label>
+            <Input
+              id="mat-price"
+              type="number"
+              min={0}
+              step="1000"
+              {...register('referenceUnitPrice')}
+              placeholder="0"
+              className="mt-1 tabular"
+            />
+            {errors.referenceUnitPrice && (
+              <p className="text-xs text-destructive mt-1">
+                {t(errors.referenceUnitPrice.message || '')}
+              </p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('features.materials.catalog.referenceUnitPriceHelper')}
+            </p>
+          </div>
+        </div>
+
+        <div>
+          <Label htmlFor="mat-min-stock">{t('features.materials.catalog.minimumStock')}</Label>
+          <Input
+            id="mat-min-stock"
+            type="number"
+            min={0}
+            step="0.001"
+            {...register('minimumStock')}
+            placeholder="0"
+            className="mt-1 tabular"
+          />
+          {errors.minimumStock && (
+            <p className="text-xs text-destructive mt-1">{t(errors.minimumStock.message || '')}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-1">
+            {t('features.materials.catalog.minimumStockHelper')}
+          </p>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">

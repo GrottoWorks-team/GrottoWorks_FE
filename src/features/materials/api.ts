@@ -24,6 +24,14 @@ export interface MaterialCatalogItemDto {
   unit: string
   description: string | null
   status: 'ACTIVE' | 'INACTIVE'
+  /** Thông số kỹ thuật hiển thị cho người đi mua. */
+  specification?: string | null
+  /** Nhà cung cấp quen — text tự do. */
+  supplierName?: string | null
+  /** Đơn giá tham khảo (VND) theo đơn vị tính. */
+  referenceUnitPrice?: number | null
+  /** Mức tồn kho tối thiểu để gợi ý mua thêm. */
+  minimumStock?: number | null
 }
 
 export interface CreateMaterialCategoryPayload {
@@ -44,6 +52,10 @@ export interface CreateMaterialCatalogPayload {
   name: string
   unit: string
   description?: string | null
+  specification?: string | null
+  supplierName?: string | null
+  referenceUnitPrice?: number | null
+  minimumStock?: number | null
 }
 
 export interface UpdateMaterialCatalogPayload {
@@ -52,6 +64,10 @@ export interface UpdateMaterialCatalogPayload {
   unit?: string | null
   description?: string | null
   status?: 'ACTIVE' | 'INACTIVE'
+  specification?: string | null
+  supplierName?: string | null
+  referenceUnitPrice?: number | null
+  minimumStock?: number | null
 }
 
 export interface PagedResult<T> {

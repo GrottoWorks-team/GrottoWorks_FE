@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -7,7 +7,7 @@ import {
   LogOut, LayoutDashboard, Calendar, MapPin, Users, ShoppingCart, LifeBuoy,
   ListChecks, FileText, ClipboardList, ClipboardCheck, UserPlus, Inbox, Clock,
   Package, Gift, Backpack, Boxes, UserCog, Church, Tags, Star, History, Database,
-  MapPinned, Info, Bell,
+  MapPinned, Info, Bell, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
@@ -31,6 +31,9 @@ const ICONS: Record<string, LucideIcon> = {
   church: Church, tags: Tags, star: Star, history: History, backup: Database,
   assign: UserPlus, confirm: ClipboardCheck, map: MapPinned, bell: Bell,
 }
+
+/** Khoá localStorage cho trạng thái thu gọn sidebar (yêu cầu UI 05/11/2026). */
+const SIDEBAR_KEY = 'grotto-sidebar-collapsed'
 
 export function AppShell({ role }: { role?: Role }) {
   const { user, logout } = useAuth()
@@ -83,25 +86,57 @@ export function AppShell({ role }: { role?: Role }) {
   const flat = groups.flatMap((g) => g.items)
   const delayOf = (to: string) => Math.min(flat.findIndex((i) => i.to === to), 14)
 
+  // Sidebar thu gọn: nhớ lựa chọn giữa các lần mở (yêu cầu UI 05/11/2026).
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const toggleSidebar = () => {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(SIDEBAR_KEY, next ? '1' : '0')
+      } catch {
+        // Chế độ riêng tư / quota đầy — chỉ mất phần nhớ trạng thái.
+      }
+      return next
+    })
+  }
+
   return (
     <SeasonProvider scoped={showSeasonPicker}>
       <div className="flex h-screen overflow-hidden">
-      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
-        <div className="flex items-center gap-3 border-b border-border px-5 py-5">
+      <aside
+        className={cn(
+          'flex shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
+          collapsed ? 'w-[76px]' : 'w-64',
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-3 border-b border-border py-5',
+            collapsed ? 'justify-center px-0' : 'px-5',
+          )}
+        >
           <div className="grid size-11 shrink-0 place-items-center rounded-card bg-primary text-lg font-extrabold text-primary-foreground">
             G
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-base font-extrabold leading-tight tracking-tight text-foreground">
-              {t('app.name')}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">{t('app.parish')}</p>
-          </div>
+          {!collapsed && (
+            <div className="min-w-0">
+              <p className="truncate text-base font-extrabold leading-tight tracking-tight text-foreground">
+                {t('app.name')}
+              </p>
+              <p className="truncate text-xs text-muted-foreground">{t('app.parish')}</p>
+            </div>
+          )}
         </div>
-        <nav className="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+        <nav className={cn('flex-1 space-y-5 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
           {groups.map((g) => (
             <div key={g.section || 'main'}>
-              {g.section && (
+              {g.section && !collapsed && (
                 <p className="lbl-mono !mb-1.5 !px-3">{t(g.section)}</p>
               )}
               <div className="space-y-1">
@@ -113,10 +148,12 @@ export function AppShell({ role }: { role?: Role }) {
                       key={item.to}
                       to={item.to}
                       end={item.to === homePath}
+                      title={t(item.label)}
                       style={{ '--d': delayOf(item.to) } as CSSProperties}
                       className={({ isActive }) =>
                         cn(
-                          'g-item flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-semibold transition-colors',
+                          'g-item relative flex items-center gap-2.5 rounded-md py-2 text-sm font-semibold transition-colors',
+                          collapsed ? 'justify-center px-0' : 'px-3',
                           isActive
                             ? 'bg-primary text-primary-foreground shadow-card'
                             : 'text-muted-foreground hover:bg-background hover:text-foreground',
@@ -124,12 +161,18 @@ export function AppShell({ role }: { role?: Role }) {
                       }
                     >
                       {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
-                      <span className="flex-1 truncate">{t(item.label)}</span>
-                      {n > 0 && (
-                        <span className="rounded-full bg-brand-gold px-1.5 py-0.5 text-[10px] font-bold text-foreground">
-                          {n}
-                        </span>
-                      )}
+                      {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
+                      {n > 0 &&
+                        (collapsed ? (
+                          <span
+                            aria-hidden
+                            className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand-gold"
+                          />
+                        ) : (
+                          <span className="rounded-full bg-brand-gold px-1.5 py-0.5 text-[10px] font-bold text-foreground">
+                            {n}
+                          </span>
+                        ))}
                     </NavLink>
                   )
                 })}
@@ -138,17 +181,43 @@ export function AppShell({ role }: { role?: Role }) {
           ))}
         </nav>
 
-        {/* Ghi chú cuối sidebar: mục đích của role đang đăng nhập. */}
-        <div className="shrink-0 border-t border-border p-3">
-          <div className="rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2.5">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-pine">
-              <Info className="size-3.5 shrink-0" aria-hidden />
-              <span className="truncate">{t(`role.${r}`)}</span>
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-brand-pine/80">
-              {t(`shell.roleNote.${r}`)}
-            </p>
+        {/* Ghi chú cuối sidebar: mục đích của role đang đăng nhập (ẩn khi thu gọn). */}
+        {!collapsed && (
+          <div className="shrink-0 border-t border-border p-3">
+            <div className="rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2.5">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-pine">
+                <Info className="size-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{t(`role.${r}`)}</span>
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-brand-pine/80">
+                {t(`shell.roleNote.${r}`)}
+              </p>
+            </div>
           </div>
+        )}
+
+        {/* Thu gọn / mở rộng sidebar — nhớ lựa chọn ở localStorage. */}
+        <div className="shrink-0 border-t border-border p-2">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+            title={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-md py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-background hover:text-foreground',
+              collapsed ? 'justify-center px-0' : 'px-3',
+            )}
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="size-4 shrink-0" aria-hidden />
+            ) : (
+              <>
+                <PanelLeftClose className="size-4 shrink-0" aria-hidden />
+                <span className="truncate">{t('shell.collapseSidebar')}</span>
+              </>
+            )}
+          </button>
         </div>
       </aside>
 

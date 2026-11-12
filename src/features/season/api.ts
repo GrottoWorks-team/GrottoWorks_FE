@@ -5,8 +5,8 @@
 //   POST   /api/v1/seasons/{id}/complete | /archive
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { CreateSeasonRequest, SeasonDto } from '@/types/parish'
-import { toSeason } from '@/features/parish/mappers'
+import type { CreateSeasonRequest, SeasonDto, WorkAreaDto } from '@/types/parish'
+import { toSeason, toWorkArea } from '@/features/parish/mappers'
 
 export const seasonKeys = {
   all: ['seasons'] as const,
@@ -73,6 +73,72 @@ export function useCreateSeason() {
   return useSeasonMutation((data: CreateSeasonRequest) =>
     api<SeasonDto>('/api/v1/seasons', { method: 'POST', body: JSON.stringify(data) }),
   )
+}
+
+export interface CloneSeasonAreaInput {
+  sourceWorkAreaId: string
+  /** Đổi tên khu vực khi tạo mới; bỏ trống = giữ tên mùa cũ. */
+  name?: string
+}
+
+export interface CloneSeasonInput {
+  sourceSeasonId: string
+  name: string
+  year: number
+  startDate: string
+  endDate: string
+  budget?: number | null
+  description?: string | null
+  /** NONE = để trống ngày khu vực; SAME_DAY_OF_SEASON = giữ đúng vị trí tương đối. */
+  dateShift: 'NONE' | 'SAME_DAY_OF_SEASON'
+  copyAssignments: boolean
+  /** null/rỗng = copy tất cả khu vực của mùa nguồn. */
+  areas?: CloneSeasonAreaInput[] | null
+}
+
+export interface CloneSeasonResponse {
+  season: SeasonDto
+  areas: WorkAreaDto[]
+  warnings: string[]
+}
+
+/**
+ * POST /api/v1/seasons/{sourceSeasonId}/clone — 1 request, 1 transaction ở BE:
+ * tạo mùa + toàn bộ khu vực (ngày dịch theo mùa mới, phân công đã được validate).
+ * Response trả sẵn `areas[]` nên FE seed cache, KHÔNG GET lại.
+ */
+export function useCloneSeason() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ sourceSeasonId, ...data }: CloneSeasonInput) =>
+      api<CloneSeasonResponse>(`/api/v1/seasons/${sourceSeasonId}/clone`, {
+        method: 'POST',
+        body: JSON.stringify({
+          name: data.name,
+          seasonYear: data.year,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          description: data.description ?? null,
+          estimatedBudget: data.budget ?? null,
+          dateShift: data.dateShift,
+          copyAssignments: data.copyAssignments,
+          areas: data.areas?.length
+            ? data.areas.map((area) => ({
+                sourceWorkAreaId: area.sourceWorkAreaId,
+                name: area.name || null,
+              }))
+            : null,
+        }),
+      }),
+    onSuccess: (result) => {
+      const season = toSeason(result.season)
+      qc.setQueryData(seasonKeys.detail(season.id), season)
+      // Cùng key với `areaKeys.bySeason` bên features/areas (import vòng nên không dùng hằng số).
+      qc.setQueryData(['areas', season.id], result.areas.map(toWorkArea))
+      qc.invalidateQueries({ queryKey: seasonKeys.all })
+      qc.invalidateQueries({ queryKey: ['areas'] })
+    },
+  })
 }
 
 /** PATCH /api/v1/seasons/{id} — chỉ mùa PLANNING mới sửa được (BE trả 409). */

@@ -95,6 +95,10 @@ export default function MaterialListPage() {
         [t('features.materials.catalog.name')]: m.name,
         [t('features.materials.catalog.category')]: categoryNameMap.get(m.categoryId) || '—',
         [t('features.materials.catalog.unitFullName')]: m.unit,
+        [t('features.materials.catalog.specification')]: m.specification || '',
+        [t('features.materials.catalog.supplier')]: m.supplierName || '',
+        [t('features.materials.catalog.referenceUnitPrice')]: m.referenceUnitPrice ?? '',
+        [t('features.materials.catalog.minimumStock')]: m.minimumStock ?? '',
         [t('features.materials.catalog.desc')]: m.description || '',
         [t('common.status')]: m.status === 'ACTIVE' ? t('features.materials.catalog.statusActive') : t('features.materials.catalog.statusInactive'),
       })),
@@ -212,6 +216,8 @@ export default function MaterialListPage() {
                   <th className="px-4 py-3">{t('features.materials.catalog.name')}</th>
                   <th className="px-4 py-3">{t('features.materials.catalog.category')}</th>
                   <th className="px-4 py-3 text-center">{t('features.materials.catalog.unit')}</th>
+                  <th className="px-4 py-3 text-right">{t('features.materials.catalog.referenceUnitPrice')}</th>
+                  <th className="px-4 py-3">{t('features.materials.catalog.supplier')}</th>
                   <th className="px-4 py-3">{t('common.status')}</th>
                   <th className="px-4 py-3 text-right">{t('common.actions')}</th>
                 </tr>
@@ -224,6 +230,11 @@ export default function MaterialListPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-foreground">{m.name}</div>
+                      {m.specification && (
+                        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                          {m.specification}
+                        </div>
+                      )}
                       {m.description && (
                         <div className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                           {m.description}
@@ -239,6 +250,19 @@ export default function MaterialListPage() {
                       <span className="rounded bg-muted/80 px-2 py-0.5 text-xs font-medium text-foreground">
                         {m.unit}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-right tabular text-xs text-foreground">
+                      {m.referenceUnitPrice == null
+                        ? '—'
+                        : `${m.referenceUnitPrice.toLocaleString('vi-VN')} ₫`}
+                      {m.minimumStock != null && (
+                        <div className="text-[11px] text-muted-foreground">
+                          {t('features.materials.catalog.minimumStockShort', { value: m.minimumStock })}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">
+                      {m.supplierName || '—'}
                     </td>
                     <td className="px-4 py-3">
                       {m.status === 'ACTIVE' ? (
