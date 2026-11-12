@@ -684,6 +684,7 @@
   "features.support.positionRequired": "Enter the position name",
   "features.support.noRequirement": "This area has no active material requirement.",
   "features.support.planningHint": "The request is created in PLANNING status.",
+  "features.support.invalidForm": "Please fix the highlighted fields before saving.",
   "features.support.apiMissing": "The backend has no publish/respond/approve-member/material-transfer API yet — only create and view are available.",
   "features.support.publish": "Publish request",
   "features.support.published": "Support request published",

@@ -1,8 +1,9 @@
 // Dialog tạo yêu cầu hỗ trợ: khu đang thiếu + loại (STAFFING/MATERIAL/MIXED),
 // danh sách vị trí (headcount) và/hoặc dòng vật tư. BE chưa có publish nên
 // yêu cầu được tạo ở PLANNING.
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
+import type { FieldErrors } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
@@ -57,6 +58,8 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
     [scopedAreas, user],
   )
   const create = useCreateSupportRequest()
+  // Lỗi hiển thị ngay trong dialog (toast có thể bị lớp modal che).
+  const [formError, setFormError] = useState<string | null>(null)
 
   const {
     register,
@@ -71,7 +74,10 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
       supportType: 'STAFFING',
       description: '',
       deadline: '',
-      positions: [{ name: '', requiredVolunteerCount: 1, note: '', taskId: '' }],
+      // 13/11/2026: KHÔNG tạo sẵn dòng vị trí. Trước đây dòng mặc định `name: ''` vẫn bị zod
+      // validate kể cả khi loại hỗ trợ = Vật tư (khối Vị trí bị ẩn) → bấm Lưu không gửi gì
+      // mà cũng không hiện lỗi. Dòng chỉ được thêm khi loại hỗ trợ cần vị trí.
+      positions: [],
       materials: [],
     },
   })
@@ -86,17 +92,31 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
   const { data: requirements = [] } = useWorkAreaRequirements(areaId || undefined, 'ACTIVE')
   // BE bắt buộc mỗi vị trí phải gắn task trước khi công bố (SUPPORT_POSITION_TASK_REQUIRED).
   const { data: tasks = [] } = useTasks(areaId || undefined)
+  // Giữ danh sách vị trí khớp với loại hỗ trợ đang chọn: cần vị trí → luôn có sẵn 1 dòng để nhập,
+  // không cần → xoá hết (nếu để lại dòng rỗng thì zod chặn submit mà không hiển thị lỗi).
+  useEffect(() => {
+    if (needsPositions && positions.fields.length === 0) {
+      positions.replace([{ name: '', requiredVolunteerCount: 1, note: '', taskId: '' }])
+    } else if (!needsPositions && positions.fields.length > 0) {
+      positions.replace([])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ đồng bộ khi loại hỗ trợ đổi
+  }, [needsPositions])
 
   const onSubmit = async (data: FormData) => {
+    setFormError(null)
     if (!area || !area.seasonId) {
+      setFormError(t('features.support.areaRequired'))
       toast(t('features.support.areaRequired'), 'alert')
       return
     }
     if (needsPositions && data.positions.length === 0) {
+      setFormError(t('features.support.positionRequired'))
       toast(t('features.support.positionRequired'), 'alert')
       return
     }
     if (needsMaterials && data.materials.length === 0) {
+      setFormError(t('features.support.materialRequired'))
       toast(t('features.support.materialRequired'), 'alert')
       return
     }
@@ -126,7 +146,23 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
       toast(t('features.support.created'))
       onClose()
     } catch {
+      // Hiện lỗi ngay trong dialog: toast có thể bị lớp modal che.
+      setFormError(t('common.error'))
       toast(t('common.error'), 'alert')
+    }
+  }
+
+  /**
+   * Zod chặn submit mà không gọi `onSubmit` → phải báo cho người dùng biết thay vì im lặng
+   * (lỗi của field nằm trong khối đã ẩn sẽ không render được).
+   */
+  const onInvalid = (formErrors: FieldErrors<FormData>) => {
+    setFormError(t('features.support.invalidForm'))
+    toast(t('features.support.invalidForm'), 'alert')
+    const first = Object.keys(formErrors)[0]
+    if (first) {
+      const element = document.querySelector<HTMLElement>(`[name^="${first}"]`)
+      element?.focus()
     }
   }
 
@@ -150,10 +186,15 @@ export function SupportFormDialog({ open, onClose }: { open: boolean; onClose: (
         </>
       }
     >
-      <form id="support-create-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      <form id="support-create-form" onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4" noValidate>
         <p className="rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
           {t('features.support.planningHint')}
         </p>
+        {formError && (
+          <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+            {formError}
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <Label htmlFor="support-area">{t('features.support.area')}</Label>

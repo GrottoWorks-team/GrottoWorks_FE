@@ -686,6 +686,8 @@
   "features.support.positionRequired": "Nhập tên vị trí",
   "features.support.noRequirement": "Khu vực chưa khai nhu cầu vật tư đang hiệu lực.",
   "features.support.planningHint": "Yêu cầu được tạo ở trạng thái Đang chuẩn bị (PLANNING).",
+  "features.support.invalidForm": "Vui lòng kiểm tra lại các trường được đánh dấu lỗi trước khi lưu.",
+  "features.support.invalidForm": "Vui lòng kiểm tra lại các trường được đánh dấu lỗi trước khi lưu.",
   "features.support.apiMissing": "BE chưa có API công bố/đăng ký/duyệt thành viên/chuyển vật tư — hiện chỉ tạo và xem yêu cầu.",
   "features.support.publish": "Công bố yêu cầu",
   "features.support.published": "Đã công bố yêu cầu hỗ trợ",
