@@ -136,15 +136,23 @@ Start-Service1 -Name 'identity' -RelDir 'Services\Identity\Identity.Api' -Port 5
 Start-Service1 -Name 'parish' -RelDir 'Services\ParishCoordination\ParishCoordination.Api' -Port 5178 -Vars @{
     'ConnectionStrings__ParishCoordinationDatabase' = ($conn -f 'parish_db')
     'IdentityClient__BaseAddress' = 'http://localhost:5180/'
+    'TaskExecutionClient__BaseAddress' = 'http://localhost:5184/'
 }
 Start-Service1 -Name 'resource' -RelDir 'Services\Resource\Resource.Api' -Port 5183 -Vars @{
     'ConnectionStrings__ResourceDatabase' = ($conn -f 'resource_db')
+    'IdentityClient__BaseAddress' = 'http://localhost:5180/'
+    'NotificationAuditClient__BaseAddress' = 'http://localhost:5187/'
 }
 Start-Service1 -Name 'task' -RelDir 'Services\TaskExecution\TaskExecution.Api' -Port 5184 -Vars @{
     'ConnectionStrings__TaskExecutionDatabase' = ($conn -f 'task_db')
+    'ResourceClient__BaseAddress' = 'http://localhost:5183/'
+    'IdentityClient__BaseAddress' = 'http://localhost:5180/'
+    'NotificationAuditClient__BaseAddress' = 'http://localhost:5187/'
 }
 Start-Service1 -Name 'readiness' -RelDir 'Services\Readiness\Readiness.Api' -Port 5185 -Vars @{
     'ConnectionStrings__ReadinessDatabase' = ($conn -f 'readiness_db')
+    'TaskExecutionClient__BaseAddress' = 'http://localhost:5184/'
+    'NotificationAuditClient__BaseAddress' = 'http://localhost:5187/'
 }
 Start-Service1 -Name 'reporting' -RelDir 'Services\Reporting\Reporting.Api' -Port 5186 -Vars @{
     'ConnectionStrings__ReportingDatabase' = ($conn -f 'reporting_db')
@@ -152,6 +160,8 @@ Start-Service1 -Name 'reporting' -RelDir 'Services\Reporting\Reporting.Api' -Por
 }
 Start-Service1 -Name 'notify' -RelDir 'Services\NotificationAudit\NotificationAudit.Api' -Port 5187 -Vars @{
     'ConnectionStrings__NotificationAuditDatabase' = ($conn -f 'notify_db')
+    'IdentityClient__BaseAddress' = 'http://localhost:5180/'
+    'ParishClient__BaseAddress' = 'http://localhost:5178/'
 }
 
 function Test-Port {
@@ -171,7 +181,7 @@ for ($i = 0; $i -lt 60; $i++) {
     }
     Start-Sleep -Seconds 2
 }
-if (-not $ready) { Write-Host '[be] cảnh báo: chưa đủ 7 service, xem log trong tmp\' -ForegroundColor Yellow }
+if (-not $ready) { Write-Host '[be] cảnh báo: chưa đủ 7 service, xem log trong tmp' -ForegroundColor Yellow }
 
 Start-Service1 -Name 'gateway' -RelDir 'ApiGateway\YarpApiGateway' -Port 5190 -Vars @{}
 
@@ -180,6 +190,7 @@ for ($i = 0; $i -lt 30; $i++) {
     Start-Sleep -Seconds 2
 }
 
-Write-Host "[be] xong. Log: $WorkDir\{identity,parish,resource,task,readiness,reporting,notify,gateway}.log"
-Write-Host "[be] Frontend: cd `"$FeDir`"; npm run dev   (đã có .env.local trỏ 5190)"
-Write-Host '[be] Nhấn Ctrl+C để dừng script (các service vẫn chạy nền).'
+Write-Host "[be] xong. Log: $WorkDir"
+Write-Host "[be] Frontend: cd '$FeDir'; npm run dev"
+Write-Host '[be] Running services in daemon mode...'
+while ($true) { Start-Sleep -Seconds 3600 }

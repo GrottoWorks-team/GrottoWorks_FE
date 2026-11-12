@@ -112,23 +112,33 @@ start_service identity Services/Identity/Identity.Api http://localhost:5180 \
 
 start_service parish Services/ParishCoordination/ParishCoordination.Api http://localhost:5178 \
   "ConnectionStrings__ParishCoordinationDatabase=Host=127.0.0.1;Port=$PGPORT;Database=parish_db;Username=postgres;Password=postgres" \
-  "IdentityClient__BaseAddress=http://localhost:5180/"
+  "IdentityClient__BaseAddress=http://localhost:5180/" \
+  "TaskExecutionClient__BaseAddress=http://localhost:5184/"
 
 start_service resource Services/Resource/Resource.Api http://localhost:5183 \
-  "ConnectionStrings__ResourceDatabase=Host=127.0.0.1;Port=$PGPORT;Database=resource_db;Username=postgres;Password=postgres"
+  "ConnectionStrings__ResourceDatabase=Host=127.0.0.1;Port=$PGPORT;Database=resource_db;Username=postgres;Password=postgres" \
+  "IdentityClient__BaseAddress=http://localhost:5180/" \
+  "NotificationAuditClient__BaseAddress=http://localhost:5187/"
 
 start_service task Services/TaskExecution/TaskExecution.Api http://localhost:5184 \
-  "ConnectionStrings__TaskExecutionDatabase=Host=127.0.0.1;Port=$PGPORT;Database=task_db;Username=postgres;Password=postgres"
+  "ConnectionStrings__TaskExecutionDatabase=Host=127.0.0.1;Port=$PGPORT;Database=task_db;Username=postgres;Password=postgres" \
+  "ResourceClient__BaseAddress=http://localhost:5183/" \
+  "IdentityClient__BaseAddress=http://localhost:5180/" \
+  "NotificationAuditClient__BaseAddress=http://localhost:5187/"
 
 start_service readiness Services/Readiness/Readiness.Api http://localhost:5185 \
-  "ConnectionStrings__ReadinessDatabase=Host=127.0.0.1;Port=$PGPORT;Database=readiness_db;Username=postgres;Password=postgres"
+  "ConnectionStrings__ReadinessDatabase=Host=127.0.0.1;Port=$PGPORT;Database=readiness_db;Username=postgres;Password=postgres" \
+  "TaskExecutionClient__BaseAddress=http://localhost:5184/" \
+  "NotificationAuditClient__BaseAddress=http://localhost:5187/"
 
 start_service reporting Services/Reporting/Reporting.Api http://localhost:5186 \
   "ConnectionStrings__ReportingDatabase=Host=127.0.0.1;Port=$PGPORT;Database=reporting_db;Username=postgres;Password=postgres" \
   "IdentityClient__BaseAddress=http://localhost:5180/"
 
 start_service notify Services/NotificationAudit/NotificationAudit.Api http://localhost:5187 \
-  "ConnectionStrings__NotificationAuditDatabase=Host=127.0.0.1;Port=$PGPORT;Database=notify_db;Username=postgres;Password=postgres"
+  "ConnectionStrings__NotificationAuditDatabase=Host=127.0.0.1;Port=$PGPORT;Database=notify_db;Username=postgres;Password=postgres" \
+  "IdentityClient__BaseAddress=http://localhost:5180/" \
+  "ParishClient__BaseAddress=http://localhost:5178/"
 
 echo "[be] đợi 7 service migrate + seed..."
 for _ in $(seq 1 60); do
