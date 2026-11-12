@@ -65,6 +65,16 @@ export default function TaskListPage() {
             <span className="font-semibold text-foreground hover:text-brand-pine transition-colors">
               {x.title}
             </span>
+            {/* Loại việc: chỉ hiện với việc đặc biệt (đi mua / khắc phục). */}
+            {x.taskType === 'PURCHASE' ? (
+              <span className="ml-2 inline-flex items-center rounded-full border border-brand-gold/40 bg-brand-gold/10 px-2 py-0.5 text-[11px] font-semibold text-foreground">
+                {t('features.tasks.typePurchase')}
+              </span>
+            ) : x.taskType === 'CORRECTIVE' ? (
+              <span className="ml-2 inline-flex items-center rounded-full border border-destructive/30 bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                {t('features.tasks.typeCorrective')}
+              </span>
+            ) : null}
           </div>
         ),
       },

@@ -187,6 +187,39 @@ export default function PurchaseDetailPage() {
                     d.setDate(d.getDate() + 7)
                     setPtDeadline(d.toISOString().slice(0, 10))
                   }
+                  // Prefill từ đơn mua để trưởng khu không phải gõ lại — TNV nhìn tên/mô tả
+                  // là biết cần mua gì (12/11/2026).
+                  if (!ptName.trim()) {
+                    setPtName(
+                      request.items.length === 1
+                        ? t('features.purchases.purchaseTaskNameSingle', {
+                            qty: request.items[0].requestedQuantity,
+                            unit: request.items[0].unit,
+                            material: request.items[0].materialName,
+                          })
+                        : t('features.purchases.purchaseTaskNameMany', {
+                            count: request.items.length,
+                            area: request.workAreaName,
+                          }),
+                    )
+                  }
+                  if (!ptDescription.trim()) {
+                    setPtDescription(
+                      [
+                        t('features.purchases.purchaseTaskDescIntro', {
+                          code: request.id.slice(0, 8),
+                          area: request.workAreaName,
+                        }),
+                        ...request.items.map((item) =>
+                          `- ${item.materialName}: ${item.requestedQuantity} ${item.unit}` +
+                          (item.estimatedCost
+                            ? ` (~${item.estimatedCost.toLocaleString('vi-VN')} đ)`
+                            : ''),
+                        ),
+                        t('features.purchases.purchaseTaskDescFooter'),
+                      ].join('\n'),
+                    )
+                  }
                   setPurchaseTaskOpen(true)
                 }}
               >
