@@ -67,13 +67,13 @@ export const adminKeys = {
 export { useCommunities } from '@/features/communities/api'
 
 export function useActivityLogs() {
-  return useQuery({
+  return useQuery<ActivityLog[]>({
     queryKey: adminKeys.activity,
     queryFn: async () => {
       try {
         const res = await api<any>('/api/v1/activity-logs')
         const items = Array.isArray(res) ? res : (res?.data || [])
-        return items.map((x: any) => ({
+        return items.map((x: any): ActivityLog => ({
           id: x.id,
           at: x.createdAt || x.timestamp || x.at || new Date().toISOString(),
           actor: x.actorUserId || x.actor || 'admin',

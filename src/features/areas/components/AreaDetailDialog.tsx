@@ -26,6 +26,11 @@ function AreaDetailDialogContent({ areaId, open, onClose }: AreaDetailDialogProp
   const [activeTab, setActiveTab] = useState<'info' | 'materials' | 'progress'>('info')
 
   const { data: progressData } = useWorkAreaProgress(areaId ?? undefined)
+  // BE trả số đếm thô (completedTasks/eligibleTasks), không trả phần trăm.
+  const progressPct =
+    progressData && progressData.eligibleTasks > 0
+      ? Math.round((progressData.completedTasks / progressData.eligibleTasks) * 100)
+      : (area?.progress ?? 0)
 
   if (!open) return null
 
@@ -89,22 +94,22 @@ function AreaDetailDialogContent({ areaId, open, onClose }: AreaDetailDialogProp
             <div className="flex items-center justify-between">
               <span className="text-sm font-bold text-foreground">Tiến độ thi công khu vực</span>
               <Badge className="font-mono text-sm font-extrabold text-brand-pine">
-                {progressData?.progressPercentage ?? area?.progress ?? 0}%
+                {progressPct}%
               </Badge>
             </div>
 
             <div className="h-3 w-full rounded-full bg-muted overflow-hidden">
               <div
                 className="h-full bg-brand-pine transition-all duration-300"
-                style={{ width: `${progressData?.progressPercentage ?? area?.progress ?? 0}%` }}
+                style={{ width: `${progressPct}%` }}
               />
             </div>
 
             <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
               <span>
-                Nhiệm vụ hoàn thành: {progressData?.tasksCompleted ?? 0} / {progressData?.tasksTotal ?? 0} việc
+                Nhiệm vụ hoàn thành: {progressData?.completedTasks ?? 0} / {progressData?.eligibleTasks ?? 0} việc
               </span>
-              <span>Cập nhật: {progressData?.updatedAt ? new Date(progressData.updatedAt).toLocaleDateString('vi-VN') : 'Mới nhất'}</span>
+              <span>Cập nhật: {progressData?.calculatedAt ? new Date(progressData.calculatedAt).toLocaleDateString('vi-VN') : 'Mới nhất'}</span>
             </div>
 
             <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground flex items-center gap-2">
