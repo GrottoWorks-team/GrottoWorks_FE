@@ -155,6 +155,8 @@
   "features.season.sub": "Mở, sửa và chốt mùa Giáng sinh hằng năm",
   "features.season.create": "Tạo mùa",
   "features.season.edit": "Sửa mùa",
+  "features.season.viewTitle": "Chi tiết mùa",
+  "features.season.editLocked": "Mùa đang ở trạng thái “{{status}}” nên không sửa được nữa. Chỉ mùa ở trạng thái “Đang chuẩn bị” (chưa kích hoạt) mới được chỉnh sửa.",
   "features.season.close": "Chốt mùa",
   "features.season.completeApiMissing": "BE chỉ cho chốt mùa khi mùa ở trạng thái READY nhưng chưa có API chuyển ACTIVE → READY — tạm khoá chức năng.",
   "features.season.name": "Tên mùa",

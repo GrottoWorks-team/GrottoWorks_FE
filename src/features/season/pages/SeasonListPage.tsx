@@ -180,17 +180,19 @@ export default function SeasonListPage({ embedded = false }: { embedded?: boolea
                       <Rocket className="size-4" />
                     </Button>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={t('common.edit')}
-                    onClick={() => {
-                      setEditing(s)
-                      setFormOpen(true)
-                    }}
-                  >
-                    <Pencil className="size-4" />
-                  </Button>
+                  {s.status === 'PLANNING' && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={t('common.edit')}
+                      onClick={() => {
+                        setEditing(s)
+                        setFormOpen(true)
+                      }}
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+                  )}
                   {s.status === 'COMPLETED' && (
                     <Button
                       variant="ghost"
@@ -313,6 +315,9 @@ export default function SeasonListPage({ embedded = false }: { embedded?: boolea
           pageSize={8}
           emptyText={t('features.season.empty')}
           onRowClick={(s) => {
+            // Chỉ mùa PLANNING mới sửa được (BE trả 409 SEASON_INVALID_STATE).
+            // Mùa đã kích hoạt / chốt / lưu trữ là chỉ-đọc nên không mở form.
+            if (!canManage || s.status !== 'PLANNING') return
             setEditing(s)
             setFormOpen(true)
           }}

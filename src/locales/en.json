@@ -155,6 +155,8 @@
   "features.season.sub": "Open, edit and close each Christmas season",
   "features.season.create": "Create season",
   "features.season.edit": "Edit season",
+  "features.season.viewTitle": "Season details",
+  "features.season.editLocked": "This season is “{{status}}”, so it can no longer be edited. Only seasons in “Planning” status (not activated yet) can be changed.",
   "features.season.close": "Close season",
   "features.season.completeApiMissing": "The backend only completes seasons in READY status and has no API to move ACTIVE → READY yet — disabled for now.",
   "features.season.name": "Season name",

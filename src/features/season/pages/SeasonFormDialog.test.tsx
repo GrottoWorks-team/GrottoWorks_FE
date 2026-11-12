@@ -43,6 +43,35 @@ const submit = () => {
 }
 
 describe('SeasonFormDialog validation', () => {
+  it('mùa đã kích hoạt là chỉ-đọc: không có form, không có nút Lưu', () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(
+      <QueryClientProvider client={client}>
+        <ToastProvider>
+          <SeasonFormDialog
+            onClose={() => {}}
+            season={{
+              id: 's1',
+              parishId: 'p1',
+              name: 'Mùa Giáng sinh 2026',
+              year: 2026,
+              startDate: '2026-10-01',
+              endDate: '2027-01-15',
+              status: 'ACTIVE',
+              budget: 1_200_000_000,
+            }}
+          />
+        </ToastProvider>
+      </QueryClientProvider>,
+    )
+
+    expect(screen.queryByLabelText('Tên mùa')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Lưu' })).toBeNull()
+    expect(screen.getByText(/không sửa được nữa/i)).toBeDefined()
+    // Dialog có nút X (Đóng) + nút footer "Đóng"; cả hai đều chỉ đóng, không lưu.
+    expect(screen.getAllByRole('button', { name: 'Đóng' }).length).toBeGreaterThan(0)
+  })
+
   it('end trước start → hiện lỗi "Ngày kết thúc phải sau ngày mở"', async () => {
     setup()
     setDate('Ngày mở', '2026-12-24')

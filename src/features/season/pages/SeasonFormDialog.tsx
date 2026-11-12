@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useCurrentParishId } from '@/features/parish/hooks'
+import { useParishes } from '@/features/parish/api'
+import { useAuth } from '@/lib/auth'
+import { viDate } from '@/lib/format'
 import { useCreateSeason, useSeason, useUpdateSeason } from '../api'
 import type { Season } from '@/types'
 
@@ -33,6 +36,9 @@ const schema = z
         .min(0, 'features.season.budgetInvalid'),
     ),
     description: z.string().max(500, 'common.required').optional(),
+    // ADMIN không thuộc giáo xứ nào → bắt buộc chọn giáo xứ khi tạo mùa
+    // (nếu để trống FE rơi về giáo xứ đầu tiên trong hệ thống).
+    parishId: z.string().optional(),
   })
   .refine((d) => !d.startDate || !d.endDate || d.startDate < d.endDate, {
     path: ['endDate'],
@@ -50,7 +56,11 @@ export function SeasonFormDialog({
 }) {
   const { t } = useTranslation()
   const toast = useToast()
+  const { user } = useAuth()
   const { parishId } = useCurrentParishId()
+  // Chỉ ADMIN cấp hệ thống (không có parishId) mới cần chọn giáo xứ.
+  const parishPicker = !user?.parishId
+  const { data: parishes = [] } = useParishes({ enabled: parishPicker })
   const create = useCreateSeason()
   const update = useUpdateSeason()
   // GET /api/v1/seasons/{id} — gọi endpoint chi tiết mùa từ backend khi mở modal
@@ -62,6 +72,8 @@ export function SeasonFormDialog({
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -73,6 +85,7 @@ export function SeasonFormDialog({
           endDate: activeSeason.endDate,
           budget: activeSeason.budget,
           description: activeSeason.description ?? '',
+          parishId: activeSeason.parishId ?? '',
         }
       : {
           name: '',
@@ -81,8 +94,11 @@ export function SeasonFormDialog({
           endDate: '',
           budget: 0,
           description: '',
+          parishId: user?.parishId ?? '',
         },
   })
+
+  const selectedParishId = watch('parishId')
 
   useEffect(() => {
     if (activeSeason) {
@@ -93,9 +109,17 @@ export function SeasonFormDialog({
         endDate: activeSeason.endDate,
         budget: activeSeason.budget,
         description: activeSeason.description ?? '',
+        parishId: activeSeason.parishId ?? '',
       })
     }
   }, [activeSeason, reset])
+
+  // ADMIN chưa chọn giáo xứ → mặc định giáo xứ đang thao tác (nếu có).
+  useEffect(() => {
+    if (parishPicker && !selectedParishId && parishId) {
+      setValue('parishId', parishId)
+    }
+  }, [parishPicker, selectedParishId, parishId, setValue])
 
   const err = (msg?: string) =>
     msg ? <p className="mt-1 text-xs font-semibold text-destructive">{t(msg)}</p> : null
@@ -115,8 +139,13 @@ export function SeasonFormDialog({
         })
         toast(t('features.season.updated', { year: data.year }))
       } else {
+        const targetParishId = user?.parishId ?? data.parishId
+        if (!targetParishId) {
+          toast(t('features.season.parishRequired'), 'alert')
+          return
+        }
         await create.mutateAsync({
-          parishId: parishId!,
+          parishId: targetParishId,
           name: data.name,
           seasonYear: data.year,
           startDate: data.startDate,
@@ -139,24 +168,100 @@ export function SeasonFormDialog({
     }
   }
 
+  // Chỉ mùa PLANNING mới sửa được (BE: 409 SEASON_INVALID_STATE); mùa đã kích hoạt,
+  // chờ nghiệm thu, hoàn thành hay lưu trữ → dialog chỉ để xem.
+  const status = activeSeason?.status
+  const editable = !editing || status === 'PLANNING'
+
   return (
     <Dialog
       open
       onClose={onClose}
       size="md"
-      title={editing ? t('features.season.edit') : t('features.season.create')}
+      title={
+        editing
+          ? editable
+            ? t('features.season.edit')
+            : t('features.season.viewTitle')
+          : t('features.season.create')
+      }
       footer={
         <>
           <Button variant="outline" onClick={onClose}>
-            {t('common.cancel')}
+            {t(editable ? 'common.cancel' : 'common.close')}
           </Button>
-          <Button type="submit" form="season-form" disabled={isSubmitting}>
-            {t('common.save')}
-          </Button>
+          {editable && (
+            <Button type="submit" form="season-form" disabled={isSubmitting}>
+              {t('common.save')}
+            </Button>
+          )}
         </>
       }
     >
-      <form id="season-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+      {!editable && activeSeason ? (
+        <div className="space-y-4">
+          <p className="rounded-card border border-amber-300/60 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            {t('features.season.editLocked', {
+              status: t(`status.${activeSeason.status}`),
+            })}
+          </p>
+          <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-xs text-muted-foreground">{t('features.season.name')}</dt>
+              <dd className="font-semibold text-foreground">{activeSeason.name}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{t('features.season.year')}</dt>
+              <dd className="tabular text-foreground">{activeSeason.year}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{t('features.season.startDate')}</dt>
+              <dd className="tabular text-foreground">{viDate(activeSeason.startDate)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{t('features.season.endDate')}</dt>
+              <dd className="tabular text-foreground">{viDate(activeSeason.endDate)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{t('features.season.budget')}</dt>
+              <dd className="tabular text-foreground">
+                {activeSeason.budget.toLocaleString('vi-VN')} ₫
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">{t('common.status')}</dt>
+              <dd className="text-foreground">{t(`status.${activeSeason.status}`)}</dd>
+            </div>
+            {activeSeason.description && (
+              <div className="sm:col-span-2">
+                <dt className="text-xs text-muted-foreground">
+                  {t('features.season.description')}
+                </dt>
+                <dd className="text-foreground">{activeSeason.description}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      ) : (
+        <form id="season-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
+        {parishPicker && (
+          <div>
+            <Label htmlFor="season-parish">{t('features.season.parish')}</Label>
+            <select
+              id="season-parish"
+              className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              {...register('parishId')}
+            >
+              <option value="">{t('features.season.parishPlaceholder')}</option>
+              {parishes.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div>
           <Label htmlFor="season-name">{t('features.season.name')}</Label>
           <Input id="season-name" {...register('name')} />
@@ -200,6 +305,7 @@ export function SeasonFormDialog({
           {err(errors.description?.message)}
         </div>
       </form>
+      )}
     </Dialog>
   )
 }
