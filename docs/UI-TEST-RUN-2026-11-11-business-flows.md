@@ -112,10 +112,10 @@ Gia đình bà Nguyễn Thị Bạch Tuyết — Tiền mặt — đã nhận 30
 
 ## 3. Phát hiện cần xử lý
 
-### 3.1. ⚠️ LEADER thấy đề nghị mua **ngoài phạm vi khu vực** (data scope) — cần sửa
-- **Hiện tượng:** leader `ngan.nguyen` (id `4c72bda6…`, phụ trách *Hang đá trung tâm* + *Sân khấu văn nghệ*)
+### 3.1. ✅ ĐÃ SỬA (12/11/2026) — LEADER thấy đề nghị mua ngoài phạm vi khu vực
+- **Hiện tượng (11/11):** leader `ngan.nguyen` (id `4c72bda6…`, phụ trách *Hang đá trung tâm* + *Sân khấu văn nghệ*)
   thấy trong `/leader/purchases` cả đề nghị của **Gian hàng ẩm thực** và **Đèn LED khuôn viên**.
-- **Bằng chứng:**
+- **Bằng chứng (11/11):**
   - `GET /api/v1/purchase-requests?page=1&size=20` (Bearer LEADER) → 3 bản ghi thuộc **3 khu khác nhau**:
     `579e81cd (Gian hàng ẩm thực, PENDING_APPROVAL)`, `1b8a5a17 (Hang đá trung tâm, APPROVED)`,
     `0d0f5695 (Đèn LED khuôn viên, COMPLETED)`.
@@ -123,12 +123,23 @@ Gia đình bà Nguyễn Thị Bạch Tuyết — Tiền mặt — đã nhận 30
 - **Tác động:** badge “Duyệt mua lớn 1” trỏ vào việc **không thể làm**; đếm sai khối lượng việc;
   vi phạm §11 (`Leader: A*` — chỉ trong phạm vi được giao) và BR-57 (dữ liệu trả về phải đúng quyền xem).
   BE **chặn ghi đúng**, chỉ hỏng ở phạm vi **đọc**.
-- **Hướng sửa (đề xuất):**
-  1. `GET /purchase-requests` khi caller là LEADER phải lọc theo các work area có `leader_user_id = caller`
-     (join `work_area_scope`), tương tự `GET /work-areas/{id}/attendance-requests` đang làm.
-  2. Badge ở nav dùng đúng danh sách đã lọc.
-  3. Thêm test: leader A không thấy request của khu do leader B phụ trách.
-- **Ước lượng:** BE 1–2h (query filter + 2 unit test), FE 0h nếu chỉ dùng lại endpoint.
+- **Cách sửa (đã vào `main` của BE, merge `a98cbff` vào nhánh `phongnltse/task-team-leader-progress`):**
+  `PurchaseRequestLoader.CanReadAsStaff(scope)` — PARISH đọc mọi khu trong giáo xứ; LEADER chỉ khi
+  `scope.LeaderUserId = caller`; MO chỉ khi `scope.MaterialOfficerUserId = caller`; áp cho **cả**
+  `GET /purchase-requests`, `GET /purchase-requests/{id}` và `GET /purchase-requests/{id}/history`.
+- **Kiểm chứng lại sau khi rebuild (12/11/2026, stack chạy image mới):**
+
+  | Caller | Vai trò | Số đơn | Khu vực trả về |
+  |---|---|---|---|
+  | `ngan.nguyen` | LEADER | 3 | chỉ *Hang đá trung tâm* |
+  | `anh.pham` | MO | 3 | chỉ *Hang đá trung tâm* |
+  | `mai.le` | MO (2 khu) | 2 | *Đèn LED khuôn viên*, *Gian hàng ẩm thực* |
+  | `tuan.vu` | LEADER | 1 | chỉ *Gian hàng ẩm thực* |
+  | `tram.do` | VOLUNTEER | `403` | — |
+  | `hoa.nguyen` | ADMIN | `403` | — (hành vi có sẵn: ADMIN không nằm trong danh sách role đọc) |
+
+  `Resource.UnitTests` **252/252 pass**.
+
 
 ### 3.2. Ghi chú nhỏ
 - Nút **Duyệt** trong danh sách mở dialog “Duyệt yêu cầu mua …” kèm ô ghi chú — tốt; nhưng khi BE trả
@@ -161,6 +172,7 @@ Gia đình bà Nguyễn Thị Bạch Tuyết — Tiền mặt — đã nhận 30
   đề nghị mua, tồn kho/thiếu hụt, pledge vs đã nhận, checklist readiness, chấm công (13 kịch bản ở báo cáo trước),
   thông báo nghiệp vụ.
 - **1 lỗi nghiệp vụ cần sửa:** phạm vi đọc `GET /purchase-requests` của LEADER (§11, BR-57) — BE đã chặn ghi đúng.
+  → **Đã sửa 12/11/2026** (`PurchaseRequestLoader.CanReadAsStaff`, merge `a98cbff`); kiểm chứng lại ở §3.1.
 - **Các luồng còn lại** cần dữ liệu/điều kiện riêng; danh sách + cách chạy đã ghi ở §4 để lần test sau chạy tiếp.
 
 ---
