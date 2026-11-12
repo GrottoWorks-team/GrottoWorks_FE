@@ -59,6 +59,8 @@ vi.mock('../api', () => ({
   useTaskReviewPackage: () => ({ data: undefined, isPending: false }),
   useTaskAssignments: () => ({ data: [], isPending: false }),
   useTaskApplications: () => ({ data: applicationsMock, isPending: false }),
+  // 12/11/2026: điều kiện bắt đầu việc — test này không quan tâm panel đó.
+  useTaskStartEligibility: () => ({ data: undefined, isPending: false }),
   useApproveApplication: () => ({
     mutateAsync: vi.fn(async (vars: { applicationId: string; taskId: string; version: number }) => {
       approvedApplications.push(vars)

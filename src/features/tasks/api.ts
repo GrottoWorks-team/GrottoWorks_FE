@@ -192,6 +192,54 @@ export function useTask(id: string) {
   })
 }
 
+/** Vật tư nhiệm vụ yêu cầu nhưng chưa được cấp đủ (BR-33). */
+export interface TaskMaterialShortageDto {
+  materialId: string
+  requiredQuantity: number
+  allocatedQuantity: number
+}
+
+export interface TaskStartBlockerDto {
+  code: TaskStartBlockerCode
+  detail: string
+}
+
+export type TaskStartBlockerCode =
+  | 'TASK_NOT_PUBLISHED'
+  | 'TASK_INVALID_STATE'
+  | 'TASK_START_NOT_DUE'
+  | 'TASK_NOT_ENOUGH_MEMBERS'
+  | 'TASK_NOT_ENOUGH_MATERIALS'
+
+/** `GET /tasks/{taskId}/start-eligibility` (12/11/2026): vì sao việc được / chưa được bắt đầu. */
+export interface TaskStartEligibilityDto {
+  taskId: string
+  taskType: TaskBackendType
+  status: TaskBackendStatus
+  startAt?: string | null
+  acceptedMembers: number
+  requiredMembers: number
+  materialsKnown: boolean
+  materialShortages: TaskMaterialShortageDto[]
+  canStart: boolean
+  blockers: TaskStartBlockerDto[]
+}
+
+/** Điều kiện bắt đầu: tới giờ bắt đầu, đủ thành viên nhận việc, đã cấp đủ vật tư. */
+export function useTaskStartEligibility(taskId: string) {
+  return useQuery({
+    queryKey: ['tasks', 'start-eligibility', taskId] as const,
+    queryFn: async () => {
+      const res = await api<{ data?: TaskStartEligibilityDto } | TaskStartEligibilityDto>(
+        `/api/v1/tasks/${taskId}/start-eligibility`,
+      )
+      return 'data' in res && res.data ? res.data : (res as TaskStartEligibilityDto)
+    },
+    enabled: Boolean(taskId),
+    staleTime: 0,
+  })
+}
+
 function useTaskMutation<TVars, TResult = unknown>(
   fn: (vars: TVars) => Promise<TResult>,
 ) {

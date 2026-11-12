@@ -42,6 +42,7 @@ import {
   useTaskAssignments,
   useTaskProgress,
   useTaskReviewPackage,
+  useTaskStartEligibility,
   useVolunteerMatches,
   type TaskApplicationDto,
 } from '../api'
@@ -53,6 +54,16 @@ import { viDate, viDateTime } from '@/lib/format'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
+
+/** Một điều kiện bắt đầu việc: ✓ đạt màu xanh, ✗ chưa đạt màu cảnh báo, “?” khi chưa xác định được. */
+function StartConditionRow({ ok, label, unknown }: { ok: boolean; label: string; unknown?: boolean }) {
+  return (
+    <p className={ok ? 'text-[11px] text-status-ok' : 'text-[11px] text-status-warn'}>
+      {unknown ? '? ' : ok ? '✓ ' : '✗ '}
+      {label}
+    </p>
+  )
+}
 
 export default function TaskDetailPage() {
   const { t } = useTranslation()
@@ -74,6 +85,8 @@ export default function TaskDetailPage() {
   const canReadAreaData = user?.role !== 'LEADER' || isAreaLeader
 
   const ready = useReadyTask()
+  // 12/11/2026: điều kiện bắt đầu việc (giờ bắt đầu / đủ thành viên / đủ vật tư đã cấp).
+  const { data: startEligibility } = useTaskStartEligibility(task?.id ?? '')
   const replaceCriteria = useReplaceCompletionCriteria()
   const replaceSkills = useReplaceTaskSkills()
   const approveTask = useApproveTask()
@@ -762,6 +775,44 @@ export default function TaskDetailPage() {
                   </p>
                 )}
               </div>
+              {startEligibility && (
+                <div className="space-y-1 rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                  <p className="text-[11px] font-semibold text-foreground">
+                    {t('features.tasks.startEligibilityTitle')}
+                  </p>
+                  <StartConditionRow
+                    ok={!startEligibility.blockers.some((row) => row.code === 'TASK_START_NOT_DUE')}
+                    label={t('features.tasks.startConditionTime', {
+                      time: task.startAt ? viDateTime(task.startAt) : t('features.tasks.startDateNone'),
+                    })}
+                  />
+                  <StartConditionRow
+                    ok={startEligibility.acceptedMembers >= startEligibility.requiredMembers}
+                    label={t('features.tasks.startConditionMembers', {
+                      accepted: startEligibility.acceptedMembers,
+                      required: startEligibility.requiredMembers,
+                    })}
+                  />
+                  <StartConditionRow
+                    ok={startEligibility.materialShortages.length === 0}
+                    unknown={!startEligibility.materialsKnown}
+                    label={
+                      !startEligibility.materialsKnown
+                        ? t('features.tasks.startConditionMaterialsUnknown')
+                        : startEligibility.materialShortages.length === 0
+                          ? t('features.tasks.startConditionMaterialsOk')
+                          : t('features.tasks.startConditionMaterialsShort', {
+                              count: startEligibility.materialShortages.length,
+                            })
+                    }
+                  />
+                  {startEligibility.blockers.map((blocker) => (
+                    <p key={blocker.code} className="text-[11px] text-status-alert">
+                      {t(`errors.${blocker.code}`, { defaultValue: blocker.detail })}
+                    </p>
+                  ))}
+                </div>
+              )}
               {(task.backendStatus === 'NOT_STARTED' || task.backendStatus === 'IN_PROGRESS') && (
                 <Button
                   variant="outline"
