@@ -206,7 +206,7 @@ export default function ParishOverview() {
                 {t('features.dashboards.seasonDashboardTitle', { defaultValue: 'Chỉ số vận hành mùa' })}
               </h2>
               {supportSummary && (
-                <span className="text-xs text-muted-foreground">
+                <span data-testid="support-requests-count" className="text-xs text-muted-foreground">
                   {supportSummary.totalRequests} {t('features.dashboards.supportRequests', { defaultValue: 'yêu cầu hỗ trợ liên cộng đoàn' })}
                 </span>
               )}
@@ -214,6 +214,7 @@ export default function ParishOverview() {
 
             <div className="stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
+                testId="stat-task-progress"
                 label={t('features.dashboards.taskProgress', { defaultValue: 'Tiến độ nhiệm vụ' })}
                 value={Math.round(dashboard.summary.tasks.progressPercent)}
                 unit="%"
@@ -221,6 +222,7 @@ export default function ParishOverview() {
                 icon={Activity}
               />
               <StatCard
+                testId="stat-ready-areas"
                 label={t('features.dashboards.readyWorkAreas', { defaultValue: 'Khu vực sẵn sàng' })}
                 value={seasonReadiness?.readyWorkAreas ?? dashboard.summary.readiness.ready}
                 unit={`/ ${seasonReadiness?.workAreas ?? dashboard.summary.workAreas} khu`}
@@ -233,6 +235,7 @@ export default function ParishOverview() {
                 icon={CheckCircle2}
               />
               <StatCard
+                testId="stat-pending-purchases"
                 label={t('features.dashboards.pendingPurchases', { defaultValue: 'Mua sắm chờ duyệt' })}
                 value={dashboard.summary.purchases.pendingApproval}
                 unit="đơn"
@@ -240,6 +243,7 @@ export default function ParishOverview() {
                 icon={ShoppingBag}
               />
               <StatCard
+                testId="stat-open-donations"
                 label={t('features.dashboards.openDonations', { defaultValue: 'Quyên góp mở' })}
                 value={dashboard.summary.donations.openPledges}
                 unit="lượt"
