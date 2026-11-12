@@ -1,6 +1,8 @@
 // Checklist sẵn sàng (/leader/checklist, /community/checklist) — BE Readiness.
-// Leader tạo phiếu cho khu của mình, ghi kết quả PASSED/FAILED từng hạng mục,
-// xác nhận READY. Committee xem read-only.
+// Quy trình 12/11/2026:
+//   1. Ban hành giáo (FE `COMMUNITY` = BE `PARISH`) đặt tiêu chí cho từng khu vực.
+//   2. LEADER nộp minh chứng cho từng mục rồi đánh dấu Đạt/Không đạt (bắt buộc có minh chứng mới được Đạt).
+//   3. Ban hành giáo duyệt tổng thể khu vực → khu READY; mọi khu READY → mùa chuyển READY.
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Link2, Paperclip, Plus, X } from 'lucide-react'
@@ -133,6 +135,9 @@ export default function ChecklistPage() {
   const { user } = useAuth()
   const { data: areas = [] } = useScopedAreas()
   const isLeader = user?.role === 'LEADER'
+  // FE `COMMUNITY` = ban hành giáo (BE `PARISH`): người đặt tiêu chí và duyệt cuối.
+  const isParishBoard = user?.role === 'COMMUNITY'
+  const canCreateCheck = isLeader || isParishBoard
   const myAreas = useMemo(
     () => (isLeader ? areas.filter((a) => a.leaderId === user?.id) : areas),
     [isLeader, areas, user?.id],
@@ -334,9 +339,17 @@ export default function ChecklistPage() {
         render: (i: ReadinessItem) => {
           if (!isLeader) return <span className="text-muted-foreground">—</span>
           if (i.status === 'PENDING') {
+            // Bắt buộc có minh chứng trước khi đánh Đạt (BE trả 422 READINESS_EVIDENCE_REQUIRED).
+            const canPass = i.evidenceFileIds.length > 0
             return (
               <div className="flex justify-end gap-1">
-                <Button size="sm" variant="outline" onClick={() => setResult(i, 'PASSED')}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={!canPass}
+                  title={canPass ? undefined : t('features.checklist.evidenceRequired')}
+                  onClick={() => setResult(i, 'PASSED')}
+                >
                   <Check className="size-4" /> {t('features.checklist.pass')}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => setResult(i, 'FAILED')}>
@@ -386,7 +399,6 @@ export default function ChecklistPage() {
         title={t('features.checklist.title')}
         sub={isLeader ? t('features.checklist.subLeader') : t('features.checklist.subCommittee')}
       />
-
       <Card className="mb-6 p-5">
         <Label htmlFor="check-area">{t('features.checklist.area')}</Label>
         <select
@@ -408,7 +420,7 @@ export default function ChecklistPage() {
       ) : !selected ? null : !row?.readinessCheckId ? (
         <div className="space-y-3">
           <EmptyState text={t('features.checklist.noCheck')} />
-          {isLeader && (
+          {canCreateCheck && (
             <div className="flex justify-center">
               <Button onClick={() => setCreating(true)}>
                 <Plus className="size-4" />
@@ -431,12 +443,18 @@ export default function ChecklistPage() {
               <span className="font-semibold text-foreground">{check?.name ?? t('features.checklist.title')}</span>
               {check && <StatusTag status={check.status} />}
             </div>
-            {isLeader && check && check.status !== 'READY' && (
+            {isParishBoard && check && check.status !== 'READY' && (
               <Button onClick={onConfirm} disabled={confirm.isPending}>
-                {t('features.checklist.confirm')}
+                {t('features.checklist.confirmParish')}
               </Button>
             )}
           </Card>
+
+          {isParishBoard && (
+            <p className="mb-4 rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2 text-xs leading-relaxed text-brand-pine">
+              {t('features.checklist.parishHint')}
+            </p>
+          )}
 
           {check && (
             <DataTable
