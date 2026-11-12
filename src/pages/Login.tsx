@@ -47,10 +47,11 @@ const DEMO: DemoRoleConfig[] = [
   { role: 'MATERIAL_OFFICER', email: 'anh.pham@giaoxuthanhtam.org.vn', icon: Package, color: 'text-indigo-700' },
 ]
 
-// Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md` (BE yêu cầu ≥ 8 ký tự,
-// có ít nhất 1 chữ và 1 số nên `grotto` không hợp lệ). Đổi bằng biến môi trường
-// VITE_DEMO_PASSWORD nếu seed ở máy bạn dùng mật khẩu khác.
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? 'GxThanhTam@2026'
+// Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md`. Đọc từ `.env`
+// (`VITE_DEMO_PASSWORD`) — không hard-code trong source. Không khai báo thì
+// khối "tài khoản demo" bị ẩn để tránh điền sai mật khẩu.
+const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? ''
+const SHOW_DEMO_ACCOUNTS = DEMO_PASSWORD.length > 0
 
 export default function Login() {
   const { t } = useTranslation()
@@ -103,8 +104,10 @@ export default function Login() {
   return (
     <AuthSplitLayout activeTab="login">
       <div className="space-y-5">
-        {/* Hộp chọn nhanh tài khoản mẫu (1-Chạm) */}
-        <div>
+        {/* Hộp chọn nhanh tài khoản mẫu (1-Chạm) — chỉ hiện khi `.env` có
+            VITE_DEMO_PASSWORD, tránh điền sẵn mật khẩu sai. */}
+        {SHOW_DEMO_ACCOUNTS && (
+          <div>
           <div className="flex items-center justify-between mb-2">
             <span className="lbl-mono flex items-center gap-1.5 font-bold text-slate-600">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
@@ -142,7 +145,8 @@ export default function Login() {
               )
             })}
           </div>
-        </div>
+          </div>
+        )}
 
         {/* Form đăng nhập chính */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>

@@ -1,36 +1,43 @@
 import { fileURLToPath, URL } from 'node:url'
 import react from '@vitejs/plugin-react'
+import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  server: {
-    // Cố định cổng: dữ liệu tạm (scene 3D Builder, designer, "đã đọc" thông báo)
-    // nằm trong localStorage — đổi cổng là đổi origin nên mất dữ liệu. Đặt
-    // VITE_DEV_PORT nếu máy đã chiếm cổng này.
-    port: Number(process.env.VITE_DEV_PORT ?? 5175),
-    strictPort: true,
-    proxy: {
-      '/api/v1': {
-        // Mặc định là gateway trong docker-compose (6102). Chạy BE native
-        // (scripts/be-local.sh, gateway ở 5190) thì đặt VITE_API_TARGET.
-        target: process.env.VITE_API_TARGET ?? 'http://localhost:6102',
-        changeOrigin: true,
+export default defineConfig(({ mode }) => {
+  // Nạp `.env` / `.env.local` / `.env.<mode>` (đọc được cả biến KHÔNG có tiền tố
+  // VITE_ vì đây là config Node, không phải code chạy ở browser).
+  const env = loadEnv(mode, process.cwd(), '')
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    setupFiles: ['./src/test-setup.ts'],
-    passWithNoTests: true,
-    // Full-suite chạy 22 file / 63 test trên 1 máy: ReportPage và lazy routes
-    // trong App/Login hay vượt timeout mặc định dưới tải — nâng lên 20s.
-    testTimeout: 20_000,
-    hookTimeout: 20_000,
-  },
+    server: {
+      // Cố định cổng: dữ liệu tạm (scene 3D Builder, designer, "đã đọc" thông báo)
+      // nằm trong localStorage — đổi cổng là đổi origin nên mất dữ liệu. Đặt
+      // VITE_DEV_PORT trong `.env` nếu máy đã chiếm cổng này.
+      port: Number(env.VITE_DEV_PORT || 5175),
+      strictPort: true,
+      proxy: {
+        '/api/v1': {
+          // Mặc định là gateway trong docker-compose (6102). Chạy BE native
+          // (scripts/be-local.sh, gateway ở 5190) thì đặt VITE_API_TARGET.
+          target: env.VITE_API_TARGET || 'http://localhost:6102',
+          changeOrigin: true,
+        },
+      },
+    },
+    test: {
+      environment: 'jsdom',
+      setupFiles: ['./src/test-setup.ts'],
+      passWithNoTests: true,
+      // Full-suite chạy 22 file / 63 test trên 1 máy: ReportPage và lazy routes
+      // trong App/Login hay vượt timeout mặc định dưới tải — nâng lên 20s.
+      testTimeout: 20_000,
+      hookTimeout: 20_000,
+    },
+  }
 })
