@@ -1715,6 +1715,8 @@
   "features.supportReceipts.unusable": "Số lượng không dùng được",
   "features.supportReceipts.note": "Ghi chú",
   "features.supportReceipts.saved": "Đã xác nhận nhận vật tư",
+  "features.supportReceipts.savedWithStatus": "Đã xác nhận nhận vật tư — yêu cầu hỗ trợ: {{status}}",
+  "features.supportReceipts.savedPendingSync": "Đã xác nhận nhận vật tư — trạng thái yêu cầu sẽ tự cập nhật trong vài giây",
   "features.inventory.title": "Bảng cân đối tồn kho vật tư",
   "features.inventory.sub": "Theo dõi số lượng vật tư yêu cầu, sẵn có, đã phân bổ và thiếu hụt theo từng khu vực công tác",
   "features.inventory.openingStockBtn": "Nhập tồn đầu kỳ",

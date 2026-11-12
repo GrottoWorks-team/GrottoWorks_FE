@@ -19,6 +19,11 @@ export interface SupportQuery {
   supportType?: SupportType
   status?: string
   size?: number
+  /**
+   * Trạng thái yêu cầu đổi ở TaskExecution sau khi MO nhận vật tư (service khác) nên client phải hỏi lại;
+   * mặc định 5 giây để máy khác cũng thấy trạng thái mới mà không cần F5.
+   */
+  refetchInterval?: number | false
 }
 
 export function useSupportRequests(params?: SupportQuery) {
@@ -33,6 +38,7 @@ export function useSupportRequests(params?: SupportQuery) {
       const res = await apiPaged<SupportRequest>(`/api/v1/support-requests?${q.toString()}`)
       return res.data
     },
+    refetchInterval: params?.refetchInterval ?? 5000,
   })
 }
 
@@ -300,5 +306,25 @@ export function useConfirmSupportMaterialReceipt() {
           note: note || null,
         }),
       }),
+  )
+}
+
+/** Kết quả đồng bộ tức thời: trạng thái yêu cầu đã được TaskExecution cập nhật ngay sau khi MO nhận vật tư. */
+export interface SupportReceiptReconciliation {
+  supportRequestId: string
+  status: string
+  version: number
+  item: SupportResponseMaterial
+}
+
+/**
+ * POST /support-response-materials/{itemId}/reconcile (LEADER, MO) — MO vừa xác nhận nhận vật tư ở Resource,
+ * gọi ngay để TaskExecution kéo snapshot và trả trạng thái mới (không phải chờ event/worker tới 15 giây).
+ */
+export function useReconcileSupportMaterialReceipt() {
+  return useSupportMutation(({ itemId }: { itemId: string }) =>
+    api<SupportReceiptReconciliation>(`/api/v1/support-response-materials/${itemId}/reconcile`, {
+      method: 'POST',
+    }),
   )
 }

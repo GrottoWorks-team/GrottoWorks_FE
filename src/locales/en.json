@@ -1712,6 +1712,8 @@
   "features.supportReceipts.unusable": "Unusable quantity",
   "features.supportReceipts.note": "Note",
   "features.supportReceipts.saved": "Receipt confirmed",
+  "features.supportReceipts.savedWithStatus": "Receipt confirmed — support request: {{status}}",
+  "features.supportReceipts.savedPendingSync": "Receipt confirmed — the request status will update within a few seconds",
   "features.inventory.title": "Material inventory balance",
   "features.inventory.sub": "Track required, available, allocated and shortage quantities by work area",
   "features.inventory.openingStockBtn": "Record opening stock",

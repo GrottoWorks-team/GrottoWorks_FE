@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useMaterials } from '@/features/materials/api'
 import { ApiError } from '@/lib/api'
-import { useConfirmSupportMaterialReceipt, useSupportRequests, useSupportTransfer } from '../api'
+import { useConfirmSupportMaterialReceipt, useReconcileSupportMaterialReceipt, useSupportRequests, useSupportTransfer } from '../api'
 
 interface PendingReceipt {
   itemId: string
@@ -34,6 +34,7 @@ export default function MaterialReceiptsPage() {
   const { data: requests = [], isPending } = useSupportRequests({ size: 100 })
   const { data: materials = [] } = useMaterials()
   const confirm = useConfirmSupportMaterialReceipt()
+  const reconcile = useReconcileSupportMaterialReceipt()
 
   const [target, setTarget] = useState<PendingReceipt | null>(null)
   const [usable, setUsable] = useState('')
@@ -81,7 +82,17 @@ export default function MaterialReceiptsPage() {
         unusableQuantity: Math.max(0, Number(unusable) || 0),
         note: note.trim() || undefined,
       })
-      toast(t('features.supportReceipts.saved'))
+      // Resource đã ghi nhận; yêu cầu hỗ trợ thuộc TaskExecution nên đồng bộ ngay để không phải chờ event/worker.
+      try {
+        const synced = await reconcile.mutateAsync({ itemId: target.itemId })
+        toast(
+          t('features.supportReceipts.savedWithStatus', {
+            status: t(`status.${synced.status}`, { defaultValue: synced.status }),
+          }),
+        )
+      } catch {
+        toast(t('features.supportReceipts.savedPendingSync'))
+      }
       setTarget(null)
     } catch (error) {
       toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
