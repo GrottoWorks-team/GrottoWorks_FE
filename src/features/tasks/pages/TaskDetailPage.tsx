@@ -939,12 +939,32 @@ export default function TaskDetailPage() {
                 onChange={(e) => setAssignVolunteerId(e.target.value)}
               >
                 <option value="">{t('common.selectPlaceholder')}</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} — {u.email}
+                {/* 13/11/2026: trưởng khu chỉ phân công người của khu mình. BE trả sẵn danh sách
+                    theo cộng đoàn của khu (`/volunteer-matches`), nên dùng luôn danh sách đó. */}
+                {volunteerMatches.map((match) => (
+                  <option key={match.volunteerId} value={match.volunteerId}>
+                    {match.displayName}
                   </option>
                 ))}
               </select>
+              <p className="text-[11px] text-muted-foreground">
+                {t('features.tasks.assignScopeHint')}
+              </p>
+              {volunteerMatches.length === 0 && (
+                <div className="rounded-md border border-dashed border-border px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    {t('features.tasks.assignScopeEmpty')}
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-2"
+                    onClick={() => navigate('/leader/support')}
+                  >
+                    {t('features.tasks.createSupportRequest')}
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <Label htmlFor="task-assign-note">{t('features.tasks.assignNote')}</Label>
