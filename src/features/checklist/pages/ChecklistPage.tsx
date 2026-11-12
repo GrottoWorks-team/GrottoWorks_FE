@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useTasks, useCreateTask } from '@/features/tasks/api'
+import { ReadinessItemsEditor } from '@/features/checklist/components/ReadinessItemsEditor'
 import { uploadFile } from '@/lib/files'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
@@ -83,47 +84,8 @@ function CreateCheckDialog({ areaId, onClose }: { areaId: string; onClose: () =>
         </div>
         <div className="flex items-center justify-between">
           <Label>{t('features.checklist.items')}</Label>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => setItems((prev) => [...prev, { name: '', mandatory: true }])}
-          >
-            <Plus className="size-4" />
-            {t('features.checklist.addItem')}
-          </Button>
         </div>
-        {items.map((item, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <Input
-              aria-label={`${t('features.checklist.itemName')} ${index + 1}`}
-              placeholder={t('features.checklist.itemName')}
-              value={item.name}
-              onChange={(e) =>
-                setItems((prev) => prev.map((x, i) => (i === index ? { ...x, name: e.target.value } : x)))
-              }
-            />
-            <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-              <input
-                type="checkbox"
-                checked={item.mandatory}
-                onChange={(e) =>
-                  setItems((prev) => prev.map((x, i) => (i === index ? { ...x, mandatory: e.target.checked } : x)))
-                }
-              />
-              {t('features.checklist.mandatory')}
-            </label>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.delete')}
-              onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-            >
-              <X className="size-4" />
-            </Button>
-          </div>
-        ))}
+        <ReadinessItemsEditor items={items} onChange={setItems} idPrefix="check-item" />
       </div>
     </Dialog>
   )

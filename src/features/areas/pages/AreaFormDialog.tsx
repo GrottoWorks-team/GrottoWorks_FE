@@ -20,6 +20,11 @@ import { useAuth } from '@/lib/auth'
 import { getBlob } from '@/lib/blobStore'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
 import { useWorkAreaCategories } from '@/features/parish/api'
+import { useCreateReadinessCheck } from '@/features/checklist/api'
+import {
+  ReadinessItemsEditor,
+  type ReadinessItemDraft,
+} from '@/features/checklist/components/ReadinessItemsEditor'
 import { useMapPins, useParishMap, useSetMapPin } from '@/features/map/api'
 import { MapPinPicker } from '@/features/map/components/MapPinPicker'
 import type { NormalizedPoint } from '@/features/designs/coords'
@@ -107,7 +112,16 @@ export function AreaFormDialog({
   const { data: categories = [] } = useWorkAreaCategories(area ? undefined : 'ACTIVE')
   const create = useCreateArea()
   const update = useUpdateArea()
+  const createReadiness = useCreateReadinessCheck()
   const editing = Boolean(area)
+
+  // Tiêu chí sẵn sàng do Ban hành giáo đặt NGAY khi tạo khu vực (§8.12): LEADER chỉ nộp
+  // minh chứng và đánh dấu đạt, PARISH duyệt khu vực sau cùng.
+  const [readinessName, setReadinessName] = useState(t('features.checklist.defaultName'))
+  const [readinessItems, setReadinessItems] = useState<ReadinessItemDraft[]>([
+    { name: '', mandatory: true },
+  ])
+  const [readinessError, setReadinessError] = useState<string | null>(null)
 
   // Mùa mặc định: ưu tiên season của area, defaultSeasonId prop, hoặc mùa ACTIVE/PLANNED đầu tiên
   const initialSeasonId = useMemo(() => {
@@ -254,11 +268,49 @@ export function AreaFormDialog({
     }
   }, [isCommunity, user?.communityId, editing, setValue, level])
 
+  // Readiness là service riêng, nhận scope khu vực qua event `planning.*` nên ngay sau khi
+  // tạo khu vực có thể còn 404 WORK_AREA_NOT_FOUND (~1–2s, đo thực tế 1,6s; mùa mới có thể lâu
+  // hơn). Thử lại trong ~11s trước khi bỏ.
+  const createReadinessWithRetry = async (
+    workAreaId: string,
+    name: string,
+    items: ReadinessItemDraft[],
+  ) => {
+    const delays = [0, 600, 1200, 2000, 3000, 4000]
+    let lastError: unknown
+    for (const delay of delays) {
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay))
+      try {
+        return await createReadiness.mutateAsync({ workAreaId, name, items })
+      } catch (error) {
+        lastError = error
+        if (!(error instanceof ApiError && error.code === 'WORK_AREA_NOT_FOUND')) break
+      }
+    }
+    throw lastError
+  }
+
   const onSubmit = async (data: FormData) => {
     // PARISH: update gửi null để mock PATCH xoá communityId cũ (shallow merge
     // giữ key); create bỏ key (undefined khỏi JSON).
     const rawCommunityId = isCommunity ? (user?.communityId ?? '') : data.communityId
     const communityId = data.level === 'COMMUNITY' ? rawCommunityId : null
+    // Tiêu chí sẵn sàng: bắt buộc khi TẠO khu vực — thiếu tiêu chí thì KHÔNG tạo khu vực
+    // (tránh khu vực tồn tại mà không có gì để LEADER nộp minh chứng).
+    const criteria: ReadinessItemDraft[] = readinessItems
+      .map((item) => ({ name: item.name.trim(), mandatory: item.mandatory }))
+      .filter((item) => item.name.length > 0)
+    if (!editing) {
+      if (!readinessName.trim()) {
+        setReadinessError(t('features.areas.readinessNameRequired'))
+        return
+      }
+      if (criteria.length === 0) {
+        setReadinessError(t('features.areas.readinessItemsRequired'))
+        return
+      }
+      setReadinessError(null)
+    }
     try {
       if (editing && area) {
         // BE không nhận leaderId/officerId/communityId trong PATCH — hook
@@ -314,6 +366,12 @@ export function AreaFormDialog({
             } catch {
               toast(t('features.map.pinSaveFailed'), 'alert')
             }
+          }
+          // Tiêu chí sẵn sàng: tạo luôn trong cùng lần lưu (không để PARISH quên).
+          try {
+            await createReadinessWithRetry(created.id, readinessName.trim(), criteria)
+          } catch {
+            toast(t('features.areas.readinessCreateFailed'), 'alert')
           }
         }
         toast(t('features.areas.created', { name: data.name }))
@@ -498,6 +556,40 @@ export function AreaFormDialog({
           />
           {err(errors.description?.message)}
         </div>
+
+        {/* Tiêu chí sẵn sàng — BẮT BUỘC khi tạo khu vực: Ban hành giáo đặt tiêu chí,
+            LEADER nộp minh chứng rồi đánh dấu đạt, PARISH duyệt khu vực sau cùng. */}
+        {!editing && (
+          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">
+                {t('features.areas.readinessSection')}
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {t('features.areas.readinessHint')}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="area-readiness-name">{t('features.areas.readinessChecklistName')}</Label>
+              <Input
+                id="area-readiness-name"
+                value={readinessName}
+                onChange={(e) => setReadinessName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>{t('features.checklist.items')}</Label>
+              <ReadinessItemsEditor
+                items={readinessItems}
+                onChange={setReadinessItems}
+                idPrefix="area-readiness-item"
+              />
+            </div>
+            {readinessError && (
+              <p className="text-xs font-semibold text-destructive">{t(readinessError)}</p>
+            )}
+          </div>
+        )}
 
         {/* Ghim vị trí trên sơ đồ — tuỳ chọn, cùng một lần lưu với khu vực.
             CHỈ Ban hành giáo (người tạo/điều chỉnh khu vực) thấy: 11/11/2026 ảnh

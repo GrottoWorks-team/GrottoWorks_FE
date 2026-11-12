@@ -433,3 +433,70 @@ test('AreaAssignDialog: hiển thị thông tin thời hạn và phân công th�
 
   await waitFor(() => expect(closed).toBe(true))
 })
+
+// 12/11/2026: "tạo khu vực thì parish phải tạo luôn readiness" — form tạo khu vực bắt buộc
+// có ≥1 tiêu chí và gọi Readiness ngay trong cùng lần lưu.
+const readinessSpy = vi.hoisted(() => ({ create: vi.fn() }))
+
+vi.mock('@/features/checklist/api', () => ({
+  useCreateReadinessCheck: () => ({ mutateAsync: readinessSpy.create, isPending: false }),
+}))
+
+async function fillCreateAreaForm() {
+  const nameInput = await screen.findByLabelText(/Tên khu vực/i)
+  await userEvent.type(nameInput, 'Khu sẵn sàng')
+  const leaderSelect = await screen.findByLabelText(/^Trưởng khu/i)
+  await userEvent.selectOptions(leaderSelect, 'u3')
+  const officerSelect = await screen.findByLabelText(/^Trưởng ban hành giáo/i)
+  await userEvent.selectOptions(officerSelect, 'u4')
+}
+
+test('AreaFormDialog: thiếu tiêu chí sẵn sàng thì không tạo khu vực', async () => {
+  localStorage.setItem('grotto-token', 'demo-u1')
+  readinessSpy.create.mockReset()
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={client}>
+      <ToastProvider>
+        <AreaFormDialog onClose={() => {}} />
+      </ToastProvider>
+    </QueryClientProvider>,
+  )
+
+  await fillCreateAreaForm()
+  await userEvent.click(screen.getByRole('button', { name: /Lưu/i }))
+
+  expect(
+    await screen.findByText(/Cần ít nhất 1 tiêu chí có tên thì mới tạo được khu vực/i),
+  ).toBeDefined()
+  expect(readinessSpy.create).not.toHaveBeenCalled()
+})
+
+test('AreaFormDialog: tạo khu vực xong thì tạo luôn phiếu sẵn sàng với tiêu chí đã nhập', async () => {
+  localStorage.setItem('grotto-token', 'demo-u1')
+  readinessSpy.create.mockReset()
+  readinessSpy.create.mockResolvedValue({ id: 'check-1' })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={client}>
+      <ToastProvider>
+        <AreaFormDialog onClose={() => {}} />
+      </ToastProvider>
+    </QueryClientProvider>,
+  )
+
+  await fillCreateAreaForm()
+  await userEvent.type(await screen.findByLabelText(/Tên hạng mục 1/i), 'Khung chắc chắn')
+  await userEvent.click(screen.getByRole('button', { name: /Thêm hạng mục/i }))
+  await userEvent.type(await screen.findByLabelText(/Tên hạng mục 2/i), 'Đèn hoạt động')
+  await userEvent.click(screen.getByRole('button', { name: /Lưu/i }))
+
+  await waitFor(() => expect(readinessSpy.create).toHaveBeenCalledTimes(1))
+  expect(readinessSpy.create.mock.calls[0][0]).toMatchObject({
+    workAreaId: 'a-new',
+    items: [
+      { name: 'Khung chắc chắn', mandatory: true },
+      { name: 'Đèn hoạt động', mandatory: true },
+    ],
+  })
+})
