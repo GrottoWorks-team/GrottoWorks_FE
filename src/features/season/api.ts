@@ -2,10 +2,11 @@
 //   GET    /api/v1/seasons[/{id}]        POST /api/v1/seasons
 //   PATCH  /api/v1/seasons/{id}          (If-Match bắt buộc)
 //   POST   /api/v1/seasons/{id}/activate (version trong body, If-Match tuỳ chọn)
-//   POST   /api/v1/seasons/{id}/complete | /archive
+//   POST   /api/v1/seasons/{id}/complete | /api/v1/seasons/{id}/archive
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { CreateSeasonRequest, SeasonDto } from '@/types/parish'
+import type { SupportSummaryDto } from '@/types'
 import { toSeason } from '@/features/parish/mappers'
 
 export const seasonKeys = {
@@ -124,4 +125,17 @@ export function useCompleteSeason() {
 /** POST /archive — lưu trữ mùa (đọc-only sau đó). */
 export function useArchiveSeason() {
   return useSeasonAction('archive')
+}
+
+/** GET /api/v1/seasons/{id}/support-summary (PARISH) */
+export async function getSeasonSupportSummary(seasonId: string): Promise<SupportSummaryDto> {
+  return api<SupportSummaryDto>(`/api/v1/seasons/${seasonId}/support-summary`)
+}
+
+export function useSeasonSupportSummary(seasonId?: string) {
+  return useQuery({
+    queryKey: ['season-support-summary', seasonId],
+    queryFn: () => getSeasonSupportSummary(seasonId!),
+    enabled: Boolean(seasonId),
+  })
 }

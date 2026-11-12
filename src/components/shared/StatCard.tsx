@@ -36,6 +36,7 @@ export function StatCard({
   tone = 'ok',
   icon: Icon,
   className,
+  testId,
 }: {
   label: string
   value: number
@@ -44,11 +45,15 @@ export function StatCard({
   tone?: 'ok' | 'warn' | 'alert'
   icon?: React.ComponentType<{ className?: string }>
   className?: string
+  testId?: string
 }) {
   const v = useCountUp(value)
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN'
   return (
-    <Card className={cn('relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-hover', className)}>
+    <Card
+      data-testid={testId}
+      className={cn('relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-hover', className)}
+    >
       <div className={cn('absolute inset-x-0 top-0 h-1.5', BAR[tone])} aria-hidden />
       <div className="flex items-start justify-between">
         <p className="lbl-mono">{label}</p>

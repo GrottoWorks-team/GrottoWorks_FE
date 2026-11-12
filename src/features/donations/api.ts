@@ -1,7 +1,7 @@
 // Donations domain — DonationDto & DonorDto (Resource Service /api/v1/donations)
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
-import type { Donation, DonationType, DonationStatus } from '@/types'
+import type { Donation, DonationType, DonationStatus, ContributionNeedDto } from '@/types'
 
 export interface DonationFilterParams {
   page?: number
@@ -137,5 +137,39 @@ export function useCancelDonation() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: donationKeys.all })
     },
+  })
+}
+
+export interface ContributionNeedFilterParams {
+  page?: number
+  size?: number
+  workAreaId?: string
+  materialId?: string
+}
+
+/** GET /api/v1/seasons/{id}/contribution-needs (mọi role) */
+export async function getContributionNeeds(
+  seasonId: string,
+  filter?: ContributionNeedFilterParams,
+): Promise<ContributionNeedDto[]> {
+  const sp = new URLSearchParams()
+  if (filter?.page) sp.set('page', String(filter.page))
+  if (filter?.size) sp.set('size', String(filter.size))
+  if (filter?.workAreaId) sp.set('workAreaId', filter.workAreaId)
+  if (filter?.materialId) sp.set('materialId', filter.materialId)
+  const qs = sp.toString()
+  const res = await api<any>(`/api/v1/seasons/${seasonId}/contribution-needs${qs ? `?${qs}` : ''}`)
+  if (Array.isArray(res)) return res
+  return res.data ?? []
+}
+
+export function useContributionNeeds(
+  seasonId?: string,
+  filter?: ContributionNeedFilterParams,
+) {
+  return useQuery({
+    queryKey: ['contribution-needs', seasonId, filter],
+    queryFn: () => getContributionNeeds(seasonId!, filter),
+    enabled: Boolean(seasonId),
   })
 }
