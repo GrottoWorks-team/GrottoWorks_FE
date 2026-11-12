@@ -124,7 +124,7 @@
   "status.PENDING_FIX": "Chờ hiệu chỉnh",
   "status.DRAFT": "Nháp",
   "status.COORDINATED": "Đã điều phối",
-  "status.FULFILLED": "Đã đủ người",
+  "status.FULFILLED": "Đã đáp ứng đủ",
   "status.PARTIAL": "Đủ một phần",
   "status.RECEIVED_FULL": "Đã nhận đủ",
   "status.RECEIVED_PARTIAL": "Nhận một phần",
