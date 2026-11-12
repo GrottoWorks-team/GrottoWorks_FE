@@ -38,6 +38,13 @@ export function MaterialHistoryDrawer({
 }: MaterialHistoryDrawerProps) {
   const { t } = useTranslation()
   const drawerRef = useRef<HTMLDivElement>(null)
+  // Giữ `onClose` trong ref: cha render lại (mỗi lần gõ phím) tạo hàm mới, nếu để trong deps thì
+  // listener Escape bị gỡ/gắn liên tục mỗi ký tự.
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   const { data: history = [], isPending, isError, refetch } = useMaterialHistory(
     open ? materialId : undefined,
@@ -46,11 +53,11 @@ export function MaterialHistoryDrawer({
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 

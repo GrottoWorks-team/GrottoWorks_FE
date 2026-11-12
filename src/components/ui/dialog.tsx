@@ -32,17 +32,33 @@ export function Dialog({
   /** sm (mặc định) | md | lg — lg cho form nhiều trường. */
   size?: keyof typeof SIZES
 }) {
+  const panelRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
+  // `onClose` thường là arrow function tạo mới mỗi lần cha render (vd. khi gõ 1 ký tự vào ô
+  // input trong dialog → state đổi → render lại → `onClose` là hàm mới). Nếu để nó trong deps
+  // của effect bên dưới, effect chạy lại sau MỖI ký tự và focus nhảy sang nút X (đóng) —
+  // đúng lỗi "gõ 1 ký tự là focus nhảy sang element khác" trong dialog xoá/từ chối.
+  const onCloseRef = useRef(onClose)
+
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     if (!open) return
-    closeRef.current?.focus()
+    // Chỉ chạy khi dialog MỞ/ĐÓNG: ưu tiên focus ô nhập đầu tiên (form trong dialog), nếu không có
+    // thì focus nút đóng để bàn phím vẫn điều hướng được ngay.
+    const field = panelRef.current?.querySelector<HTMLElement>(
+      'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])',
+    )
+    ;(field ?? closeRef.current)?.focus()
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') onCloseRef.current()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
   return (
@@ -57,6 +73,7 @@ export function Dialog({
           hơn màn hình thì overlay cuộn được — không cắt mất nội dung. */}
       <div className="flex min-h-full items-center justify-center">
         <div
+          ref={panelRef}
           className={cn(
             'g-item flex max-h-[calc(100vh-2rem)] w-full flex-col rounded-card border border-border bg-card shadow-hover',
             SIZES[size],
