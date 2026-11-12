@@ -17,12 +17,41 @@ export class ApiError extends Error {
 
 /**
  * Mã lỗi nghiệp vụ BE (`body.code`) → câu tiếng Việt/Anh dễ hiểu.
- * Tra trong nhóm i18n `errors.<CODE>`; không có thì dùng `detail` của BE.
+ *
+ * Thứ tự tra (12/11/2026 — đồng bộ toàn bộ mã BE, xem `tools/audit-error-codes.mjs`):
+ *   1. `errors.<CODE>`  — câu soạn riêng cho mã đó (ưu tiên, sát ngữ cảnh nhất).
+ *   2. `errorsByKind.<kind>` — câu theo NHÓM hậu tố (`_NOT_FOUND`, `_INVALID_STATE`, …) để mã
+ *      mới BE thêm sau này vẫn ra tiếng Việt, không lộ `detail` tiếng Anh.
+ *   3. `undefined` — nơi gọi giữ `detail` của BE (chính xác nhất nhưng tiếng Anh).
  */
+const KIND_RULES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/(_VERSION_MISMATCH|^INVALID_IF_MATCH|^SOURCE_VERSION_INVALID)$/, 'versionConflict'],
+  [/(_NOT_FOUND|_UNKNOWN)$/, 'notFound'],
+  [/(_REASON_REQUIRED|_NOTE_REQUIRED|_REQUIRED|_ID_REQUIRED)$/, 'required'],
+  [/(_INVALID_STATE|_NOT_OPEN|_NOT_READY|_NOT_COMPLETED|_NOT_ACCEPTED|_NOT_APPROVED|_NOT_LOCKED)$/, 'invalidState'],
+  [/(_ACCESS_DENIED|_SCOPE_DENIED|_DENIED|^FORBIDDEN|^UNAUTHENTICATED)$/, 'denied'],
+  [/(_ALREADY_EXISTS|_EXISTS|_DUPLICATE|_CONFLICT|_ALREADY_POSTED|_ALREADY_RECORDED|_ALREADY_RECEIVED|_ALREADY_LINKED|_ALREADY_LOCKED|_RESERVED|_ATTACHED)$/, 'conflict'],
+  [/(_UNAVAILABLE|_SERVICE_UNAVAILABLE|_STORAGE_UNAVAILABLE)$/, 'unavailable'],
+  [/(_TOO_LONG|_TOO_MANY|_LIMIT_EXCEEDED|_LIMIT|_EXCEEDED|CAPACITY)/, 'tooMany'],
+  [/(_PENDING|_IN_PROGRESS|_SYNC_PENDING)$/, 'pending'],
+  [/(_MISMATCH|_INVALID|_INVALID_RANGE|_DATE_RANGE_INVALID|_OUT_OF_SEASON|_OUT_OF_WORK_AREA|_IN_FUTURE|_IN_PAST|^INVALID_)/, 'invalid'],
+]
+
 export function translateCode(code?: string): string | undefined {
   if (!code) return undefined
-  const key = `errors.${code}`
-  return i18n.exists(key) ? (i18n.t(key) as string) : undefined
+  const exact = `errors.${code}`
+  if (i18n.exists(exact)) return i18n.t(exact) as string
+  for (const [pattern, kind] of KIND_RULES) {
+    if (!pattern.test(code)) continue
+    const key = `errorsByKind.${kind}`
+    if (i18n.exists(key)) return i18n.t(key) as string
+  }
+  return undefined
+}
+
+/** Nhãn ngắn của mã lỗi để hiển thị kèm khi cần đối chiếu log (`WORK_AREA_NOT_FOUND`). */
+export function errorCodeLabel(error: unknown): string | undefined {
+  return error instanceof ApiError && error.code ? error.code : undefined
 }
 
 let isRefreshing = false

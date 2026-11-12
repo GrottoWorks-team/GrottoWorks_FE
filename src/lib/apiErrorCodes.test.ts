@@ -13,10 +13,20 @@ describe('translateCode', () => {
   it('maps corrective task and readiness review codes', () => {
     expect(translateCode('CORRECTIVE_TASK_INVALID')).toContain('khắc phục')
     expect(translateCode('WORK_AREA_NOT_IN_READINESS_REVIEW')).toContain('sẵn sàng')
+    // Câu phải nêu đúng luật BR-73 (mọi nhiệm vụ chưa huỷ đã hoàn thành), không chỉ “không nằm trong đợt”.
+    expect(translateCode('WORK_AREA_NOT_IN_READINESS_REVIEW')).toContain('hoàn thành')
   })
 
   it('returns undefined for codes without a translation (caller keeps BE detail)', () => {
     expect(translateCode('SOME_UNMAPPED_CODE')).toBeUndefined()
     expect(translateCode(undefined)).toBeUndefined()
+  })
+
+  // 12/11/2026: mã BE mới thêm không cần sửa i18n ngay vẫn ra tiếng Việt nhờ nhóm hậu tố.
+  it('falls back to the suffix kind so new BE codes never show raw English', () => {
+    expect(translateCode('SOMETHING_NEW_NOT_FOUND')).toBe('Không tìm thấy dữ liệu yêu cầu.')
+    expect(translateCode('SOMETHING_NEW_VERSION_MISMATCH')).toContain('thay đổi')
+    expect(translateCode('SOMETHING_NEW_REASON_REQUIRED')).toContain('bắt buộc')
+    expect(translateCode('SOMETHING_NEW_ACCESS_DENIED')).toContain('quyền')
   })
 })
