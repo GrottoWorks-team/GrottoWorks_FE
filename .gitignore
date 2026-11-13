@@ -182,3 +182,6 @@ public/asset/
 
 # Ke hoach noi bo - khong dua len git khach
 docs/plans/
+
+# Thu muc lam viec tam - khong dua len git khach
+tmp/

@@ -1,7 +1,13 @@
 // Báo cáo — BE Reporting service. Một endpoint cho mỗi loại báo cáo, trả
 // `ReportDataDto` tổng quát (columns + rows + totals + notes) nên FE render động.
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import type {
+  CreateReportExportRequest,
+  ReportExportJobDto,
+  SystemExportRequest,
+  SystemJobDto,
+} from '@/types'
 
 export type ReportType = 'TASKS' | 'MATERIALS' | 'PURCHASES' | 'CONTRIBUTIONS' | 'ATTENDANCE' | 'READINESS'
 
@@ -44,6 +50,8 @@ const PATHS: Record<ReportType, string> = {
 
 export const reportKeys = {
   data: (params: ReportQuery) => ['reports', 'data', params] as const,
+  operational: (type: string, seasonId?: string) => ['reports', 'operational', type, seasonId] as const,
+  recognition: (seasonId?: string) => ['reports', 'recognition', seasonId] as const,
 }
 
 export interface ReportQuery {
@@ -141,3 +149,220 @@ export async function downloadReportExport(jobId: string, fileName: string): Pro
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// ══════ Bổ sung từ nhánh khoa ══════
+
+export interface ReportColumnDto {
+
+  key: string
+
+  label: string
+
+  unit?: string | null
+
+}
+
+export interface OperationalReportDto {
+
+  reportType: string
+
+  parishId: string
+
+  seasonId: string
+
+  generatedAt: string
+
+  generatedBy: string
+
+  scope: string
+
+  columns: ReportColumnDto[]
+
+  rows: Record<string, unknown>[]
+
+  totals: Record<string, unknown>
+
+  notes: string[]
+
+}
+
+export interface RecognitionRankingItem {
+
+  volunteerId: string
+
+  displayName: string
+
+  points: number
+
+  hours: number
+
+  contributions: number
+
+  tasksCompleted: number
+
+  rank: number
+
+}
+
+export interface RecognitionRankingDto {
+
+  seasonId: string
+
+  parishId: string
+
+  totalPoints: number
+
+  contributions: number
+
+  externalDonorContributions: number
+
+  contributors: number
+
+  ranking: RecognitionRankingItem[]
+
+  generatedAt: string
+
+}
+
+export interface ContributorRow {
+
+  id: string
+
+  name: string
+
+  avatarHue: number
+
+  communityName: string
+
+  points: number
+
+  hours: number
+
+  contributions: number
+
+  tasksDone: number
+
+}
+
+export function useOperationalReport(
+
+  type: 'tasks' | 'materials' | 'purchases' | 'contributions' | 'attendance' | 'readiness',
+
+  seasonId?: string,
+
+) {
+
+  return useQuery({
+
+    queryKey: reportKeys.operational(type, seasonId),
+
+    queryFn: () => api<OperationalReportDto>(`/api/v1/reports/${type}?seasonId=${seasonId}`),
+
+    enabled: Boolean(seasonId),
+
+  })
+
+}
+
+export function useSeasonRecognition(seasonId?: string) {
+
+  return useQuery({
+
+    queryKey: reportKeys.recognition(seasonId),
+
+    queryFn: () => api<RecognitionRankingDto>(`/api/v1/seasons/${seasonId}/recognition`),
+
+    enabled: Boolean(seasonId),
+
+  })
+
+}
+
+export const exportKeys = {
+
+  all: ['report-exports'] as const,
+
+  detail: (id: string) => ['report-exports', id] as const,
+
+  systemData: ['system-data-exports'] as const,
+
+}
+
+
+
+/** Tạo yêu cầu xuất báo cáo bất đồng bộ (POST /api/v1/report-exports) */
+
+export async function createReportExport(
+
+  payload: CreateReportExportRequest,
+
+): Promise<ReportExportJobDto> {
+
+  return api<ReportExportJobDto>('/api/v1/report-exports', {
+
+    method: 'POST',
+
+    body: JSON.stringify(payload),
+
+  })
+
+}
+
+
+
+/** Lấy trạng thái công việc xuất báo cáo (GET /api/v1/report-exports/{id}) */
+
+export async function getReportExportJob(jobId: string): Promise<ReportExportJobDto> {
+
+  return api<ReportExportJobDto>(`/api/v1/report-exports/${jobId}`)
+
+}
+
+
+
+/** URL tải tệp báo cáo hoàn thành (GET /api/v1/report-exports/{id}/file) */
+
+export function getReportExportFileUrl(jobId: string): string {
+
+  return `/api/v1/report-exports/${jobId}/file`
+
+}
+
+
+
+/** Tạo yêu cầu xuất toàn bộ dữ liệu hệ thống cho Admin (POST /api/v1/system-data-exports) */
+
+export async function createSystemDataExport(
+
+  payload?: SystemExportRequest,
+
+): Promise<SystemJobDto> {
+
+  return api<SystemJobDto>('/api/v1/system-data-exports', {
+
+    method: 'POST',
+
+    body: JSON.stringify(payload ?? {}),
+
+  })
+
+}
+
+export function useCreateSystemDataExport() {
+
+  const queryClient = useQueryClient()
+
+  return useMutation({
+
+    mutationFn: (payload?: SystemExportRequest) => createSystemDataExport(payload),
+
+    onSuccess: () => {
+
+      queryClient.invalidateQueries({ queryKey: exportKeys.systemData })
+
+    },
+
+  })
+
+}
+

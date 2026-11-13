@@ -4,6 +4,7 @@
 //   POST   /api/v1/seasons/{id}/activate (version trong body, If-Match tuỳ chọn)
 //   POST   /api/v1/seasons/{id}/complete | /archive
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { SupportSummaryDto } from '@/types'
 import { api } from '@/lib/api'
 import type { CreateSeasonRequest, SeasonDto, WorkAreaDto } from '@/types/parish'
 import { toSeason, toWorkArea } from '@/features/parish/mappers'
@@ -191,3 +192,26 @@ export function useCompleteSeason() {
 export function useArchiveSeason() {
   return useSeasonAction('archive')
 }
+
+// ══════ Bổ sung từ nhánh khoa ══════
+
+export async function getSeasonSupportSummary(seasonId: string): Promise<SupportSummaryDto> {
+
+  return api<SupportSummaryDto>(`/api/v1/seasons/${seasonId}/support-summary`)
+
+}
+
+export function useSeasonSupportSummary(seasonId?: string) {
+
+  return useQuery({
+
+    queryKey: ['season-support-summary', seasonId],
+
+    queryFn: () => getSeasonSupportSummary(seasonId!),
+
+    enabled: Boolean(seasonId),
+
+  })
+
+}
+

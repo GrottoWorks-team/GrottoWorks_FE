@@ -294,3 +294,26 @@ export function useAdjustDonationReceipt() {
     }),
   )
 }
+
+// ══════ Bổ sung từ nhánh khoa: lấy thẳng mảng nhu cầu đóng góp (không qua hook) ══════
+export interface ContributionNeedFilterParams {
+  page?: number
+  size?: number
+  workAreaId?: string
+  materialId?: string
+}
+
+export async function getContributionNeeds(
+  seasonId: string,
+  filter?: ContributionNeedFilterParams,
+): Promise<ContributionNeedDto[]> {
+  const sp = new URLSearchParams()
+  if (filter?.page) sp.set('page', String(filter.page))
+  if (filter?.size) sp.set('size', String(filter.size))
+  if (filter?.workAreaId) sp.set('workAreaId', filter.workAreaId)
+  if (filter?.materialId) sp.set('materialId', filter.materialId)
+  const qs = sp.toString()
+  const res = await api<any>(`/api/v1/seasons/${seasonId}/contribution-needs${qs ? `?${qs}` : ''}`)
+  if (Array.isArray(res)) return res
+  return res.data ?? []
+}

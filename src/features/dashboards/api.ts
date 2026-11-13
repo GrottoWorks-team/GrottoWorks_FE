@@ -12,6 +12,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/lib/api'
+import type { ActivityLog } from '@/types'
 import { useAuth } from '@/lib/auth'
 import { useScopedAreas } from '@/features/areas/api'
 import { useUsers } from '@/features/users/api'
@@ -241,3 +242,90 @@ export function useDashboardData(options: { withCommunities?: boolean } = {}) {
     isPending: areasPending,
   }
 }
+
+// ══════ Bổ sung từ nhánh khoa ══════
+
+const ACTIVITY_API_AVAILABLE = false
+
+
+
+// 50 dòng activity mới nhất (GET /api/activity) — bật khi BE có endpoint.
+
+export function useActivity() {
+
+  return useQuery({
+
+    queryKey: dashboardKeys.activity,
+
+    enabled: ACTIVITY_API_AVAILABLE,
+
+    queryFn: () => api<ActivityLog[]>('/api/v1/activity-logs'),
+
+  })
+
+}
+
+export const reportingDashboardKeys = {
+
+  season: (seasonId?: string) => ['dashboards', 'season', seasonId] as const,
+
+  workArea: (workAreaId?: string) => ['dashboards', 'work-area', workAreaId] as const,
+
+  materials: (params?: { workAreaId?: string; seasonId?: string }) => ['dashboards', 'materials', params] as const,
+
+}
+
+
+
+/** GET /api/v1/dashboards/season?seasonId= (PARISH) */
+
+export async function getSeasonDashboard(seasonId: string): Promise<SeasonDashboardDto> {
+
+  return api<SeasonDashboardDto>(`/api/v1/dashboards/season?seasonId=${seasonId}`)
+
+}
+
+export async function getWorkAreaDashboard(workAreaId: string): Promise<WorkAreaDashboardDto> {
+
+  return api<WorkAreaDashboardDto>(`/api/v1/dashboards/work-area?workAreaId=${workAreaId}`)
+
+}
+
+export async function getMaterialsDashboard(params?: {
+
+  workAreaId?: string
+
+  seasonId?: string
+
+}): Promise<MaterialDashboardDto> {
+
+  const sp = new URLSearchParams()
+
+  if (params?.workAreaId) sp.set('workAreaId', params.workAreaId)
+
+  if (params?.seasonId) sp.set('seasonId', params.seasonId)
+
+  const qs = sp.toString()
+
+  return api<MaterialDashboardDto>(`/api/v1/dashboards/materials${qs ? `?${qs}` : ''}`)
+
+}
+
+export function useMaterialsDashboard(params?: {
+
+  workAreaId?: string
+
+  seasonId?: string
+
+}) {
+
+  return useQuery({
+
+    queryKey: reportingDashboardKeys.materials(params),
+
+    queryFn: () => getMaterialsDashboard(params),
+
+  })
+
+}
+
