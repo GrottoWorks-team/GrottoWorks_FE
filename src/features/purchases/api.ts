@@ -4,7 +4,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import { materialKeys } from '@/features/materials/api'
-import type { PurchaseRecord } from '@/types'
 
 export type PurchaseRequestStatusType =
   | 'PLANNING'
@@ -136,8 +135,6 @@ export const purchaseRequestKeys = {
   history: (id: string) => ['purchaseRequests', 'history', id] as const,
 }
 
-export const purchaseRecordKeys = { all: ['purchaseRecords'] as const }
-
 /**
  * F1: GET /api/v1/purchase-requests (có phân trang & bộ lọc status, workAreaId, seasonId)
  */
@@ -204,26 +201,12 @@ export function usePurchaseRequestHistory(requestId?: string) {
   })
 }
 
-/**
- * BE không có endpoint liệt kê purchase record rời; dữ liệu mua nằm trong
- * `GET /purchase-requests/{id}` (field `purchases`). Giữ hook trả rỗng để các
- * màn hình cũ không gọi path legacy.
- */
-export function usePurchaseRecords() {
-  return useQuery({
-    queryKey: purchaseRecordKeys.all,
-    queryFn: async (): Promise<PurchaseRecord[]> => [],
-    staleTime: Infinity,
-  })
-}
-
 function usePurchaseMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: purchaseRequestKeys.all })
-      void qc.invalidateQueries({ queryKey: purchaseRecordKeys.all })
       void qc.invalidateQueries({ queryKey: materialKeys.all })
     },
   })

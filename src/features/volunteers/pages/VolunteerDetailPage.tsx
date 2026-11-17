@@ -19,13 +19,11 @@ import { Card } from '@/components/ui/card'
 import { useAreas } from '@/features/areas/api'
 import { useCommunities } from '@/features/communities/api'
 import { useDonations } from '@/features/donations/api'
-import { useMaterials } from '@/features/materials/api'
-import { usePurchaseRecords } from '@/features/purchases/api'
 import { useTasks } from '@/features/tasks/api'
 import { useTimesheets } from '@/features/timesheets/api'
 import { useUsers } from '@/features/users/api'
 import { viDate } from '@/lib/format'
-import type { Donation, PurchaseRecord, Task, Timesheet } from '@/types'
+import type { Donation, Task, Timesheet } from '@/types'
 
 export default function VolunteerDetailPage() {
   const { t } = useTranslation()
@@ -40,12 +38,8 @@ export default function VolunteerDetailPage() {
   const { data: timesheets = [] } = useTimesheets()
   const { data: tasks = [] } = useTasks()
   const { data: donations = [] } = useDonations()
-  const { data: purchases = [] } = usePurchaseRecords()
-  const { data: materials = [] } = useMaterials()
 
   const areaName = (aid: string) => areas.find((a) => a.id === aid)?.name ?? '—'
-  const materialName = (mid?: string) =>
-    materials.find((m) => m.id === mid)?.name ?? t('features.volunteers.monetaryOnly')
 
   // Mọi hook trước early return (quy tắc hooks); user lookup chỉ là find.
   const tsColumns = useMemo(
@@ -74,20 +68,8 @@ export default function VolunteerDetailPage() {
       { key: 'monetary', header: t('features.volunteers.amount'), align: 'right' as const, render: (d: Donation) => <span className="tabular">{d.pledgedAmount ? d.pledgedAmount.toLocaleString() : '—'}</span> },
       { key: 'status', header: t('common.status'), render: (d: Donation) => <StatusTag status={d.status} /> },
     ],
-    [t, materials],
+    [t],
   )
-  const purchaseColumns = useMemo(
-    () => [
-      { key: 'date', header: t('features.volunteers.date'), render: (p: PurchaseRecord) => <span className="tabular">{viDate(p.date)}</span> },
-      { key: 'material', header: t('features.volunteers.material'), render: (p: PurchaseRecord) => materialName(p.materialId) },
-      { key: 'qty', header: t('features.volunteers.qty'), align: 'right' as const, render: (p: PurchaseRecord) => <span className="tabular">{p.qty}</span> },
-      { key: 'cost', header: t('features.volunteers.cost'), align: 'right' as const, render: (p: PurchaseRecord) => <span className="tabular">{p.cost.toLocaleString()}</span> },
-      { key: 'supplier', header: t('features.volunteers.supplier') },
-      { key: 'confirmed', header: t('features.volunteers.confirmed'), align: 'center' as const, render: (p: PurchaseRecord) => (p.confirmed ? '✓' : '·') },
-    ],
-    [t, materials],
-  )
-
   const user = users.find((u) => u.id === id)
   if (isPending) return <p className="lbl-mono">{t('common.loading')}</p>
   if (!user) {
@@ -104,7 +86,6 @@ export default function VolunteerDetailPage() {
   const myTasks = tasks.filter((x) => x.assignees.includes(id))
   // Donation không có volunteerId — đối chiếu tên (includes: seed có "Bà/Ông/…").
   const myDonations = donations.filter((d) => d.donorName.includes(user.name))
-  const myPurchases = purchases.filter((p) => p.buyerId === id)
   const community = communities.find((c) => c.id === user.communityId)
 
   return (
@@ -182,11 +163,6 @@ export default function VolunteerDetailPage() {
         <Card className="p-5">
           <h3 className="lbl-mono mb-3 text-foreground">{t('features.volunteers.donationsTitle')}</h3>
           <DataTable rows={myDonations} columns={donationColumns} pageSize={5} emptyText={t('features.volunteers.noDonations')} />
-        </Card>
-
-        <Card className="p-5">
-          <h3 className="lbl-mono mb-3 text-foreground">{t('features.volunteers.purchasesTitle')}</h3>
-          <DataTable rows={myPurchases} columns={purchaseColumns} pageSize={5} emptyText={t('features.volunteers.noPurchases')} />
         </Card>
       </div>
     </div>
