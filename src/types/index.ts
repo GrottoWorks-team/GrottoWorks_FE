@@ -1296,23 +1296,6 @@ export interface ActivityLogDetailDto {
 }
 
 
-export interface StateChangeDto {
-  fieldName: string
-  oldValue?: string | null
-  newValue?: string | null
-  changedAt: string
-  changedBy?: string | null
-}
-
-
-export interface UpdateDonorRequest {
-  name?: string
-  phone?: string | null
-  email?: string | null
-  note?: string | null
-}
-
-
 export interface RecordDonationReceiptRequest {
   receivedAt?: string
   note?: string | null
@@ -1341,12 +1324,5 @@ export interface DeactivateRecognitionRuleRequest {
 }
 
 
-export interface InventoryAdjustmentRequest {
-  materialId: string
-  workAreaId?: string
-  reason: 'DAMAGED' | 'LOST' | 'DISPOSED' | string
-  quantity: number
-  notes?: string
-}
 // ══════ [/fe-api-gap-2] ══════
 

@@ -134,12 +134,3 @@ export interface UpdateAdminUserRequest {
   parishId?: string | null
   status?: UserStatus
 }
-
-export interface ReasonCommandRequest {
-  reason: string
-}
-
-export interface RoleAssignmentRequest {
-  role: string
-  parishId?: string | null
-}
