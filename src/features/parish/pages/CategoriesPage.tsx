@@ -24,6 +24,7 @@ import { useMaterials } from '@/features/materials/api'
 import { useTasks } from '@/features/tasks/api'
 import { useSkillsCatalog } from '@/features/skills/api'
 import { useUsers } from '@/features/users/api'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import {
   useCreateSkill,
@@ -80,7 +81,8 @@ function CategoryRow({
   onDelete,
 }: {
   name: string
-  refCount: number
+  /** `null` = không có quyền đọc số liệu tham chiếu (BE 403 với ADMIN). */
+  refCount: number | null
   refLabel: string
   onRename?: (next: string) => void
   onDelete?: () => void
@@ -129,7 +131,7 @@ function CategoryRow({
           <span className="font-semibold text-foreground">{name}</span>
           <div className="flex items-center gap-1">
             <span className="lbl-mono !text-[11px]">
-              {refCount} {refLabel}
+              {refCount === null ? '—' : `${refCount} ${refLabel}`}
             </span>
             {onRename && (
               <Button
@@ -211,7 +213,12 @@ export default function CategoriesPage() {
   const { data: tasks = [] } = useTasks()
   const { data: materials = [] } = useMaterials()
   const { data: areas = [] } = useAreas()
-  const { data: donations = [] } = useDonations()
+  // BE chỉ cho Parish/Leader/MO đọc `GET /donations`; tài khoản ADMIN (web
+  // PARISH — trang này) gọi vào là 403. Vì vậy chỉ trang /community (role
+  // COMMUNITY = BE PARISH) mới đếm số lượt dùng; trang admin hiện "—".
+  const { user } = useAuth()
+  const canCountDonations = user?.role === 'COMMUNITY'
+  const { data: donations = [] } = useDonations({ enabled: canCountDonations })
   const { data: skillCatalog = [] } = useSkillsCatalog()
   const { data: areaCategories = [] } = useWorkAreaCategories()
   const createAreaCategory = useCreateWorkAreaCategory()
@@ -408,7 +415,11 @@ export default function CategoriesPage() {
                 <CategoryRow
                   key={x}
                   name={t(`features.donations.kind.${x}`)}
-                  refCount={donations.filter((d) => (x === 'MATERIAL' ? d.type === 'MATERIAL' : d.type === 'MONEY')).length}
+                  refCount={
+                    canCountDonations
+                      ? donations.filter((d) => (x === 'MATERIAL' ? d.type === 'MATERIAL' : d.type === 'MONEY')).length
+                      : null
+                  }
                   refLabel={t('features.parish.refUses')}
                 />
               ))}

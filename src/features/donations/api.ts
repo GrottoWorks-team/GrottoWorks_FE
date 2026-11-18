@@ -76,6 +76,11 @@ export interface DonationQuery {
   workAreaId?: string
   seasonId?: string
   size?: number
+  /**
+   * `false` để KHÔNG gọi. BE chỉ cho `Parish, Leader, MaterialOfficer` đọc
+   * `GET /donations` — tài khoản ADMIN (web PARISH) gọi vào sẽ bị 403.
+   */
+  enabled?: boolean
 }
 
 export function useDonations(params?: DonationQuery) {
@@ -90,6 +95,7 @@ export function useDonations(params?: DonationQuery) {
       const res = await apiPaged<DonationDto>(`/api/v1/donations?${q.toString()}`)
       return res.data.map(mapDonation)
     },
+    enabled: params?.enabled ?? true,
   })
 }
 
