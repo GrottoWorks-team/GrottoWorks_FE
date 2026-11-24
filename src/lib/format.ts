@@ -1,4 +1,80 @@
-// Helper định dạng dùng chung — ISO yyyy-mm-dd → dd/MM/yyyy.
+// Helper định dạng dùng chung — MỌI số/ngày đi qua đây để không lệch giữa feature
+// và không bao giờ in ra `NaN`/`undefined`. Thiếu dữ liệu → '—'.
+
+export const MISSING = '—'
+
+const VN_LOCALE = 'vi-VN'
+
+/** Số hợp lệ để hiển thị (loại null/undefined/NaN/Infinity). */
+export function isNum(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value)
+}
+
+const nf = (digits = 0) =>
+  new Intl.NumberFormat(VN_LOCALE, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits,
+  })
+
+/** Tiền VNĐ: `1.234.567 ₫`. Thiếu dữ liệu → '—'. */
+export function formatVnd(value: number | null | undefined): string {
+  if (!isNum(value)) return MISSING
+  return `${nf(0).format(value)} ₫`
+}
+
+/**
+ * Số lượng kèm đơn vị. Số âm là dữ liệu sai → hiện 0 (không hiện số âm trên màn);
+ * thiếu đơn vị → chỉ số.
+ */
+export function formatQuantity(
+  value: number | null | undefined,
+  unit?: string | null,
+  digits = 2,
+): string {
+  if (!isNum(value)) return MISSING
+  const safe = value < 0 ? 0 : value
+  const text = nf(digits).format(safe)
+  return unit ? `${text} ${unit}` : text
+}
+
+/** Phần trăm (giá trị 0..100): `42%`. Thiếu dữ liệu → '—'. */
+export function formatPercent(value: number | null | undefined, digits = 0): string {
+  if (!isNum(value)) return MISSING
+  return `${nf(digits).format(value)}%`
+}
+
+/** Thời lượng theo phút: `45p`, `1g 30p`, `2g`. Thiếu dữ liệu → '—'. */
+export function formatDuration(minutes: number | null | undefined): string {
+  if (!isNum(minutes)) return MISSING
+  const total = Math.max(0, Math.round(minutes))
+  const hours = Math.floor(total / 60)
+  const rest = total % 60
+  if (hours === 0) return `${rest}p`
+  return rest === 0 ? `${hours}g` : `${hours}g ${rest}p`
+}
+
+/** Ngày `dd/mm/yyyy`. Chấp nhận ISO hoặc `yyyy-mm-dd…`; sai → '—'. */
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return MISSING
+  const day = iso.slice(0, 10)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    return `${day.slice(8, 10)}/${day.slice(5, 7)}/${day.slice(0, 4)}`
+  }
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return MISSING
+  return d.toLocaleDateString(VN_LOCALE)
+}
+
+/** Giờ + ngày `hh:mm dd/mm/yyyy`. Thiếu/sai → '—'. */
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return MISSING
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return MISSING
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
+}
+
+/** @deprecated Dùng `formatDate`; giữ tên cũ cho các màn đang import. */
 export const viDate = (iso: string) =>
   iso.length >= 10 ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : iso
 
@@ -16,10 +92,5 @@ export function relTime(
   return t('notifications.dayAgo', { n: Math.floor(s / 86400) })
 }
 
-export const viDateTime = (iso: string) => {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`
-}
+/** @deprecated Dùng `formatDateTime`. */
+export const viDateTime = formatDateTime

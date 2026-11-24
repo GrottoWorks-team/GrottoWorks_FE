@@ -9,10 +9,12 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useDashboardData, useMaterialDashboard } from './api'
+import { formatQuantity } from '@/lib/format'
+import { useDashboardData, useMaterialDashboard, type MaterialLineDto } from './api'
 import type { WorkArea } from '@/types'
 
 const SELECT_CLS =
@@ -26,9 +28,18 @@ export default function OfficerOverview() {
 
   const requestedAreaId = searchParams.get('area')
   const area = areas.find((a) => a.id === requestedAreaId) ?? areas[0] ?? null
-  const { data: materialDashboard, isPending: materialPending } = useMaterialDashboard({
+  const { data: materialDashboard, isPending: materialPending, isError: materialError, refetch: refetchMaterials } = useMaterialDashboard({
     workAreaId: area?.id,
   })
+
+  // "Vật tư nào sắp thiếu": chỉ dòng còn thiếu, thiếu nhiều lên trước.
+  const shortageLines = useMemo(
+    () =>
+      (materialDashboard?.lines ?? [])
+        .filter((line) => line.shortage > 0)
+        .sort((a, b) => b.shortage - a.shortage),
+    [materialDashboard],
+  )
 
   const selectArea = (areaId: string) => {
     setSearchParams(
@@ -83,7 +94,7 @@ export default function OfficerOverview() {
       <PageHeader
         title={
           area
-            ? area.name.startsWith('Khu vực')
+            ? area.name.startsWith(t('features.areas.namePrefix'))
               ? area.name
               : t('features.dashboards.officerTitle', { name: area.name })
             : t('features.dashboards.officerTitleNoArea')
@@ -92,6 +103,14 @@ export default function OfficerOverview() {
           areas.length > 1
             ? t('features.dashboards.officerSubMulti', { count: areas.length })
             : t('features.dashboards.officerSub')
+        }
+        finding={
+          area
+            ? t('features.dashboards.officerFinding', {
+                count: shortageLines.length,
+                area: area.name,
+              })
+            : undefined
         }
         actions={
           area && (
@@ -136,6 +155,60 @@ export default function OfficerOverview() {
               pageSize={10}
               emptyText={t('features.materials.noArea')}
             />
+          </Card>
+
+          <Card className="p-5">
+            <p className="lbl-mono mb-3">{t('features.dashboards.shortageTableTitle')}</p>
+            {materialError ? (
+              <ErrorState compact onRetry={() => void refetchMaterials()} />
+            ) : materialPending ? (
+              <EmptyState text={t('common.loading')} className="py-6" />
+            ) : shortageLines.length === 0 ? (
+              <EmptyState
+                text={t('features.dashboards.noShortage')}
+                hint={t('features.dashboards.noShortageHint')}
+                className="py-6"
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-gw-tableHead text-left">
+                      <th scope="col" className="px-3 py-2 font-semibold text-primary">
+                        {t('features.requirements.colName')}
+                      </th>
+                      <th scope="col" className="px-3 py-2 text-right font-semibold text-primary">
+                        {t('features.shortages.colRequired')}
+                      </th>
+                      <th scope="col" className="px-3 py-2 text-right font-semibold text-primary">
+                        {t('features.shortages.colAvailable')}
+                      </th>
+                      <th scope="col" className="px-3 py-2 text-right font-semibold text-primary">
+                        {t('features.shortages.colShortage')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shortageLines.map((line: MaterialLineDto) => (
+                      <tr key={`${line.workAreaId}-${line.materialId}`} className="border-b border-border/60 last:border-0">
+                        <td className="px-3 py-2 font-semibold text-foreground">
+                          {line.materialName ?? line.materialCode ?? '—'}
+                        </td>
+                        <td className="tabular px-3 py-2 text-right">
+                          {formatQuantity(line.required, line.unit)}
+                        </td>
+                        <td className="tabular px-3 py-2 text-right">
+                          {formatQuantity(line.confirmedAvailable, line.unit)}
+                        </td>
+                        <td className="tabular px-3 py-2 text-right font-semibold text-status-dangerText">
+                          {formatQuantity(line.shortage, line.unit)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </Card>
 
           <Card className="p-5">

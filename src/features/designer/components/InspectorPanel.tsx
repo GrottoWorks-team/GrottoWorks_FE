@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Sliders,
   Layers,
@@ -39,6 +40,7 @@ export function InspectorPanel({
   onBringToFront,
   onSendToBack,
 }: InspectorPanelProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<'PROPS' | 'BOM'>('PROPS')
   const [copied, setCopied] = useState(false)
   const toast = useToast()
@@ -49,12 +51,12 @@ export function InspectorPanel({
     const text = bom
       .map(
         (b, idx) =>
-          `${idx + 1}. ${b.materialName}: ${b.totalQuantity} ${b.unit} (${b.itemsCount} vị trí)`,
+          t('designer.bomLine', { index: idx + 1, name: b.materialName, quantity: b.totalQuantity, unit: b.unit, count: b.itemsCount }),
       )
       .join('\n')
     navigator.clipboard.writeText(text)
     setCopied(true)
-    toast('Đã sao chép bảng danh mục vật tư!')
+    toast(t('designer.bomCopied'))
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -68,7 +70,7 @@ export function InspectorPanel({
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    toast('Đã tải xuống file CSV danh mục vật tư!')
+    toast(t('designer.bomDownloaded'))
   }
 
   return (
@@ -79,7 +81,7 @@ export function InspectorPanel({
           onClick={() => setActiveTab('PROPS')}
           className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
             activeTab === 'PROPS'
-              ? 'bg-brand-pine text-white shadow-sm'
+              ? 'bg-brand-pine text-white'
               : 'text-muted-foreground hover:bg-card hover:text-foreground'
           }`}
         >
@@ -90,7 +92,7 @@ export function InspectorPanel({
           onClick={() => setActiveTab('BOM')}
           className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
             activeTab === 'BOM'
-              ? 'bg-brand-pine text-white shadow-sm'
+              ? 'bg-brand-pine text-white'
               : 'text-muted-foreground hover:bg-card hover:text-foreground'
           }`}
         >
@@ -113,7 +115,7 @@ export function InspectorPanel({
                   {selectedItem.name}
                 </h3>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Định mức: {selectedItem.materialReq.quantity} {selectedItem.materialReq.unit}{' '}
+                  {t('designer.quota')} {selectedItem.materialReq.quantity} {selectedItem.materialReq.unit}{' '}
                   {selectedItem.materialReq.materialName}
                 </p>
               </div>
@@ -121,7 +123,7 @@ export function InspectorPanel({
               {/* Toạ độ X, Y */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Toạ độ X (px)</Label>
+                  <Label className="text-[11px] text-muted-foreground">{t('designer.posX')}</Label>
                   <Input
                     type="number"
                     value={Math.round(selectedItem.x)}
@@ -132,7 +134,7 @@ export function InspectorPanel({
                   />
                 </div>
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Toạ độ Y (px)</Label>
+                  <Label className="text-[11px] text-muted-foreground">{t('designer.posY')}</Label>
                   <Input
                     type="number"
                     value={Math.round(selectedItem.y)}
@@ -147,7 +149,7 @@ export function InspectorPanel({
               {/* Rộng, Cao */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Chiều rộng (W)</Label>
+                  <Label className="text-[11px] text-muted-foreground">{t('designer.width')}</Label>
                   <Input
                     type="number"
                     value={Math.round(selectedItem.width)}
@@ -160,7 +162,7 @@ export function InspectorPanel({
                   />
                 </div>
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Chiều cao (H)</Label>
+                  <Label className="text-[11px] text-muted-foreground">{t('designer.height')}</Label>
                   <Input
                     type="number"
                     value={Math.round(selectedItem.height)}
@@ -177,7 +179,7 @@ export function InspectorPanel({
               {/* Góc xoay & Z-index */}
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Góc xoay (°)</Label>
+                  <Label className="text-[11px] text-muted-foreground">{t('designer.rotation')}</Label>
                   <Input
                     type="number"
                     value={Math.round(selectedItem.rotation)}
@@ -190,7 +192,7 @@ export function InspectorPanel({
                   />
                 </div>
                 <div>
-                  <Label className="text-[11px] text-muted-foreground">Thứ tự lớp (Z)</Label>
+                  <Label className="text-[11px] text-muted-foreground">{t('designer.zOrder')}</Label>
                   <Input
                     type="number"
                     value={selectedItem.zIndex}
@@ -202,7 +204,7 @@ export function InspectorPanel({
 
               {/* Nút điều chỉnh lớp */}
               <div className="space-y-1.5 pt-2">
-                <Label className="text-[11px] text-muted-foreground">Thứ tự hiển thị lớp:</Label>
+                <Label className="text-[11px] text-muted-foreground">{t('designer.layerOrder')}</Label>
                 <div className="grid grid-cols-2 gap-2">
                   <Button
                     variant="outline"
@@ -262,7 +264,7 @@ export function InspectorPanel({
           /* TAB 2: BÓC TÁCH VẬT TƯ (BOM) */
           <div className="space-y-3.5">
             <div className="flex items-center justify-between">
-              <span className="lbl-mono text-xs">Vật tư dự trù thi công</span>
+              <span className="lbl-mono text-xs">{t('designer.bomTitle')}</span>
               <Badge className="font-mono text-xs bg-amber-50 text-amber-700 border-amber-200">
                 {allItems.length} vật thể
               </Badge>

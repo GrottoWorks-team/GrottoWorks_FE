@@ -414,7 +414,7 @@ export function AreaFormDialog({
             <select id="area-season" className={SELECT_CLS} {...register('seasonId')}>
               {seasons.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {`Mùa Giáng sinh ${s.year} (${t(`status.${s.status}`, s.status)})`}
+                  {t('features.season.optionLabel', { year: s.year, status: t(`status.${s.status}`, s.status) })}
                 </option>
               ))}
             </select>

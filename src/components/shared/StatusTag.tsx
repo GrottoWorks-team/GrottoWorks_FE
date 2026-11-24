@@ -1,82 +1,49 @@
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-
-// Map status → tone; nhóm ngoài brief mặc định ◇ soft (label vẫn dịch đúng).
-const TONE: Record<string, 'ok' | 'warn' | 'alert' | 'soft'> = {
-  DONE: 'ok', ENOUGH: 'ok', APPROVED: 'ok', RESOLVED: 'ok', CLOSED: 'ok',
-  ACCEPTED: 'ok',
-  ON_TRACK: 'ok', RECEIVED_FULL: 'ok', RECEIVED: 'ok',
-  DOING: 'warn', INCOMING: 'warn', PENDING: 'warn', REVIEW: 'warn',
-  COORDINATED: 'warn', PENDING_FIX: 'warn', RECEIVED_PARTIAL: 'warn', ACTIVE: 'warn',
-  PLEDGED: 'warn',
-  LATE: 'alert', REVISE: 'alert', REJECTED: 'alert', SHORTAGE: 'alert',
-  AT_RISK: 'alert', UNUSABLE: 'alert', DAMAGED: 'alert', LOST: 'alert',
-  OPEN: 'warn', // yêu cầu hỗ trợ đang chờ điều phối
-  NOT_RETURNED: 'soft', // đồ mượn chưa trả
-  IN_REVIEW: 'warn', // phiên bản thiết kế đang review
-  IN_PROGRESS: 'warn', // yêu cầu chỉnh sửa đang xử lý
-  CHANGES_REQUESTED: 'alert', // phiên bản thiết kế bị yêu cầu chỉnh sửa
-  PLANNING: 'soft', PLANNED: 'soft', COMPLETED: 'ok', ARCHIVED: 'soft',
-  READINESS_REVIEW: 'warn', NEEDS_CORRECTION: 'alert', INACTIVE: 'soft',
-  DRAFT: 'soft',
-  // Trạng thái TaskExecution (enum serialize SNAKE_CASE_UPPER).
-  NOT_STARTED: 'soft', READY: 'soft', SUBMITTED: 'warn', REVISION_REQUIRED: 'alert',
-  // Trạng thái đơn mua (Resource).
-  PENDING_APPROVAL: 'warn',
-  BUYER_ASSIGNED: 'warn',
-  PURCHASED: 'warn',
-  PARTIALLY_RECEIVED: 'warn',
-  CANCELLED: 'alert',
-  OFFERED: 'warn',
-  ISSUED: 'warn',
-  IN_USE: 'warn',
-  RETURNED: 'ok',
-}
-
-// DESIGN_SYSTEM.md mục 12 — Status Badge: pastel background + dark text.
-const STYLE = {
-  ok: 'bg-status-successBg text-status-successText',
-  warn: 'bg-status-pendingBg text-status-pendingText',
-  alert: 'bg-status-dangerBg text-status-dangerText',
-  soft: 'bg-status-neutralBg text-status-neutralText',
-} as const
-
-const GLYPH = { ok: '✓', warn: '◐', alert: '✕', soft: '◇' } as const
+import { STATUS_TONE, TONE_STYLE, type StatusTone } from './statusMeta'
 
 /**
- * Task dùng chung union status với khu vực (cả hai đều có 'READY') nhưng nghĩa
- * khác nhau: khu vực READY = "Sẵn sàng", task READY = "Đã chốt tuyển". Truyền
- * scope="task" để lấy key i18n riêng thay vì đè nhãn dùng chung.
+ * Nhãn trạng thái: chỉ dùng tone từ `statusMeta` (không tự đặt mã màu), **không**
+ * đặt icon trong ô màu — icon miền (`DOMAIN_ICON`) đứng ngoài, truyền qua `icon`.
  */
 export function StatusTag({
   status,
   scope,
   glyph,
   tone,
+  icon,
   className,
 }: {
   status: string
   /** Ngữ cảnh hẹp hơn — hiện chỉ 'task' cần tách nhãn khỏi khu vực. */
   scope?: 'task'
-  /** Override glyph/tone theo ngữ cảnh (vd TimesheetPage) — mặc định lấy map theo status. */
+  /** Override glyph khi ngữ cảnh cần (vd mức ưu tiên của góp ý thiết kế). */
   glyph?: string
-  tone?: keyof typeof STYLE
+  tone?: StatusTone
+  /** Icon miền đứng ngoài ô màu trạng thái. */
+  icon?: ReactNode
   className?: string
 }) {
   const { t } = useTranslation()
-  const activeTone = tone ?? TONE[status] ?? 'soft'
+  const activeTone = tone ?? STATUS_TONE[status] ?? 'soft'
   const key = scope === 'task' ? `status.TASK_${status}` : `status.${status}`
   return (
-    <span
-      className={cn(
-        'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide',
-        STYLE[activeTone],
-        className,
-      )}
-    >
-      <span aria-hidden>{glyph ?? GLYPH[activeTone]}</span>
-      {t(key, { defaultValue: t(`status.${status}`, { defaultValue: status }) })}
+    <span className={cn('inline-flex items-center gap-1.5', className)}>
+      {icon ? (
+        <span className="text-muted-foreground [&_svg]:size-3.5" aria-hidden>
+          {icon}
+        </span>
+      ) : null}
+      <span
+        className={cn(
+          'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 font-mono text-[11px] font-semibold tracking-wide',
+          TONE_STYLE[activeTone],
+        )}
+      >
+        {glyph ? <span aria-hidden>{glyph}</span> : null}
+        {t(key, { defaultValue: t(`status.${status}`, { defaultValue: status }) })}
+      </span>
     </span>
   )
 }
-

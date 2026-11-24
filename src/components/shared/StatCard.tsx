@@ -50,7 +50,7 @@ export function StatCard({
   const v = useCountUp(numeric ? value : 0)
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN'
   return (
-    <Card className={cn('relative overflow-hidden p-5 transition-shadow duration-200 hover:shadow-hover', className)}>
+    <Card className={cn('relative overflow-hidden p-5 duration-200', className)}>
       <div className={cn('absolute inset-x-0 top-0 h-1.5', BAR[tone])} aria-hidden />
       <div className="flex items-start justify-between">
         <p className="lbl-mono">{label}</p>

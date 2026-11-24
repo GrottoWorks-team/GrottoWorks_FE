@@ -155,7 +155,7 @@ export function AppShell({ role }: { role?: Role }) {
                           'g-item relative flex items-center gap-2.5 rounded-md py-2 text-sm font-semibold transition-colors',
                           collapsed ? 'justify-center px-0' : 'px-3',
                           isActive
-                            ? 'bg-primary text-primary-foreground shadow-card'
+                            ? 'bg-primary text-primary-foreground'
                             : 'text-muted-foreground hover:bg-background hover:text-foreground',
                         )
                       }

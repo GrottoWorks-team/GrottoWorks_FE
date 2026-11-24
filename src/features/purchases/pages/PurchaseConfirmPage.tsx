@@ -10,9 +10,11 @@ import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
+import { InlineAlert } from '@/components/ui/inline-alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
+import { fieldError, fieldErrorsOf, type FieldErrors } from '@/lib/apiFieldErrors'
 import {
   openPurchaseReceipt,
   useConfirmPurchaseDelivery,
@@ -29,6 +31,7 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
   const { t } = useTranslation()
   const toast = useToast()
   const confirm = useConfirmPurchaseDelivery()
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [lines, setLines] = useState<Record<string, { usable: string; unusable: string }>>(() =>
     Object.fromEntries(
       purchase.items.map((item) => [
@@ -39,6 +42,7 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
   )
 
   const submit = async () => {
+    setFieldErrors({})
     try {
       await confirm.mutateAsync({
         purchaseId: purchase.id,
@@ -51,8 +55,13 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
       })
       toast(t('features.purchases.deliveryConfirmed'))
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      // 422: giữ nguyên số đã nhập, hiện lỗi đúng dòng vật tư.
+      const errors = fieldErrorsOf(error)
+      setFieldErrors(errors)
+      if (Object.keys(errors).length === 0) {
+        toast(error instanceof Error ? error.message : t('common.error'), 'alert')
+      }
     }
   }
 
@@ -73,6 +82,15 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
       }
     >
       <div className="space-y-3">
+        {Object.keys(fieldErrors).length > 0 && (
+          <InlineAlert tone="alert" title={t('common.serverFieldErrors')}>
+            <ul className="list-disc space-y-0.5 pl-4">
+              {[...new Set(Object.values(fieldErrors))].map((message, index) => (
+                <li key={index}>{message}</li>
+              ))}
+            </ul>
+          </InlineAlert>
+        )}
         {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
           <p className="rounded-md bg-status-dangerBg p-2 text-xs font-semibold text-status-dangerText">
             {t('features.purchases.overrunPending')}
@@ -98,6 +116,19 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
                     setLines((prev) => ({ ...prev, [item.id]: { ...prev[item.id], usable: e.target.value } }))
                   }
                 />
+                {fieldError(
+                  fieldErrors,
+                  `items[${purchase.items.indexOf(item)}].receivedUsableQuantity`,
+                  `receivedUsableQuantity`,
+                ) ? (
+                  <p className="mt-1 text-[11px] text-destructive">
+                    {fieldError(
+                      fieldErrors,
+                      `items[${purchase.items.indexOf(item)}].receivedUsableQuantity`,
+                      `receivedUsableQuantity`,
+                    )}
+                  </p>
+                ) : null}
               </div>
               <div>
                 <Label htmlFor={`unusable-${item.id}`}>{t('features.purchases.unusable')}</Label>

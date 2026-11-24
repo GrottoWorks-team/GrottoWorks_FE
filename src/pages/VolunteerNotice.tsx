@@ -17,7 +17,7 @@ export default function VolunteerNotice() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center p-4">
-      <Card className="max-w-md w-full p-8 text-center space-y-6 shadow-card border-border bg-card">
+      <Card className="max-w-md w-full p-8 text-center space-y-6 border-border bg-card">
         <div className="mx-auto size-16 rounded-full bg-brand-pine/10 text-brand-pine flex items-center justify-center">
           <Smartphone className="size-8" />
         </div>

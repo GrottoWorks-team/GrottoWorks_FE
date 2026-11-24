@@ -61,9 +61,9 @@ const SELECT_CLS =
   'flex h-9 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
 const PRIORITY_TONE = {
-  LOW: { tone: 'soft', glyph: '○' },
-  MEDIUM: { tone: 'warn', glyph: '◐' },
-  HIGH: { tone: 'alert', glyph: '✕' },
+  LOW: { tone: 'soft' },
+  MEDIUM: { tone: 'warn' },
+  HIGH: { tone: 'alert' },
 } as const
 
 export default function DesignReviewPage() {
@@ -528,8 +528,7 @@ export default function DesignReviewPage() {
                         <span className="mt-2 flex flex-wrap items-center gap-2">
                           <StatusTag
                             status={c.priority}
-                            tone={PRIORITY_TONE[c.priority].tone}
-                            glyph={PRIORITY_TONE[c.priority].glyph}
+                            tone={PRIORITY_TONE[c.priority].tone}
                           />
                           {(c.positionType === 'IMAGE_2D' || c.positionType === 'MODEL_3D') && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-pine">

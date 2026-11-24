@@ -91,13 +91,13 @@ export function MaterialHistoryDrawer({
         return {
           label: t('features.inventory.history.typeTransferIn'),
           icon: ArrowDownRight,
-          cls: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800',
+          cls: 'bg-status-neutralBg text-status-neutralText border-border',
         }
       case 'TRANSFER_OUT':
         return {
           label: t('features.inventory.history.typeTransferOut'),
           icon: ArrowUpRight,
-          cls: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/40 dark:text-purple-300 dark:border-purple-800',
+          cls: 'bg-status-neutralBg text-status-neutralText border-border',
         }
       case 'ADJUSTMENT_DAMAGED':
         return {
@@ -213,7 +213,7 @@ export function MaterialHistoryDrawer({
                       {/* Timeline dot */}
                       <span className="absolute -left-[23px] top-1.5 size-3 rounded-full border-2 border-card bg-primary ring-4 ring-card" />
 
-                      <div className="rounded-lg border border-border bg-card p-3 shadow-xs transition-shadow group-hover:shadow-sm">
+                      <div className="rounded-lg border border-border bg-card p-3 group-hover:shadow-sm">
                         <div className="flex items-center justify-between gap-2">
                           <span
                             className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold ${badge.cls}`}

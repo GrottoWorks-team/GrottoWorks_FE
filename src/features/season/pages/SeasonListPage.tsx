@@ -21,6 +21,7 @@ import { CloneSeasonDialog } from './CloneSeasonDialog'
 import { SeasonActivateDialog, validateSeasonActivation } from './SeasonActivateDialog'
 import type { Season } from '@/types'
 import { useAuth } from '@/lib/auth'
+import { ApiError } from '@/lib/api'
 import i18n from '@/lib/i18n'
 import { viDate } from '@/lib/format'
 
@@ -47,6 +48,11 @@ export default function SeasonListPage({ embedded = false }: { embedded?: boolea
   const [archiving, setArchiving] = useState<Season | null>(null)
   const [activatingCheck, setActivatingCheck] = useState<Season | null>(null)
   const [activatingConfirm, setActivatingConfirm] = useState<Season | null>(null)
+  // 409/412 từ server: giữ dialog kiểm tra mở và hiện đúng danh sách BE trả về.
+  const [activationServer, setActivationServer] = useState<{
+    message: string
+    issues: string[]
+  } | null>(null)
 
   const active = seasons.filter((s) => s.status === 'ACTIVE')
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN'
@@ -65,12 +71,12 @@ export default function SeasonListPage({ embedded = false }: { embedded?: boolea
 
   const onActivateClick = (s: Season) => {
     const areasOfSeason = areas.filter((a) => a.seasonId === s.id)
-    const effectiveSeason = { ...s, communityIds: communityIdsOf(s) }
-    const { canActivate } = validateSeasonActivation(effectiveSeason, areasOfSeason)
+    const { canActivate } = validateSeasonActivation(s, areasOfSeason)
+    setActivationServer(null)
     if (canActivate) {
       setActivatingConfirm(s)
     } else {
-      setActivatingCheck(effectiveSeason)
+      setActivatingCheck(s)
     }
   }
 
@@ -81,7 +87,25 @@ export default function SeasonListPage({ embedded = false }: { embedded?: boolea
       setActivatingConfirm(null)
     } catch (e) {
       toast(e instanceof Error ? e.message : t('common.error'), 'alert')
+      // Server kiểm tra lại (409/412) → mở checklist kèm lý do/danh sách của BE.
+      if (e instanceof ApiError && (e.status === 409 || e.status === 412)) {
+        setActivationServer({
+          message: e.message,
+          issues: e.errors ? Object.values(e.errors).flat() : [],
+        })
+        setActivatingConfirm(null)
+        setActivatingCheck(s)
+      }
     }
+  }
+
+  // Link "Sửa tại đây" trong dialog kích hoạt → mở đúng khu, đúng mùa.
+  const areaFixHref = (areaId: string) => {
+    const base = user?.role === 'COMMUNITY' ? '/community/areas' : '/parish/communities'
+    const params = new URLSearchParams({ area: areaId })
+    if (user?.role !== 'COMMUNITY') params.set('tab', 'areas')
+    if (activatingCheck?.id) params.set('season', activatingCheck.id)
+    return `${base}?${params.toString()}`
   }
 
   const columns = useMemo(
@@ -268,6 +292,7 @@ export default function SeasonListPage({ embedded = false }: { embedded?: boolea
       ) : (
         <PageHeader
           title={t('features.season.title')}
+          finding={t('features.season.listFinding', { active: active.length, total: seasons.length })}
           sub={t('features.season.sub')}
           actions={manageActions}
         />
@@ -364,7 +389,13 @@ export default function SeasonListPage({ embedded = false }: { embedded?: boolea
         <SeasonActivateDialog
           season={activatingCheck}
           areas={areas}
-          onClose={() => setActivatingCheck(null)}
+          onClose={() => {
+            setActivatingCheck(null)
+            setActivationServer(null)
+          }}
+          fixAreaHref={areaFixHref}
+          serverMessage={activationServer?.message}
+          serverIssues={activationServer?.issues}
         />
       )}
     </div>

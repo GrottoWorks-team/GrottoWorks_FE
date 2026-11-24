@@ -4,10 +4,15 @@
 // 2. Đã phân chia khu vực thuộc mùa (tối thiểu 1)
 // 3. Mọi khu vực đều có Trưởng khu và Trưởng nhóm vật tư
 // BE KHÔNG yêu cầu cộng đoàn tham gia và KHÔNG yêu cầu deadline của khu vực.
+//
+// Khi thiếu người, dialog liệt kê từng khu kèm vai còn thiếu và đường dẫn tới chỗ
+// sửa (`fixAreaHref`). Server trả 409 → hiện đúng danh sách/lý do BE gửi về.
 import { useTranslation } from 'react-i18next'
-import { CircleCheck, CircleX, CircleAlert, Rocket } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { CircleCheck, CircleX, CircleAlert, ExternalLink, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { InlineAlert } from '@/components/ui/inline-alert'
 import { useToast } from '@/components/ui/toast'
 import { useActivateSeason } from '../api'
 import type { Season, WorkArea } from '@/types'
@@ -19,17 +24,38 @@ export interface SeasonValidationItem {
   detail?: string
 }
 
+export interface SeasonAreaIssue {
+  id: string
+  name: string
+  missingLeader: boolean
+  missingMaterialOfficer: boolean
+}
+
+export interface SeasonActivationCheck {
+  canActivate: boolean
+  items: SeasonValidationItem[]
+  areaIssues: SeasonAreaIssue[]
+}
+
 export function validateSeasonActivation(
   season: Season,
   areasOfSeason: WorkArea[],
-): { canActivate: boolean; items: SeasonValidationItem[] } {
+): SeasonActivationCheck {
   const isDateValid = Boolean(
     season.startDate && season.endDate && season.startDate < season.endDate,
   )
   const hasAreas = areasOfSeason.length > 0
 
-  const missingStaffAreas = areasOfSeason.filter((a) => !a.leaderId || !a.officerId)
-  const isStaffValid = hasAreas && missingStaffAreas.length === 0
+  const areaIssues: SeasonAreaIssue[] = areasOfSeason
+    .filter((a) => !a.leaderId || !a.officerId)
+    .map((a) => ({
+      id: a.id,
+      name: a.name,
+      missingLeader: !a.leaderId,
+      missingMaterialOfficer: !a.officerId,
+    }))
+
+  const isStaffValid = hasAreas && areaIssues.length === 0
 
   const items: SeasonValidationItem[] = [
     {
@@ -49,32 +75,40 @@ export function validateSeasonActivation(
       label: 'features.season.checkStaff',
       valid: isStaffValid,
       detail:
-        missingStaffAreas.length > 0
-          ? missingStaffAreas.map((a) => a.name).join(', ')
+        areaIssues.length > 0
+          ? areaIssues.map((a) => a.name).join(', ')
           : undefined,
     },
   ]
 
   const canActivate = isDateValid && hasAreas && isStaffValid
 
-  return { canActivate, items }
+  return { canActivate, items, areaIssues }
 }
 
 export function SeasonActivateDialog({
   season,
   areas,
   onClose,
+  fixAreaHref,
+  serverMessage,
+  serverIssues,
 }: {
   season: Season
   areas: WorkArea[]
   onClose: () => void
+  /** Đường dẫn tới màn sửa khu (mở đúng khu bằng `?area=<id>`). */
+  fixAreaHref?: (areaId: string) => string
+  /** Lý do BE từ chối (409/412) — giữ dialog mở để người dùng sửa. */
+  serverMessage?: string
+  serverIssues?: string[]
 }) {
   const { t } = useTranslation()
   const toast = useToast()
   const activateSeason = useActivateSeason()
 
   const areasOfSeason = areas.filter((a) => a.seasonId === season.id)
-  const { canActivate, items } = validateSeasonActivation(season, areasOfSeason)
+  const { canActivate, items, areaIssues } = validateSeasonActivation(season, areasOfSeason)
 
   const onActivate = async () => {
     try {
@@ -115,7 +149,7 @@ export function SeasonActivateDialog({
           {items.map((item) => (
             <div key={item.key} className="flex items-start gap-3 p-3">
               {item.valid ? (
-                <CircleCheck className="mt-0.5 size-5 shrink-0 text-emerald-600" />
+                <CircleCheck className="mt-0.5 size-5 shrink-0 text-status-successText" />
               ) : (
                 <CircleX className="mt-0.5 size-5 shrink-0 text-destructive" />
               )}
@@ -141,14 +175,58 @@ export function SeasonActivateDialog({
           ))}
         </div>
 
+        {areaIssues.length > 0 && (
+          <div className="space-y-2">
+            <p className="lbl-mono">
+              {t('features.season.missingSummary', { count: areaIssues.length })}
+            </p>
+            <ul className="divide-y divide-border rounded-lg border border-border bg-card">
+              {areaIssues.map((issue) => (
+                <li key={issue.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-foreground">{issue.name}</p>
+                    <p className="text-xs text-destructive">
+                      {[issue.missingLeader ? t('features.season.areaMissingLeader') : null, issue.missingMaterialOfficer ? t('features.season.areaMissingMaterialOfficer') : null]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </p>
+                  </div>
+                  {fixAreaHref ? (
+                    <Link
+                      to={fixAreaHref(issue.id)}
+                      className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-background"
+                    >
+                      {t('common.fixHere')}
+                      <ExternalLink className="size-3" aria-hidden />
+                    </Link>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {serverMessage ? (
+          <InlineAlert tone="alert" title={t('features.season.serverRejectedTitle')}>
+            <p>{serverMessage}</p>
+            {serverIssues && serverIssues.length > 0 ? (
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {serverIssues.map((line, index) => (
+                  <li key={index}>{line}</li>
+                ))}
+              </ul>
+            ) : null}
+          </InlineAlert>
+        ) : null}
+
         {canActivate ? (
-          <div className="flex items-center gap-2 rounded-md bg-emerald-50 p-3 text-xs font-medium text-emerald-800 border border-emerald-200">
-            <CircleCheck className="size-4 shrink-0 text-emerald-600" />
+          <div className="flex items-center gap-2 rounded-md border border-status-successText/25 bg-status-successBg p-3 text-xs font-medium text-status-successText">
+            <CircleCheck className="size-4 shrink-0" />
             <span>{t('features.season.readyToActivate')}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 rounded-md bg-amber-50 p-3 text-xs font-medium text-destructive border border-amber-200">
-            <CircleAlert className="size-4 shrink-0 text-destructive" />
+          <div className="flex items-center gap-2 rounded-md border border-status-pendingText/25 bg-status-pendingBg p-3 text-xs font-medium text-status-pendingText">
+            <CircleAlert className="size-4 shrink-0" />
             <span>{t('features.season.validationFailed')}</span>
           </div>
         )}

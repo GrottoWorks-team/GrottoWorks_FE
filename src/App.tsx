@@ -203,14 +203,19 @@ function LoginGate() {
 function SessionWatch() {
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname, search } = useLocation()
   useEffect(() => {
     const onExpired = () => {
       void logout()
-      navigate('/login', { replace: true })
+      const from = pathname + search
+      navigate('/login', {
+        replace: true,
+        state: from.startsWith('/login') ? undefined : { from },
+      })
     }
     window.addEventListener('grotto:unauthorized', onExpired)
     return () => window.removeEventListener('grotto:unauthorized', onExpired)
-  }, [logout, navigate])
+  }, [logout, navigate, pathname, search])
   return null
 }
 

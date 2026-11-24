@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,10 +10,11 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useCreateSkill, useUpdateSkill } from '@/features/skills/api'
 import type { SkillDto } from '@/types/identity'
+import i18n from '@/lib/i18n'
 
 const schema = z.object({
-  code: z.string().trim().min(2, 'Mã kỹ năng tối thiểu 2 ký tự').toUpperCase(),
-  name: z.string().trim().min(2, 'Tên kỹ năng tối thiểu 2 ký tự'),
+  code: z.string().trim().min(2, i18n.t('features.skills.codeMin')).toUpperCase(),
+  name: z.string().trim().min(2, i18n.t('features.skills.nameMin')),
   description: z.string().optional(),
 })
 
@@ -25,6 +27,7 @@ interface SkillDialogProps {
 }
 
 export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
+  const { t } = useTranslation()
   const toast = useToast()
   const createSkill = useCreateSkill()
   const updateSkill = useUpdateSkill()
@@ -61,19 +64,19 @@ export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
           name: data.name,
           description: data.description || null,
         })
-        toast('Cập nhật kỹ năng thành công!')
+        toast(t('features.skills.updated'))
       } else {
         await createSkill.mutateAsync({
           code: data.code,
           name: data.name,
           description: data.description || null,
         })
-        toast('Thêm kỹ năng mới thành công!')
+        toast(t('features.skills.created'))
       }
       reset()
       onOpenChange(false)
     } catch (err: any) {
-      toast(err.message || 'Thao tác không thành công', 'alert')
+      toast(err.message || t('features.skills.failed'), 'alert')
     }
   }
 
@@ -81,7 +84,7 @@ export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
     <Dialog
       open={open}
       onClose={() => onOpenChange(false)}
-      title={skill ? 'Cập Nhật Kỹ Năng' : 'Thêm Kỹ Năng Mới'}
+      title={skill ? t('features.skills.editTitle') : t('features.skills.createTitle')}
       size="md"
       footer={
         <div className="flex justify-end gap-2">
@@ -98,14 +101,14 @@ export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
             className="bg-grotto-primary hover:bg-grotto-primary/90 text-white"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Đang lưu...' : skill ? 'Lưu thay đổi' : 'Thêm kỹ năng'}
+            {isSubmitting ? t('common.saving') : skill ? t('common.saveChanges') : t('features.skills.create')}
           </Button>
         </div>
       }
     >
       <form id="skill-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2">
         <div className="space-y-1.5">
-          <Label htmlFor="skill-code">Mã kỹ năng *</Label>
+          <Label htmlFor="skill-code">{t('features.skills.codeLabel')}</Label>
           <Input
             id="skill-code"
             placeholder="VD: DIEN, MOC, HAN"
@@ -115,20 +118,20 @@ export function SkillDialog({ open, onOpenChange, skill }: SkillDialogProps) {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="skill-name">Tên kỹ năng *</Label>
+          <Label htmlFor="skill-name">{t('features.skills.nameLabel')}</Label>
           <Input
             id="skill-name"
-            placeholder="VD: Sửa chữa điện"
+            placeholder={t('features.skills.namePlaceholder')}
             {...register('name')}
           />
           {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="skill-desc">Mô tả chi tiết</Label>
+          <Label htmlFor="skill-desc">{t('features.skills.descLabel')}</Label>
           <Input
             id="skill-desc"
-            placeholder="Mô tả kỹ năng cần thiết..."
+            placeholder={t('features.skills.descPlaceholder')}
             {...register('description')}
           />
         </div>

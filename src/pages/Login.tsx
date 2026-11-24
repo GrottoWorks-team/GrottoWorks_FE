@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
   Crown,
@@ -57,6 +57,9 @@ export default function Login() {
   const { t } = useTranslation()
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  // 401 giữa phiên / vào route cần đăng nhập → quay lại đúng màn sau khi đăng nhập.
+  const returnTo = (location.state as { from?: string } | null)?.from
   const toast = useToast()
   const [serverError, setServerError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -89,10 +92,13 @@ export default function Login() {
     setServerError('')
     try {
       const user = await login(data.email, data.password)
+      // Chỉ nhận đường dẫn nội bộ; không quay lại /login để tránh vòng lặp.
+      const back =
+        returnTo && returnTo.startsWith('/') && !returnTo.startsWith('/login') ? returnTo : null
       if (user.rawRole === 'VOLUNTEER') {
-        navigate('/volunteer')
+        navigate(back ?? '/volunteer', { replace: true })
       } else {
-        navigate(roleHomePath(user.role))
+        navigate(back ?? roleHomePath(user.role), { replace: true })
       }
     } catch {
       const msg = t('login.invalid')
@@ -113,7 +119,7 @@ export default function Login() {
               <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
               {t('login.demoAccounts', { password: DEMO_PASSWORD })}
             </span>
-            <span className="text-[10px] text-slate-500 font-medium">Bấm để tự điền</span>
+            <span className="text-[10px] text-slate-500 font-medium">{t('login.fillHint')}</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -128,7 +134,7 @@ export default function Login() {
                   title={d.email}
                   className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 ${
                     isSelected
-                      ? 'border-brand-pine bg-brand-pineLight/60 ring-2 ring-brand-pine/30 shadow-sm'
+                      ? 'border-brand-pine bg-brand-pineLight/60 ring-2 ring-brand-pine/30'
                       : 'border-slate-200 bg-white/80 hover:border-brand-pine hover:bg-slate-50'
                   }`}
                 >
@@ -205,7 +211,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                 className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 transition-colors"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -233,7 +239,7 @@ export default function Login() {
           {/* Nút bấm Submit với hiệu ứng Shimmer */}
           <Button
             type="submit"
-            className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm shadow-lg shadow-brand-pine/25 flex items-center justify-center gap-2"
+            className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm flex items-center justify-center gap-2"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -252,13 +258,13 @@ export default function Login() {
           {/* Liên kết điều hướng phụ */}
           <div className="pt-2 text-center text-xs text-slate-600 space-y-1">
             <div>
-              Chưa có tài khoản quản lý?{' '}
+              {t('login.noManagerAccount')}{' '}
               <Link to="/register-account" className="font-semibold text-brand-pine hover:underline">
                 Đăng ký tài khoản
               </Link>
             </div>
             <div>
-              Hoặc tham gia thiện nguyện?{' '}
+              {t('login.orVolunteer')}{' '}
               <Link to="/register" className="font-semibold text-brand-goldHover hover:underline">
                 Đăng ký Đồng Hành
               </Link>

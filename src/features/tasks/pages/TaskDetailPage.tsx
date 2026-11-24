@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, CalendarClock, ClipboardCheck, Clock, Crown, Edit3, MapPin, Package, Plus, Sparkles, UserPlus, Users } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarClock, Check, ClipboardCheck, Clock, Crown, Edit3, HelpCircle, MapPin, Package, Plus, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -49,6 +49,7 @@ import {
 import { useUsers } from '@/features/users/api'
 import { useAllocations } from '@/features/allocations/api'
 import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
 import { viDate, viDateTime } from '@/lib/format'
 
@@ -57,10 +58,11 @@ const TEXTAREA_CLS =
 
 /** Một điều kiện bắt đầu việc: ✓ đạt màu xanh, ✗ chưa đạt màu cảnh báo, “?” khi chưa xác định được. */
 function StartConditionRow({ ok, label, unknown }: { ok: boolean; label: string; unknown?: boolean }) {
+  const Icon = unknown ? HelpCircle : ok ? Check : X
   return (
-    <p className={ok ? 'text-[11px] text-status-ok' : 'text-[11px] text-status-warn'}>
-      {unknown ? '? ' : ok ? '✓ ' : '✗ '}
-      {label}
+    <p className={cn('flex items-start gap-1.5 text-[11px]', ok ? 'text-status-ok' : 'text-status-warn')}>
+      <Icon className="mt-px size-3 shrink-0" aria-hidden />
+      <span>{label}</span>
     </p>
   )
 }
@@ -86,7 +88,12 @@ export default function TaskDetailPage() {
 
   const ready = useReadyTask()
   // 12/11/2026: điều kiện bắt đầu việc (giờ bắt đầu / đủ thành viên / đủ vật tư đã cấp).
-  const { data: startEligibility } = useTaskStartEligibility(task?.id ?? '')
+  const {
+    data: startEligibility,
+    isPending: eligibilityPending,
+    isError: eligibilityError,
+    refetch: refetchEligibility,
+  } = useTaskStartEligibility(task?.id ?? '')
   const replaceCriteria = useReplaceCompletionCriteria()
   const replaceSkills = useReplaceTaskSkills()
   const approveTask = useApproveTask()
@@ -150,6 +157,7 @@ export default function TaskDetailPage() {
     { materialId: '', quantity: '1' },
   ])
   const [revisionOpen, setRevisionOpen] = useState(false)
+  const [releaseConfirm, setReleaseConfirm] = useState(false)
   const { data: volunteerMatches = [] } = useVolunteerMatches(
     task?.id,
     assignOpen && !readOnly && isAreaLeader,
@@ -192,6 +200,22 @@ export default function TaskDetailPage() {
     .filter((m) => task.materialIds.includes(m.id))
     .map((m) => ({ ...m, requiredQuantity: materialQtyById.get(m.id) }))
   const displayMaterials = taskMaterials
+
+  // F-18: điều kiện bắt đầu — đủ / thiếu / đang tải / lỗi. Lỗi KHÔNG được coi là đủ.
+  const startBlockers = startEligibility?.blockers ?? []
+  const startUnknown = Boolean(eligibilityError) && !startEligibility
+  const releaseTask = () =>
+    run(
+      () => ready.mutateAsync({ taskId: task.id, version: task.version }),
+      t('features.tasks.released', { name: task.title }),
+    )
+
+  // F-22: nghiệm thu chỉ khi đã có báo cáo tiến độ + minh chứng.
+  const reviewProgress = reviewPackage?.progress ?? progress
+  const unmetApproval: string[] = []
+  if (reviewProgress.length === 0) unmetApproval.push(t('features.tasks.acceptMissingProgress'))
+  if (!reviewProgress.some((entry) => (entry.evidence?.length ?? 0) > 0))
+    unmetApproval.push(t('features.tasks.acceptMissingEvidence'))
   // Tổng đã cấp theo vật tư (nhiều phiếu cấp cho cùng một task → cộng dồn).
   const allocatedMaterials = (() => {
     const byMaterial = new Map<
@@ -222,7 +246,7 @@ export default function TaskDetailPage() {
   // Info panel: icon + label + value in clean card.
   const statBox = (Icon: typeof Users, label: string, value: string) => (
     <div className="flex items-center gap-3 rounded-lg border border-border/40 bg-muted/20 p-3">
-      <span className="grid size-9 place-items-center rounded-md bg-card shadow-xs text-brand-pine">
+      <span className="grid size-9 place-items-center rounded-md bg-card text-brand-pine">
         <Icon className="size-4" />
       </span>
       <div>
@@ -355,7 +379,7 @@ export default function TaskDetailPage() {
                         (row) => row.materialId === m.id,
                       )?.quantity
                       return (
-                        <span key={m.id} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium shadow-xs">
+                        <span key={m.id} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium">
                           <span className="size-1.5 rounded-full bg-brand-pine" />
                           {m.name}
                           {typeof m.requiredQuantity === 'number' && m.requiredQuantity > 0 ? (
@@ -478,6 +502,9 @@ export default function TaskDetailPage() {
                         {entry.percentComplete}%
                       </span>
                       <span className="text-xs text-muted-foreground">
+                        {userNameById.get(entry.submittedByUserId) ??
+                          entry.submittedByUserId.slice(0, 8)}
+                        {' · '}
                         {viDateTime(entry.submittedAt)}
                       </span>
                     </div>
@@ -509,6 +536,12 @@ export default function TaskDetailPage() {
                         >
                           <Package className="size-3" aria-hidden />
                           {file.caption || t('features.tasks.progressEvidenceOne')}
+                          {file.uploadedAt ? (
+                            <span className="font-normal text-muted-foreground">
+                              {' · '}
+                              {viDateTime(file.uploadedAt)}
+                            </span>
+                          ) : null}
                         </button>
                       ))}
                     </div>
@@ -775,42 +808,64 @@ export default function TaskDetailPage() {
                   </p>
                 )}
               </div>
-              {startEligibility && (
+              {(eligibilityPending || startUnknown || startEligibility) && (
                 <div className="space-y-1 rounded-md border border-border/60 bg-muted/20 px-3 py-2">
                   <p className="text-[11px] font-semibold text-foreground">
                     {t('features.tasks.startEligibilityTitle')}
                   </p>
-                  <StartConditionRow
-                    ok={!startEligibility.blockers.some((row) => row.code === 'TASK_START_NOT_DUE')}
-                    label={t('features.tasks.startConditionTime', {
-                      time: task.startAt ? viDateTime(task.startAt) : t('features.tasks.startDateNone'),
-                    })}
-                  />
-                  <StartConditionRow
-                    ok={startEligibility.acceptedMembers >= startEligibility.requiredMembers}
-                    label={t('features.tasks.startConditionMembers', {
-                      accepted: startEligibility.acceptedMembers,
-                      required: startEligibility.requiredMembers,
-                    })}
-                  />
-                  <StartConditionRow
-                    ok={startEligibility.materialShortages.length === 0}
-                    unknown={!startEligibility.materialsKnown}
-                    label={
-                      !startEligibility.materialsKnown
-                        ? t('features.tasks.startConditionMaterialsUnknown')
-                        : startEligibility.materialShortages.length === 0
-                          ? t('features.tasks.startConditionMaterialsOk')
-                          : t('features.tasks.startConditionMaterialsShort', {
-                              count: startEligibility.materialShortages.length,
-                            })
-                    }
-                  />
-                  {startEligibility.blockers.map((blocker) => (
-                    <p key={blocker.code} className="text-[11px] text-status-alert">
-                      {t(`errors.${blocker.code}`, { defaultValue: blocker.detail })}
+                  {eligibilityPending ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      {t('features.tasks.startEligibilityChecking')}
                     </p>
-                  ))}
+                  ) : startUnknown ? (
+                    <div className="space-y-1">
+                      <p className="text-[11px] text-status-warn">
+                        {t('features.tasks.startEligibilityUnknown')}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={() => void refetchEligibility()}
+                      >
+                        {t('common.retry')}
+                      </Button>
+                    </div>
+                  ) : startEligibility ? (
+                    <>
+                      <StartConditionRow
+                        ok={!startBlockers.some((row) => row.code === 'TASK_START_NOT_DUE')}
+                        label={t('features.tasks.startConditionTime', {
+                          time: task.startAt ? viDateTime(task.startAt) : t('features.tasks.startDateNone'),
+                        })}
+                      />
+                      <StartConditionRow
+                        ok={startEligibility.acceptedMembers >= startEligibility.requiredMembers}
+                        label={t('features.tasks.startConditionMembers', {
+                          accepted: startEligibility.acceptedMembers,
+                          required: startEligibility.requiredMembers,
+                        })}
+                      />
+                      <StartConditionRow
+                        ok={startEligibility.materialShortages.length === 0}
+                        unknown={!startEligibility.materialsKnown}
+                        label={
+                          !startEligibility.materialsKnown
+                            ? t('features.tasks.startConditionMaterialsUnknown')
+                            : startEligibility.materialShortages.length === 0
+                              ? t('features.tasks.startConditionMaterialsOk')
+                              : t('features.tasks.startConditionMaterialsShort', {
+                                  count: startEligibility.materialShortages.length,
+                                })
+                        }
+                      />
+                      {startBlockers.map((blocker) => (
+                        <p key={blocker.code} className="text-[11px] text-status-alert">
+                          {t(`errors.${blocker.code}`, { defaultValue: blocker.detail })}
+                        </p>
+                      ))}
+                    </>
+                  ) : null}
                 </div>
               )}
               {(task.backendStatus === 'NOT_STARTED' || task.backendStatus === 'IN_PROGRESS') && (
@@ -827,12 +882,11 @@ export default function TaskDetailPage() {
               {task.backendStatus === 'OPEN' && (
                 <Button
                   className="w-full"
-                  onClick={() =>
-                    run(
-                      () => ready.mutateAsync({ taskId: task.id, version: task.version }),
-                      t('features.tasks.released', { name: task.title }),
-                    )
-                  }
+                  onClick={() => {
+                    // Thiếu điều kiện / chưa kiểm tra được → hỏi lại, nêu rõ thiếu gì.
+                    if (startBlockers.length > 0 || startUnknown) setReleaseConfirm(true)
+                    else void releaseTask()
+                  }}
                 >
                   {t('features.tasks.release')}
                 </Button>
@@ -841,7 +895,8 @@ export default function TaskDetailPage() {
                 <>
                   <Button
                     className="w-full"
-                    disabled={approveTask.isPending}
+                    disabled={approveTask.isPending || unmetApproval.length > 0}
+                    title={unmetApproval.length > 0 ? unmetApproval.join(' · ') : undefined}
                     onClick={() =>
                       run(
                         () =>
@@ -855,6 +910,16 @@ export default function TaskDetailPage() {
                   >
                     {t('features.tasks.approve')}
                   </Button>
+                  {unmetApproval.length > 0 ? (
+                    <div className="rounded-md border border-status-pendingText/25 bg-status-pendingBg px-3 py-2 text-[11px] font-medium text-status-pendingText">
+                      <p>{t('features.tasks.acceptBlockedTitle')}</p>
+                      <ul className="mt-1 list-disc pl-4">
+                        {unmetApproval.map((item, index) => (
+                          <li key={index}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
                   <Button
                     variant="outline"
                     className="w-full"
@@ -1248,6 +1313,53 @@ export default function TaskDetailPage() {
               value={revisionReason}
               onChange={(e) => setRevisionReason(e.target.value)}
             />
+          </div>
+        </Dialog>
+      )}
+
+      {/* F-18: xác nhận khi bắt đầu lúc còn thiếu điều kiện — vẫn cho phép nhưng nêu rõ thiếu gì. */}
+      {releaseConfirm && (
+        <Dialog
+          open
+          onClose={() => setReleaseConfirm(false)}
+          title={t('features.tasks.releaseAnywayTitle')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setReleaseConfirm(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button
+                onClick={() => {
+                  setReleaseConfirm(false)
+                  void releaseTask()
+                }}
+              >
+                {t('features.tasks.releaseAnywayConfirm')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2 text-sm">
+            <p>{t('features.tasks.releaseAnywayDesc')}</p>
+            {startUnknown ? (
+              <p className="text-xs text-status-warn">{t('features.tasks.startEligibilityUnknown')}</p>
+            ) : null}
+            {startBlockers.length > 0 ? (
+              <ul className="list-disc space-y-1 pl-5 text-xs text-status-warn">
+                {startBlockers.map((blocker) => (
+                  <li key={blocker.code}>
+                    {t(`errors.${blocker.code}`, { defaultValue: blocker.detail })}
+                  </li>
+                ))}
+                {startEligibility && startEligibility.materialShortages.length > 0 ? (
+                  <li>
+                    {t('features.tasks.startConditionMaterialsShort', {
+                      count: startEligibility.materialShortages.length,
+                    })}
+                  </li>
+                ) : null}
+              </ul>
+            ) : null}
           </div>
         </Dialog>
       )}

@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
 import { ApiError } from '@/lib/api'
-import { viDateTime, viDate } from '@/lib/format'
+import { formatVnd, viDateTime, viDate } from '@/lib/format'
 import {
   usePurchaseRequest,
   usePurchaseRequestHistory,
@@ -213,7 +213,7 @@ export default function PurchaseDetailPage() {
                         ...request.items.map((item) =>
                           `- ${item.materialName}: ${item.requestedQuantity} ${item.unit}` +
                           (item.estimatedCost
-                            ? ` (~${item.estimatedCost.toLocaleString('vi-VN')} đ)`
+                            ? ` (${formatVnd(item.estimatedCost)})`
                             : ''),
                         ),
                         t('features.purchases.purchaseTaskDescFooter'),
@@ -304,7 +304,7 @@ export default function PurchaseDetailPage() {
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <thead>
-                  <tr className="border-b border-border text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-border text-xs font-semibold text-muted-foreground">
                     <th className="py-2.5 pr-3">{t('features.purchases.materialCode')}</th>
                     <th className="py-2.5 pr-3">{t('features.purchases.materialName')}</th>
                     <th className="py-2.5 pr-3 text-right">{t('features.purchases.requestedQty')}</th>

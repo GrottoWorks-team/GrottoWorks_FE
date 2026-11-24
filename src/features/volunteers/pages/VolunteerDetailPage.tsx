@@ -104,7 +104,7 @@ export default function VolunteerDetailPage() {
       {/* Hero Profile & Stats Bar */}
       <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Profile Card */}
-        <div className="flex items-center gap-4 rounded-card border border-border bg-card p-5 shadow-xs">
+        <div className="flex items-center gap-4 rounded-card border border-border bg-card p-5">
           <Avatar name={user.name} hue={user.avatarHue} size="lg" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -139,7 +139,7 @@ export default function VolunteerDetailPage() {
           <StatCard
             label={t('features.volunteers.tasksTitle')}
             value={myTasks.length}
-            unit="việc"
+            unit={t('features.volunteers.taskUnit')}
             tone="warn"
           />
         </div>

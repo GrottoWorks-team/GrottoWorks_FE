@@ -293,7 +293,7 @@ export function TaskFormDialog({
                   key={s.id}
                   className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all ${
                     checked
-                      ? 'border-brand-pine bg-brand-pine text-white shadow-sm'
+                      ? 'border-brand-pine bg-brand-pine text-white'
                       : 'border-border bg-card text-foreground hover:border-brand-pine/50 hover:bg-muted/50'
                   }`}
                 >
@@ -303,7 +303,7 @@ export function TaskFormDialog({
                     className="sr-only"
                     {...register('skills')}
                   />
-                  <span>{checked ? '✓ ' : '+ '}{s.name}</span>
+                  <span>{checked ? '' : '+ '}{s.name}</span>
                 </label>
               )
             })}
@@ -376,7 +376,7 @@ export function TaskFormDialog({
                         className="sr-only"
                         {...register('materialIds')}
                       />
-                      <span>{checked ? '✓ ' : ''}{m.name} <span className="text-[11px] opacity-75">({m.unit})</span></span>
+                      <span>{m.name} <span className="text-[11px] opacity-75">({m.unit})</span></span>
                     </label>
                     {checked && (
                       <input

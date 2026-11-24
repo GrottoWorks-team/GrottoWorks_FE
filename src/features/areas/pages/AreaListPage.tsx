@@ -104,8 +104,26 @@ export default function AreaListPage() {
   const [assigning, setAssigning] = useState<WorkArea | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
+  // Link từ màn Mùa ("thiếu trưởng khu / trưởng nhóm vật tư") → mở đúng khu để sửa.
+  const editAreaId = searchParams.get('area')
+  useEffect(() => {
+    if (!editAreaId || !canEdit) return
+    const hit = rawAreas.find((a) => a.id === editAreaId)
+    if (!hit) return
+    setEditing(hit)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('area')
+        return next
+      },
+      { replace: true },
+    )
+  }, [editAreaId, rawAreas, canEdit, setSearchParams])
+
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
-  const displayName = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
+  const displayName = (a: WorkArea) =>
+    a.name?.trim() || t('features.areas.fallbackName', { id: a.id.slice(0, 8) })
 
   const columns = useMemo(
     () => [
@@ -285,7 +303,7 @@ export default function AreaListPage() {
             <option value="all">{t('features.areas.allSeasons')}</option>
             {seasons.map((s) => (
               <option key={s.id} value={s.id}>
-                {`Mùa Giáng sinh ${s.year} (${t(`status.${s.status}`, s.status)})`}
+                {t('features.season.optionLabel', { year: s.year, status: t(`status.${s.status}`, s.status) })}
               </option>
             ))}
           </select>

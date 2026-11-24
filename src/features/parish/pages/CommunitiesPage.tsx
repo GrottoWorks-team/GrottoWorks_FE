@@ -53,6 +53,7 @@ import {
 import { useParishScope } from '../hooks'
 import { ParishSwitcher } from '../components/ParishSwitcher'
 import type { Community, WorkArea } from '@/types'
+import i18n from '@/lib/i18n'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
@@ -152,7 +153,7 @@ function CommunityFormDialog({
 }
 
 const parishCreateSchema = z.object({
-  name: z.string().trim().min(1, 'Tên giáo xứ không được để trống'),
+  name: z.string().trim().min(1, i18n.t('features.parish.nameRequired')),
   address: z.string().optional(),
   description: z.string().optional(),
 })
@@ -210,7 +211,7 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
           <Input
             id="create-parish-name"
             {...register('name')}
-            placeholder="Ví dụ: Giáo xứ Thánh Giuse"
+            placeholder={t('features.parish.namePlaceholder')}
           />
           {errors.name?.message && (
             <p className="mt-1 text-xs font-semibold text-destructive">{errors.name.message}</p>
@@ -223,7 +224,7 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
           <Input
             id="create-parish-address"
             {...register('address')}
-            placeholder="Ví dụ: 123 Đường Hai Bà Trưng, Quận 1"
+            placeholder={t('features.parish.addressPlaceholder')}
           />
         </div>
         <div>
@@ -233,7 +234,7 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
           <Input
             id="create-parish-desc"
             {...register('description')}
-            placeholder="Ví dụ: Giáo phận Sài Gòn"
+            placeholder={t('features.parish.diocesePlaceholder')}
           />
         </div>
       </form>
@@ -270,7 +271,7 @@ function ParishCard({ parishId }: { parishId: string }) {
   }
 
   return (
-    <Card className="overflow-hidden border border-border p-5 shadow-card transition-shadow hover:shadow-hover">
+    <Card className="overflow-hidden border border-border p-5">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
         {/* Cột trái: Tên giáo xứ, địa chỉ, mô tả */}
         <div className="space-y-4 md:col-span-7 lg:col-span-8">
@@ -367,7 +368,7 @@ function ParishCard({ parishId }: { parishId: string }) {
             <ShieldCheck className="size-4 shrink-0" />
             <span className="font-medium">
               {t('features.parish.certifiedCoordination', {
-                defaultValue: 'Cơ sở điều phối chính thức của Giáo xứ',
+                defaultValue: t('features.parish.defaultDescription'),
               })}
             </span>
           </div>
@@ -508,7 +509,8 @@ function CommunitiesPanel({ parishId, canEdit }: { parishId: string; canEdit: bo
 // Tab Khu vực công tác — CHỈ XEM với admin (11/11/2026): việc tạo/sửa và phân
 // công trưởng khu, trưởng nhóm vật tư thuộc Ban hành giáo (role FE `COMMUNITY`,
 // trang /community/areas). Admin dùng tab này để theo dõi toàn bộ giáo xứ.
-const areaLabel = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
+const areaLabel = (a: WorkArea) =>
+    a.name?.trim() || i18n.t('features.areas.fallbackName', { id: a.id.slice(0, 8) })
 
 function AreasPanel({ parishId }: { parishId: string }) {
   const { t } = useTranslation()

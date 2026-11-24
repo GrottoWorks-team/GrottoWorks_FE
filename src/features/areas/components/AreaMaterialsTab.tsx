@@ -89,7 +89,7 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
             onClick={() => setActiveSubTab('requirements')}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
               activeSubTab === 'requirements'
-                ? 'bg-primary text-primary-foreground shadow-xs'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
             }`}
           >
@@ -105,7 +105,7 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
             onClick={() => setActiveSubTab('shortages')}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
               activeSubTab === 'shortages'
-                ? 'bg-primary text-primary-foreground shadow-xs'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
             }`}
           >

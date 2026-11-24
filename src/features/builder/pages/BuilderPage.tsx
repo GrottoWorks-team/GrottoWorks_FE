@@ -324,7 +324,7 @@ export default function BuilderPage() {
           />
 
           {pendingAssetId && (
-            <div className="pointer-events-auto absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-2 rounded-full border border-primary/30 bg-brand-pineLight px-3 py-1.5 text-xs font-semibold text-brand-pine shadow-card">
+            <div className="pointer-events-auto absolute left-1/2 top-3 flex -translate-x-1/2 items-center gap-2 rounded-full border border-primary/30 bg-brand-pineLight px-3 py-1.5 text-xs font-semibold text-brand-pine">
               {t('builder.placeHint')}
               <button
                 type="button"

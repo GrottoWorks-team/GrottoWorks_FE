@@ -125,7 +125,7 @@ export default function MaterialInventoryPage() {
       />
 
       {/* Bộ lọc thanh công cụ */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-3 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Filter className="size-4 text-muted-foreground ml-1" />
 
@@ -207,7 +207,7 @@ export default function MaterialInventoryPage() {
       </div>
 
       {/* Data Table */}
-      <div className="overflow-hidden rounded-card border border-border bg-card shadow-xs">
+      <div className="overflow-hidden rounded-card border border-border bg-card">
         {isPending ? (
           <div className="p-8 text-center text-sm text-muted-foreground">{t('common.loading')}</div>
         ) : isError ? (

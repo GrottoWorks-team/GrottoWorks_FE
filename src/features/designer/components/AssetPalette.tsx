@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Sparkles, Mountain, Lightbulb, TreePine, Search } from 'lucide-react'
 import { GROTTO_ASSETS } from '../assets'
 import type { GrottoAssetCategory, GrottoAssetDef } from '../types'
@@ -9,14 +10,15 @@ interface AssetPaletteProps {
   onSelectAsset: (asset: GrottoAssetDef) => void
 }
 
-const CATEGORIES: { id: GrottoAssetCategory; label: string; icon: React.ReactNode }[] = [
-  { id: 'ROCKS', label: 'Vách đá', icon: <Mountain className="size-3.5 mr-1" /> },
-  { id: 'STATUES', label: 'Tượng ảnh', icon: <Sparkles className="size-3.5 mr-1 text-amber-500" /> },
-  { id: 'LIGHTING', label: 'Ánh sáng', icon: <Lightbulb className="size-3.5 mr-1 text-amber-400" /> },
-  { id: 'DECORATION', label: 'Trang trí', icon: <TreePine className="size-3.5 mr-1 text-emerald-600" /> },
+const CATEGORIES: { id: GrottoAssetCategory; labelKey: string; icon: React.ReactNode }[] = [
+  { id: 'ROCKS', labelKey: 'designer.assetRocks', icon: <Mountain className="size-3.5 mr-1" /> },
+  { id: 'STATUES', labelKey: 'designer.assetStatues', icon: <Sparkles className="size-3.5 mr-1 text-amber-500" /> },
+  { id: 'LIGHTING', labelKey: 'designer.assetLighting', icon: <Lightbulb className="size-3.5 mr-1 text-amber-400" /> },
+  { id: 'DECORATION', labelKey: 'designer.assetDecoration', icon: <TreePine className="size-3.5 mr-1 text-emerald-600" /> },
 ]
 
 export function AssetPalette({ onSelectAsset }: AssetPaletteProps) {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<GrottoAssetCategory>('ROCKS')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -36,7 +38,7 @@ export function AssetPalette({ onSelectAsset }: AssetPaletteProps) {
       {/* Tiêu đề & Ô tìm kiếm */}
       <div className="p-3 border-b border-border/70 space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="lbl-mono text-xs">Thư viện cấu kiện</span>
+          <span className="lbl-mono text-xs">{t('designer.library')}</span>
           <Badge className="text-[10px] bg-brand-pine/10 text-brand-pine border-brand-pine/20">
             16 mẫu
           </Badge>
@@ -44,7 +46,7 @@ export function AssetPalette({ onSelectAsset }: AssetPaletteProps) {
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
-            placeholder="Tìm kiếm cấu kiện..."
+            placeholder={t('designer.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 pl-8 text-xs bg-gw-canvas/60"
@@ -65,12 +67,12 @@ export function AssetPalette({ onSelectAsset }: AssetPaletteProps) {
             }}
             className={`flex items-center justify-center py-1.5 px-2 rounded-md text-xs font-semibold transition-all ${
               activeTab === cat.id && searchQuery === ''
-                ? 'bg-brand-pine text-white shadow-sm'
+                ? 'bg-brand-pine text-white'
                 : 'text-muted-foreground hover:bg-card hover:text-foreground'
             }`}
           >
             {cat.icon}
-            {cat.label}
+            {t(cat.labelKey)}
           </button>
         ))}
       </div>
@@ -86,8 +88,8 @@ export function AssetPalette({ onSelectAsset }: AssetPaletteProps) {
               e.dataTransfer.effectAllowed = 'copy'
             }}
             onClick={() => onSelectAsset(asset)}
-            className="group relative flex items-center gap-3 p-2 rounded-lg border border-border/80 bg-card hover:border-brand-pine hover:bg-brand-pine/5 transition-all cursor-pointer shadow-sm hover:shadow"
-            title="Kéo hoặc click để đưa vào bản vẽ"
+            className="group relative flex items-center gap-3 p-2 rounded-lg border border-border/80 bg-card hover:border-brand-pine hover:bg-brand-pine/5 transition-all cursor-pointer"
+            title={t('designer.dragHint')}
           >
             {/* Thumbnail SVG */}
             <div
@@ -124,7 +126,7 @@ export function AssetPalette({ onSelectAsset }: AssetPaletteProps) {
 
       <div className="p-2.5 border-t border-border/70 text-center">
         <p className="text-[11px] text-muted-foreground">
-          💡 <i>Kéo thả hoặc click để chèn vào giữa canvas</i>
+          <i>{t('designer.insertHint')}</i>
         </p>
       </div>
     </aside>

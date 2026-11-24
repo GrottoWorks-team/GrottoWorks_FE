@@ -26,7 +26,7 @@ export function AdventProgress({ season }: { season: Season }) {
     <section
       aria-label={t('features.dashboards.seasonProgress')}
       data-percent={percent}
-      className="flex items-center gap-5 rounded-card border border-border bg-card p-5 shadow-card"
+      className="flex items-center gap-5 rounded-card border border-border bg-card p-5"
     >
       <div className="relative size-20 shrink-0" role="img" aria-hidden>
         <RadialBarChart

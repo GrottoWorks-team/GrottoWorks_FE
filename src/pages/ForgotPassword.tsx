@@ -98,7 +98,7 @@ export default function ForgotPasswordPage() {
 
             <Button
               type="submit"
-              className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm shadow-lg shadow-brand-pine/25 flex items-center justify-center gap-2"
+              className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm flex items-center justify-center gap-2"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

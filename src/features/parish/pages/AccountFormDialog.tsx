@@ -134,7 +134,7 @@ export function AccountFormDialog({
         {!editing && (
           <div>
             <Label htmlFor="account-password">{t('features.parish.password')}</Label>
-            <Input id="account-password" type="password" placeholder="Tối thiểu 8 ký tự (hoặc để trống)" {...register('password')} />
+            <Input id="account-password" type="password" placeholder={t('features.parish.passwordHint')} {...register('password')} />
           </div>
         )}
         <div>

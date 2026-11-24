@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,6 +24,7 @@ import { useToast } from '@/components/ui/toast'
 import { useRegister } from '@/features/auth/api'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 import { JoinOptions } from '@/components/auth/JoinOptions'
+import i18n from '@/lib/i18n'
 
 // BE `RegisterRequest`: password 8–128 ký tự, `parishId` là GUID của giáo xứ đã
 // tồn tại. Không có endpoint public trả danh sách giáo xứ (`GET /parishes` cần
@@ -30,19 +32,20 @@ import { JoinOptions } from '@/components/auth/JoinOptions'
 const PARISH_GUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const schema = z.object({
-  displayName: z.string().trim().min(2, 'Họ và tên tối thiểu 2 ký tự'),
-  email: z.string().trim().email('Email không đúng định dạng'),
-  password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
+  displayName: z.string().trim().min(2, i18n.t('register.nameMin')),
+  email: z.string().trim().email(i18n.t('register.emailInvalid')),
+  password: z.string().min(8, i18n.t('register.passwordMin')),
   phone: z.string().optional(),
   parishId: z
     .string()
     .trim()
-    .regex(PARISH_GUID_RE, 'Mã giáo xứ phải là GUID (do quản trị giáo xứ cung cấp)'),
+    .regex(PARISH_GUID_RE, i18n.t('register.parishGuidInvalid')),
 })
 
 type FormData = z.infer<typeof schema>
 
 export default function Register() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const toast = useToast()
   const registerMutation = useRegister()
@@ -63,17 +66,17 @@ export default function Register() {
 
   // Tính toán độ mạnh mật khẩu chuẩn UI/UX Pro Max
   const calculateStrength = (pwd: string) => {
-    if (!pwd || pwd.length === 0) return { score: 0, label: 'Chưa nhập', color: 'text-slate-400' }
+    if (!pwd || pwd.length === 0) return { score: 0, label: t('register.pwdEmpty'), color: 'text-slate-400' }
     let score = 0
     if (pwd.length >= 8) score++
     if (pwd.length >= 12) score++
     if (/[A-Z]/.test(pwd) && /[0-9]/.test(pwd)) score++
     if (/[^A-Za-z0-9]/.test(pwd)) score++
 
-    if (score === 1) return { score: 1, label: 'Yếu', color: 'text-rose-500' }
-    if (score === 2) return { score: 2, label: 'Trung bình', color: 'text-amber-500' }
-    if (score === 3) return { score: 3, label: 'Khá', color: 'text-brand-gold' }
-    return { score: 4, label: 'Rất mạnh', color: 'text-brand-pine' }
+    if (score === 1) return { score: 1, label: t('register.pwdWeak'), color: 'text-rose-500' }
+    if (score === 2) return { score: 2, label: t('register.pwdMedium'), color: 'text-amber-500' }
+    if (score === 3) return { score: 3, label: t('register.pwdGood'), color: 'text-brand-gold' }
+    return { score: 4, label: t('register.pwdStrong'), color: 'text-brand-pine' }
   }
 
   const strength = calculateStrength(passwordValue)
@@ -88,10 +91,10 @@ export default function Register() {
         phone: data.phone || null,
         parishId: data.parishId,
       })
-      toast('Đăng ký tài khoản thành công! Vui lòng đăng nhập.')
+      toast(t('register.success'))
       navigate('/login')
     } catch (err: any) {
-      const msg = err.message || 'Đăng ký thất bại. Vui lòng thử lại.'
+      const msg = err.message || t('register.failed')
       setServerError(msg)
       toast(msg, 'alert')
     }
@@ -121,7 +124,7 @@ export default function Register() {
             </span>
             <Input
               id="displayName"
-              placeholder="Giuse Nguyễn Văn A"
+              placeholder={t('register.namePlaceholder')}
               className="pl-10 pr-3.5 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
               {...register('displayName')}
             />
@@ -146,7 +149,7 @@ export default function Register() {
             <Input
               id="email"
               type="email"
-              placeholder="email@example.com"
+              placeholder={t('register.emailPlaceholder')}
               className="pl-10 pr-3.5 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
               {...register('email')}
             />
@@ -176,7 +179,7 @@ export default function Register() {
             <Input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder={t('register.min6')}
               className="pl-10 pr-10 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
               {...register('password', {
                 onChange: (e) => setPasswordValue(e.target.value),
@@ -185,7 +188,7 @@ export default function Register() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+              aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
               className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 transition-colors"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -273,23 +276,23 @@ export default function Register() {
         {/* Cam kết phụ sự */}
         <div className="pt-1 flex items-start gap-2 text-[11px] text-slate-600">
           <ShieldCheck className="w-4 h-4 text-brand-pine shrink-0 mt-0.5" />
-          <span>Tôi cam kết phục vụ thi công hang đá theo tinh thần thiện nguyện và kỷ luật của giáo xứ.</span>
+          <span>{t('register.commitment')}</span>
         </div>
 
         {/* Nút Tạo tài khoản */}
         <Button
           type="submit"
-          className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm shadow-lg shadow-brand-pine/25 flex items-center justify-center gap-2"
+          className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm flex items-center justify-center gap-2"
           disabled={isSubmitting}
         >
           {isSubmitting ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              <span>Đang tạo tài khoản...</span>
+              <span>{t('register.creating')}</span>
             </>
           ) : (
             <>
-              <span>Tạo tài khoản GrottoWorks</span>
+              <span>{t('register.submit')}</span>
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -297,7 +300,7 @@ export default function Register() {
 
         {/* Link quay lại đăng nhập */}
         <div className="text-center text-xs pt-1 text-slate-600">
-          Đã có tài khoản?{' '}
+          {t('register.haveAccount')}{' '}
           <Link to="/login" className="font-semibold text-brand-pine hover:underline">
             Đăng nhập ngay
           </Link>

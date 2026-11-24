@@ -102,41 +102,15 @@ export default function TaskListPage() {
         ),
       },
       { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} scope="task" /> },
-      ...(readOnly
-        ? []
-        : [
-            {
-              key: 'actions',
-              header: t('common.actions'),
-              render: (x: Task) => (
-                <div className="flex justify-end gap-1">
-                  {/* BE chỉ cho sửa task khi còn OPEN (sau POST /ready = 409 TASK_INVALID_STATE). */}
-                  {x.backendStatus === 'OPEN' && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('common.edit')}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEditing(x)
-                        setFormOpen(true)
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                  )}
-                </div>
-              ),
-            },
-          ]),
     ],
-    [t, areas, readOnly],
+    [t, areas],
   )
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={t('features.tasks.title')}
+        finding={t('features.tasks.listFinding', { total: stats.total, doing: stats.doing, revise: stats.revise })}
         sub={
           areaId
             ? `${t('features.tasks.area')}: ${areaName(areaId)}`
@@ -207,10 +181,10 @@ export default function TaskListPage() {
         <>
           {tasks.length > 0 && (
             <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Tổng công việc" value={stats.total} tone="ok" />
-              <StatCard label="Đang triển khai" value={stats.doing} tone="warn" />
-              <StatCard label="Cần chỉnh sửa" value={stats.revise} tone={stats.revise > 0 ? 'alert' : 'ok'} />
-              <StatCard label="Đã hoàn thành" value={stats.done} tone="ok" />
+              <StatCard label={t('features.tasks.statTotal')} value={stats.total} tone="ok" />
+              <StatCard label={t('features.tasks.statDoing')} value={stats.doing} tone="warn" />
+              <StatCard label={t('features.tasks.statRevise')} value={stats.revise} tone={stats.revise > 0 ? 'alert' : 'ok'} />
+              <StatCard label={t('features.tasks.statDone')} value={stats.done} tone="ok" />
             </div>
           )}
 
@@ -221,6 +195,28 @@ export default function TaskListPage() {
             filters={[{ key: 'status', options: ['TODO', 'DOING', 'REVIEW', 'DONE', 'REVISE'] }]}
             pageSize={8}
             emptyText={t('features.tasks.empty')}
+            rowActions={
+              readOnly
+                ? undefined
+                : (x) => (
+                    <div className='flex justify-end gap-1'>
+                      {x.backendStatus === 'OPEN' ? (
+                        <Button
+                          variant='ghost'
+                          size='icon'
+                          aria-label={t('common.edit')}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditing(x)
+                            setFormOpen(true)
+                          }}
+                        >
+                          <Pencil className='size-4' />
+                        </Button>
+                      ) : null}
+                    </div>
+                  )
+            }
             onRowClick={readOnly ? undefined : (x) => navigate(`/leader/tasks/${x.id}`)}
           />
         </>

@@ -59,18 +59,18 @@ export function AreaCard({
           : undefined
       }
       className={cn(
-        'g-item group overflow-hidden rounded-card border border-border bg-card shadow-card transition-all duration-300',
-        onClick && 'cursor-pointer hover:-translate-y-1 hover:shadow-hover hover:border-primary/30',
+        'g-item group overflow-hidden rounded-card border border-border bg-card transition-all duration-300',
+        onClick && 'cursor-pointer hover:border-primary/30',
       )}
     >
       {/* Vòm hang đá: dải thông Noel + mái vòm cong hang đá Bê-lem */}
-      <div className="relative h-24 overflow-hidden bg-gradient-to-br from-brand-pine via-[#0D7344] to-[#0A5C36]">
+      <div className="relative h-24 overflow-hidden bg-brand-pine">
         {/* Vòm cong hang đá cắt lên nền card */}
         <div className="absolute inset-x-0 bottom-0 h-4 rounded-t-[20px] bg-card" />
 
         {/* Biểu tượng khu vực vòm trung tâm */}
         <div className="relative z-10 grid h-full place-items-center">
-          <div className="grid size-12 place-items-center rounded-2xl bg-white/15 text-brand-gold shadow-sm backdrop-blur-md border border-white/20 transition-transform duration-300 group-hover:scale-110">
+          <div className="grid size-12 place-items-center rounded-2xl bg-white/15 text-brand-gold backdrop-blur-md border border-white/20 transition-transform duration-300 group-hover:scale-110">
             <Icon className="size-6 text-brand-gold" aria-hidden />
           </div>
         </div>
