@@ -8,7 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "tsc -b",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gate:lint": "node scripts/design-gate.mjs",
+    "gate:inspect": "node scripts/design-gate.mjs --inspect",
+    "gate": "npm run gate:lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

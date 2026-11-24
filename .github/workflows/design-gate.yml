@@ -1,0 +1,26 @@
+name: design-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GrottoWorks_FE
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: GrottoWorks_FE/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npm run lint
+      - name: Tests (i18n parity + no hard-coded copy)
+        run: npm test
+      - name: Design gate (app screens, 0 FAIL)
+        run: npm run gate:lint
