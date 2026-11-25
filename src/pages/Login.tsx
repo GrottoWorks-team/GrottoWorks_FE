@@ -1,14 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  Crown,
-  Users,
-  Hammer,
-  Package,
   Mail,
   Lock,
   Eye,
@@ -25,33 +21,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
-import type { Role } from '@/types'
 
 const schema = z.object({
   email: z.string().min(1, 'login.emailRequired'),
   password: z.string().min(1, 'login.passwordRequired'),
 })
 type FormData = z.infer<typeof schema>
-
-interface DemoRoleConfig {
-  role: Role
-  email: string
-  icon: typeof Crown
-  color: string
-}
-
-const DEMO: DemoRoleConfig[] = [
-  { role: 'PARISH', email: 'hoa.nguyen@giaoxuthanhtam.org.vn', icon: Crown, color: 'text-amber-600' },
-  { role: 'COMMUNITY', email: 'bao.tran@giaoxuthanhtam.org.vn', icon: Users, color: 'text-emerald-700' },
-  { role: 'LEADER', email: 'ngan.nguyen@giaoxuthanhtam.org.vn', icon: Hammer, color: 'text-blue-700' },
-  { role: 'MATERIAL_OFFICER', email: 'anh.pham@giaoxuthanhtam.org.vn', icon: Package, color: 'text-indigo-700' },
-]
-
-// Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md`. Đọc từ `.env`
-// (`VITE_DEMO_PASSWORD`) — không hard-code trong source. Không khai báo thì
-// khối "tài khoản demo" bị ẩn để tránh điền sai mật khẩu.
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? ''
-const SHOW_DEMO_ACCOUNTS = DEMO_PASSWORD.length > 0
 
 export default function Login() {
   const { t } = useTranslation()
@@ -63,30 +38,12 @@ export default function Login() {
   const toast = useToast()
   const [serverError, setServerError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [activeDemo, setActiveDemo] = useState<string | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [])
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) })
-
-  const fillDemo = (email: string) => {
-    setValue('email', email)
-    setValue('password', DEMO_PASSWORD)
-    setServerError('')
-    setActiveDemo(email)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setActiveDemo(null), 1200)
-  }
 
   const onSubmit = async (data: FormData) => {
     setServerError('')
@@ -110,50 +67,6 @@ export default function Login() {
   return (
     <AuthSplitLayout activeTab="login">
       <div className="space-y-5">
-        {/* Hộp chọn nhanh tài khoản mẫu (1-Chạm) — chỉ hiện khi `.env` có
-            VITE_DEMO_PASSWORD, tránh điền sẵn mật khẩu sai. */}
-        {SHOW_DEMO_ACCOUNTS && (
-          <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="lbl-mono flex items-center gap-1.5 font-bold text-slate-600">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
-              {t('login.demoAccounts', { password: DEMO_PASSWORD })}
-            </span>
-            <span className="text-[10px] text-slate-500 font-medium">{t('login.fillHint')}</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {DEMO.map((d) => {
-              const Icon = d.icon
-              const isSelected = activeDemo === d.email
-              return (
-                <button
-                  key={d.email}
-                  type="button"
-                  onClick={() => fillDemo(d.email)}
-                  title={d.email}
-                  className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 ${
-                    isSelected
-                      ? 'border-brand-pine bg-brand-pineLight/60 ring-2 ring-brand-pine/30'
-                      : 'border-slate-200 bg-white/80 hover:border-brand-pine hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Icon className={`w-3.5 h-3.5 shrink-0 ${d.color}`} />
-                    <span className="truncate text-xs font-bold text-slate-800 group-hover:text-brand-pine">
-                      {t(`role.${d.role}`)}
-                    </span>
-                  </div>
-                  <span className="block truncate font-mono text-[10px] text-slate-500 mt-0.5">
-                    {d.email.split('@')[0]}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          </div>
-        )}
-
         {/* Form đăng nhập chính */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           {/* Ô nhập Email */}

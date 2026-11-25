@@ -15,7 +15,6 @@ Mọi cấu hình theo máy nằm trong `.env` (không commit — mẫu ở `.en
 |---|---|---|
 | `VITE_DEV_PORT` | `5175` | Cổng dev server. Đổi cổng = đổi origin ⇒ mất draft trong `localStorage` (Builder 3D, designer, "đã đọc" thông báo). |
 | `VITE_API_TARGET` | `http://localhost:6102` | Gateway mà Vite proxy `/api/v1` tới. BE chạy native (`scripts/be-local.sh`, YARP 5190) thì đổi thành `http://localhost:5190`. |
-| `VITE_DEMO_PASSWORD` | *(trống)* | Mật khẩu tài khoản seed để nút "tài khoản demo" ở `/login` tự điền. Để trống ⇒ khối tài khoản demo bị ẩn. |
 
 Chỉ biến có tiền tố `VITE_` mới được nhúng vào bundle browser; đổi `.env` phải restart `npm run dev`.
 
