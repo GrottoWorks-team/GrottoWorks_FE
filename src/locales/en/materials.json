@@ -1,6 +1,8 @@
 {
   "features.allocations.taskMaterials": "Task material requirements",
   "features.allocations.materials": "Materials to allocate (multiple lines)",
+  "features.allocations.taskRequired": "Pick the task that needs the materials.",
+  "features.allocations.taskEmpty": "This work area has no task to allocate to yet.",
   "features.allocations.addLine": "Add material",
   "features.allocations.lineRequired": "Add at least one material line with a quantity.",
   "features.allocations.duplicateMaterial": "Each material may appear only once per allocation.",

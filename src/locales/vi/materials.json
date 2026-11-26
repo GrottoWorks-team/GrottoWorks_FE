@@ -1,6 +1,8 @@
 {
   "features.allocations.taskMaterials": "Vật tư việc yêu cầu",
   "features.allocations.materials": "Vật tư cấp phát (nhiều dòng)",
+  "features.allocations.taskRequired": "Chọn nhiệm vụ cần cấp vật tư.",
+  "features.allocations.taskEmpty": "Khu vực này chưa có nhiệm vụ để cấp vật tư.",
   "features.allocations.addLine": "Thêm vật tư",
   "features.allocations.lineRequired": "Thêm ít nhất một dòng vật tư có số lượng.",
   "features.allocations.duplicateMaterial": "Mỗi vật tư chỉ được xuất hiện một lần trong phiếu.",

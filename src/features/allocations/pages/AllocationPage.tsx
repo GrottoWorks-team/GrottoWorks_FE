@@ -70,16 +70,11 @@ export default function AllocationPage() {
 
   const schema = useMemo(
     () =>
-      z
-        .object({
-          workAreaId: z.string().min(1, 'features.allocations.areaRequired'),
-          targetType: z.enum(['AREA', 'TASK']),
-          taskId: z.string(),
-        })
-        .superRefine((data, ctx) => {
-          if (data.targetType === 'TASK' && !data.taskId)
-            ctx.addIssue({ code: 'custom', path: ['taskId'], message: 'features.allocations.targetRequired' })
-        }),
+      z.object({
+        workAreaId: z.string().min(1, 'features.allocations.areaRequired'),
+        // 26/11/2026: MO chỉ cấp phát cho nhiệm vụ (không còn cấp cho khu vực).
+        taskId: z.string().min(1, 'features.allocations.taskRequired'),
+      }),
     [],
   )
 
@@ -91,11 +86,10 @@ export default function AllocationPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { workAreaId: '', targetType: 'AREA', taskId: '' },
+    defaultValues: { workAreaId: '', taskId: '' },
   })
 
   const workAreaId = watch('workAreaId')
-  const targetType = watch('targetType')
 
   // BE chỉ nhận `size` ≤ 100 (`INVALID_PAGE_SIZE`) → lọc tồn kho theo khu vực đang chọn.
   const { data: inventoryPage } = useInventory({
@@ -158,7 +152,7 @@ export default function AllocationPage() {
     try {
       await create.mutateAsync({
         workAreaId: data.workAreaId,
-        ...(data.targetType === 'TASK' && data.taskId ? { taskId: data.taskId } : {}),
+        taskId: data.taskId,
         items: filled.map((line) => ({ materialId: line.materialId, quantity: Number(line.qty) })),
       })
       toast(t('features.allocations.createdMulti', { count: filled.length }))
@@ -278,6 +272,23 @@ export default function AllocationPage() {
             )}
             {err(errors.workAreaId?.message)}
           </div>
+          <div>
+            <Label htmlFor="allocation-task">{t('features.allocations.task')}</Label>
+            <select id="allocation-task" className={SELECT_CLS} {...register('taskId')} disabled={!workAreaId}>
+              <option value="">{t('features.tasks.selectPlaceholder')}</option>
+              {tasks.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.title}
+                </option>
+              ))}
+            </select>
+            {workAreaId && tasks.length === 0 && (
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                {t('features.allocations.taskEmpty')}
+              </p>
+            )}
+            {err(errors.taskId?.message)}
+          </div>
           {/* Nhiều dòng vật tư trong cùng một phiếu cấp phát */}
           <div className="md:col-span-2 xl:col-span-5">
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -357,46 +368,16 @@ export default function AllocationPage() {
               })}
             </div>
           </div>
-          <div>
-            <Label htmlFor="allocation-target-type">{t('features.allocations.target')}</Label>
-            <select id="allocation-target-type" className={SELECT_CLS} {...register('targetType')}>
-              <option value="AREA">{t('features.allocations.target.AREA')}</option>
-              <option value="TASK">{t('features.allocations.target.TASK')}</option>
-            </select>
+          <div className="flex items-end md:col-span-2 xl:col-span-5">
+            <Button type="submit" disabled={isSubmitting || !workAreaId || !selectedTaskId}>
+              <ArrowRight className="size-4" />
+              {t('features.allocations.create')}
+            </Button>
           </div>
-          {targetType === 'TASK' ? (
-            <div>
-              <Label htmlFor="allocation-task">{t('features.allocations.task')}</Label>
-              <select id="allocation-task" className={SELECT_CLS} {...register('taskId')} disabled={!workAreaId}>
-                <option value="">{t('features.tasks.selectPlaceholder')}</option>
-                {tasks.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.title}
-                  </option>
-                ))}
-              </select>
-              {err(errors.taskId?.message)}
-            </div>
-          ) : (
-            <div className="flex items-end">
-              <Button type="submit" disabled={isSubmitting || !workAreaId}>
-                <ArrowRight className="size-4" />
-                {t('features.allocations.create')}
-              </Button>
-            </div>
-          )}
-          {targetType === 'TASK' && (
-            <div className="flex items-end">
-              <Button type="submit" disabled={isSubmitting || !workAreaId}>
-                <ArrowRight className="size-4" />
-                {t('features.allocations.create')}
-              </Button>
-            </div>
-          )}
         </form>
 
         {/* LEADER khai báo vật tư khi tạo/sửa việc → MO xem tại đây để biết cần cấp gì. */}
-        {targetType === 'TASK' && selectedTask && (
+        {selectedTask && (
           <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3">
             <p className="lbl-mono mb-1">{t('features.allocations.taskMaterials')}</p>
             <p className="mb-2 text-[11px] text-muted-foreground">
