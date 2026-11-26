@@ -283,10 +283,16 @@ export function useParishPurchases(seasonId?: string, options: { enabled?: boole
 export function useRecordParishPurchase() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (payload: RecordParishPurchasePayload) =>
+    // BE nhận `invoices: [{ id }]` (RecordParishPurchaseRequest.Invoices, bắt buộc ≥ 1).
+    // 26/11/2026: trước đây gửi thẳng `invoiceFileIds` → BE không bind được → 422
+    // "Attach at least one invoice photo." dù người dùng đã đính ảnh.
+    mutationFn: ({ invoiceFileIds, ...payload }: RecordParishPurchasePayload) =>
       api<{ data?: ParishPurchaseReceiptDto } | ParishPurchaseReceiptDto>(
         '/api/v1/parish-inventory/purchases',
-        { method: 'POST', body: JSON.stringify(payload) },
+        {
+          method: 'POST',
+          body: JSON.stringify({ ...payload, invoices: invoiceFileIds.map((id) => ({ id })) }),
+        },
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: parishWarehouseKeys.all })
