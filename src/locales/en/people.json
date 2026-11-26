@@ -1,6 +1,8 @@
 {
   "features.volunteers.title": "Volunteers",
   "features.volunteers.sub": "Profiles, skills and hours of Christmas season collaborators",
+  "features.volunteers.volunteerCount": "volunteers in the parish",
+  "features.volunteers.empty": "No volunteers in the parish scope",
   "features.volunteers.name": "Name",
   "features.volunteers.community": "Community",
   "features.volunteers.skills": "Skills",

@@ -1,6 +1,8 @@
 {
   "features.volunteers.title": "Tình nguyện viên",
   "features.volunteers.sub": "Hồ sơ, kỹ năng và giờ công của cộng tác viên mùa Giáng sinh",
+  "features.volunteers.volunteerCount": "tình nguyện viên trong giáo xứ",
+  "features.volunteers.empty": "Chưa có tình nguyện viên trong phạm vi giáo xứ",
   "features.volunteers.name": "Tên",
   "features.volunteers.community": "Giáo khu",
   "features.volunteers.skills": "Kỹ năng",
