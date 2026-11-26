@@ -117,14 +117,30 @@ export default function TaskListPage() {
             ? `${t('features.tasks.area')}: ${areaName(areaId)}`
             : t('features.tasks.sub')
         }
-        actions={undefined}
+        actions={
+          !readOnly && myAreas.length > 1
+            ? (
+                <select
+                  aria-label={t('features.tasks.area')}
+                  className={`${SELECT_CLS} w-48`}
+                  value={leaderAreaId}
+                  onChange={(e) => setSelectedArea(e.target.value)}
+                >
+                  {myAreas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              )
+            : undefined
+        }
       />
 
       {areaId && (
         <TaskDesignPanel
           workAreaId={areaId}
           builderHref={`${pathname.startsWith('/leader') ? '/leader' : '/community'}/areas/${areaId}/builder`}
-          designHref={`${pathname.startsWith('/leader') ? '/leader' : '/community'}/areas/${areaId}/design`}
           readOnly={readOnly}
         />
       )}
@@ -164,20 +180,6 @@ export default function TaskListPage() {
               !readOnly
                 ? (
                     <>
-                      {myAreas.length > 1 && (
-                        <select
-                          aria-label={t('features.tasks.area')}
-                          className={`${SELECT_CLS} w-48`}
-                          value={leaderAreaId}
-                          onChange={(e) => setSelectedArea(e.target.value)}
-                        >
-                          {myAreas.map((a) => (
-                            <option key={a.id} value={a.id}>
-                              {a.name}
-                            </option>
-                          ))}
-                        </select>
-                      )}
                       <Button
                         onClick={() => {
                           setEditing(null)

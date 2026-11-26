@@ -11,13 +11,11 @@ export function TaskDesignPanel({
   workAreaId,
   taskId,
   builderHref,
-  designHref,
   readOnly = false,
 }: {
   workAreaId: string
   taskId?: string
   builderHref: string
-  designHref: string
   readOnly?: boolean
 }) {
   const { t } = useTranslation()
@@ -49,12 +47,14 @@ export function TaskDesignPanel({
             {t('features.tasks.designPanelTitle')}
           </p>
         </div>
-        <Link
-          to={readOnly ? designHref : builderHref}
-          className="text-xs font-semibold text-primary hover:underline"
-        >
-          {readOnly ? t('features.tasks.viewDesign') : t('features.tasks.editDesign')}
-        </Link>
+        {!readOnly ? (
+          <Link
+            to={builderHref}
+            className="text-xs font-semibold text-primary hover:underline"
+          >
+            {t('features.tasks.editDesign')}
+          </Link>
+        ) : null}
       </div>
 
       {linkedLayers.length > 0 && (
@@ -77,7 +77,7 @@ export function TaskDesignPanel({
       <div className="p-3">
         <ScenePreview
           workAreaId={workAreaId}
-          builderHref={readOnly ? designHref : builderHref}
+          builderHref={builderHref}
           className="overflow-hidden"
         />
       </div>

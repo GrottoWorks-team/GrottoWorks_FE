@@ -564,7 +564,6 @@ export default function TaskDetailPage() {
               workAreaId={task.areaId}
               taskId={task.id}
               builderHref={`/leader/areas/${task.areaId}/builder`}
-              designHref={readOnly ? `/community/areas/${task.areaId}/design` : `/leader/areas/${task.areaId}/design`}
               readOnly={readOnly}
             />
           )}

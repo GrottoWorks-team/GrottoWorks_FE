@@ -5,7 +5,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FileImage } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
@@ -13,7 +12,6 @@ import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { useTasks } from '@/features/tasks/api'
 import { formatDate } from '@/lib/format'
 import { useDashboardData, useWorkAreaDashboard } from './api'
@@ -121,10 +119,6 @@ export default function LeaderOverview() {
                   ))}
                 </select>
               )}
-              <Button variant="outline" onClick={() => navigate(`/leader/areas/${area.id}/design`)}>
-                <FileImage className="size-4" />
-                {t('features.design.title')}
-              </Button>
             </div>
           )
         }

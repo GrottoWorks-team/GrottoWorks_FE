@@ -789,7 +789,7 @@
   "builder.sub": "Lắp ghép công trình từ model có sẵn, chia lớp thi công và liên kết nhiệm vụ",
   "builder.open": "Trình dựng 3D",
   "builder.taskModelTitle": "Mô hình 3D công trình",
-  "builder.backToDesign": "Về bản thiết kế",
+  "builder.backToDesign": "Về danh sách việc",
   "builder.assets": "Thư viện model",
   "builder.assetDemo": "Hình khối demo",
   "builder.assetGlb": "Model .glb",

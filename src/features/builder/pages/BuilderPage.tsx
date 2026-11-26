@@ -127,7 +127,7 @@ export default function BuilderPage() {
   }, [dirty])
 
   const prefix = pathname.startsWith('/parish') ? '/parish' : '/leader'
-  const designHref = `${prefix}/areas/${areaId}/design`
+  const backHref = prefix === '/leader' ? '/leader/tasks' : '/parish/communities?tab=areas'
 
   const onPlace = useCallback(
     (assetId: string, position: [number, number, number], rotation: [number, number, number]) => {
@@ -183,7 +183,7 @@ export default function BuilderPage() {
         actions={
           <>
             <Link
-              to={designHref}
+              to={backHref}
               className={cn(buttonBase, buttonVariants.secondary, buttonSizes.sm)}
             >
               <ArrowLeft aria-hidden />

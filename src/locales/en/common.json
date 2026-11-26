@@ -789,7 +789,7 @@
   "builder.sub": "Assemble the structure from existing models, split it into construction layers and link tasks",
   "builder.open": "3D builder",
   "builder.taskModelTitle": "3D construction model",
-  "builder.backToDesign": "Back to design",
+  "builder.backToDesign": "Back to tasks",
   "builder.assets": "Model library",
   "builder.assetDemo": "Demo primitive",
   "builder.assetGlb": "GLB model",

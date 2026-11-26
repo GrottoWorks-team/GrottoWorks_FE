@@ -129,11 +129,15 @@ export function DataTable<T>({
               })}
             </div>
           ))}
-          {toolbarActions ? <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{toolbarActions}</div> : null}
         </div>
       )}
 
       <div className="overflow-x-auto rounded-card border border-border bg-card">
+        {toolbarActions ? (
+          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border px-4 py-3">
+            {toolbarActions}
+          </div>
+        ) : null}
         {isError ? (
           <ErrorState compact onRetry={onRetry} />
         ) : isPending ? (
