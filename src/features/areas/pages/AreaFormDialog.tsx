@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { getBlob } from '@/lib/blobStore'
+import { getFileDownloadUrl } from '@/features/files/api'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
 import { useWorkAreaCategories } from '@/features/parish/api'
 import { useCreateReadinessCheck } from '@/features/checklist/api'
@@ -156,11 +156,9 @@ export function AreaFormDialog({
     setMapImageUrl('')
     void (async () => {
       if (!mapRecord?.imageKey) return
-      const blob = await getBlob(mapRecord.imageKey).catch(() => null)
-      if (cancelled || !blob) return
-      const url = URL.createObjectURL(blob)
-      urlRef.current = url
-      setMapImageUrl(url)
+      const download = await getFileDownloadUrl(mapRecord.imageKey).catch(() => null)
+      if (cancelled || !download?.downloadUrl) return
+      setMapImageUrl(download.downloadUrl)
     })()
     return () => {
       cancelled = true

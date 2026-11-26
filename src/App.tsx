@@ -32,6 +32,8 @@ const SupportListPage = lazy(() => import('@/features/support/pages/SupportListP
 const MaterialCategoriesPage = lazy(() => import('@/features/materials/pages/MaterialCategoriesPage'))
 const MaterialListPage = lazy(() => import('@/features/materials/pages/MaterialListPage'))
 const MaterialInventoryPage = lazy(() => import('@/features/materials/pages/MaterialInventoryPage'))
+const ParishInventoryPage = lazy(() => import('@/features/warehouse/pages/ParishInventoryPage'))
+const DistributionListPage = lazy(() => import('@/features/warehouse/pages/DistributionListPage'))
 const SeasonMaterialNeedsPage = lazy(() => import('@/features/materials/pages/SeasonMaterialNeedsPage'))
 const PurchaseDetailPage = lazy(() => import('@/features/purchases/pages/PurchaseDetailPage'))
 const PurchaseListPage = lazy(() => import('@/features/purchases/pages/PurchaseListPage'))
@@ -79,6 +81,11 @@ const PAGES: Record<string, ComponentType> = {
   '/material-officer/categories': MaterialCategoriesPage,
   '/material-officer/materials': MaterialListPage,
   '/material-officer/inventory': MaterialInventoryPage,
+  '/material-officer/distributions': DistributionListPage,
+  '/community/warehouse': ParishInventoryPage,
+  '/community/warehouse/distributions': DistributionListPage,
+  '/community/purchases': CommitteeApprovalPage,
+  '/community/donations': DonationListPage,
   '/material-officer/material-reports': MaterialReportsPage,
   '/material-officer/support-materials': MaterialReceiptsPage,
   '/material-officer/material-needs': SeasonMaterialNeedsPage,
@@ -126,6 +133,7 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
+    { path: 'purchases/:id', Page: PurchaseDetailPage },
   ],
   PARISH: [
     { path: 'purchases/:id', Page: PurchaseDetailPage },
@@ -162,7 +170,9 @@ function LegacyParishAreasRedirect() {
 
 function LegacyParishMapRedirect() {
   const { search } = useLocation()
-  return <Navigate to={`/parish/communities/map${search}`} replace />
+  const params = new URLSearchParams(search)
+  const parish = params.get('parish')
+  return <Navigate to={`/parish/communities?tab=map${parish ? `&parish=${encodeURIComponent(parish)}` : ''}`} replace />
 }
 
 // URL cũ `/parish/seasons` → tab "Mùa Giáng sinh" trong hub (12/11/2026).

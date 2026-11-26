@@ -21,7 +21,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { getBlob, newBlobKey, putBlob } from '@/lib/blobStore'
+import { uploadFile, getFileDownloadUrl } from '@/features/files/api'
 import { useAuth } from '@/lib/auth'
 import { useAreas, useSeasons } from '@/features/areas/api'
 import { useSeasonContext } from '@/features/season/season-context'
@@ -46,7 +46,7 @@ const FILE_ERROR_KEY: Record<'type' | 'size' | 'empty', string> = {
   empty: 'features.map.errEmpty',
 }
 
-export default function ParishMapPage() {
+export default function ParishMapPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
@@ -94,15 +94,13 @@ export default function ParishMapPage() {
     setImageUrl('')
     void (async () => {
       if (!mapRecord) return
-      const blob = await getBlob(mapRecord.imageKey).catch(() => null)
+      const download = await getFileDownloadUrl(mapRecord.imageKey).catch(() => null)
       if (cancelled) return
-      if (!blob) {
+      if (!download?.downloadUrl) {
         setImageError(true)
         return
       }
-      const url = URL.createObjectURL(blob)
-      urlRef.current = url
-      setImageUrl(url)
+      setImageUrl(download.downloadUrl)
     })()
     return () => {
       cancelled = true
@@ -136,9 +134,8 @@ export default function ParishMapPage() {
       return
     }
     try {
-      const key = newBlobKey('parishmap')
-      await putBlob(key, file)
-      await saveMap.mutateAsync({ id: mapRecord?.id, imageKey: key, fileName: file.name })
+      const uploaded = await uploadFile(file, 'MAP_IMAGE')
+      await saveMap.mutateAsync({ id: mapRecord?.id, imageKey: uploaded.fileId, fileName: file.name })
       toast(t('features.map.mapSaved'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -172,7 +169,7 @@ export default function ParishMapPage() {
 
   return (
     <div>
-      {canPickParish && (
+      {!embedded && canPickParish && (
         <Link
           to={`/parish/communities${parishId ? `?parish=${encodeURIComponent(parishId)}` : ''}`}
           className="mb-3 inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
@@ -181,7 +178,7 @@ export default function ParishMapPage() {
           {t('features.parish.backToHub')}
         </Link>
       )}
-      <PageHeader
+      {!embedded && <PageHeader
         title={parish?.name ? `${t('features.map.title')} — ${parish.name}` : t('features.map.title')}
         sub={t('features.map.sub')}
         actions={
@@ -207,7 +204,7 @@ export default function ParishMapPage() {
             )}
           </div>
         }
-      />
+      />}
 
       {!canPin && mapRecord && (
         <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">

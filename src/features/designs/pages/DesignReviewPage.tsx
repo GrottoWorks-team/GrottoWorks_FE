@@ -33,6 +33,7 @@ import {
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { getBlob } from '@/lib/blobStore'
+import { getFileDownloadUrl } from '@/features/files/api'
 import { useAuth } from '@/lib/auth'
 import { relTime } from '@/lib/format'
 import { useArea, useAreas } from '@/features/areas/api'
@@ -137,15 +138,23 @@ export default function DesignReviewPage() {
     setImageUrl('')
     void (async () => {
       if (!selectedVersion || isSceneVersion) return
-      const blob = await getBlob(selectedVersion.fileKey).catch(() => null)
+      const legacyBlob = selectedVersion.fileKey.startsWith('blob-')
+        ? await getBlob(selectedVersion.fileKey).catch(() => null)
+        : null
       if (cancelled) return
-      if (!blob) {
+      if (legacyBlob) {
+        const url = URL.createObjectURL(legacyBlob)
+        urlRef.current = url
+        setImageUrl(url)
+        return
+      }
+      const download = await getFileDownloadUrl(selectedVersion.fileKey).catch(() => null)
+      if (cancelled) return
+      if (!download?.downloadUrl) {
         setImageError(true)
         return
       }
-      const url = URL.createObjectURL(blob)
-      urlRef.current = url
-      setImageUrl(url)
+      setImageUrl(download.downloadUrl)
     })()
     return () => {
       cancelled = true
@@ -528,7 +537,8 @@ export default function DesignReviewPage() {
                         <span className="mt-2 flex flex-wrap items-center gap-2">
                           <StatusTag
                             status={c.priority}
-                            tone={PRIORITY_TONE[c.priority].tone}
+                            tone={PRIORITY_TONE[c.priority].tone}
+
                           />
                           {(c.positionType === 'IMAGE_2D' || c.positionType === 'MODEL_3D') && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-pine">

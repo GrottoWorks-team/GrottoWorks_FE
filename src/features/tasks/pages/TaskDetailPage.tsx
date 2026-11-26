@@ -52,6 +52,7 @@ import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
 import { viDate, viDateTime } from '@/lib/format'
+import { ScenePreview } from '@/features/builder/components/ScenePreview'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -132,6 +133,10 @@ export default function TaskDetailPage() {
   const replaceMaterials = useReplaceTaskMaterials()
   const { data: users = [] } = useUsers({ withSkills: false })
   const userNameById = useMemo(() => new Map(users.map((u) => [u.id, u.name])), [users])
+  // 26/11/2026: task PURCHASE giao cho user giáo xứ (BE `PARISH` = web `COMMUNITY`) làm người mua;
+  // trưởng ban vật tư là người ghi nhận lần mua sau đó.
+  const isPurchaseTask = task?.taskType === 'PURCHASE'
+  const buyerCandidates = useMemo(() => users.filter((user) => user.role === 'COMMUNITY' && !user.locked), [users])
 
   // Trưởng nhóm nhiệm vụ: chỉ assignment đã ACCEPTED/IN_PROGRESS mới chọn được
   // (BE `TaskTeamLeaderEligibility`). Task COMPLETED/CANCELLED không đổi được.
@@ -160,7 +165,7 @@ export default function TaskDetailPage() {
   const [releaseConfirm, setReleaseConfirm] = useState(false)
   const { data: volunteerMatches = [] } = useVolunteerMatches(
     task?.id,
-    assignOpen && !readOnly && isAreaLeader,
+    assignOpen && !readOnly && isAreaLeader && !isPurchaseTask,
   )
   const [revisionReason, setRevisionReason] = useState('')
   const [rejectTarget, setRejectTarget] = useState<TaskApplicationDto | null>(null)
@@ -552,8 +557,22 @@ export default function TaskDetailPage() {
           </Card>
         </div>
 
-        {/* Phải: phân công tình nguyện viên + thao tác trạng thái. */}
+        {/* Phải: mô hình công trình + phân công tình nguyện viên + thao tác trạng thái. */}
         <div className="space-y-6">
+          {!readOnly && isAreaLeader && task.areaId && (
+            <Card className="p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="lbl-mono text-sm font-semibold text-foreground">
+                  {t('builder.taskModelTitle', { defaultValue: 'Mô hình 3D công trình' })}
+                </p>
+              </div>
+              <ScenePreview
+                workAreaId={task.areaId}
+                builderHref={`/leader/areas/${task.areaId}/builder`}
+                className="overflow-hidden"
+              />
+            </Card>
+          )}
           {/* Đơn đăng ký của TNV — duyệt/từ chối ngay trong chi tiết việc. */}
           {!readOnly && isAreaLeader && (
             <Card className="p-6">
@@ -996,7 +1015,9 @@ export default function TaskDetailPage() {
         >
           <div className="space-y-3">
             <div className="space-y-1">
-              <Label htmlFor="task-assign-volunteer">{t('features.tasks.volunteer')}</Label>
+              <Label htmlFor="task-assign-volunteer">
+                {isPurchaseTask ? t('features.tasks.assignBuyer') : t('features.tasks.volunteer')}
+              </Label>
               <select
                 id="task-assign-volunteer"
                 className="h-10 w-full rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground"
@@ -1005,17 +1026,24 @@ export default function TaskDetailPage() {
               >
                 <option value="">{t('common.selectPlaceholder')}</option>
                 {/* 13/11/2026: trưởng khu chỉ phân công người của khu mình. BE trả sẵn danh sách
-                    theo cộng đoàn của khu (`/volunteer-matches`), nên dùng luôn danh sách đó. */}
-                {volunteerMatches.map((match) => (
-                  <option key={match.volunteerId} value={match.volunteerId}>
-                    {match.displayName}
-                  </option>
-                ))}
+                    theo cộng đoàn của khu (`/volunteer-matches`), nên dùng luôn danh sách đó.
+                    26/11/2026: task PURCHASE lấy người mua từ danh sách user giáo xứ (PARISH). */}
+                {isPurchaseTask
+                  ? buyerCandidates.map((buyer) => (
+                      <option key={buyer.id} value={buyer.id}>
+                        {buyer.name}
+                      </option>
+                    ))
+                  : volunteerMatches.map((match) => (
+                      <option key={match.volunteerId} value={match.volunteerId}>
+                        {match.displayName}
+                      </option>
+                    ))}
               </select>
               <p className="text-[11px] text-muted-foreground">
-                {t('features.tasks.assignScopeHint')}
+                {isPurchaseTask ? t('features.tasks.assignBuyerHint') : t('features.tasks.assignScopeHint')}
               </p>
-              {volunteerMatches.length === 0 && (
+              {!isPurchaseTask && volunteerMatches.length === 0 && (
                 <div className="rounded-md border border-dashed border-border px-3 py-2">
                   <p className="text-[11px] text-muted-foreground">
                     {t('features.tasks.assignScopeEmpty')}
@@ -1043,7 +1071,7 @@ export default function TaskDetailPage() {
               />
             </div>
 
-            {volunteerMatches.length > 0 && (
+            {!isPurchaseTask && volunteerMatches.length > 0 && (
               <div className="space-y-1">
                 <Label>{t('features.tasks.volunteerMatches')}</Label>
                 <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border border-border/60 p-1">

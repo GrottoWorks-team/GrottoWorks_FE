@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import {
   AlertCircle,
   AlertTriangle,
+  Ban,
   CheckCircle2,
   Package,
 } from 'lucide-react'

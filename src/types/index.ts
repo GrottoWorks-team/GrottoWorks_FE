@@ -1150,7 +1150,7 @@ export interface ReviewCorrectionRequest {
 // File contracts (Đợt H)
 
 
-export type FilePurpose = 'ProgressEvidence' | 'ReadinessEvidence' | 'PurchaseReceipt' | 'Other' | string
+export type FilePurpose = 'ProgressEvidence' | 'ReadinessEvidence' | 'PurchaseReceipt' | 'MAP_IMAGE' | 'DESIGN_ASSET' | 'Other' | string
 
 
 export interface CreateUploadRequestDto {

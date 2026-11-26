@@ -22,7 +22,6 @@ import {
   Info,
   Check,
   ShieldCheck,
-  Map as MapIcon,
   ListChecks,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -54,6 +53,7 @@ import { useParishScope } from '../hooks'
 import { ParishSwitcher } from '../components/ParishSwitcher'
 import type { Community, WorkArea } from '@/types'
 import i18n from '@/lib/i18n'
+import ParishMapPage from '@/features/map/pages/ParishMapPage'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
@@ -674,12 +674,12 @@ const TABS = [
   // vẫn dùng trang riêng /community/seasons để tạo & tương tác).
   { key: 'seasons', labelKey: 'features.parish.tabSeasons' },
   { key: 'areas', labelKey: 'features.parish.tabAreas' },
+  { key: 'map', labelKey: 'features.parish.openMap' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
 export default function CommunitiesPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { pathname } = useLocation()
   const [params, setParams] = useSearchParams()
   const scope = useParishScope()
@@ -707,8 +707,6 @@ export default function CommunitiesPage() {
     )
   }
 
-  const mapHref = `/parish/communities/map${parishId ? `?parish=${encodeURIComponent(parishId)}` : ''}`
-
   return (
     <div>
       <PageHeader
@@ -717,10 +715,6 @@ export default function CommunitiesPage() {
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <ParishSwitcher scope={scope} />
-            <Button variant="outline" onClick={() => navigate(mapHref)}>
-              <MapIcon className="size-4 mr-1.5" />
-              {t('features.parish.openMap')}
-            </Button>
             {canPickParish && (
               <Button
                 variant="outline"
@@ -778,8 +772,10 @@ export default function CommunitiesPage() {
         ) : null
       ) : tab === 'seasons' ? (
         <SeasonListPage embedded />
+      ) : tab === 'areas' ? (
+        parishId ? <AreasPanel parishId={parishId} /> : null
       ) : parishId ? (
-        <AreasPanel parishId={parishId} />
+        <ParishMapPage embedded />
       ) : null}
 
       {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}

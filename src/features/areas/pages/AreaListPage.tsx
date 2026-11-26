@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutGrid, Table2, Pencil, Plus, UserPlus, FileImage } from 'lucide-react'
+import { LayoutGrid, Table2, Pencil, Plus, UserPlus, FileImage, Map as MapIcon } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -22,9 +22,10 @@ import { AreaCard } from '../components/AreaCard'
 import { AreaDetailDialog } from '../components/AreaDetailDialog'
 import { AreaFormDialog, SELECT_CLS } from './AreaFormDialog'
 import { AreaAssignDialog } from './AreaAssignDialog'
+import ParishMapPage from '@/features/map/pages/ParishMapPage'
 import type { WorkArea } from '@/types'
 
-type View = 'grid' | 'table'
+type View = 'grid' | 'table' | 'map'
 
 export default function AreaListPage() {
   const { t } = useTranslation()
@@ -247,6 +248,7 @@ export default function AreaListPage() {
                 [
                   ['grid', LayoutGrid, t('features.areas.viewGrid')],
                   ['table', Table2, t('features.areas.viewTable')],
+                  ['map', MapIcon, t('features.map.title')],
                 ] as const
               ).map(([v, Icon, label]) => (
                 <button
@@ -344,6 +346,8 @@ export default function AreaListPage() {
         ) : (
           <EmptyState text={t('features.areas.empty')} />
         )
+      ) : view === 'map' ? (
+        <ParishMapPage embedded />
       ) : (
         <DataTable
           rows={areas}
