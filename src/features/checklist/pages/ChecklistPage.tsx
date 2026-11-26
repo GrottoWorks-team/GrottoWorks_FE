@@ -1,8 +1,9 @@
 // Checklist sẵn sàng (/leader/checklist, /community/checklist) — BE Readiness.
 // Quy trình 12/11/2026:
-//   1. Ban hành giáo (FE `COMMUNITY` = BE `PARISH`) đặt tiêu chí cho từng khu vực.
+//   1. Trưởng khu tạo phiếu + đặt tiêu chí cho khu của mình (BE `createReadinessCheck` = LEADER).
 //   2. LEADER nộp minh chứng cho từng mục rồi đánh dấu Đạt/Không đạt (bắt buộc có minh chứng mới được Đạt).
-//   3. Ban hành giáo duyệt tổng thể khu vực → khu READY; mọi khu READY → mùa chuyển READY.
+//   3. LEADER duyệt khu vực (`confirmAreaReadiness`) → khu READY; mọi khu READY → mùa chuyển READY.
+//   4. Ban hành giáo theo dõi và **mở lại** phiếu khi cần (BE `reopenReadinessCheck` = PARISH + LEADER).
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Link2, Paperclip, Plus, X } from 'lucide-react'
@@ -32,6 +33,7 @@ import {
   useReadinessCheck,
   useRecheckReadinessItem,
   useRecordReadinessResult,
+  useReopenReadiness,
   useSeasonReadiness,
 } from '../api'
 import type { ReadinessItem } from '@/types'
@@ -97,9 +99,11 @@ export default function ChecklistPage() {
   const { user } = useAuth()
   const { data: areas = [] } = useScopedAreas()
   const isLeader = user?.role === 'LEADER'
-  // FE `COMMUNITY` = ban hành giáo (BE `PARISH`): người đặt tiêu chí và duyệt cuối.
+  // FE `COMMUNITY` = ban hành giáo (BE `PARISH`): theo dõi tiến độ, mở lại phiếu khi cần.
   const isParishBoard = user?.role === 'COMMUNITY'
-  const canCreateCheck = isLeader || isParishBoard
+  // 26/11/2026: BE chỉ cho LEADER của khu tạo phiếu / ghi kết quả / confirm (`confirmAreaReadiness`).
+  // Trước đây PARISH cũng thấy nút tạo phiếu + duyệt khu vực nên bấm vào luôn 403 Forbidden.
+  const canCreateCheck = isLeader
   const myAreas = useMemo(
     () => (isLeader ? areas.filter((a) => a.leaderId === user?.id) : areas),
     [isLeader, areas, user?.id],
@@ -117,6 +121,11 @@ export default function ChecklistPage() {
   const record = useRecordReadinessResult()
   const recheck = useRecheckReadinessItem()
   const confirm = useConfirmReadiness()
+  // 26/11/2026: BE cho PARISH + LEADER mở lại phiếu đã READY (bắt buộc nêu lý do — BR-53).
+  const reopen = useReopenReadiness()
+  const [reopening, setReopening] = useState(false)
+  const [reopenReason, setReopenReason] = useState('')
+  const [reopenError, setReopenError] = useState(false)
   const attachEvidence = useAttachReadinessEvidence()
   const linkCorrective = useLinkCorrectiveTask()
   const createCorrectiveTask = useCreateTask()
@@ -223,8 +232,8 @@ export default function ChecklistPage() {
     try {
       await record.mutateAsync({ checkId: check.id, itemId: item.id, version: check.version, result })
       toast(t('features.checklist.saved'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      fail(error)
     }
   }
 
@@ -233,8 +242,8 @@ export default function ChecklistPage() {
     try {
       await recheck.mutateAsync({ checkId: check.id, itemId: item.id, version: check.version, result })
       toast(t('features.checklist.saved'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      fail(error)
     }
   }
 
@@ -243,8 +252,21 @@ export default function ChecklistPage() {
     try {
       await confirm.mutateAsync({ checkId: check.id, version: check.version })
       toast(t('features.checklist.confirmed'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      fail(error)
+    }
+  }
+
+  const onReopen = async () => {
+    if (!check) return
+    if (!reopenReason.trim()) return setReopenError(true)
+    try {
+      await reopen.mutateAsync({ checkId: check.id, version: check.version, reason: reopenReason.trim() })
+      toast(t('features.checklist.reopened'))
+      setReopening(false)
+      setReopenReason('')
+    } catch (error) {
+      fail(error)
     }
   }
 
@@ -405,9 +427,21 @@ export default function ChecklistPage() {
               <span className="font-semibold text-foreground">{check?.name ?? t('features.checklist.title')}</span>
               {check && <StatusTag status={check.status} />}
             </div>
-            {isParishBoard && check && check.status !== 'READY' && (
+            {isLeader && check && check.status !== 'READY' && (
               <Button onClick={onConfirm} disabled={confirm.isPending}>
                 {t('features.checklist.confirmParish')}
+              </Button>
+            )}
+            {(isLeader || isParishBoard) && check?.status === 'READY' && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setReopenReason('')
+                  setReopenError(false)
+                  setReopening(true)
+                }}
+              >
+                {t('features.checklist.reopen')}
               </Button>
             )}
           </Card>
@@ -480,6 +514,42 @@ export default function ChecklistPage() {
                 </Button>
               </div>
             )}
+          </div>
+        </Dialog>
+      )}
+
+      {/* 26/11/2026: mở lại phiếu đã READY — BE yêu cầu có lý do (BR-53). */}
+      {reopening && check && (
+        <Dialog
+          open
+          onClose={() => setReopening(false)}
+          title={t('features.checklist.reopenTitle')}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setReopening(false)}>
+                {t('common.cancel')}
+              </Button>
+              <Button disabled={reopen.isPending} onClick={() => void onReopen()}>
+                {t('features.checklist.reopen')}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{t('features.checklist.reopenHint')}</p>
+            <Label htmlFor="reopen-reason">{t('features.checklist.reopenReason')} *</Label>
+            <Input
+              id="reopen-reason"
+              value={reopenReason}
+              onChange={(e) => {
+                setReopenReason(e.target.value)
+                setReopenError(false)
+              }}
+              maxLength={500}
+            />
+            {reopenError ? (
+              <p className="text-xs font-semibold text-destructive">{t('common.required')}</p>
+            ) : null}
           </div>
         </Dialog>
       )}
