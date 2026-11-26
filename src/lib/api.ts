@@ -71,7 +71,9 @@ function unwrap<T>(body: unknown): T {
 async function request<T = unknown>(path: string, init?: RequestInit): Promise<T> {
   const token = localStorage.getItem('grotto-token')
   const headers = new Headers(init?.headers)
-  headers.set('Content-Type', 'application/json')
+  if (!(init?.body instanceof FormData) && !(init?.body instanceof Blob)) {
+    headers.set('Content-Type', 'application/json')
+  }
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`)
   }

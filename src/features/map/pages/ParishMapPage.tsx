@@ -21,7 +21,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { uploadFile, getFileDownloadUrl } from '@/features/files/api'
+import { uploadFileViaGateway, getFileDownloadUrl } from '@/features/files/api'
 import { useAuth } from '@/lib/auth'
 import { useAreas, useSeasons } from '@/features/areas/api'
 import { useSeasonContext } from '@/features/season/season-context'
@@ -141,7 +141,7 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
       return
     }
     try {
-      const uploaded = await uploadFile(file, 'MAP_IMAGE')
+      const uploaded = await uploadFileViaGateway(file, 'MAP_IMAGE')
       await saveMap.mutateAsync({ id: mapRecord?.id, imageKey: uploaded.fileId, fileName: file.name })
       toast(t('features.map.mapSaved'))
     } catch (error) {
