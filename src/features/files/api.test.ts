@@ -168,4 +168,31 @@ describe('files API client', () => {
       downloadUrl: 'https://minio.local/download/xyz',
     })
   })
+
+  it('uploadFile falls back to proxy-upload when the presigned PUT is blocked (CORS)', async () => {
+    const file = new File(['binary content'], 'photo.jpg', { type: 'image/jpeg' })
+    const uploadReq = {
+      fileId: 'file-cors',
+      uploadUrl: 'https://r2.local/upload/cors',
+      method: 'PUT',
+      headers: {},
+      expiresAt: '2026-12-01T00:00:00Z',
+    }
+    const postedRef = { id: 'file-cors', fileName: 'photo.jpg', contentType: 'image/jpeg', sizeBytes: 14 }
+
+    vi.mocked(apiModule.api)
+      .mockResolvedValueOnce(uploadReq) // POST /files/upload-requests
+      .mockResolvedValueOnce(postedRef) // PUT /files/{id}/proxy-upload
+      .mockResolvedValueOnce({ downloadUrl: 'https://r2.local/download/cors', expiresAt: '2026-12-01T01:00:00Z' })
+
+    // Trình duyệt chặn CORS → fetch ném TypeError (Failed to fetch).
+    globalThis.fetch = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch'))
+
+    const result = await uploadFile(file, 'ReadinessEvidence')
+
+    expect(result.fileId).toBe('file-cors')
+    const calls = vi.mocked(apiModule.api).mock.calls.map((call) => call[0])
+    expect(calls).toContain('/api/v1/files/file-cors/proxy-upload')
+    expect(calls).not.toContain('/api/v1/files/file-cors/complete')
+  })
 })

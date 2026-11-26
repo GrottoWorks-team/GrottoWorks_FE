@@ -4,7 +4,8 @@
 //   POST   /api/v1/files/{fileId}/complete    → xác nhận đã upload
 //   GET    /api/v1/files/{fileId}/download-url→ { downloadUrl, expiresAt }
 //   DELETE /api/v1/files/{fileId}             (chỉ file chưa gắn nghiệp vụ)
-import { ApiError, api } from './api'
+import { api } from './api'
+import { putFileObject } from './fileUpload'
 
 export type FilePurpose = 'ProgressEvidence' | 'ReadinessEvidence' | 'PurchaseReceipt' | 'Other'
 
@@ -29,19 +30,15 @@ export async function uploadFile(file: File, purpose: FilePurpose): Promise<stri
     }),
   })
 
-  const upload = await fetch(request.uploadUrl, {
-    method: request.method || 'PUT',
-    headers: request.headers ?? {},
-    body: file,
-  })
-  if (!upload.ok) {
-    throw new ApiError(upload.status, `Upload failed: ${upload.status} ${upload.statusText}`)
+  // 26/11/2026: presigned PUT có thể bị CORS chặn (bucket R2 chưa cấu hình) → tự chuyển
+  // sang `proxy-upload` qua gateway; khi đó BE đã complete nên không gọi `/complete` lần nữa.
+  const transport = await putFileObject(file, request)
+  if (transport === 'direct') {
+    await api<void>(`/api/v1/files/${request.fileId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ checksum: null }),
+    })
   }
-
-  await api<void>(`/api/v1/files/${request.fileId}/complete`, {
-    method: 'POST',
-    body: JSON.stringify({ checksum: null }),
-  })
   return request.fileId
 }
 
