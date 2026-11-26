@@ -146,8 +146,8 @@ export function AreaFormDialog({
   const [mapImageUrl, setMapImageUrl] = useState('')
   const mapHref =
     user?.role === 'PARISH'
-      ? `/parish/communities/map?parish=${encodeURIComponent(mapParishId)}`
-      : '/community/map'
+      ? '/parish/communities?tab=areas'
+      : '/community/areas'
 
   // Ảnh sơ đồ: blob IndexedDB → object URL (thu hồi khi đóng dialog).
   const urlRef = useRef('')
