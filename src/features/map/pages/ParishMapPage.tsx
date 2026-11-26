@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
+import { ApiError } from '@/lib/api'
 import { uploadFileViaGateway, getFileDownloadUrl } from '@/features/files/api'
 import { useAuth } from '@/lib/auth'
 import { useAreas, useSeasons } from '@/features/areas/api'
@@ -39,7 +40,7 @@ import {
   formatBytes,
   validateImageFile,
 } from '@/features/designs/config'
-import { useParishMap, useMapPins, useSaveParishMap, useSetMapPin } from '../api'
+import { useParishMap, pinsOfAreas, useSaveParishMap, useSetMapPin } from '../api'
 
 const FILE_ERROR_KEY: Record<'type' | 'size' | 'empty', string> = {
   type: 'features.map.errType',
@@ -65,8 +66,8 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
   const { data: areas = [] } = useAreas(seasonIds)
   const { data: mapRecord, isPending: mapPending } = useParishMap(parishId)
   const saveMap = useSaveParishMap(parishId)
-  const { data: pins = {} } = useMapPins(parishId)
-  const setPin = useSetMapPin(parishId)
+  const pins = useMemo(() => pinsOfAreas(areas), [areas])
+  const setPin = useSetMapPin()
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Ảnh sơ đồ: ADMIN (role FE `PARISH`) tải lên. Ghim vị trí khu vực: Ban hành
@@ -148,7 +149,10 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
       await saveMap.mutateAsync({ id: mapRecord?.id, imageKey: uploaded.fileId, fileName: file.name })
       toast(t('features.map.mapSaved'))
     } catch (error) {
-      if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
+      if (error instanceof ApiError && error.code === 'FILE_ATTACHMENT_PENDING') {
+        // BE đã lưu bản đồ, file đang được chốt (worker thử lại) — không phải lỗi mất dữ liệu.
+        toast(t('features.map.mapPendingFinalize'), 'alert')
+      } else if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
         toast(t('features.map.uploadCorsFailed'), 'alert')
       } else if (error instanceof Error) {
         toast(error.message, 'alert')
@@ -163,7 +167,11 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
   const placeAt = async (point: NormalizedPoint) => {
     if (!placingId) return
     try {
-      await setPin.mutateAsync({ areaId: placingId, pin: { x: point.x, y: point.y } })
+      await setPin.mutateAsync({
+        areaId: placingId,
+        version: areas.find((area) => area.id === placingId)?.version,
+        pin: { x: point.x, y: point.y },
+      })
       toast(t('features.map.positionSaved'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -174,7 +182,7 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
 
   const clearPosition = async (id: string) => {
     try {
-      await setPin.mutateAsync({ areaId: id, pin: null })
+      await setPin.mutateAsync({ areaId: id, version: areas.find((area) => area.id === id)?.version, pin: null })
       toast(t('features.map.positionCleared'))
     } catch {
       toast(t('common.error'), 'alert')

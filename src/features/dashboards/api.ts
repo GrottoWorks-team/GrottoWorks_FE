@@ -147,15 +147,17 @@ export interface MaterialDashboardDto {
   donations: DonationSummaryDto
 }
 
-export function useSeasonDashboard(seasonId?: string, parishId?: string) {
+/**
+ * GET /api/v1/dashboards/season?seasonId= (Reporting, **chỉ role PARISH của BE**).
+ * 26/11/2026: BE bỏ query `parishId` và trả 403 `REPORT_ACCESS_DENIED` cho ADMIN.
+ */
+export function useSeasonDashboard(seasonId?: string) {
   return useQuery({
-    queryKey: [...dashboardKeys.season(seasonId ?? ''), parishId ?? ''] as const,
-    queryFn: () => {
-      const qs = new URLSearchParams({ seasonId: seasonId ?? '' })
-      if (parishId) qs.set('parishId', parishId)
-      return api<SeasonDashboardDto>(`/api/v1/dashboards/season?${qs.toString()}`)
-    },
+    queryKey: dashboardKeys.season(seasonId ?? ''),
+    queryFn: () =>
+      api<SeasonDashboardDto>(`/api/v1/dashboards/season?seasonId=${seasonId ?? ''}`),
     enabled: Boolean(seasonId),
+    retry: false,
   })
 }
 

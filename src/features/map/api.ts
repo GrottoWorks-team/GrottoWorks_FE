@@ -71,23 +71,39 @@ export function useSaveParishMap(parishId?: string) {
   })
 }
 
-/** Toạ độ ghim khu trên bản đồ: `areaId → { x, y }`. */
-export function useMapPins(parishId?: string) {
-  const scopeId = useScopeParishId(parishId)
-  return useQuery({
-    queryKey: mapKeys.pins(scopeId),
-    queryFn: async (): Promise<Record<string, MapPin>> => mapStore.listPins(scopeId),
-    enabled: Boolean(scopeId),
-  })
+/**
+ * Toạ độ ghim khu trên bản đồ: `areaId → { x, y }`.
+ * 26/11/2026: BE đã lưu ghim trong `WorkArea.mapX/mapY` nên chỉ cần suy ra từ danh sách khu vực
+ * (localStorage chỉ còn dùng cho dữ liệu cũ/legacy).
+ */
+export function pinsOfAreas(areas: { id: string; mapX?: number; mapY?: number }[]): Record<string, MapPin> {
+  const pins: Record<string, MapPin> = {}
+  for (const area of areas) {
+    if (typeof area.mapX === 'number' && typeof area.mapY === 'number') {
+      pins[area.id] = { x: area.mapX, y: area.mapY }
+    }
+  }
+  return pins
 }
 
-/** Ghim (`{x,y}`) hoặc bỏ ghim (`null`) một khu. */
-export function useSetMapPin(parishId?: string) {
+/** Ghim (`{x,y}`) hoặc bỏ ghim (`null`) một khu — PATCH `WorkArea.mapX/mapY` ở BE. */
+export function useSetMapPin() {
   const qc = useQueryClient()
-  const scopeId = useScopeParishId(parishId)
   return useMutation({
-    mutationFn: async ({ areaId, pin }: { areaId: string; pin: MapPin | null }) =>
-      mapStore.setPin(scopeId, areaId, pin),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: mapKeys.pins(scopeId) }),
+    mutationFn: async ({
+      areaId,
+      version,
+      pin,
+    }: {
+      areaId: string
+      version?: number
+      pin: MapPin | null
+    }) =>
+      api<unknown>(`/api/v1/work-areas/${areaId}`, {
+        method: 'PATCH',
+        headers: version === undefined ? {} : { 'If-Match': `"${version}"` },
+        body: JSON.stringify({ mapX: pin?.x ?? null, mapY: pin?.y ?? null }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ['areas'] }),
   })
 }

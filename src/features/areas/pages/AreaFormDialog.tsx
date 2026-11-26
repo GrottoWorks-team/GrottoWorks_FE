@@ -25,7 +25,7 @@ import {
   ReadinessItemsEditor,
   type ReadinessItemDraft,
 } from '@/features/checklist/components/ReadinessItemsEditor'
-import { useMapPins, useParishMap, useSetMapPin } from '@/features/map/api'
+import { useParishMap } from '@/features/map/api'
 import { MapPinPicker } from '@/features/map/components/MapPinPicker'
 import {
   useCreateMaterialRequirement,
@@ -167,8 +167,6 @@ export function AreaFormDialog({
   const mapParishId =
     seasons.find((s) => s.id === initialSeasonId)?.parishId ?? parishId ?? user?.parishId ?? ''
   const { data: mapRecord } = useParishMap(mapParishId)
-  const { data: pins = {} } = useMapPins(mapParishId)
-  const setPin = useSetMapPin(mapParishId)
   const [pin, setPinValue] = useState<NormalizedPoint | null>(null)
   const [pinTouched, setPinTouched] = useState(false)
   const [mapImageUrl, setMapImageUrl] = useState('')
@@ -204,9 +202,10 @@ export function AreaFormDialog({
   // Khi SỬA: nạp ghim hiện có (một lần, không ghi đè lựa chọn của người dùng).
   useEffect(() => {
     if (!editing || !area || pinTouched) return
-    const existing = pins[area.id]
-    if (existing) setPinValue({ x: existing.x, y: existing.y })
-  }, [editing, area, pins, pinTouched])
+    if (typeof area.mapX === 'number' && typeof area.mapY === 'number') {
+      setPinValue({ x: area.mapX, y: area.mapY })
+    }
+  }, [editing, area, pinTouched])
 
   const pickPin = (point: NormalizedPoint) => {
     setPinValue(point)
@@ -420,15 +419,11 @@ export function AreaFormDialog({
           communityId,
           leaderId: data.leaderId || undefined,
           officerId: data.officerId || undefined,
+          // Ghim khu trên sơ đồ (BE lưu trong work area); `null` = bỏ ghim.
+          ...(pinTouched
+            ? { mapX: pin?.x ?? null, mapY: pin?.y ?? null }
+            : {}),
         })
-        // Ghim/bỏ ghim chỉ gọi khi người dùng thực sự đổi vị trí.
-        if (pinTouched) {
-          try {
-            await setPin.mutateAsync({ areaId: area.id, pin })
-          } catch {
-            toast(t('features.map.pinSaveFailed'), 'alert')
-          }
-        }
         // Ước lượng vật tư: sửa được khi mùa chưa kích hoạt.
         try {
           await saveEstimates(area.id, existingRequirements)
@@ -445,6 +440,8 @@ export function AreaFormDialog({
           communityId: data.level === 'COMMUNITY' ? (communityId ?? null) : null,
           startDate: data.startDate || null,
           deadline: data.deadline || null,
+          // Ghim ngay khi tạo (BE nhận `mapX/mapY` trong POST) — cùng một lần lưu.
+          ...(pin ? { mapX: pin.x, mapY: pin.y } : {}),
         })
         // BE KHÔNG nhận leaderId/officerId trong POST → phải PUT riêng ngay sau khi tạo
         // (`useUpdateArea` gọi /leader rồi /material-officer, chuyền version qua If-Match).
@@ -458,14 +455,6 @@ export function AreaFormDialog({
             })
           } catch {
             toast(t('features.areas.assignAfterCreateFailed'), 'alert')
-          }
-          // Ghim ngay sau khi có id — cùng một lần bấm Lưu của người dùng.
-          if (pin) {
-            try {
-              await setPin.mutateAsync({ areaId: created.id, pin })
-            } catch {
-              toast(t('features.map.pinSaveFailed'), 'alert')
-            }
           }
           // Tiêu chí sẵn sàng: tạo luôn trong cùng lần lưu (không để PARISH quên).
           try {

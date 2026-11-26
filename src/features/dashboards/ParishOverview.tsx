@@ -9,12 +9,10 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CircleCheck, CircleX } from 'lucide-react'
-import { useSeasonDashboard } from './api'
 import { useSeasons } from '@/features/season/api'
 import { useAreas } from '@/features/areas/api'
 import { useCommunities } from '@/features/communities/api'
@@ -38,17 +36,13 @@ export default function ParishOverview() {
     () => seasons.find((s) => s.status === 'ACTIVE') ?? seasons[0],
     [seasons],
   )
-  const {
-    data: seasonDashboard,
-    isPending: seasonDashboardPending,
-    isError: seasonDashboardError,
-    refetch: refetchSeasonDashboard,
-  } = useSeasonDashboard(focusSeason?.id, parish?.id)
-  const readiness = seasonDashboard?.summary.readiness
+  // 26/11/2026: `GET /dashboards/season` chỉ dành cho role PARISH (ban hành giáo); ADMIN bị 403.
+  // Màn tổng quan của ADMIN vì thế tự tính độ sẵn sàng từ danh sách khu vực.
   const missingLeader = areas.filter((a) => !a.leaderId).length
   const missingOfficer = areas.filter((a) => !a.officerId).length
-  const readyAreas = readiness?.ready ?? 0
-  const areaTotal = seasonDashboard?.summary.workAreas ?? areas.length
+  const areaTotal = areas.length
+  const readyAreas = areas.filter((a) => a.status === 'READY').length
+  const failedMandatoryItems = 0
 
   const columns = useMemo(
     () => [
@@ -106,9 +100,7 @@ export default function ParishOverview() {
 
         <Card className="p-5">
           <p className="lbl-mono mb-3">{t('features.dashboards.readinessTitle')}</p>
-          {seasonDashboardError ? (
-            <ErrorState compact onRetry={() => void refetchSeasonDashboard()} />
-          ) : seasonDashboardPending ? (
+          {areas.length === 0 && isPending ? (
             <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
           ) : (
             <ul className="space-y-2 text-sm">
@@ -140,9 +132,9 @@ export default function ParishOverview() {
                 },
                 {
                   key: 'failed',
-                  ok: (readiness?.failedMandatoryItems ?? 0) === 0,
+                  ok: failedMandatoryItems === 0,
                   label: t('features.dashboards.readyFailedItems', {
-                    count: readiness?.failedMandatoryItems ?? 0,
+                    count: failedMandatoryItems,
                   }),
                 },
               ].map((row) => (

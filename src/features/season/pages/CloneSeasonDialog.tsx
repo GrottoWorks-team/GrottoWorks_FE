@@ -12,7 +12,6 @@ import { useToast } from '@/components/ui/toast'
 import { ApiError, api } from '@/lib/api'
 import { useSeasons, useCloneSeason } from '../api'
 import { useSeasonAreas } from '@/features/areas/api'
-import { useMapPins, useSetMapPin } from '@/features/map/api'
 import { useCreateMaterialRequirement, type MaterialRequirementDto } from '@/features/materials/api'
 import type { Season } from '@/types'
 
@@ -30,9 +29,7 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
   const toast = useToast()
   const { data: seasons = [] } = useSeasons()
   const clone = useCloneSeason()
-  // 26/11/2026: vị trí ghim trên sơ đồ giáo xứ phải được clone theo khu vực.
-  const { data: pins = {} } = useMapPins()
-  const setPin = useSetMapPin()
+  // 26/11/2026: BE copy ghim bản đồ (`mapX/mapY`) và ước lượng vật tư cũng được clone ở client.
 
   // 26/11/2026: ước lượng vật tư của từng khu vực cũng phải được clone sang khu mới.
   const createRequirement = useCreateMaterialRequirement()
@@ -135,21 +132,8 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
           count: result.areas.length,
         }),
       )
-      // Sao chép ghim vị trí: BE giữ đúng thứ tự khu vực nguồn đã chọn.
+      // 26/11/2026: BE đã copy ghim bản đồ (`mapX/mapY`) trong cùng transaction clone.
       const sourceIds = sourceAreas.map((area) => area.id).filter((id) => selectedAreas.includes(id))
-      try {
-        for (let index = 0; index < result.areas.length; index += 1) {
-          const pin = sourceIds[index] ? pins[sourceIds[index]] : undefined
-          if (pin) {
-            await setPin.mutateAsync({ areaId: result.areas[index].id, pin })
-          }
-        }
-        if (Object.keys(pins).length > 0) {
-          toast(t('features.season.clonePinsCopied'))
-        }
-      } catch {
-        toast(t('features.season.clonePinsFailed'), 'alert')
-      }
       // Sao chép ước lượng vật tư: BE giữ đúng thứ tự khu vực nguồn đã chọn.
       try {
         let copied = 0

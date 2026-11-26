@@ -143,6 +143,9 @@ export interface AreaUpdateInput {
   communityId?: string | null
   leaderId?: string
   officerId?: string
+  /** Ghim vị trí trên sơ đồ (0..1); `null` = bỏ ghim. */
+  mapX?: number | null
+  mapY?: number | null
 }
 
 /**
@@ -167,11 +170,23 @@ export function useUpdateArea() {
       communityId,
       leaderId,
       officerId,
+      mapX,
+      mapY,
     }: AreaUpdateInput) => {
       let current = version
       let dto: WorkAreaDto | undefined
 
-      const planning = { name, description, startDate, deadline, categoryId }
+      const planning = {
+        name,
+        description,
+        startDate,
+        deadline,
+        categoryId,
+        // 26/11/2026: ghim khu lưu ở BE — `null` để xoá, bỏ trống = không đổi.
+        ...(mapX !== undefined || mapY !== undefined
+          ? { mapX: mapX ?? null, mapY: mapY ?? null }
+          : {}),
+      }
       if (Object.values(planning).some((v) => v !== undefined)) {
         dto = await api<WorkAreaDto>(`/api/v1/work-areas/${id}`, {
           method: 'PATCH',
