@@ -9,12 +9,9 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { ErrorState } from '@/components/shared/ErrorState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CircleCheck, CircleX } from 'lucide-react'
-import { useSeasonDashboard } from './api'
 import { useSeasons } from '@/features/season/api'
 import { useAreas } from '@/features/areas/api'
 import { useCommunities } from '@/features/communities/api'
@@ -32,23 +29,6 @@ export default function ParishOverview() {
   const { data: communities = [] } = useCommunities()
   // Chỉ cần đếm tài khoản → bỏ request danh mục kỹ năng.
   const { data: users = [] } = useUsers({ withSkills: false })
-
-  // "Đã sẵn sàng chưa": mùa đang chạy (hoặc mùa mới nhất) làm mốc kiểm tra.
-  const focusSeason = useMemo(
-    () => seasons.find((s) => s.status === 'ACTIVE') ?? seasons[0],
-    [seasons],
-  )
-  const {
-    data: seasonDashboard,
-    isPending: seasonDashboardPending,
-    isError: seasonDashboardError,
-    refetch: refetchSeasonDashboard,
-  } = useSeasonDashboard(focusSeason?.id, parish?.id)
-  const readiness = seasonDashboard?.summary.readiness
-  const missingLeader = areas.filter((a) => !a.leaderId).length
-  const missingOfficer = areas.filter((a) => !a.officerId).length
-  const readyAreas = readiness?.ready ?? 0
-  const areaTotal = seasonDashboard?.summary.workAreas ?? areas.length
 
   const columns = useMemo(
     () => [
@@ -88,7 +68,6 @@ export default function ParishOverview() {
     <div>
       <PageHeader
         title={t('features.dashboards.adminTitle')}
-        finding={t('features.dashboards.parishFinding', { ready: readyAreas, total: areaTotal })}
         sub={parish ? parish.name : t('features.dashboards.adminSub')}
         actions={
           <Button variant="outline" onClick={() => navigate('/parish/seasons')}>
@@ -103,63 +82,6 @@ export default function ParishOverview() {
           <StatCard label={t('features.dashboards.communityCount')} value={communities.length} />
           <StatCard label={t('features.dashboards.accountCount')} value={users.length} />
         </div>
-
-        <Card className="p-5">
-          <p className="lbl-mono mb-3">{t('features.dashboards.readinessTitle')}</p>
-          {seasonDashboardError ? (
-            <ErrorState compact onRetry={() => void refetchSeasonDashboard()} />
-          ) : seasonDashboardPending ? (
-            <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
-          ) : (
-            <ul className="space-y-2 text-sm">
-              {[
-                {
-                  key: 'season',
-                  ok: Boolean(focusSeason),
-                  label: t('features.dashboards.readySeason', { name: focusSeason?.name ?? '—' }),
-                },
-                {
-                  key: 'areas',
-                  ok: areaTotal > 0,
-                  label: t('features.dashboards.readyAreasCount', { count: areaTotal }),
-                },
-                {
-                  key: 'leader',
-                  ok: missingLeader === 0,
-                  label: t('features.dashboards.readyLeader', { count: missingLeader }),
-                },
-                {
-                  key: 'officer',
-                  ok: missingOfficer === 0,
-                  label: t('features.dashboards.readyOfficer', { count: missingOfficer }),
-                },
-                {
-                  key: 'ready',
-                  ok: readyAreas === areaTotal && areaTotal > 0,
-                  label: t('features.dashboards.readyChecklist', { ready: readyAreas, total: areaTotal }),
-                },
-                {
-                  key: 'failed',
-                  ok: (readiness?.failedMandatoryItems ?? 0) === 0,
-                  label: t('features.dashboards.readyFailedItems', {
-                    count: readiness?.failedMandatoryItems ?? 0,
-                  }),
-                },
-              ].map((row) => (
-                <li key={row.key} className="flex items-start gap-2">
-                  {row.ok ? (
-                    <CircleCheck className="mt-0.5 size-4 shrink-0 text-status-successText" aria-hidden />
-                  ) : (
-                    <CircleX className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
-                  )}
-                  <span className={row.ok ? 'text-foreground' : 'font-medium text-destructive'}>
-                    {row.label}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
 
         <Card className="p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
