@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
 import { formatVnd } from '@/lib/format'
+import { MAX_PAGE_SIZE } from '@/lib/paging'
 import { uploadFileViaGateway } from '@/features/files/api'
 import { OcrUnavailableError, readInvoice } from '@/lib/invoiceOcr'
 import { useMaterialCatalog } from '../api'
@@ -44,7 +45,7 @@ export function SelfPurchaseDialog({
   const { t } = useTranslation()
   const toast = useToast()
   const record = useRecordSelfPurchase()
-  const { data: catalog } = useMaterialCatalog({ page: 1, size: 200, status: 'ACTIVE' })
+  const { data: catalog } = useMaterialCatalog({ page: 1, size: MAX_PAGE_SIZE, status: 'ACTIVE' })
   const materials = catalog?.data ?? []
 
   const [buyerName, setBuyerName] = useState('')

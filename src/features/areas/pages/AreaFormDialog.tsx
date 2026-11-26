@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { MAX_PAGE_SIZE } from '@/lib/paging'
 import { getFileDownloadUrl } from '@/features/files/api'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
 import { useWorkAreaCategories } from '@/features/parish/api'
@@ -130,7 +131,7 @@ export function AreaFormDialog({
   // ── Ước lượng vật tư cần cho khu vực (26/11/2026) ────────────────────────
   // Nhập ngay khi tạo khu vực (và sửa được khi mùa còn PLANNING); là mẫu số của
   // "thiếu hụt" cùng với vật tư khai trong task (BE lấy max của hai nguồn).
-  const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 200, status: 'ACTIVE' })
+  const { data: catalogResult } = useMaterialCatalog({ page: 1, size: MAX_PAGE_SIZE, status: 'ACTIVE' })
   const catalog = catalogResult?.data ?? []
   const { data: existingRequirements = [] } = useWorkAreaRequirements(area?.id)
   const createRequirement = useCreateMaterialRequirement()

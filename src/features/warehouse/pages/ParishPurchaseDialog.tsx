@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/toast'
 import { uploadFileViaGateway } from '@/features/files/api'
 import { useMaterialCatalog } from '@/features/materials/api'
 import { formatVnd } from '@/lib/format'
+import { MAX_PAGE_SIZE } from '@/lib/paging'
 import { useAuth } from '@/lib/auth'
 import { useParishInventory, useRecordParishPurchase } from '../api'
 
@@ -35,9 +36,15 @@ export function ParishPurchaseDialog({
   const toast = useToast()
   const { user } = useAuth()
   const record = useRecordParishPurchase()
-  const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 200, status: 'ACTIVE' })
+  // 26/11/2026: BE chỉ nhận size ≤ 100 (400 INVALID_PAGE_SIZE) — xin 200 làm request fail
+  // âm thầm và dropdown vật tư trống trơn.
+  const { data: catalogResult, isError: catalogFailed } = useMaterialCatalog({
+    page: 1,
+    size: MAX_PAGE_SIZE,
+    status: 'ACTIVE',
+  })
   const catalog = catalogResult?.data ?? []
-  const { data: inventory } = useParishInventory({ seasonId, size: 200 })
+  const { data: inventory } = useParishInventory({ seasonId, size: MAX_PAGE_SIZE })
 
   const [buyerName, setBuyerName] = useState(user?.name ?? '')
   const [supplierName, setSupplierName] = useState('')
@@ -158,6 +165,11 @@ export function ParishPurchaseDialog({
               <span>{t('features.warehouse.purchaseAddItem')}</span>
             </Button>
           </div>
+          {catalogFailed ? (
+            <p className="text-xs font-semibold text-destructive">
+              {t('features.materials.catalog.loadError')}
+            </p>
+          ) : null}
           {lines.map((line, index) => (
             <div key={index} className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_90px_120px_40px]">
               <div>
