@@ -46,11 +46,13 @@ function mount(view: React.ReactNode) {
   return render(<QueryClientProvider client={client}><MemoryRouter>{view}</MemoryRouter></QueryClientProvider>)
 }
 
-it('Admin shows the existing overview without requesting or displaying season readiness', () => {
+it('Admin shows the overview with readiness computed locally, without the season dashboard API', () => {
   mount(<ParishOverview />)
   expect(screen.getByText('Mùa hiện tại')).toBeDefined()
   expect(screen.getByText(i18n.t('features.dashboards.accountCount'))).toBeDefined()
-  expect(screen.queryByText(i18n.t('features.dashboards.readinessTitle'))).toBeNull()
+  // 26/11/2026: `GET /dashboards/season` chỉ cho role PARISH (ADMIN bị 403) nên màn ADMIN
+  // tự tính độ sẵn sàng từ danh sách khu vực — thẻ readiness vẫn hiển thị, không gọi API.
+  expect(screen.getByText(i18n.t('features.dashboards.readinessTitle'))).toBeDefined()
   expect(screen.queryByText(/khu đã sẵn sàng/)).toBeNull()
   expect(useSeasonDashboard).not.toHaveBeenCalled()
   expect(api).not.toHaveBeenCalled()

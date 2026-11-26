@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
 import { ApiError } from '@/lib/api'
-import { formatVnd, viDateTime, viDate } from '@/lib/format'
+import { viDateTime, viDate } from '@/lib/format'
 import {
   usePurchaseRequest,
   usePurchaseRequestHistory,
@@ -222,10 +222,7 @@ export default function PurchaseDetailPage() {
                           area: request.workAreaName,
                         }),
                         ...request.items.map((item) =>
-                          `- ${item.materialName}: ${item.requestedQuantity} ${item.unit}` +
-                          (item.estimatedCost
-                            ? ` (${formatVnd(item.estimatedCost)})`
-                            : ''),
+                          `- ${item.materialName}: ${item.requestedQuantity} ${item.unit}`,
                         ),
                         t('features.purchases.purchaseTaskDescFooter'),
                       ].join('\n'),
@@ -268,12 +265,6 @@ export default function PurchaseDetailPage() {
               <div>
                 <span className="text-xs text-muted-foreground">{t('features.purchases.area')}</span>
                 <p className="font-medium text-foreground">{request.workAreaName || '—'}</p>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground">{t('features.purchases.total')}</span>
-                <p className="tabular text-lg font-bold text-foreground">
-                  {(request.estimatedTotal?.amount ?? 0).toLocaleString()} {request.estimatedTotal?.currency ?? 'VND'}
-                </p>
               </div>
               <div>
                 <span className="text-xs text-muted-foreground">{t('features.purchases.createdAt')}</span>
@@ -320,7 +311,6 @@ export default function PurchaseDetailPage() {
                     <th className="py-2.5 pr-3">{t('features.purchases.materialName')}</th>
                     <th className="py-2.5 pr-3 text-right">{t('features.purchases.requestedQty')}</th>
                     <th className="py-2.5 pr-3">{t('features.purchases.unit')}</th>
-                    <th className="py-2.5 pr-3 text-right">{t('features.purchases.estimatedCost')}</th>
                     <th className="py-2.5">{t('features.purchases.shortageOverrideReason')}</th>
                   </tr>
                 </thead>
@@ -334,9 +324,6 @@ export default function PurchaseDetailPage() {
                           {item.requestedQuantity}
                         </td>
                         <td className="py-3 pr-3 text-muted-foreground">{item.unit}</td>
-                        <td className="py-3 pr-3 text-right tabular text-foreground">
-                          {item.estimatedCost != null ? `${item.estimatedCost.toLocaleString()} ₫` : '—'}
-                        </td>
                         <td className="py-3 text-xs">
                           {item.shortageOverrideReason ? (
                             <div className="flex items-start gap-1 text-amber-600 dark:text-amber-400">

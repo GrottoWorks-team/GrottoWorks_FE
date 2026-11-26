@@ -28,6 +28,7 @@ import { useParishScope } from '@/features/parish/hooks'
 import type { ParishScope } from '@/features/parish/hooks'
 import { ParishSwitcher } from '@/features/parish/components/ParishSwitcher'
 import { AREA_ICONS } from '@/features/areas/components/AreaCard'
+import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
 import { ImageReviewCanvas } from '@/features/designs/components/ImageReviewCanvas'
 import type { CanvasMarker } from '@/features/designs/components/ImageReviewCanvas'
 import type { NormalizedPoint } from '@/features/designs/coords'
@@ -38,7 +39,7 @@ import {
   formatBytes,
   validateImageFile,
 } from '@/features/designs/config'
-import { useParishMap, useMapPins, useSaveParishMap, useSetMapPin } from '../api'
+import { useParishMap, pinsOfAreas, useSaveParishMap, useSetMapPin } from '../api'
 
 const FILE_ERROR_KEY: Record<'type' | 'size' | 'empty', string> = {
   type: 'features.map.errType',
@@ -76,8 +77,8 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
   const { data: areas = [] } = useAreas(seasonIds)
   const { data: mapRecord, isPending: mapPending } = useParishMap(parishId)
   const saveMap = useSaveParishMap(parishId)
-  const { data: pins = {} } = useMapPins(parishId)
-  const setPin = useSetMapPin(parishId)
+  const pins = useMemo(() => pinsOfAreas(areas), [areas])
+  const setPin = useSetMapPin()
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadedMap, setUploadedMap] = useState<UploadedMap | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -104,6 +105,8 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
 
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null)
   const [placingId, setPlacingId] = useState<string | null>(null)
+  // 26/11/2026: bấm vào khu trên bản đồ mở chi tiết (có tab Hình ảnh).
+  const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
   // ── Ảnh bản đồ: nạp blob IndexedDB → object URL, thu hồi khi đổi/xoá ──
   const [imageUrl, setImageUrl] = useState('')
@@ -185,11 +188,14 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
       toast(t('features.map.mapSaved'))
     } catch (error) {
       if (!mountedRef.current) return
-      const message = error instanceof ApiError && error.status === 503 && error.code === 'FILE_ATTACHMENT_PENDING'
-        ? t('features.map.imageProcessing')
-        : error instanceof TypeError && /fetch|network/i.test(error.message)
-          ? t('features.map.uploadCorsFailed')
-          : error instanceof Error ? error.message : t('common.error')
+      // FILE_ATTACHMENT_PENDING (503): BE đã ghi metadata bản đồ nhưng worker chưa chốt tệp.
+      // Giữ metadata đã upload để nút "Thử lại" chỉ PUT lại, KHÔNG upload lại ảnh.
+      const message =
+        error instanceof ApiError && error.status === 503 && error.code === 'FILE_ATTACHMENT_PENDING'
+          ? t('features.map.imageProcessing')
+          : error instanceof TypeError && /fetch|network/i.test(error.message)
+            ? t('features.map.uploadCorsFailed')
+            : error instanceof Error ? error.message : t('common.error')
       setSaveError(message)
       toast(message, 'alert')
     } finally {
@@ -204,7 +210,11 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
   const placeAt = async (point: NormalizedPoint) => {
     if (!placingId) return
     try {
-      await setPin.mutateAsync({ areaId: placingId, pin: { x: point.x, y: point.y } })
+      await setPin.mutateAsync({
+        areaId: placingId,
+        version: areas.find((area) => area.id === placingId)?.version,
+        pin: { x: point.x, y: point.y },
+      })
       toast(t('features.map.positionSaved'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -215,7 +225,7 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
 
   const clearPosition = async (id: string) => {
     try {
-      await setPin.mutateAsync({ areaId: id, pin: null })
+      await setPin.mutateAsync({ areaId: id, version: areas.find((area) => area.id === id)?.version, pin: null })
       toast(t('features.map.positionCleared'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -270,6 +280,25 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
         }
       />}
 
+      {embedded && canUpload && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card border border-border bg-card p-3">
+          <span className="text-sm font-semibold text-foreground">{t('features.map.title')}</span>
+          <Button
+            variant={mapRecord ? 'outline' : 'default'}
+            size="sm"
+            disabled={isSubmitting || !parishId}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="size-4" />
+            {mapRecord ? t('features.map.replace') : t('features.map.upload')}
+          </Button>
+          {mapRecord?.fileName ? (
+            <span className="text-xs text-muted-foreground">{mapRecord.fileName}</span>
+          ) : null}
+          <span className="ml-auto text-[11px] text-muted-foreground">{t('features.map.uploadHint')}</span>
+        </div>
+      )}
+
       {canUpload && uploadedMap && saveError && (
         <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/30 p-4">
           <p className="flex-1 text-sm">{saveError}</p>
@@ -321,7 +350,10 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
                 src={imageUrl}
                 markers={markers}
                 addMode={canPin && !!placingId}
-                onSelectMarker={(id) => setActiveAreaId(id)}
+                onSelectMarker={(id) => {
+                  setActiveAreaId(id)
+                  if (!placingId) setDetailAreaId(id)
+                }}
                 onAddMarker={canPin ? (point) => void placeAt(point) : undefined}
                 onLoadError={() => setImageError(true)}
               />
@@ -361,7 +393,10 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
                     <li key={area.id}>
                       <button
                         type="button"
-                        onClick={() => setActiveAreaId(area.id)}
+                        onClick={() => {
+                          setActiveAreaId(area.id)
+                          if (!isPlacing) setDetailAreaId(area.id)
+                        }}
                         className={cn(
                           'flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors',
                           activeAreaId === area.id
@@ -416,6 +451,9 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
           </Card>
         </div>
       )}
+
+      {/* Chi tiết khu vực — mở từ marker/danh sách, có tab Hình ảnh */}
+      <AreaDetailDialog areaId={detailAreaId} open={Boolean(detailAreaId)} onClose={() => setDetailAreaId(null)} />
     </div>
   )
 }

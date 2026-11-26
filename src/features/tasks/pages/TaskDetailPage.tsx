@@ -9,7 +9,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Calendar, CalendarClock, Check, ClipboardCheck, Clock, Crown, Edit3, HelpCircle, MapPin, Package, Plus, Sparkles, UserPlus, Users, X } from 'lucide-react'
+import { ArrowLeft, Calendar, CalendarClock, Check, ClipboardCheck, Clock, Crown, Edit3, HelpCircle, MapPin, Package, Play, Plus, Sparkles, UserPlus, Users, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatusTag } from '@/components/shared/StatusTag'
@@ -37,6 +37,7 @@ import {
   useReplaceTaskSkills,
   useRequestTaskRevision,
   useSkillsCatalog,
+  useStartTask,
   useTask,
   useTaskApplications,
   useTaskAssignments,
@@ -88,6 +89,8 @@ export default function TaskDetailPage() {
   const canReadAreaData = user?.role !== 'LEADER' || isAreaLeader
 
   const ready = useReadyTask()
+  // 26/11/2026: bắt đầu việc thật sự (NOT_STARTED → IN_PROGRESS) — BE POST /tasks/{id}/start.
+  const startTask = useStartTask()
   // 12/11/2026: điều kiện bắt đầu việc (giờ bắt đầu / đủ thành viên / đủ vật tư đã cấp).
   const {
     data: startEligibility,
@@ -162,7 +165,8 @@ export default function TaskDetailPage() {
     { materialId: '', quantity: '1' },
   ])
   const [revisionOpen, setRevisionOpen] = useState(false)
-  const [releaseConfirm, setReleaseConfirm] = useState(false)
+  // 26/11/2026: 'release' = phát hành việc (OPEN→NOT_STARTED), 'start' = bắt đầu việc (→IN_PROGRESS).
+  const [releaseConfirm, setReleaseConfirm] = useState<'release' | 'start' | null>(null)
   const { data: volunteerMatches = [] } = useVolunteerMatches(
     task?.id,
     assignOpen && !readOnly && isAreaLeader && !isPurchaseTask,
@@ -214,6 +218,26 @@ export default function TaskDetailPage() {
       () => ready.mutateAsync({ taskId: task.id, version: task.version }),
       t('features.tasks.released', { name: task.title }),
     )
+
+  // Bắt đầu việc: trưởng khu bấm khi việc đã NOT_STARTED (đã phát hành). Cảnh báo
+  // (thiếu người / chưa cấp đủ vật tư / chưa tới giờ) là advisory — BE vẫn cho bắt đầu.
+  const beginTask = async () => {
+    try {
+      const result = await startTask.mutateAsync({ taskId: task.id, version: task.version })
+      const warnings = result.warnings ?? []
+      if (warnings.length > 0) {
+        toast(
+          `${t('features.tasks.startedWithWarnings', { name: task.title })} ${warnings
+            .map((warning) => t(`errors.${warning.code}`, { defaultValue: warning.detail }))
+            .join(' · ')}`,
+        )
+      } else {
+        toast(t('features.tasks.started', { name: task.title }))
+      }
+    } catch (error) {
+      toast(error instanceof Error ? error.message : t('common.error'), 'alert')
+    }
+  }
 
   // F-22: nghiệm thu chỉ khi đã có báo cáo tiến độ + minh chứng.
   const reviewProgress = reviewPackage?.progress ?? progress
@@ -891,17 +915,32 @@ export default function TaskDetailPage() {
                   {t('features.tasks.openTimesheets')}
                 </Button>
               )}
-              {/* POST /tasks/{id}/ready là chuyển trạng thái duy nhất BE hỗ trợ. */}
+              {/* POST /tasks/{id}/ready = phát hành việc (OPEN → NOT_STARTED). */}
               {task.backendStatus === 'OPEN' && (
                 <Button
                   className="w-full"
                   onClick={() => {
                     // Thiếu điều kiện / chưa kiểm tra được → hỏi lại, nêu rõ thiếu gì.
-                    if (startBlockers.length > 0 || startUnknown) setReleaseConfirm(true)
+                    if (startBlockers.length > 0 || startUnknown) setReleaseConfirm('release')
                     else void releaseTask()
                   }}
                 >
                   {t('features.tasks.release')}
+                </Button>
+              )}
+              {/* 26/11/2026: bắt đầu việc thật sự (NOT_STARTED → IN_PROGRESS). */}
+              {task.backendStatus === 'NOT_STARTED' && (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    if (startTask.isPending) return
+                    if (startBlockers.length > 0 || startUnknown) setReleaseConfirm('start')
+                    else void beginTask()
+                  }}
+                  disabled={startTask.isPending}
+                >
+                  <Play className="size-4" />
+                  {t('features.tasks.start')}
                 </Button>
               )}
               {task.backendStatus === 'SUBMITTED' && (
@@ -1343,17 +1382,18 @@ export default function TaskDetailPage() {
       {releaseConfirm && (
         <Dialog
           open
-          onClose={() => setReleaseConfirm(false)}
+          onClose={() => setReleaseConfirm(null)}
           title={t('features.tasks.releaseAnywayTitle')}
           footer={
             <>
-              <Button variant="outline" onClick={() => setReleaseConfirm(false)}>
+              <Button variant="outline" onClick={() => setReleaseConfirm(null)}>
                 {t('common.cancel')}
               </Button>
               <Button
                 onClick={() => {
-                  setReleaseConfirm(false)
-                  void releaseTask()
+                  const action = releaseConfirm
+                  setReleaseConfirm(null)
+                  void (action === 'start' ? beginTask() : releaseTask())
                 }}
               >
                 {t('features.tasks.releaseAnywayConfirm')}

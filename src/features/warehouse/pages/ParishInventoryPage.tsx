@@ -2,7 +2,7 @@
 // Tồn kho tổng tách khỏi tồn khu; MO không thấy màn này.
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertCircle, History, Package, Plus, SlidersHorizontal, X } from 'lucide-react'
+import { AlertCircle, History, Package, Plus, ShoppingCart, SlidersHorizontal, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
-import { formatQuantity, viDateTime } from '@/lib/format'
+import { formatQuantity, formatVnd, viDateTime } from '@/lib/format'
 import { useSeasons } from '@/features/season/api'
 import { useSeasonContext } from '@/features/season/season-context'
 import { useMaterialCatalog } from '@/features/materials/api'
@@ -21,10 +21,12 @@ import {
   useAdjustParishInventory,
   useParishInventory,
   useParishMaterialHistory,
+  useParishPurchases,
   useRecordParishOpeningStock,
   type ParishInventoryBalanceDto,
   type ParishInventoryTransactionDto,
 } from '../api'
+import { ParishPurchaseDialog } from './ParishPurchaseDialog'
 
 const SELECT_CLS =
   'flex h-9 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -452,6 +454,7 @@ export default function ParishInventoryPage() {
 
   const [openingOpen, setOpeningOpen] = useState(false)
   const [adjustOpen, setAdjustOpen] = useState(false)
+  const [purchaseOpen, setPurchaseOpen] = useState(false)
   const [historyRow, setHistoryRow] = useState<ParishInventoryBalanceDto | null>(null)
 
   const selectedSeason = seasons.find((season) => season.id === seasonId)
@@ -472,6 +475,9 @@ export default function ParishInventoryPage() {
     size: pageSize,
   })
 
+  // 26/11/2026: các biên lai "vật tư Ban phụ trách đã mua" gần nhất của mùa.
+  const { data: purchases = [] } = useParishPurchases(seasonId)
+
   const rows = inventory?.data ?? []
   const pageInfo = inventory?.page ?? { page: 1, size: pageSize, totalItems: 0, totalPages: 1 }
   const canWrite = user?.role === 'COMMUNITY'
@@ -489,9 +495,13 @@ export default function ParishInventoryPage() {
                 <SlidersHorizontal className="size-4" />
                 {t('features.warehouse.adjustBtn')}
               </Button>
-              <Button onClick={() => setOpeningOpen(true)} className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setOpeningOpen(true)} className="flex items-center gap-2">
                 <Plus className="size-4" />
                 {t('features.warehouse.openingBtn')}
+              </Button>
+              <Button onClick={() => setPurchaseOpen(true)} className="flex items-center gap-2">
+                <ShoppingCart className="size-4" />
+                {t('features.warehouse.purchaseBtn')}
               </Button>
             </div>
           ) : undefined
@@ -610,11 +620,61 @@ export default function ParishInventoryPage() {
         )}
       </div>
 
+      {/* 26/11/2026: vật tư Ban phụ trách đã mua (bắt buộc kèm hoá đơn). */}
+      {seasonId && purchases.length > 0 ? (
+        <div className="overflow-hidden rounded-card border border-border bg-card">
+          <div className="border-b border-border px-4 py-3">
+            <p className="text-sm font-semibold text-foreground">{t('features.warehouse.purchaseRecent')}</p>
+            <p className="text-xs text-muted-foreground">{t('features.warehouse.purchaseRecentHint')}</p>
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead className="bg-muted/40 text-xs font-semibold uppercase text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2.5">{t('features.warehouse.purchaseDate')}</th>
+                <th className="px-4 py-2.5">{t('features.warehouse.purchaseBuyer')}</th>
+                <th className="px-4 py-2.5">{t('features.warehouse.material')}</th>
+                <th className="px-4 py-2.5 text-right">{t('features.warehouse.purchaseTotal')}</th>
+                <th className="px-4 py-2.5 text-center">{t('features.warehouse.purchaseInvoice')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {purchases.map((receipt) => (
+                <tr key={receipt.id}>
+                  <td className="px-4 py-2.5 text-xs text-muted-foreground">{receipt.purchaseDate}</td>
+                  <td className="px-4 py-2.5">
+                    <span className="font-medium text-foreground">{receipt.buyerName}</span>
+                    {receipt.supplierName ? (
+                      <span className="block text-xs text-muted-foreground">{receipt.supplierName}</span>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-2.5 text-xs">
+                    {receipt.items.map((item) => (
+                      <div key={item.materialId}>
+                        {item.materialName} × {formatQuantity(item.quantity)} {item.unit}
+                      </div>
+                    ))}
+                  </td>
+                  <td className="px-4 py-2.5 text-right tabular font-medium">
+                    {formatVnd(receipt.totalCost)}
+                  </td>
+                  <td className="px-4 py-2.5 text-center text-xs text-muted-foreground">
+                    {receipt.invoiceFileIds.length}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
       {openingOpen && seasonId && (
         <OpeningStockDialog open seasonId={seasonId} previousSeason={previousSeason} onClose={() => setOpeningOpen(false)} />
       )}
       {adjustOpen && seasonId && (
         <AdjustmentDialog open seasonId={seasonId} rows={rows} onClose={() => setAdjustOpen(false)} />
+      )}
+      {purchaseOpen && seasonId && (
+        <ParishPurchaseDialog seasonId={seasonId} onClose={() => setPurchaseOpen(false)} />
       )}
       <HistoryDialog open={Boolean(historyRow)} seasonId={seasonId} row={historyRow} onClose={() => setHistoryRow(null)} />
     </div>

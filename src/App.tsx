@@ -60,7 +60,7 @@ const RoleNotificationsPage = lazy(() => import('@/features/notifications/pages/
 const ActivityPage = lazy(() => import('@/features/parish/pages/ActivityPage'))
 const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
 const BuilderPage = lazy(() => import('@/features/builder/pages/BuilderPage'))
-const ParishMapPage = lazy(() => import('@/features/map/pages/ParishMapPage'))
+const FinancePage = lazy(() => import('@/features/finance/pages/FinancePage'))
 const GrottoDesignerPage = lazy(() => import('@/features/designer/pages/GrottoDesignerPage'))
 
 // Trang tháº­t theo route `to` cá»§a nav-config; má»¥c chÆ°a cÃ³ â†’ Placeholder.
@@ -70,7 +70,6 @@ const PAGES: Record<string, ComponentType> = {
   // (URL cũ `/parish/seasons` xử lý ở DYNAMIC bên dưới).
   '/community/seasons': SeasonListPage,
   '/community/areas': AreaListPage,
-  '/community/map': ParishMapPage,
     '/leader/tasks': TaskListPage,
   '/leader/volunteers': VolunteerListPage,
   '/community/volunteers': VolunteerListPage,
@@ -85,6 +84,8 @@ const PAGES: Record<string, ComponentType> = {
   '/community/warehouse/distributions': DistributionListPage,
   '/community/purchases': CommitteeApprovalPage,
   '/community/donations': DonationListPage,
+  // 26/11/2026: minh bạch tiền — tách mua vật tư vs quyên góp (không có sổ quỹ, chỉ đối chiếu).
+  '/community/finance': FinancePage,
   '/material-officer/material-reports': MaterialReportsPage,
   '/material-officer/support-materials': MaterialReceiptsPage,
   '/material-officer/material-needs': SeasonMaterialNeedsPage,
@@ -129,6 +130,8 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
   ],
   COMMUNITY: [
+    // 26/11/2026: sơ đồ khuôn viên đã gộp vào UI khu vực → URL cũ chuyển về danh sách khu.
+    { path: 'map', Page: LegacyCommunityMapRedirect },
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
@@ -136,8 +139,8 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
   ],
   PARISH: [
     { path: 'purchases/:id', Page: PurchaseDetailPage },
-    // Bản đồ giáo xứ = TRANG CON của "Giáo xứ & cộng đoàn" (11/11/2026).
-    { path: 'communities/map', Page: ParishMapPage },
+    // Bản đồ giáo xứ đã gộp vào tab Khu vực (26/11/2026).
+    { path: 'communities/map', Page: LegacyParishMapRedirect },
     // URL cũ vẫn mở được → chuyển về hub đúng tab/trang con.
     { path: 'areas', Page: LegacyParishAreasRedirect },
     { path: 'map', Page: LegacyParishMapRedirect },
@@ -162,16 +165,19 @@ const queryClient = new QueryClient({
   },
 })
 // URL cũ của admin: `/parish/areas` → tab "Khu vực công tác" trong hub,
-// `/parish/map` → trang con bản đồ (giữ nguyên `?parish=`).
+// `/parish/map` → tab Khu vực (26/11/2026: tab sơ đồ đã gộp vào UI khu vực).
 function LegacyParishAreasRedirect() {
   return <Navigate to="/parish/communities?tab=areas" replace />
 }
 
+// URL cũ `/parish/map` → tab "Sơ đồ giáo xứ" trong hub (26/11/2026: chỗ tải ảnh sơ đồ của ADMIN).
 function LegacyParishMapRedirect() {
-  const { search } = useLocation()
-  const params = new URLSearchParams(search)
-  const parish = params.get('parish')
-  return <Navigate to={`/parish/communities?tab=map${parish ? `&parish=${encodeURIComponent(parish)}` : ''}`} replace />
+  return <Navigate to="/parish/communities?tab=map" replace />
+}
+
+// URL cũ `/community/map` của ban hành giáo → danh sách khu vực (đã có chế độ xem sơ đồ).
+function LegacyCommunityMapRedirect() {
+  return <Navigate to="/community/areas" replace />
 }
 
 // URL cũ `/parish/seasons` → tab "Mùa Giáng sinh" trong hub (12/11/2026).

@@ -15,7 +15,13 @@ vi.mock('@/lib/api', async (importOriginal) => ({
 vi.mock('@/features/files/api', () => ({ uploadFileViaGateway: vi.fn(), getFileDownloadUrl: vi.fn() }))
 vi.mock('@/lib/auth', () => ({ useAuth: () => ({ user: { role: 'PARISH' } }) }))
 vi.mock('@/components/ui/toast', () => ({ useToast: () => mocks.toast }))
-vi.mock('@/features/areas/api', () => ({ useAreas: () => ({ data: [] }), useSeasons: () => ({ data: [] }) }))
+vi.mock('@/features/areas/api', () => ({
+  useAreas: () => ({ data: [] }),
+  useSeasons: () => ({ data: [] }),
+  // AreaDetailDialog (mở khi bấm marker) gọi 2 hook này — stub rỗng cho test bản đồ.
+  useArea: () => ({ data: undefined, isPending: false }),
+  useAreaProgress: () => ({ data: undefined, isPending: false }),
+}))
 vi.mock('@/features/season/season-context', () => ({ useSeasonContext: () => ({}) }))
 vi.mock('@/features/parish/hooks', () => ({
   useParishScope: () => ({ parishId: mocks.parishId, canPickParish: false }),

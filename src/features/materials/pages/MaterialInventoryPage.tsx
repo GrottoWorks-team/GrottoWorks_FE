@@ -26,9 +26,12 @@ import {
 import { useSeasons } from '@/features/season/api'
 import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas } from '@/features/areas/api'
-import { OpeningStockDialog } from './OpeningStockDialog'
+import { useAuth } from '@/lib/auth'
+import { formatVnd } from '@/lib/format'
 import { InventoryAdjustDialog } from './InventoryAdjustDialog'
 import { MaterialHistoryDrawer } from './MaterialHistoryDrawer'
+import { SelfPurchaseDialog } from './SelfPurchaseDialog'
+import { useSelfPurchases } from '../selfPurchaseApi'
 import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
 import { useParishDistributions } from '@/features/warehouse/api'
 
@@ -50,8 +53,8 @@ export default function MaterialInventoryPage() {
   const [onlyShortage, setOnlyShortage] = useState(false)
 
   // Sub-dialog & Drawer state
-  const [openingStockOpen, setOpeningStockOpen] = useState(false)
   const [adjustOpen, setAdjustOpen] = useState(false)
+  const [selfPurchaseOpen, setSelfPurchaseOpen] = useState(false)
   const [historyTarget, setHistoryTarget] = useState<InventoryBalanceDto | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
@@ -68,6 +71,16 @@ export default function MaterialInventoryPage() {
   // Master data for filters
   const { data: seasons = [] } = useSeasons()
   const { data: areas = [] } = useAreas(selectedSeason ? [selectedSeason] : undefined)
+  // 26/11/2026: MO chỉ thấy vật tư của khu mình phụ trách — không lộ khu của người khác.
+  const { user } = useAuth()
+  const myAreas = useMemo(
+    () => (user?.id ? areas.filter((area) => !area.officerId || area.officerId === user.id) : areas),
+    [areas, user?.id],
+  )
+  useEffect(() => {
+    if (selectedWorkArea) return
+    if (myAreas.length === 1) setSelectedWorkArea(myAreas[0].id)
+  }, [myAreas, selectedWorkArea])
   const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 100 })
   const catalogMaterials = catalogResult?.data || []
 
@@ -89,6 +102,13 @@ export default function MaterialInventoryPage() {
   // Phiếu kho tổng đã xuất nhưng khu chưa xác nhận nhận — nhắc MO xử lý.
   const { data: pendingDistributions } = useParishDistributions({ status: 'IN_TRANSIT', size: 100 })
   const pendingCount = pendingDistributions?.data?.length ?? 0
+
+  // Vật tư người khác tự mua (ngoài luồng purchase request) của khu đang chọn.
+  const { data: selfPurchases = [] } = useSelfPurchases({ workAreaId: selectedWorkArea || undefined }, {
+    enabled: Boolean(selectedWorkArea),
+  })
+  const selfPurchaseTotal = selfPurchases.reduce((sum, receipt) => sum + receipt.totalCost, 0)
+  const selectedAreaName = areas.find((area) => area.id === selectedWorkArea)?.name
 
   const rows = inventoryResult?.data || []
   const pageInfo = inventoryResult?.page || {
@@ -119,11 +139,14 @@ export default function MaterialInventoryPage() {
               {t('features.inventory.adjustBtn')}
             </Button>
             <Button
-              onClick={() => setOpeningStockOpen(true)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
+              variant="outline"
+              onClick={() => setSelfPurchaseOpen(true)}
+              disabled={!selectedWorkArea}
+              title={!selectedWorkArea ? t('features.selfPurchase.chooseAreaFirst') : undefined}
+              className="flex items-center gap-2"
             >
               <Plus className="size-4" />
-              {t('features.inventory.openingStockBtn')}
+              {t('features.selfPurchase.entryBtn')}
             </Button>
           </div>
         }
@@ -137,6 +160,31 @@ export default function MaterialInventoryPage() {
           <a href="/material-officer/distributions" className="font-semibold underline">
             {t('features.inventory.openDistributions')}
           </a>
+        </div>
+      )}
+
+      {/* Vật tư người khác tự mua — chỉ hiện khi đã chọn khu (cần scope để ghi nhận). */}
+      {selectedWorkArea && selfPurchases.length > 0 && (
+        <div className="rounded-card border border-border bg-card p-4">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-semibold text-foreground">{t('features.selfPurchase.recentTitle')}</p>
+            <span className="tabular text-xs text-muted-foreground">
+              {t('features.selfPurchase.recentTotal', { count: selfPurchases.length, amount: formatVnd(selfPurchaseTotal) })}
+            </span>
+          </div>
+          <ul className="divide-y divide-border text-sm">
+            {selfPurchases.slice(0, 5).map((receipt) => (
+              <li key={receipt.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span className="truncate">
+                  {receipt.purchaseDate} · {receipt.buyerName}
+                  {receipt.supplierName ? ` · ${receipt.supplierName}` : ''}
+                </span>
+                <span className="tabular text-xs text-muted-foreground">
+                  {t('features.selfPurchase.lineCount', { count: receipt.items.length })} · {formatVnd(receipt.totalCost)}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -172,7 +220,7 @@ export default function MaterialInventoryPage() {
             }}
           >
             <option value="">{t('features.inventory.allWorkAreas')}</option>
-            {areas.map((a) => (
+            {myAreas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name?.trim() || t('features.areas.areaFallback', { id: a.id.slice(0, 8) })}
               </option>
@@ -375,18 +423,6 @@ export default function MaterialInventoryPage() {
         )}
       </div>
 
-      {/* D1: Dialog Nhập tồn đầu kỳ — chỉ mount khi mở để không gọi areas/materials sớm */}
-      {openingStockOpen && (
-        <OpeningStockDialog
-          open
-          onClose={() => {
-            setOpeningStockOpen(false)
-            refetch()
-          }}
-          defaultWorkAreaId={selectedWorkArea}
-        />
-      )}
-
       {/* D1b: Dialog điều chỉnh tồn kho (hỏng / mất / thanh lý) */}
       {adjustOpen && (
         <InventoryAdjustDialog
@@ -416,6 +452,19 @@ export default function MaterialInventoryPage() {
         open={Boolean(detailAreaId)}
         onClose={() => setDetailAreaId(null)}
       />
+
+      {/* Vật tư người khác tự mua (26/11/2026) */}
+      {selfPurchaseOpen && selectedWorkArea && (
+        <SelfPurchaseDialog
+          workAreaId={selectedWorkArea}
+          workAreaName={selectedAreaName}
+          open
+          onClose={() => {
+            setSelfPurchaseOpen(false)
+            refetch()
+          }}
+        />
+      )}
     </div>
   )
 }

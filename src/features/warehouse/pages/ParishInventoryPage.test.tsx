@@ -23,6 +23,8 @@ vi.mock('../api', () => {
       refetch: vi.fn(),
     })),
     useParishMaterialHistory: vi.fn(() => ({ data: [], isPending: false })),
+    useParishPurchases: vi.fn(() => ({ data: [] })),
+    useRecordParishPurchase: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
     useRecordParishOpeningStock: vi.fn(() => ({ mutateAsync: openingRecordMutation, isPending: false })),
     useAdjustParishInventory: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
   }

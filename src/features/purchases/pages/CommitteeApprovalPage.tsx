@@ -221,16 +221,6 @@ export default function CommitteeApprovalPage() {
         },
       },
       {
-        key: 'total',
-        header: t('features.purchases.total'),
-        align: 'right' as const,
-        render: (r: PurchaseRequestDto) => (
-          <span className="tabular font-medium">
-            {(r.estimatedTotal?.amount ?? 0).toLocaleString()} {r.estimatedTotal?.currency ?? 'VND'}
-          </span>
-        ),
-      },
-      {
         key: 'reason',
         header: t('features.purchases.reasonLabel'),
         render: (r: PurchaseRequestDto) => <span>{r.reason || '—'}</span>,

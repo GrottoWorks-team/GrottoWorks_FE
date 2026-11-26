@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { useArea, useAreaProgress } from '../api'
-import { Calendar, Layers, ShieldCheck, Info, Package } from 'lucide-react'
+import { Calendar, Layers, ShieldCheck, Info, Package, Images } from 'lucide-react'
 import { AreaMaterialsTab } from './AreaMaterialsTab'
+import { AreaImagesTab } from './AreaImagesTab'
 
 interface AreaDetailDialogProps {
   areaId: string | null
@@ -18,7 +19,7 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
   const { t } = useTranslation()
   const { data: area, isPending } = useArea(areaId ?? undefined)
   const { data: progress, isPending: progressPending } = useAreaProgress(areaId ?? undefined)
-  const [activeTab, setActiveTab] = useState<'info' | 'materials'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'materials' | 'images'>('info')
 
   if (!open) return null
 
@@ -59,9 +60,23 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
           <Package className="size-4" />
           <span>{t('features.requirements.tabTitle', { defaultValue: 'Nhu cầu vật tư' })}</span>
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('images')}
+          className={`flex items-center gap-2 px-4 py-2 border-b-2 text-sm font-semibold transition-colors ${
+            activeTab === 'images'
+              ? 'border-brand-pine text-brand-pine'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Images className="size-4" />
+          <span>{t('features.areas.tabs.images', { defaultValue: 'Hình ảnh' })}</span>
+        </button>
       </div>
 
-      {activeTab === 'materials' && areaId ? (
+      {activeTab === 'images' && areaId ? (
+        <AreaImagesTab areaId={areaId} />
+      ) : activeTab === 'materials' && areaId ? (
         <AreaMaterialsTab workAreaId={areaId} />
       ) : isPending ? (
         <p className="lbl-mono py-8 text-center">{t('common.loading')}</p>

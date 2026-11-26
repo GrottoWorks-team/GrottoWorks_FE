@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { fieldError, fieldErrorsOf, type FieldErrors } from '@/lib/apiFieldErrors'
-import { useAreas } from '@/features/areas/api'
+import { useMyOfficerAreas } from '@/features/areas/api'
 import { useMaterialCatalog, useWorkAreaShortages, type MaterialCatalogItemDto } from '@/features/materials/api'
 import {
   useCreatePurchaseRequest,
@@ -25,7 +25,6 @@ import {
 interface ItemRow {
   materialId: string
   requestedQuantity: number
-  estimatedCost: number
   note: string
   shortageOverrideReason: string
 }
@@ -39,7 +38,8 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
   const { t } = useTranslation()
   const toast = useToast()
 
-  const { data: areas = [] } = useAreas()
+  // 26/11/2026: chỉ khu vực MO đang đảm nhận trong mùa đang chọn.
+  const { data: areas = [] } = useMyOfficerAreas()
   const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 100, status: 'ACTIVE' })
   const catalog: MaterialCatalogItemDto[] = catalogResult?.data ?? []
 
@@ -61,7 +61,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       return initialData.items.map((i) => ({
         materialId: i.materialId,
         requestedQuantity: i.requestedQuantity,
-        estimatedCost: i.estimatedCost ?? 0,
         note: i.note ?? '',
         shortageOverrideReason: i.shortageOverrideReason ?? '',
       }))
@@ -70,7 +69,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       {
         materialId: '',
         requestedQuantity: 1,
-        estimatedCost: 0,
         note: '',
         shortageOverrideReason: '',
       },
@@ -107,7 +105,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       {
         materialId: '',
         requestedQuantity: 1,
-        estimatedCost: 0,
         note: '',
         shortageOverrideReason: '',
       },
@@ -132,10 +129,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
     })
   }
 
-  const totalEstimatedCost = useMemo(() => {
-    return items.reduce((sum, item) => sum + (Number(item.estimatedCost) || 0), 0)
-  }, [items])
-
   const isValid = useMemo(() => {
     if (!initialData && !workAreaId) return false
     if (items.length === 0) return false
@@ -144,13 +137,10 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       if (!item.materialId) return false
       if (item.requestedQuantity <= 0) return false
 
-      // BA 8.6: Nếu requestedQuantity > shortage, bắt buộc có shortageOverrideReason (1-500 ký tự)
+      // 26/11/2026: chỉ xin vật tư thực sự thiếu, và không xin quá số đang thiếu
+      // (không còn đường "override" điền tay).
       const maxShortage = shortageMap.get(item.materialId) ?? 0
-      if (item.requestedQuantity > maxShortage) {
-        if (!item.shortageOverrideReason.trim() || item.shortageOverrideReason.length > 500) {
-          return false
-        }
-      }
+      if (maxShortage <= 0 || item.requestedQuantity > maxShortage) return false
     }
     return true
   }, [initialData, workAreaId, items, shortageMap])
@@ -163,9 +153,8 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
     const payloadItems: PurchaseRequestItemInput[] = items.map((i) => ({
       materialId: i.materialId,
       requestedQuantity: Number(i.requestedQuantity),
-      estimatedCost: Number(i.estimatedCost) || null,
       note: i.note.trim() || null,
-      shortageOverrideReason: i.shortageOverrideReason.trim() || null,
+      shortageOverrideReason: null,
     }))
 
     try {
@@ -331,11 +320,13 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                         required
                       >
                         <option value="">{t('features.purchases.selectMaterial')}</option>
-                        {catalog.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            [{m.code}] {m.name} ({m.unit})
-                          </option>
-                        ))}
+                        {catalog
+                          .filter((m) => (shortageMap.get(m.id) ?? 0) > 0 || m.id === row.materialId)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              [{m.code}] {m.name} ({m.unit})
+                            </option>
+                          ))}
                       </select>
                       {row.materialId && (
                         <p className="mt-1 text-[11px] text-muted-foreground">
@@ -377,22 +368,7 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Chi phí ước tính */}
-                    <div>
-                      <Label className="text-xs">{t('features.purchases.estimatedCost')} (₫)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="any"
-                        className="mt-1 h-9 text-xs"
-                        value={row.estimatedCost}
-                        onChange={(e) =>
-                          handleItemChange(index, { estimatedCost: Number(e.target.value) || 0 })
-                        }
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-1 gap-3">
                     {/* Ghi chú */}
                     <div>
                       <Label className="text-xs">{t('features.purchases.note')}</Label>
@@ -406,24 +382,13 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                     </div>
                   </div>
 
-                  {/* BA 8.6: Lý do vượt định mức */}
+                  {/* 26/11/2026: không xin quá phần đang thiếu — báo lỗi rõ thay vì cho override */}
                   {isOverShortage && (
-                    <div className="rounded-md border border-amber-300/60 bg-amber-50/50 p-2.5 dark:border-amber-700/60 dark:bg-amber-950/20">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    <div className="rounded-md border border-amber-300/60 bg-amber-50/50 p-2.5 text-xs font-medium text-amber-700 dark:border-amber-700/60 dark:bg-amber-950/20 dark:text-amber-400">
+                      <div className="flex items-center gap-1.5">
                         <AlertTriangle className="size-3.5" />
-                        <span>{t('features.purchases.shortageOverrideRequired')} *</span>
+                        <span>{t('features.purchases.quantityOverShortage', { n: maxShortage })}</span>
                       </div>
-                      <Input
-                        type="text"
-                        maxLength={500}
-                        className="mt-1.5 h-8 text-xs border-amber-300 bg-card dark:border-amber-700"
-                        placeholder={t('features.purchases.shortageOverrideReason')}
-                        value={row.shortageOverrideReason}
-                        onChange={(e) =>
-                          handleItemChange(index, { shortageOverrideReason: e.target.value })
-                        }
-                        required
-                      />
                     </div>
                   )}
                 </div>
@@ -431,12 +396,10 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
             })}
           </div>
 
-          <div className="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold">
-            <span>{t('features.purchases.total')}:</span>
-            <span className="tabular text-primary">
-              {totalEstimatedCost.toLocaleString()} VND
-            </span>
-          </div>
+          {/* 26/11/2026: bỏ ước tính chi phí — Ban phụ trách là người đi mua, giá thực tế ghi khi nhập hoá đơn. */}
+          <p className="text-xs text-muted-foreground">
+            {t('features.purchases.noEstimateHint')}
+          </p>
         </div>
       </form>
     </Dialog>

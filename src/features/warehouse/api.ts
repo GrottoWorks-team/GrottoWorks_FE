@@ -120,6 +120,41 @@ export interface CreateParishDistributionPayload {
   note?: string | null
 }
 
+/** 26/11/2026: biên lai "vật tư Ban phụ trách đã mua" nhập thẳng vào kho tổng. */
+export interface ParishPurchaseItemDto {
+  materialId: string
+  materialCode: string
+  materialName: string
+  unit: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+}
+
+export interface ParishPurchaseReceiptDto {
+  id: string
+  seasonId: string
+  buyerName: string
+  supplierName: string | null
+  purchaseDate: string
+  totalCost: number
+  invoiceFileIds: string[]
+  note: string | null
+  recordedBy: string
+  createdAt: string
+  items: ParishPurchaseItemDto[]
+}
+
+export interface RecordParishPurchasePayload {
+  seasonId: string
+  buyerName: string
+  supplierName?: string | null
+  purchaseDate?: string | null
+  items: { materialId: string; quantity: number; unitPrice: number }[]
+  invoiceFileIds: string[]
+  note?: string | null
+}
+
 export interface ConfirmParishDistributionPayload {
   distributionId: string
   version: number
@@ -132,6 +167,7 @@ export const parishWarehouseKeys = {
   inventory: (params: Record<string, unknown>) => ['parish-warehouse', 'inventory', params] as const,
   history: (params: Record<string, unknown>) => ['parish-warehouse', 'history', params] as const,
   distributions: (params: Record<string, unknown>) => ['parish-warehouse', 'distributions', params] as const,
+  purchases: (params: Record<string, unknown>) => ['parish-warehouse', 'purchases', params] as const,
 }
 
 function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
@@ -223,6 +259,40 @@ export function useAdjustParishInventory() {
       api<{ data?: ParishInventoryTransactionDto } | ParishInventoryTransactionDto>(
         '/api/v1/parish-inventory-adjustments',
         { method: 'POST', body: JSON.stringify(payload) },
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: parishWarehouseKeys.all })
+    },
+  })
+}
+
+/** 26/11/2026: biên lai nhập vật tư Ban phụ trách đã mua (kèm hoá đơn) vào kho tổng. */
+export function useParishPurchases(seasonId?: string, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: parishWarehouseKeys.purchases({ seasonId: seasonId ?? '' }),
+    queryFn: async () => {
+      const res = await api<ParishPurchaseReceiptDto[] | { data?: ParishPurchaseReceiptDto[] }>(
+        `/api/v1/parish-inventory/purchases${buildQuery({ seasonId: seasonId ?? '', limit: 50 })}`,
+      )
+      return Array.isArray(res) ? res : (res.data ?? [])
+    },
+    enabled: (options.enabled ?? true) && Boolean(seasonId),
+  })
+}
+
+export function useRecordParishPurchase() {
+  const qc = useQueryClient()
+  return useMutation({
+    // BE nhận `invoices: [{ id }]` (RecordParishPurchaseRequest.Invoices, bắt buộc ≥ 1).
+    // 26/11/2026: trước đây gửi thẳng `invoiceFileIds` → BE không bind được → 422
+    // "Attach at least one invoice photo." dù người dùng đã đính ảnh.
+    mutationFn: ({ invoiceFileIds, ...payload }: RecordParishPurchasePayload) =>
+      api<{ data?: ParishPurchaseReceiptDto } | ParishPurchaseReceiptDto>(
+        '/api/v1/parish-inventory/purchases',
+        {
+          method: 'POST',
+          body: JSON.stringify({ ...payload, invoices: invoiceFileIds.map((id) => ({ id })) }),
+        },
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: parishWarehouseKeys.all })
