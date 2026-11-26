@@ -727,7 +727,7 @@
   "features.map.noMap": "Chưa có bản đồ mặt bằng giáo xứ.",
   "features.map.fileHint": "Nhận {{types}} · tối đa {{size}}",
   "features.map.mapSaved": "Đã lưu bản đồ giáo xứ",
-  "features.map.mapPendingFinalize": "Bản đồ đã được lưu; tệp ảnh đang được hoàn tất ở máy chủ — vui lòng tải lại sau ít phút.",
+  "features.map.imageProcessing": "Ảnh đang được xử lý. Vui lòng thử lại sau.",
   "features.map.areasTitle": "Khu vực công tác",
   "features.map.emptyAreas": "Chưa có khu vực nào để phân bổ.",
   "features.map.place": "Đặt vị trí",

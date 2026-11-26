@@ -82,7 +82,6 @@ export default function ParishOverview() {
     <div>
       <PageHeader
         title={t('features.dashboards.adminTitle')}
-        finding={t('features.dashboards.parishFinding', { ready: readyAreas, total: areaTotal })}
         sub={parish ? parish.name : t('features.dashboards.adminSub')}
         actions={
           <Button variant="outline" onClick={() => navigate('/parish/seasons')}>

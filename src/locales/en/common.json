@@ -727,7 +727,7 @@
   "features.map.noMap": "No parish site plan uploaded yet.",
   "features.map.fileHint": "Accepts {{types}} · up to {{size}}",
   "features.map.mapSaved": "Parish map saved",
-  "features.map.mapPendingFinalize": "The map was saved; the image file is still being finalized on the server — reload in a few minutes.",
+  "features.map.imageProcessing": "The image is being processed. Please try again later.",
   "features.map.areasTitle": "Work areas",
   "features.map.emptyAreas": "No work areas to assign.",
   "features.map.place": "Place pin",
