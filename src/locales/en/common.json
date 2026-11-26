@@ -733,7 +733,7 @@
   "features.map.errEmpty": "Empty file, cannot use",
   "features.map.readOnlyHint": "You can only view area positions on the site plan. Pinning is done by the parish committee.",
   "features.map.uploadedByAdmin": "The site plan is uploaded by the parish administrator. You can still pin positions once it exists.",
-  "features.map.uploadCorsFailed": "Could not upload the image directly to Cloudflare R2. Check bucket CORS and the http://127.0.0.1:5173 origin.",
+  "features.map.uploadCorsFailed": "Could not upload the image directly to Cloudflare R2. Check bucket CORS for http://localhost:5175 or http://127.0.0.1:5175.",
   "features.map.pinSection": "Location on the parish site plan",
   "features.map.pinHint": "Click the site plan to pin the area (optional — you can pin later on the Map page).",
   "features.map.pinPicked": "Pin placed. Click elsewhere on the plan to move it.",

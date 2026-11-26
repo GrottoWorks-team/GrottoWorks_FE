@@ -733,7 +733,7 @@
   "features.map.errEmpty": "Tệp rỗng, không thể dùng",
   "features.map.readOnlyHint": "Bạn chỉ được xem vị trí khu vực trên sơ đồ. Việc ghim vị trí do Ban hành giáo thực hiện.",
   "features.map.uploadedByAdmin": "Ảnh sơ đồ do quản trị giáo xứ tải lên. Bạn vẫn ghim được vị trí khi sơ đồ đã có.",
-  "features.map.uploadCorsFailed": "Không thể tải ảnh trực tiếp lên Cloudflare R2. Kiểm tra CORS bucket và origin http://127.0.0.1:5173.",
+  "features.map.uploadCorsFailed": "Không thể tải ảnh trực tiếp lên Cloudflare R2. Kiểm tra CORS bucket cho origin http://localhost:5175 hoặc http://127.0.0.1:5175.",
   "features.map.pinSection": "Vị trí trên sơ đồ giáo xứ",
   "features.map.pinHint": "Bấm lên sơ đồ để ghim khu vực (tuỳ chọn — có thể ghim sau ở trang Bản đồ).",
   "features.map.pinPicked": "Đã chọn vị trí ghim. Bấm chỗ khác trên sơ đồ để đổi.",

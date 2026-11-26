@@ -182,6 +182,15 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
 
   return (
     <div>
+      {canUpload && (
+        <input
+          ref={fileRef}
+          type="file"
+          accept={IMAGE_ACCEPT_ATTR}
+          className="hidden"
+          onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)}
+        />
+      )}
       {!embedded && canPickParish && (
         <Link
           to={`/parish/communities${parishId ? `?parish=${encodeURIComponent(parishId)}` : ''}`}
@@ -199,13 +208,6 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
             <ParishSwitcher scope={scope} />
             {canUpload && (
               <>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept={IMAGE_ACCEPT_ATTR}
-                  className="hidden"
-                  onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)}
-                />
                 <Button
                   variant={mapRecord ? 'outline' : 'default'}
                   onClick={() => fileRef.current?.click()}
