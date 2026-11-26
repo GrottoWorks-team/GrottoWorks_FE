@@ -118,6 +118,35 @@ export interface MaterialPledgeInput {
   note?: string
 }
 
+export interface RecordDirectDonationPayload {
+  donorId: string
+  type: 'MATERIAL' | 'MONEY'
+  seasonId: string
+  /** MATERIAL: null = kho tổng giáo xứ; có giá trị = kho khu. */
+  workAreaId?: string | null
+  amount?: number | null
+  items?: { materialId: string; receivedQuantity: number; unusableQuantity: number }[]
+  receivedAt?: string | null
+  note?: string | null
+}
+
+/**
+ * POST /api/v1/donations (MO của khu hoặc PARISH cho kho tổng).
+ * MATERIAL + workAreaId null → nhập kho tổng; chỉ role PARISH (web COMMUNITY) được gọi.
+ */
+export function useRecordDirectDonation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: RecordDirectDonationPayload) =>
+      api<DonationDto>('/api/v1/donations', { method: 'POST', body: JSON.stringify(payload) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: donationKeys.all })
+      void qc.invalidateQueries({ queryKey: ['parish-warehouse'] })
+      void qc.invalidateQueries({ queryKey: ['inventory'] })
+    },
+  })
+}
+
 /** POST /api/v1/donations/material-pledges — cam kết vật tư cho một khu vực. */
 export function useCreateMaterialPledge() {
   return useDonationMutation((input: MaterialPledgeInput) =>

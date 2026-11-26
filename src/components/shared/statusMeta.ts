@@ -23,6 +23,7 @@ export const STATUS_TONE: Record<string, StatusTone> = {
   DONE: 'ok', ENOUGH: 'ok', APPROVED: 'ok', RESOLVED: 'ok', CLOSED: 'ok',
   ACCEPTED: 'ok',
   ON_TRACK: 'ok', RECEIVED_FULL: 'ok', RECEIVED: 'ok',
+  IN_TRANSIT: 'warn',
   DOING: 'warn', INCOMING: 'warn', PENDING: 'warn', REVIEW: 'warn',
   COORDINATED: 'warn', PENDING_FIX: 'warn', RECEIVED_PARTIAL: 'warn', ACTIVE: 'warn',
   PLEDGED: 'warn',

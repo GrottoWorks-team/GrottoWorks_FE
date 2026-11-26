@@ -24,6 +24,7 @@ import { useCancelDonation, useContributionNeeds, useDonation, useDonations, use
 import { useSeasonContext } from '@/features/season/season-context'
 import { AdjustReceiptDialog } from '../AdjustReceiptDialog'
 import { DonationFormDialog } from './DonationFormDialog'
+import { DirectDonationDialog } from './DirectDonationDialog'
 import type { Donation } from '@/types'
 
 function ReceiptDialog({ donation, onClose }: { donation: Donation; onClose: () => void }) {
@@ -226,6 +227,7 @@ export default function DonationListPage() {
   )
 
   const [creating, setCreating] = useState(false)
+  const [directOpen, setDirectOpen] = useState(false)
   const [donorsOpen, setDonorsOpen] = useState(false)
   const [recording, setRecording] = useState<Donation | null>(null)
   const [canceling, setCanceling] = useState<Donation | null>(null)
@@ -376,6 +378,12 @@ export default function DonationListPage() {
               <Download className="size-4" />
               {t('features.donations.export')}
             </Button>
+            {(user?.role === 'COMMUNITY' || user?.role === 'MATERIAL_OFFICER') && (
+              <Button variant="outline" onClick={() => setDirectOpen(true)}>
+                <Plus className="size-4" />
+                {t('features.donations.directCreate')}
+              </Button>
+            )}
             <Button onClick={() => setCreating(true)}>
               <Plus className="size-4" />
               {t('features.donations.create')}
@@ -423,6 +431,7 @@ export default function DonationListPage() {
       )}
 
       {creating && <DonationFormDialog open onClose={() => setCreating(false)} />}
+      {directOpen && <DirectDonationDialog onClose={() => setDirectOpen(false)} />}
       {recording && <ReceiptDialog donation={recording} onClose={() => setRecording(null)} />}
       {canceling && <CancelDialog donation={canceling} onClose={() => setCanceling(null)} />}
       {adjusting && <AdjustReceiptDialog donation={adjusting} onClose={() => setAdjusting(null)} />}

@@ -55,6 +55,7 @@ export interface PurchaseDto {
   purchaseRequestId: string
   taskId: string
   buyerUserId: string
+  recordedBy?: string | null
   supplierName?: string | null
   purchaseDate: string
   totalCost: MoneyDto
@@ -262,6 +263,32 @@ export function useApproveRequest() {
       })
     },
   )
+}
+
+export interface RecordPurchasePayload {
+  supplierName?: string | null
+  purchaseDate?: string | null
+  items: {
+    purchaseRequestItemId: string
+    purchasedQuantity: number
+    unitPrice: number
+    totalPrice?: number | null
+  }[]
+  receipts?: { id: string }[]
+}
+
+/**
+ * F9: POST /api/v1/purchase-requests/{requestId}/purchases (MO của khu).
+ * Người mua là user PARISH được gán vào task PURCHASE; MO là người ghi nhận.
+ * Kho chưa tăng ở bước này (BR-26).
+ */
+export function useRecordPurchase() {
+  return usePurchaseMutation(async ({ requestId, ...payload }: RecordPurchasePayload & { requestId: string }) => {
+    return api<{ data: PurchaseDto }>(`/api/v1/purchase-requests/${requestId}/purchases`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  })
 }
 
 /**

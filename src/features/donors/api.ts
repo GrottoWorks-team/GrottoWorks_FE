@@ -32,7 +32,7 @@ export const donorKeys = {
   list: (q: string) => ['donors', 'list', q] as const,
 }
 
-export function useDonors(q?: string) {
+export function useDonors(q?: string, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: donorKeys.list(q ?? ''),
     queryFn: async () => {
@@ -41,6 +41,7 @@ export function useDonors(q?: string) {
       const res = await apiPaged<DonorDto>(`/api/v1/donors?${query.toString()}`)
       return res.data
     },
+    enabled: options.enabled ?? true,
   })
 }
 

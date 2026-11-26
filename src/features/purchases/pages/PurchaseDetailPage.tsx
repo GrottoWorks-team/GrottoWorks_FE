@@ -5,6 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeft, Clock, History, Send, CheckCircle2, XCircle, FileText, Package, AlertTriangle, Edit } from 'lucide-react'
 import { PurchaseFormDialog } from './PurchaseFormDialog'
+import { RecordPurchaseDialog } from './RecordPurchaseDialog'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,7 @@ export default function PurchaseDetailPage() {
   const [decisionNote, setDecisionNote] = useState('')
   const [rejectReason, setRejectReason] = useState('')
   const [editOpen, setEditOpen] = useState(false)
+  const [recordOpen, setRecordOpen] = useState(false)
   const [purchaseTaskOpen, setPurchaseTaskOpen] = useState(false)
   const [ptName, setPtName] = useState('')
   const [ptDescription, setPtDescription] = useState('')
@@ -83,7 +85,9 @@ export default function PurchaseDetailPage() {
     )
   }
 
-  const isLeader = user?.role === 'LEADER' || user?.role === 'PARISH'
+  // BE: PARISH duyệt mua (web COMMUNITY), LEADER tạo task PURCHASE, MO ghi nhận mua.
+  const isParish = user?.role === 'COMMUNITY'
+  const isLeader = user?.role === 'LEADER'
   const isOfficer = user?.role === 'MATERIAL_OFFICER'
 
   const handleSend = async () => {
@@ -161,7 +165,7 @@ export default function PurchaseDetailPage() {
               </>
             )}
 
-            {request.status === 'PENDING_APPROVAL' && isLeader && (
+            {request.status === 'PENDING_APPROVAL' && isParish && (
               <>
                 <Button
                   variant="outline"
@@ -176,6 +180,13 @@ export default function PurchaseDetailPage() {
                   <span>{t('features.purchases.actions.approve')}</span>
                 </Button>
               </>
+            )}
+
+            {isOfficer && (request.status === 'APPROVED' || request.status === 'BUYER_ASSIGNED') && (
+              <Button onClick={() => setRecordOpen(true)} className="flex items-center gap-2">
+                <Package className="size-4" />
+                <span>{t('features.purchases.recordAction')}</span>
+              </Button>
             )}
 
             {isLeader && request.status !== 'PLANNING' && request.status !== 'REJECTED' && request.status !== 'CANCELLED' && (
@@ -377,7 +388,7 @@ export default function PurchaseDetailPage() {
                         <span className="text-xs font-semibold text-status-dangerText">
                           {t('features.purchases.overrun')}
                         </span>
-                        {user?.role === 'LEADER' && (
+                        {isParish && (
                           <Button
                             size="sm"
                             onClick={() => onApproveOverrun(purchase.id, purchase.version)}
@@ -479,7 +490,10 @@ export default function PurchaseDetailPage() {
         </Dialog>
       )}
 
-{/* Dialog Chỉnh sửa F4 */}
+{/* Dialog Ghi nhận mua (MO) */}
+      {recordOpen && <RecordPurchaseDialog request={request} onClose={() => setRecordOpen(false)} />}
+
+      {/* Dialog Chỉnh sửa F4 */}
       {editOpen && (
         <PurchaseFormDialog
           initialData={request}
