@@ -94,6 +94,13 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
     setImageUrl('')
     void (async () => {
       if (!mapRecord) return
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(mapRecord.imageKey)) {
+        // Legacy/mock map metadata was never backed by a NotificationAudit file.
+        const { mapStore } = await import('../localStore')
+        mapStore.removeMap(parishId)
+        if (!cancelled) setImageError(true)
+        return
+      }
       const download = await getFileDownloadUrl(mapRecord.imageKey).catch(() => null)
       if (cancelled) return
       if (!download?.downloadUrl) {

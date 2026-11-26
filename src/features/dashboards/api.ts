@@ -147,11 +147,14 @@ export interface MaterialDashboardDto {
   donations: DonationSummaryDto
 }
 
-export function useSeasonDashboard(seasonId?: string) {
+export function useSeasonDashboard(seasonId?: string, parishId?: string) {
   return useQuery({
-    queryKey: dashboardKeys.season(seasonId ?? ''),
-    queryFn: () =>
-      api<SeasonDashboardDto>(`/api/v1/dashboards/season?seasonId=${seasonId}`),
+    queryKey: [...dashboardKeys.season(seasonId ?? ''), parishId ?? ''] as const,
+    queryFn: () => {
+      const qs = new URLSearchParams({ seasonId: seasonId ?? '' })
+      if (parishId) qs.set('parishId', parishId)
+      return api<SeasonDashboardDto>(`/api/v1/dashboards/season?${qs.toString()}`)
+    },
     enabled: Boolean(seasonId),
   })
 }

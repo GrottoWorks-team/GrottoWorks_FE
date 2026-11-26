@@ -43,7 +43,7 @@ export default function ParishOverview() {
     isPending: seasonDashboardPending,
     isError: seasonDashboardError,
     refetch: refetchSeasonDashboard,
-  } = useSeasonDashboard(focusSeason?.id)
+  } = useSeasonDashboard(focusSeason?.id, parish?.id)
   const readiness = seasonDashboard?.summary.readiness
   const missingLeader = areas.filter((a) => !a.leaderId).length
   const missingOfficer = areas.filter((a) => !a.officerId).length
