@@ -352,6 +352,28 @@ export function useMarkTaskReady() {
   })
 }
 
+/**
+ * 26/11/2026: POST /api/v1/tasks/{taskId}/start — trưởng khu chính thức **bắt đầu việc**
+ * (NOT_STARTED → IN_PROGRESS). Trước đây web chỉ có `ready` nên việc không bao giờ chuyển
+ * sang IN_PROGRESS, khiến TNV không vào ca được. BE trả `{ task, warnings }` + ETag.
+ */
+export interface TaskStartResultDto {
+  task: TaskDto
+  warnings: { code: string; detail: string }[]
+}
+
+export function useStartTask() {
+  return useTaskMutation(async ({ taskId, version }: { taskId: string; version?: number }) => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (version !== undefined && version !== null) headers['If-Match'] = `"${version}"`
+    const res = await api<{ data?: TaskStartResultDto } | TaskStartResultDto>(
+      `/api/v1/tasks/${taskId}/start`,
+      { method: 'POST', headers, body: JSON.stringify(version !== undefined ? { version } : {}) },
+    )
+    return 'data' in res && res.data ? res.data : (res as TaskStartResultDto)
+  })
+}
+
 // BE CHƯA có `DELETE /api/v1/tasks/{id}` → không cung cấp hook xoá việc.
 
 /**

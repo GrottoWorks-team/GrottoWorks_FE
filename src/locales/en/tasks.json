@@ -116,6 +116,7 @@
   "features.tasks.reasonRequired": "Please enter a reason",
   "features.tasks.reopen": "Reopen",
   "features.tasks.started": "Started \"{{name}}\"",
+  "features.tasks.startedWithWarnings": "Started \"{{name}}\" (with warnings):",
   "features.tasks.reviewSubmitted": "Submitted \"{{name}}\" for review",
   "features.tasks.approved": "Approved completion of \"{{name}}\"",
   "features.tasks.revisionRequested": "Rework requested for \"{{name}}\"",

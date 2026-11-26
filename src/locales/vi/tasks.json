@@ -116,6 +116,7 @@
   "features.tasks.reasonRequired": "Vui lòng nhập lý do",
   "features.tasks.reopen": "Mở lại",
   "features.tasks.started": "Đã bắt đầu \"{{name}}\"",
+  "features.tasks.startedWithWarnings": "Đã bắt đầu \"{{name}}\" (còn cảnh báo):",
   "features.tasks.reviewSubmitted": "Đã gửi duyệt \"{{name}}\"",
   "features.tasks.approved": "Đã duyệt hoàn thành \"{{name}}\"",
   "features.tasks.revisionRequested": "Đã yêu cầu sửa \"{{name}}\"",
