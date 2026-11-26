@@ -45,6 +45,8 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.community.distributions', to: '/community/warehouse/distributions', icon: 'boxes' },
         { label: 'nav.community.purchases', to: '/community/purchases', icon: 'cart', badge: 'purchases' },
         { label: 'nav.community.donations', to: '/community/donations', icon: 'gift' },
+        // 26/11/2026: trang đối chiếu tiền (mua vật tư / quyên góp / vật tư tự mua).
+        { label: 'nav.community.finance', to: '/community/finance', icon: 'reports' },
       ],
     },
     {

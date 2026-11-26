@@ -26,9 +26,12 @@ import {
 import { useSeasons } from '@/features/season/api'
 import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas } from '@/features/areas/api'
+import { formatVnd } from '@/lib/format'
 import { OpeningStockDialog } from './OpeningStockDialog'
 import { InventoryAdjustDialog } from './InventoryAdjustDialog'
 import { MaterialHistoryDrawer } from './MaterialHistoryDrawer'
+import { SelfPurchaseDialog } from './SelfPurchaseDialog'
+import { useSelfPurchases } from '../selfPurchaseApi'
 import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
 import { useParishDistributions } from '@/features/warehouse/api'
 
@@ -52,6 +55,7 @@ export default function MaterialInventoryPage() {
   // Sub-dialog & Drawer state
   const [openingStockOpen, setOpeningStockOpen] = useState(false)
   const [adjustOpen, setAdjustOpen] = useState(false)
+  const [selfPurchaseOpen, setSelfPurchaseOpen] = useState(false)
   const [historyTarget, setHistoryTarget] = useState<InventoryBalanceDto | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
@@ -90,6 +94,13 @@ export default function MaterialInventoryPage() {
   const { data: pendingDistributions } = useParishDistributions({ status: 'IN_TRANSIT', size: 100 })
   const pendingCount = pendingDistributions?.data?.length ?? 0
 
+  // Vật tư người khác tự mua (ngoài luồng purchase request) của khu đang chọn.
+  const { data: selfPurchases = [] } = useSelfPurchases({ workAreaId: selectedWorkArea || undefined }, {
+    enabled: Boolean(selectedWorkArea),
+  })
+  const selfPurchaseTotal = selfPurchases.reduce((sum, receipt) => sum + receipt.totalCost, 0)
+  const selectedAreaName = areas.find((area) => area.id === selectedWorkArea)?.name
+
   const rows = inventoryResult?.data || []
   const pageInfo = inventoryResult?.page || {
     page: 1,
@@ -119,6 +130,16 @@ export default function MaterialInventoryPage() {
               {t('features.inventory.adjustBtn')}
             </Button>
             <Button
+              variant="outline"
+              onClick={() => setSelfPurchaseOpen(true)}
+              disabled={!selectedWorkArea}
+              title={!selectedWorkArea ? t('features.selfPurchase.chooseAreaFirst') : undefined}
+              className="flex items-center gap-2"
+            >
+              <Plus className="size-4" />
+              {t('features.selfPurchase.entryBtn')}
+            </Button>
+            <Button
               onClick={() => setOpeningStockOpen(true)}
               className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
             >
@@ -137,6 +158,31 @@ export default function MaterialInventoryPage() {
           <a href="/material-officer/distributions" className="font-semibold underline">
             {t('features.inventory.openDistributions')}
           </a>
+        </div>
+      )}
+
+      {/* Vật tư người khác tự mua — chỉ hiện khi đã chọn khu (cần scope để ghi nhận). */}
+      {selectedWorkArea && selfPurchases.length > 0 && (
+        <div className="rounded-card border border-border bg-card p-4">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <p className="text-sm font-semibold text-foreground">{t('features.selfPurchase.recentTitle')}</p>
+            <span className="tabular text-xs text-muted-foreground">
+              {t('features.selfPurchase.recentTotal', { count: selfPurchases.length, amount: formatVnd(selfPurchaseTotal) })}
+            </span>
+          </div>
+          <ul className="divide-y divide-border text-sm">
+            {selfPurchases.slice(0, 5).map((receipt) => (
+              <li key={receipt.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span className="truncate">
+                  {receipt.purchaseDate} · {receipt.buyerName}
+                  {receipt.supplierName ? ` · ${receipt.supplierName}` : ''}
+                </span>
+                <span className="tabular text-xs text-muted-foreground">
+                  {t('features.selfPurchase.lineCount', { count: receipt.items.length })} · {formatVnd(receipt.totalCost)}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
@@ -416,6 +462,19 @@ export default function MaterialInventoryPage() {
         open={Boolean(detailAreaId)}
         onClose={() => setDetailAreaId(null)}
       />
+
+      {/* Vật tư người khác tự mua (26/11/2026) */}
+      {selfPurchaseOpen && selectedWorkArea && (
+        <SelfPurchaseDialog
+          workAreaId={selectedWorkArea}
+          workAreaName={selectedAreaName}
+          open
+          onClose={() => {
+            setSelfPurchaseOpen(false)
+            refetch()
+          }}
+        />
+      )}
     </div>
   )
 }

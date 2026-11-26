@@ -28,6 +28,7 @@ import { useSeasonContext } from '@/features/season/season-context'
 import { useParishScope } from '@/features/parish/hooks'
 import { ParishSwitcher } from '@/features/parish/components/ParishSwitcher'
 import { AREA_ICONS } from '@/features/areas/components/AreaCard'
+import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
 import { ImageReviewCanvas } from '@/features/designs/components/ImageReviewCanvas'
 import type { CanvasMarker } from '@/features/designs/components/ImageReviewCanvas'
 import type { NormalizedPoint } from '@/features/designs/coords'
@@ -83,6 +84,8 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
 
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null)
   const [placingId, setPlacingId] = useState<string | null>(null)
+  // 26/11/2026: bấm vào khu trên bản đồ mở chi tiết (có tab Hình ảnh).
+  const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
   // ── Ảnh bản đồ: nạp blob IndexedDB → object URL, thu hồi khi đổi/xoá ──
   const [imageUrl, setImageUrl] = useState('')
@@ -263,7 +266,10 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
                 src={imageUrl}
                 markers={markers}
                 addMode={canPin && !!placingId}
-                onSelectMarker={(id) => setActiveAreaId(id)}
+                onSelectMarker={(id) => {
+                  setActiveAreaId(id)
+                  if (!placingId) setDetailAreaId(id)
+                }}
                 onAddMarker={canPin ? (point) => void placeAt(point) : undefined}
                 onLoadError={() => setImageError(true)}
               />
@@ -303,7 +309,10 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
                     <li key={area.id}>
                       <button
                         type="button"
-                        onClick={() => setActiveAreaId(area.id)}
+                        onClick={() => {
+                          setActiveAreaId(area.id)
+                          if (!isPlacing) setDetailAreaId(area.id)
+                        }}
                         className={cn(
                           'flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors',
                           activeAreaId === area.id
@@ -358,6 +367,9 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
           </Card>
         </div>
       )}
+
+      {/* Chi tiết khu vực — mở từ marker/danh sách, có tab Hình ảnh */}
+      <AreaDetailDialog areaId={detailAreaId} open={Boolean(detailAreaId)} onClose={() => setDetailAreaId(null)} />
     </div>
   )
 }

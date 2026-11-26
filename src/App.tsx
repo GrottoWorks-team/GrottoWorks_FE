@@ -61,6 +61,7 @@ const ActivityPage = lazy(() => import('@/features/parish/pages/ActivityPage'))
 const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
 const BuilderPage = lazy(() => import('@/features/builder/pages/BuilderPage'))
 const ParishMapPage = lazy(() => import('@/features/map/pages/ParishMapPage'))
+const FinancePage = lazy(() => import('@/features/finance/pages/FinancePage'))
 const GrottoDesignerPage = lazy(() => import('@/features/designer/pages/GrottoDesignerPage'))
 
 // Trang tháº­t theo route `to` cá»§a nav-config; má»¥c chÆ°a cÃ³ â†’ Placeholder.
@@ -85,6 +86,8 @@ const PAGES: Record<string, ComponentType> = {
   '/community/warehouse/distributions': DistributionListPage,
   '/community/purchases': CommitteeApprovalPage,
   '/community/donations': DonationListPage,
+  // 26/11/2026: minh bạch tiền — tách mua vật tư vs quyên góp (không có sổ quỹ, chỉ đối chiếu).
+  '/community/finance': FinancePage,
   '/material-officer/material-reports': MaterialReportsPage,
   '/material-officer/support-materials': MaterialReceiptsPage,
   '/material-officer/material-needs': SeasonMaterialNeedsPage,

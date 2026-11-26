@@ -1,8 +1,9 @@
 // Ghi nhận lần mua thật (F-RES-09, BR-26/BR-30):
 // MO của khu nhập số lượng/đơn giá; người mua là user PARISH được gán vào task PURCHASE.
 // Kho chỉ tăng sau khi MO xác nhận giao hàng.
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { FileImage, Loader2, ScanLine } from 'lucide-react'
 import { Dialog } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +11,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast'
 import { formatVnd } from '@/lib/format'
+import { uploadFileViaGateway } from '@/features/files/api'
+import { OcrUnavailableError, readInvoice } from '@/lib/invoiceOcr'
 import { useRecordPurchase, type PurchaseRequestDto } from '../api'
 
 interface LineState {
@@ -36,13 +39,56 @@ export function RecordPurchaseDialog({ request, onClose }: { request: PurchaseRe
   const [supplier, setSupplier] = useState('')
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().slice(0, 10))
   const [note, setNote] = useState('')
+  const [invoices, setInvoices] = useState<{ fileId: string; fileName: string }[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [scanning, setScanning] = useState(false)
+  const [scanHint, setScanHint] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const total = request.items.reduce((sum, item) => {
     const line = lines[item.id]
     return sum + Number(line?.quantity ?? 0) * Number(line?.unitPrice ?? 0)
   }, 0)
 
+  const onInvoicePicked = async (file: File) => {
+    setUploading(true)
+    setScanHint(null)
+    try {
+      const uploaded = await uploadFileViaGateway(file, 'PurchaseReceipt')
+      setInvoices((prev) => [...prev, { fileId: uploaded.fileId, fileName: uploaded.fileName }])
+    } catch (error) {
+      toast(error instanceof Error ? error.message : t('common.error'), 'alert')
+      setUploading(false)
+      return
+    }
+    setUploading(false)
+
+    // OCR chỉ để gợi ý; lỗi/không mạng thì vẫn lưu được bằng nhập tay.
+    setScanning(true)
+    try {
+      const draft = await readInvoice(file)
+      if (draft.supplier && !supplier.trim()) setSupplier(draft.supplier)
+      if (draft.purchaseDate) setPurchaseDate(draft.purchaseDate)
+      setScanHint(
+        draft.totalAmount
+          ? t('features.selfPurchase.ocrAmount', {
+              amount: formatVnd(draft.totalAmount),
+              defaultValue: 'Hoá đơn ghi {{amount}} — so lại với tổng bên dưới.',
+            })
+          : t('features.selfPurchase.ocrNoAmount'),
+      )
+    } catch (error) {
+      setScanHint(error instanceof OcrUnavailableError ? error.message : t('features.selfPurchase.ocrFailed'))
+    } finally {
+      setScanning(false)
+    }
+  }
+
   const submit = async () => {
+    if (invoices.length === 0) {
+      toast(t('features.purchases.receiptRequired'), 'alert')
+      return
+    }
     try {
       await record.mutateAsync({
         requestId: request.id,
@@ -59,6 +105,7 @@ export function RecordPurchaseDialog({ request, onClose }: { request: PurchaseRe
             totalPrice: Math.round(quantity * unitPrice * 100) / 100,
           }
         }),
+        receipts: invoices.map((invoice) => ({ id: invoice.fileId })),
       })
       toast(t('features.purchases.recordSaved'))
       onClose()
@@ -180,6 +227,52 @@ export function RecordPurchaseDialog({ request, onClose }: { request: PurchaseRe
         <div>
           <Label htmlFor="record-note">{t('features.purchases.note')}</Label>
           <Textarea id="record-note" rows={3} value={note} onChange={(event) => setNote(event.target.value)} />
+        </div>
+
+        {/* Hoá đơn: bắt buộc (BE chặn xác nhận giao nếu không có tệp); ảnh được đọc thử để gợi ý. */}
+        <div className="space-y-2">
+          <Label>{t('features.purchases.receipt')}</Label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                event.target.value = ''
+                if (file) void onInvoicePicked(file)
+              }}
+            />
+            <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+              {uploading ? <Loader2 className="size-4 animate-spin" /> : <FileImage className="size-4" />}
+              {t('features.purchases.addReceipt')}
+            </Button>
+            {scanning ? (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ScanLine className="size-3.5" /> {t('features.selfPurchase.scanning')}
+              </span>
+            ) : null}
+          </div>
+          {invoices.length > 0 ? (
+            <ul className="space-y-1 text-xs text-muted-foreground">
+              {invoices.map((invoice) => (
+                <li key={invoice.fileId} className="flex items-center justify-between gap-2">
+                  <span className="truncate">{invoice.fileName}</span>
+                  <button
+                    type="button"
+                    className="text-destructive hover:underline"
+                    onClick={() => setInvoices((prev) => prev.filter((item) => item.fileId !== invoice.fileId))}
+                  >
+                    {t('common.delete')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-destructive">{t('features.purchases.receiptRequired')}</p>
+          )}
+          {scanHint ? <p className="text-xs text-muted-foreground">{scanHint}</p> : null}
         </div>
       </div>
     </Dialog>
