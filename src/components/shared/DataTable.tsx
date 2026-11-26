@@ -27,6 +27,7 @@ export interface DataTableProps<T> {
   emptyText?: string
   emptyHint?: string
   emptyAction?: ReactNode
+  toolbarActions?: ReactNode
   isPending?: boolean
   isError?: boolean
   onRetry?: () => void
@@ -56,6 +57,7 @@ export function DataTable<T>({
   emptyText,
   emptyHint,
   emptyAction,
+  toolbarActions,
   isPending,
   isError,
   onRetry,
@@ -84,7 +86,7 @@ export function DataTable<T>({
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(page, pageCount - 1)
   const view = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize)
-  const showToolbar = Boolean(searchKeys?.length || filters?.length)
+  const showToolbar = Boolean(searchKeys?.length || filters?.length || toolbarActions)
   const first = filtered.length === 0 ? 0 : safePage * pageSize + 1
   const last = Math.min((safePage + 1) * pageSize, filtered.length)
 
@@ -127,6 +129,7 @@ export function DataTable<T>({
               })}
             </div>
           ))}
+          {toolbarActions ? <div className="ml-auto flex flex-wrap items-center justify-end gap-2">{toolbarActions}</div> : null}
         </div>
       )}
 
