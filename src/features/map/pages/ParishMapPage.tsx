@@ -137,8 +137,14 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
       const uploaded = await uploadFile(file, 'MAP_IMAGE')
       await saveMap.mutateAsync({ id: mapRecord?.id, imageKey: uploaded.fileId, fileName: file.name })
       toast(t('features.map.mapSaved'))
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
+        toast(t('features.map.uploadCorsFailed'), 'alert')
+      } else if (error instanceof Error) {
+        toast(error.message, 'alert')
+      } else {
+        toast(t('common.error'), 'alert')
+      }
     } finally {
       if (fileRef.current) fileRef.current.value = ''
     }
