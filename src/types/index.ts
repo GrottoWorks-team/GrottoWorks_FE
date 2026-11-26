@@ -8,6 +8,8 @@ export interface Parish {
   address?: string
   description?: string
   status: ParishStatus
+  mapImageFileId?: string | null
+  mapImageFileName?: string | null
   /** Dùng cho If-Match khi PATCH — BE chặn ghi đè bằng 412. */
   version: number
 }
