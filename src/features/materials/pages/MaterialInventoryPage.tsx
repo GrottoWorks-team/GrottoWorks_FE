@@ -26,6 +26,7 @@ import {
 import { useSeasons } from '@/features/season/api'
 import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas } from '@/features/areas/api'
+import { useAuth } from '@/lib/auth'
 import { formatVnd } from '@/lib/format'
 import { OpeningStockDialog } from './OpeningStockDialog'
 import { InventoryAdjustDialog } from './InventoryAdjustDialog'
@@ -72,6 +73,16 @@ export default function MaterialInventoryPage() {
   // Master data for filters
   const { data: seasons = [] } = useSeasons()
   const { data: areas = [] } = useAreas(selectedSeason ? [selectedSeason] : undefined)
+  // 26/11/2026: MO chỉ thấy vật tư của khu mình phụ trách — không lộ khu của người khác.
+  const { user } = useAuth()
+  const myAreas = useMemo(
+    () => (user?.id ? areas.filter((area) => !area.officerId || area.officerId === user.id) : areas),
+    [areas, user?.id],
+  )
+  useEffect(() => {
+    if (selectedWorkArea) return
+    if (myAreas.length === 1) setSelectedWorkArea(myAreas[0].id)
+  }, [myAreas, selectedWorkArea])
   const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 100 })
   const catalogMaterials = catalogResult?.data || []
 
@@ -218,7 +229,7 @@ export default function MaterialInventoryPage() {
             }}
           >
             <option value="">{t('features.inventory.allWorkAreas')}</option>
-            {areas.map((a) => (
+            {myAreas.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name?.trim() || t('features.areas.areaFallback', { id: a.id.slice(0, 8) })}
               </option>

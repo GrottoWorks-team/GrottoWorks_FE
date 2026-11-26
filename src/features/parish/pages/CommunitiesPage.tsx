@@ -53,7 +53,6 @@ import { useParishScope } from '../hooks'
 import { ParishSwitcher } from '../components/ParishSwitcher'
 import type { Community, WorkArea } from '@/types'
 import i18n from '@/lib/i18n'
-import ParishMapPage from '@/features/map/pages/ParishMapPage'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
@@ -674,7 +673,6 @@ const TABS = [
   // vẫn dùng trang riêng /community/seasons để tạo & tương tác).
   { key: 'seasons', labelKey: 'features.parish.tabSeasons' },
   { key: 'areas', labelKey: 'features.parish.tabAreas' },
-  { key: 'map', labelKey: 'features.parish.openMap' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
@@ -774,8 +772,6 @@ export default function CommunitiesPage() {
         <SeasonListPage embedded />
       ) : tab === 'areas' ? (
         parishId ? <AreasPanel parishId={parishId} /> : null
-      ) : parishId ? (
-        <ParishMapPage embedded />
       ) : null}
 
       {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}

@@ -53,6 +53,8 @@ function formatInitialStartAt(isoOrDateStr?: string | null): string {
 const schema = z.object({
   title: z.string().trim().min(1, 'features.tasks.nameRequired'),
   description: z.string(),
+  // 26/11/2026: tiêu chí hoàn thành là bắt buộc khi tạo/sửa việc.
+  submittedNotes: z.string().trim().min(10, 'features.tasks.criteriaRequired'),
   areaId: z.string().min(1, 'features.tasks.areaRequired'),
   skills: z.array(z.string()),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'], {
@@ -119,6 +121,7 @@ export function TaskFormDialog({
       ? {
           title: task.title,
           description: task.description,
+          submittedNotes: task.submittedNotes ?? '',
           areaId: task.areaId,
           skills: task.skillIds ?? [],
           priority: task.priority ?? 'MEDIUM',
@@ -131,6 +134,7 @@ export function TaskFormDialog({
       : {
           title: '',
           description: '',
+          submittedNotes: '',
           areaId: fixedAreaId ?? '',
           skills: [],
           priority: 'MEDIUM',
@@ -200,6 +204,7 @@ export function TaskFormDialog({
         const isUnchanged =
           data.title.trim() === task.title.trim() &&
           (data.description || '') === (task.description || '') &&
+          (data.submittedNotes || '') === (task.submittedNotes || '') &&
           (data.priority || 'MEDIUM') === (task.priority || 'MEDIUM') &&
           (data.startAt || '') === formatInitialStartAt(task.startAt) &&
           Number(data.estimateHours) === Number(task.estimateHours) &&
@@ -309,6 +314,18 @@ export function TaskFormDialog({
           <div>
             <Label htmlFor="task-description">{t('features.tasks.description')}</Label>
             <Input id="task-description" {...register('description')} />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="task-criteria">{t('features.tasks.completionCriteria')} *</Label>
+            <textarea
+              id="task-criteria"
+              rows={3}
+              className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm"
+              placeholder={t('features.tasks.completionCriteriaHint')}
+              {...register('submittedNotes')}
+            />
+            {err(errors.submittedNotes?.message)}
           </div>
         </div>
         {fixedAreaId ? null : (

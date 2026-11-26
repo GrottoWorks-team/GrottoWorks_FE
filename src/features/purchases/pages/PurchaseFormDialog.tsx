@@ -144,13 +144,10 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       if (!item.materialId) return false
       if (item.requestedQuantity <= 0) return false
 
-      // BA 8.6: Nếu requestedQuantity > shortage, bắt buộc có shortageOverrideReason (1-500 ký tự)
+      // 26/11/2026: chỉ xin vật tư thực sự thiếu, và không xin quá số đang thiếu
+      // (không còn đường "override" điền tay).
       const maxShortage = shortageMap.get(item.materialId) ?? 0
-      if (item.requestedQuantity > maxShortage) {
-        if (!item.shortageOverrideReason.trim() || item.shortageOverrideReason.length > 500) {
-          return false
-        }
-      }
+      if (maxShortage <= 0 || item.requestedQuantity > maxShortage) return false
     }
     return true
   }, [initialData, workAreaId, items, shortageMap])
@@ -165,7 +162,7 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       requestedQuantity: Number(i.requestedQuantity),
       estimatedCost: Number(i.estimatedCost) || null,
       note: i.note.trim() || null,
-      shortageOverrideReason: i.shortageOverrideReason.trim() || null,
+      shortageOverrideReason: null,
     }))
 
     try {
@@ -331,11 +328,13 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                         required
                       >
                         <option value="">{t('features.purchases.selectMaterial')}</option>
-                        {catalog.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            [{m.code}] {m.name} ({m.unit})
-                          </option>
-                        ))}
+                        {catalog
+                          .filter((m) => (shortageMap.get(m.id) ?? 0) > 0 || m.id === row.materialId)
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              [{m.code}] {m.name} ({m.unit})
+                            </option>
+                          ))}
                       </select>
                       {row.materialId && (
                         <p className="mt-1 text-[11px] text-muted-foreground">
@@ -406,24 +405,13 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                     </div>
                   </div>
 
-                  {/* BA 8.6: Lý do vượt định mức */}
+                  {/* 26/11/2026: không xin quá phần đang thiếu — báo lỗi rõ thay vì cho override */}
                   {isOverShortage && (
-                    <div className="rounded-md border border-amber-300/60 bg-amber-50/50 p-2.5 dark:border-amber-700/60 dark:bg-amber-950/20">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    <div className="rounded-md border border-amber-300/60 bg-amber-50/50 p-2.5 text-xs font-medium text-amber-700 dark:border-amber-700/60 dark:bg-amber-950/20 dark:text-amber-400">
+                      <div className="flex items-center gap-1.5">
                         <AlertTriangle className="size-3.5" />
-                        <span>{t('features.purchases.shortageOverrideRequired')} *</span>
+                        <span>{t('features.purchases.quantityOverShortage', { n: maxShortage })}</span>
                       </div>
-                      <Input
-                        type="text"
-                        maxLength={500}
-                        className="mt-1.5 h-8 text-xs border-amber-300 bg-card dark:border-amber-700"
-                        placeholder={t('features.purchases.shortageOverrideReason')}
-                        value={row.shortageOverrideReason}
-                        onChange={(e) =>
-                          handleItemChange(index, { shortageOverrideReason: e.target.value })
-                        }
-                        required
-                      />
                     </div>
                   )}
                 </div>

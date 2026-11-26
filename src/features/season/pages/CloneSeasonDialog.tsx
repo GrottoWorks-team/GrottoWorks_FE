@@ -12,6 +12,7 @@ import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useSeasons, useCloneSeason } from '../api'
 import { useSeasonAreas } from '@/features/areas/api'
+import { useMapPins, useSetMapPin } from '@/features/map/api'
 import type { Season } from '@/types'
 
 const SELECT_CLASS =
@@ -28,6 +29,9 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
   const toast = useToast()
   const { data: seasons = [] } = useSeasons()
   const clone = useCloneSeason()
+  // 26/11/2026: vị trí ghim trên sơ đồ giáo xứ phải được clone theo khu vực.
+  const { data: pins = {} } = useMapPins()
+  const setPin = useSetMapPin()
 
   // Mặc định chọn mùa gần nhất (danh sách đã sort mới → cũ).
   const [sourceId, setSourceId] = useState(() => seasons[0]?.id ?? '')
@@ -99,6 +103,21 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
           count: result.areas.length,
         }),
       )
+      // Sao chép ghim vị trí: BE giữ đúng thứ tự khu vực nguồn đã chọn.
+      const sourceIds = sourceAreas.map((area) => area.id).filter((id) => selectedAreas.includes(id))
+      try {
+        for (let index = 0; index < result.areas.length; index += 1) {
+          const pin = sourceIds[index] ? pins[sourceIds[index]] : undefined
+          if (pin) {
+            await setPin.mutateAsync({ areaId: result.areas[index].id, pin })
+          }
+        }
+        if (Object.keys(pins).length > 0) {
+          toast(t('features.season.clonePinsCopied'))
+        }
+      } catch {
+        toast(t('features.season.clonePinsFailed'), 'alert')
+      }
       if (result.warnings.length > 0) {
         // Phân công không còn hợp lệ (nghỉ / đổi role / khác giáo xứ) → báo để trưởng khu gán lại.
         toast(t('features.season.cloneWarnings', { count: result.warnings.length }), 'alert')

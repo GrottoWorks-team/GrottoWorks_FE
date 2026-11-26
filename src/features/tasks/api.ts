@@ -302,6 +302,8 @@ export function useUpdateTask() {
         payload.startAt = data.startAt ? new Date(data.startAt).toISOString() : null
       if (data.dueDate !== undefined)
         payload.deadline = endOfDay(data.dueDate)?.toISOString() ?? null
+      // Tiêu chí hoàn thành đi cùng PATCH (BE UpdateTaskRequest có completionCriteria).
+      if (data.submittedNotes !== undefined) payload.completionCriteria = data.submittedNotes || null
 
       // PATCH /api/v1/tasks/{id} chỉ nhận field planning — KHÔNG có `status`,
       // `skills`, `assignees` hay `materialIds`. Gửi body rỗng thì BE trả 400

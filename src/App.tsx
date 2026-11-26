@@ -165,16 +165,13 @@ const queryClient = new QueryClient({
   },
 })
 // URL cũ của admin: `/parish/areas` → tab "Khu vực công tác" trong hub,
-// `/parish/map` → trang con bản đồ (giữ nguyên `?parish=`).
+// `/parish/map` → tab Khu vực (26/11/2026: tab sơ đồ đã gộp vào UI khu vực).
 function LegacyParishAreasRedirect() {
   return <Navigate to="/parish/communities?tab=areas" replace />
 }
 
 function LegacyParishMapRedirect() {
-  const { search } = useLocation()
-  const params = new URLSearchParams(search)
-  const parish = params.get('parish')
-  return <Navigate to={`/parish/communities?tab=map${parish ? `&parish=${encodeURIComponent(parish)}` : ''}`} replace />
+  return <Navigate to="/parish/communities?tab=areas" replace />
 }
 
 // URL cũ `/parish/seasons` → tab "Mùa Giáng sinh" trong hub (12/11/2026).
