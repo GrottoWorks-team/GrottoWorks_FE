@@ -722,6 +722,7 @@
   "features.map.title": "Bản đồ giáo xứ",
   "features.map.sub": "Phân bổ khu vực trên mặt bằng; ảnh mặt bằng được lưu trên Cloudflare R2",
   "features.map.upload": "Tải bản đồ",
+  "features.map.uploadHint": "ảnh sơ đồ dùng làm nền để ghim / xem vị trí từng khu vực",
   "features.map.replace": "Thay bản đồ",
   "features.map.noMap": "Chưa có bản đồ mặt bằng giáo xứ.",
   "features.map.fileHint": "Nhận {{types}} · tối đa {{size}}",

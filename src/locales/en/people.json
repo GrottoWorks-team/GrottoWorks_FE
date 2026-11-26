@@ -82,6 +82,7 @@
   "features.parish.tabCommunities": "Communities",
   "features.parish.tabSeasons": "Christmas season",
   "features.parish.tabAreas": "Work areas",
+  "features.parish.tabMap": "Parish map",
   "features.parish.seasonsReadOnly": "Only the parish board creates and runs Christmas seasons. The system administrator can only follow along.",
   "features.parish.openMap": "Parish map",
   "features.parish.backToHub": "Back to parish & communities",

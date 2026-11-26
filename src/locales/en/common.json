@@ -722,6 +722,7 @@
   "features.map.title": "Parish map",
   "features.map.sub": "Assign work areas on the site plan; the site image is stored in Cloudflare R2",
   "features.map.upload": "Upload map",
+  "features.map.uploadHint": "the site plan is the background used to pin and review each work area",
   "features.map.replace": "Replace map",
   "features.map.noMap": "No parish site plan uploaded yet.",
   "features.map.fileHint": "Accepts {{types}} · up to {{size}}",

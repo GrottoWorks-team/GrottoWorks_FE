@@ -170,8 +170,9 @@ function LegacyParishAreasRedirect() {
   return <Navigate to="/parish/communities?tab=areas" replace />
 }
 
+// URL cũ `/parish/map` → tab "Sơ đồ giáo xứ" trong hub (26/11/2026: chỗ tải ảnh sơ đồ của ADMIN).
 function LegacyParishMapRedirect() {
-  return <Navigate to="/parish/communities?tab=areas" replace />
+  return <Navigate to="/parish/communities?tab=map" replace />
 }
 
 // URL cũ `/community/map` của ban hành giáo → danh sách khu vực (đã có chế độ xem sơ đồ).

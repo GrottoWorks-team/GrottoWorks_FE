@@ -232,6 +232,24 @@ export default function ParishMapPage({ embedded = false }: { embedded?: boolean
         }
       />}
 
+      {embedded && canUpload && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card border border-border bg-card p-3">
+          <span className="text-sm font-semibold text-foreground">{t('features.map.title')}</span>
+          <Button
+            variant={mapRecord ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="size-4" />
+            {mapRecord ? t('features.map.replace') : t('features.map.upload')}
+          </Button>
+          {mapRecord?.fileName ? (
+            <span className="text-xs text-muted-foreground">{mapRecord.fileName}</span>
+          ) : null}
+          <span className="ml-auto text-[11px] text-muted-foreground">{t('features.map.uploadHint')}</span>
+        </div>
+      )}
+
       {!canPin && mapRecord && (
         <p className="mb-4 rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
           {t('features.map.readOnlyHint')}
