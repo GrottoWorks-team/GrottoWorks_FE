@@ -25,7 +25,6 @@ import {
 interface ItemRow {
   materialId: string
   requestedQuantity: number
-  estimatedCost: number
   note: string
   shortageOverrideReason: string
 }
@@ -62,7 +61,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       return initialData.items.map((i) => ({
         materialId: i.materialId,
         requestedQuantity: i.requestedQuantity,
-        estimatedCost: i.estimatedCost ?? 0,
         note: i.note ?? '',
         shortageOverrideReason: i.shortageOverrideReason ?? '',
       }))
@@ -71,7 +69,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       {
         materialId: '',
         requestedQuantity: 1,
-        estimatedCost: 0,
         note: '',
         shortageOverrideReason: '',
       },
@@ -108,7 +105,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       {
         materialId: '',
         requestedQuantity: 1,
-        estimatedCost: 0,
         note: '',
         shortageOverrideReason: '',
       },
@@ -132,10 +128,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       return next
     })
   }
-
-  const totalEstimatedCost = useMemo(() => {
-    return items.reduce((sum, item) => sum + (Number(item.estimatedCost) || 0), 0)
-  }, [items])
 
   const isValid = useMemo(() => {
     if (!initialData && !workAreaId) return false
@@ -161,7 +153,6 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
     const payloadItems: PurchaseRequestItemInput[] = items.map((i) => ({
       materialId: i.materialId,
       requestedQuantity: Number(i.requestedQuantity),
-      estimatedCost: Number(i.estimatedCost) || null,
       note: i.note.trim() || null,
       shortageOverrideReason: null,
     }))
@@ -377,22 +368,7 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Chi phí ước tính */}
-                    <div>
-                      <Label className="text-xs">{t('features.purchases.estimatedCost')} (₫)</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="any"
-                        className="mt-1 h-9 text-xs"
-                        value={row.estimatedCost}
-                        onChange={(e) =>
-                          handleItemChange(index, { estimatedCost: Number(e.target.value) || 0 })
-                        }
-                      />
-                    </div>
-
+                  <div className="grid grid-cols-1 gap-3">
                     {/* Ghi chú */}
                     <div>
                       <Label className="text-xs">{t('features.purchases.note')}</Label>
@@ -420,12 +396,10 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
             })}
           </div>
 
-          <div className="flex items-center justify-between border-t border-border pt-2 text-sm font-semibold">
-            <span>{t('features.purchases.total')}:</span>
-            <span className="tabular text-primary">
-              {totalEstimatedCost.toLocaleString()} VND
-            </span>
-          </div>
+          {/* 26/11/2026: bỏ ước tính chi phí — Ban phụ trách là người đi mua, giá thực tế ghi khi nhập hoá đơn. */}
+          <p className="text-xs text-muted-foreground">
+            {t('features.purchases.noEstimateHint')}
+          </p>
         </div>
       </form>
     </Dialog>

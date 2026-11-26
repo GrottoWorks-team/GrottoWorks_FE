@@ -29,8 +29,8 @@ export function RecordPurchaseDialog({ request, onClose }: { request: PurchaseRe
     return Object.fromEntries(
       request.items.map((item) => {
         const quantity = item.requestedQuantity
-        const unitPrice = quantity > 0 && item.estimatedCost ? item.estimatedCost / quantity : 0
-        return [item.id, { quantity: String(quantity), unitPrice: String(Math.round(unitPrice)) }]
+        // 26/11/2026: yêu cầu bổ sung không còn ước tính chi phí → đơn giá do người mua nhập từ hoá đơn.
+        return [item.id, { quantity: String(quantity), unitPrice: '' }]
       }),
     ) as Record<string, LineState>
   }, [request.items])

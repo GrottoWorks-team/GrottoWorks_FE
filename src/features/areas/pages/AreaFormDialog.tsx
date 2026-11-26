@@ -27,8 +27,20 @@ import {
 } from '@/features/checklist/components/ReadinessItemsEditor'
 import { useMapPins, useParishMap, useSetMapPin } from '@/features/map/api'
 import { MapPinPicker } from '@/features/map/components/MapPinPicker'
+import {
+  useCreateMaterialRequirement,
+  useMaterialCatalog,
+  useUpdateMaterialRequirement,
+  useWorkAreaRequirements,
+} from '@/features/materials/api'
 import type { NormalizedPoint } from '@/features/designs/coords'
 import type { Season, WorkArea } from '@/types'
+
+/** Một dòng "ước lượng vật tư cần cho khu vực" (26/11/2026). */
+interface EstimateRow {
+  materialId: string
+  quantity: string
+}
 
 const AREA_TYPES = ['GROTTO', 'TREE', 'LIGHTING', 'YARD', 'STAGE'] as const
 const LEVELS = ['PARISH', 'COMMUNITY'] as const
@@ -114,6 +126,22 @@ export function AreaFormDialog({
   const update = useUpdateArea()
   const createReadiness = useCreateReadinessCheck()
   const editing = Boolean(area)
+
+  // ── Ước lượng vật tư cần cho khu vực (26/11/2026) ────────────────────────
+  // Nhập ngay khi tạo khu vực (và sửa được khi mùa còn PLANNING); là mẫu số của
+  // "thiếu hụt" cùng với vật tư khai trong task (BE lấy max của hai nguồn).
+  const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 200, status: 'ACTIVE' })
+  const catalog = catalogResult?.data ?? []
+  const { data: existingRequirements = [] } = useWorkAreaRequirements(area?.id)
+  const createRequirement = useCreateMaterialRequirement()
+  const updateRequirement = useUpdateMaterialRequirement()
+  const [estimateRows, setEstimateRows] = useState<EstimateRow[]>([])
+
+  useEffect(() => {
+    if (!area?.id) return
+    const active = existingRequirements.filter((r) => r.status === 'ACTIVE')
+    setEstimateRows(active.map((r) => ({ materialId: r.materialId, quantity: String(r.requiredQuantity) })))
+  }, [area?.id, existingRequirements])
 
   // Tiêu chí sẵn sàng do Ban hành giáo đặt NGAY khi tạo khu vực (§8.12): LEADER chỉ nộp
   // minh chứng và đánh dấu đạt, PARISH duyệt khu vực sau cùng.
@@ -237,6 +265,10 @@ export function AreaFormDialog({
   const level = watch('level')
   const currentSeasonId = watch('seasonId')
 
+  // Ước lượng vật tư chỉ sửa được khi mùa CHƯA kích hoạt (BE chặn ở trạng thái khác).
+  const estimateEditable =
+    seasons.find((s) => s.id === currentSeasonId)?.status === 'PLANNING' || !editing
+
   // Chỉ hiện trưởng khu/MO thuộc đúng giáo xứ của mùa đang chọn (BE trả
   // `PARISH_ACCESS_DENIED` nếu lệch). Giữ lại người đang gán khi SỬA để không
   // mất giá trị đã lưu nếu mùa đổi giáo xứ.
@@ -292,6 +324,66 @@ export function AreaFormDialog({
     throw lastError
   }
 
+  /**
+   * Ghi ước lượng vật tư của khu vực: dòng mới → POST, dòng đổi số lượng → PATCH,
+   * dòng bị xoá → PATCH `status = CANCELLED`. Chạy chung một lần bấm Lưu.
+   */
+  const saveEstimates = async (
+    workAreaId: string,
+    existing: typeof existingRequirements,
+    retryScope = false,
+  ) => {
+    const rows = estimateRows
+      .map((row) => ({ materialId: row.materialId, quantity: Number(row.quantity) }))
+      .filter((row) => row.materialId && Number.isFinite(row.quantity) && row.quantity > 0)
+    const current = existing.filter((r) => r.status === 'ACTIVE')
+
+    if (rows.length === 0 && current.length === 0) return
+
+    let lastError: unknown
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        for (const row of rows) {
+          const found = current.find((r) => r.materialId === row.materialId)
+          if (found) {
+            if (found.requiredQuantity !== row.quantity) {
+              await updateRequirement.mutateAsync({
+                requirementId: found.id,
+                workAreaId,
+                requiredQuantity: row.quantity,
+                version: found.version,
+              })
+            }
+          } else {
+            await createRequirement.mutateAsync({
+              workAreaId,
+              materialId: row.materialId,
+              requiredQuantity: row.quantity,
+            })
+          }
+        }
+        for (const gone of current) {
+          if (!rows.some((row) => row.materialId === gone.materialId)) {
+            await updateRequirement.mutateAsync({
+              requirementId: gone.id,
+              workAreaId,
+              status: 'CANCELLED',
+              version: gone.version,
+            })
+          }
+        }
+        return
+      } catch (error) {
+        lastError = error
+        // Khu vực vừa tạo: Resource còn đang đồng bộ scope (~1–2s) → thử lại.
+        const syncing = retryScope && error instanceof ApiError && error.code === 'WORK_AREA_NOT_FOUND'
+        if (!syncing) break
+        await new Promise((resolve) => setTimeout(resolve, 700))
+      }
+    }
+    throw lastError
+  }
+
   const onSubmit = async (data: FormData) => {
     // PARISH: update gửi null để mock PATCH xoá communityId cũ (shallow merge
     // giữ key); create bỏ key (undefined khỏi JSON).
@@ -337,6 +429,12 @@ export function AreaFormDialog({
             toast(t('features.map.pinSaveFailed'), 'alert')
           }
         }
+        // Ước lượng vật tư: sửa được khi mùa chưa kích hoạt.
+        try {
+          await saveEstimates(area.id, existingRequirements)
+        } catch {
+          toast(t('features.areas.estimateSaveFailed'), 'alert')
+        }
         toast(t('features.areas.updated', { name: data.name }))
       } else {
         const created = await create.mutateAsync({
@@ -374,6 +472,12 @@ export function AreaFormDialog({
             await createReadinessWithRetry(created.id, readinessName.trim(), criteria)
           } catch {
             toast(t('features.areas.readinessCreateFailed'), 'alert')
+          }
+          // Ước lượng vật tư cần cho khu vực (tạo cùng lần lưu).
+          try {
+            await saveEstimates(created.id, [], true)
+          } catch {
+            toast(t('features.areas.estimateSaveFailed'), 'alert')
           }
         }
         toast(t('features.areas.created', { name: data.name }))
@@ -558,6 +662,96 @@ export function AreaFormDialog({
           />
           {err(errors.description?.message)}
         </div>
+
+        {/* Ước lượng vật tư cần cho khu vực (26/11/2026) — nhập ngay khi tạo khu vực,
+            sửa được khi mùa còn PLANNING; khi clone mùa sẽ được sao chép sang khu mới. */}
+        {!editing || estimateEditable ? (
+          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {t('features.areas.estimateSection')}
+                </p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  {t('features.areas.estimateHint')}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEstimateRows((prev) => [...prev, { materialId: '', quantity: '1' }])}
+              >
+                {t('features.areas.estimateAdd')}
+              </Button>
+            </div>
+
+            {estimateRows.length === 0 ? (
+              <p className="text-xs text-muted-foreground">{t('features.areas.estimateEmpty')}</p>
+            ) : (
+              <div className="space-y-2">
+                {estimateRows.map((row, index) => (
+                  <div key={`${row.materialId}-${index}`} className="flex items-end gap-2">
+                    <div className="flex-1">
+                      <Label className="text-xs">{t('features.areas.estimateMaterial')}</Label>
+                      <select
+                        className={SELECT_CLS}
+                        value={row.materialId}
+                        onChange={(e) =>
+                          setEstimateRows((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, materialId: e.target.value } : item,
+                            ),
+                          )
+                        }
+                      >
+                        <option value="">{t('features.areas.estimateSelectMaterial')}</option>
+                        {catalog
+                          .filter(
+                            (m) =>
+                              m.id === row.materialId ||
+                              !estimateRows.some((item) => item.materialId === m.id),
+                          )
+                          .map((m) => (
+                            <option key={m.id} value={m.id}>
+                              [{m.code}] {m.name} ({m.unit})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    <div className="w-28">
+                      <Label className="text-xs">{t('features.areas.estimateQuantity')}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={row.quantity}
+                        onChange={(e) =>
+                          setEstimateRows((prev) =>
+                            prev.map((item, i) =>
+                              i === index ? { ...item, quantity: e.target.value } : item,
+                            ),
+                          )
+                        }
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="mb-0.5 text-destructive"
+                      onClick={() =>
+                        setEstimateRows((prev) => prev.filter((_, i) => i !== index))
+                      }
+                    >
+                      {t('common.delete')}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
 
         {/* Tiêu chí sẵn sàng — BẮT BUỘC khi tạo khu vực: Ban hành giáo đặt tiêu chí,
             LEADER nộp minh chứng rồi đánh dấu đạt, PARISH duyệt khu vực sau cùng. */}

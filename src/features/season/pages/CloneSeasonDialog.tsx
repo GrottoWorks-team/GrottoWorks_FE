@@ -9,10 +9,11 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
-import { ApiError } from '@/lib/api'
+import { ApiError, api } from '@/lib/api'
 import { useSeasons, useCloneSeason } from '../api'
 import { useSeasonAreas } from '@/features/areas/api'
 import { useMapPins, useSetMapPin } from '@/features/map/api'
+import { useCreateMaterialRequirement, type MaterialRequirementDto } from '@/features/materials/api'
 import type { Season } from '@/types'
 
 const SELECT_CLASS =
@@ -32,6 +33,9 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
   // 26/11/2026: vị trí ghim trên sơ đồ giáo xứ phải được clone theo khu vực.
   const { data: pins = {} } = useMapPins()
   const setPin = useSetMapPin()
+
+  // 26/11/2026: ước lượng vật tư của từng khu vực cũng phải được clone sang khu mới.
+  const createRequirement = useCreateMaterialRequirement()
 
   // Mặc định chọn mùa gần nhất (danh sách đã sort mới → cũ).
   const [sourceId, setSourceId] = useState(() => seasons[0]?.id ?? '')
@@ -82,6 +86,34 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
     selectedAreas.length > 0 &&
     !clone.isPending
 
+  /** Ước lượng vật tư hiện có (ACTIVE) của một khu vực nguồn. */
+  const fetchActiveRequirements = async (workAreaId: string): Promise<MaterialRequirementDto[]> => {
+    const res = await api<any>(
+      `/api/v1/work-areas/${workAreaId}/material-requirements?status=ACTIVE`,
+    )
+    return (Array.isArray(res) ? res : res?.data ?? []) as MaterialRequirementDto[]
+  }
+
+  /** Khu vực mới: Resource còn đang đồng bộ scope (~1–2s) → thử lại khi 404 WORK_AREA_NOT_FOUND. */
+  const copyRequirement = async (workAreaId: string, requirement: MaterialRequirementDto) => {
+    let lastError: unknown
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await createRequirement.mutateAsync({
+          workAreaId,
+          materialId: requirement.materialId,
+          requiredQuantity: requirement.requiredQuantity,
+        })
+        return
+      } catch (error) {
+        lastError = error
+        if (!(error instanceof ApiError && error.code === 'WORK_AREA_NOT_FOUND')) break
+        await new Promise((resolve) => setTimeout(resolve, 700))
+      }
+    }
+    throw lastError
+  }
+
   const onSubmit = async () => {
     if (!source) return
     try {
@@ -117,6 +149,24 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
         }
       } catch {
         toast(t('features.season.clonePinsFailed'), 'alert')
+      }
+      // Sao chép ước lượng vật tư: BE giữ đúng thứ tự khu vực nguồn đã chọn.
+      try {
+        let copied = 0
+        for (let index = 0; index < result.areas.length; index += 1) {
+          const sourceAreaId = sourceIds[index]
+          if (!sourceAreaId) continue
+          const requirements = await fetchActiveRequirements(sourceAreaId)
+          for (const requirement of requirements) {
+            await copyRequirement(result.areas[index].id, requirement)
+            copied += 1
+          }
+        }
+        if (copied > 0) {
+          toast(t('features.season.cloneRequirementsCopied', { count: copied }))
+        }
+      } catch {
+        toast(t('features.season.cloneRequirementsFailed'), 'alert')
       }
       if (result.warnings.length > 0) {
         // Phân công không còn hợp lệ (nghỉ / đổi role / khác giáo xứ) → báo để trưởng khu gán lại.
