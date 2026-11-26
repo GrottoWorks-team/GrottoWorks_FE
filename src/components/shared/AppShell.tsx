@@ -133,7 +133,7 @@ export function AppShell({ role }: { role?: Role }) {
             </div>
           )}
         </div>
-        <nav className={cn('flex-1 space-y-5 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
+        <nav className={cn('flex-1 space-y-5 py-4', collapsed ? 'px-2' : 'px-3')}>
           {groups.map((g) => (
             <div key={g.section || 'main'}>
               {g.section && !collapsed && (
