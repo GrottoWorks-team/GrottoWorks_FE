@@ -181,6 +181,8 @@ export default function CommitteeApprovalPage() {
   const { data: requests = [], isPending } = usePurchaseRequests()
   // Trang dùng chung cho nhiều role → link chi tiết phải theo prefix của role hiện tại.
   const basePath = `/${rolePrefix(user?.role ?? 'LEADER')}/purchases`
+  // BE chỉ cho role PARISH (web COMMUNITY) duyệt/từ chối purchase request.
+  const canDecide = user?.role === 'COMMUNITY'
 
   const [rejecting, setRejecting] = useState<PurchaseRequestDto | null>(null)
   const [approving, setApproving] = useState<PurchaseRequestDto | null>(null)
@@ -259,7 +261,7 @@ export default function CommitteeApprovalPage() {
               <Eye className="size-3.5" />
               <span className="hidden sm:inline">{t('features.purchases.viewDetailAction')}</span>
             </ButtonLink>
-            {r.status === 'PENDING_APPROVAL' && (
+            {r.status === 'PENDING_APPROVAL' && canDecide && (
               <>
                 <Button
                   size="sm"
@@ -285,7 +287,7 @@ export default function CommitteeApprovalPage() {
         ),
       },
     ],
-    [t, basePath],
+    [t, basePath, canDecide],
   )
 
   return (

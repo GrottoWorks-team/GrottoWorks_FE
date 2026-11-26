@@ -1,0 +1,1486 @@
+{
+ "url": "http://localhost:4173/login",
+ "at": "2026-11-24T17:03:50.622Z",
+ "allow": [
+  "gradient",
+  "gradient-text",
+  "heavy-shadow",
+  "tiny-text",
+  "headline-lines",
+  "micro-label",
+  "mixed-font-headline",
+  "font-count",
+  "app-title-size"
+ ],
+ "viewports": [
+  {
+   "width": 1440,
+   "height": 900,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.48,
+    0.46
+   ],
+   "motion": {
+    "elements": 78,
+    "css": 78,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "page": {
+     "height": 1040,
+     "screens": 1.2,
+     "words": 173,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 18,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 2,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "Login_background@2x.webp",
+      "Logo_GrottoWorks.png"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "chars": 58,
+     "lines": 4,
+     "size": 48,
+     "vw": 3.3,
+     "font": "ui-serif",
+     "weight": 800,
+     "tracking": -0.02,
+     "leading": 1,
+     "top": 361,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "lines": 4,
+     "size": 48,
+     "font": "Be Vietnam Pro"
+    },
+    "headings": [
+     {
+      "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+      "words": 12,
+      "chars": 58,
+      "lines": 4,
+      "size": 48,
+      "vw": 3.3,
+      "font": "Be Vietnam Pro",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "left",
+      "widthRatio": 0.4,
+      "top": 361,
+      "mixedFonts": [
+       "Be Vietnam Pro",
+       "ui-serif"
+      ],
+      "gradientText": true,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 4,
+     "over2Lines": 1,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 1
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Be Vietnam Pro",
+       "share": 0.82,
+       "mono": false
+      },
+      {
+       "family": "IBM Plex Mono",
+       "share": 0.15,
+       "mono": true
+      },
+      {
+       "family": "ui-serif",
+       "share": 0.03,
+       "mono": false
+      }
+     ],
+     "familyCount": 3,
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      24,
+      48
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Be Vietnam Pro",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 1.1
+     },
+     "measureChars": 72,
+     "max": {
+      "size": 48,
+      "vw": 3.3,
+      "font": "Be Vietnam Pro",
+      "text": "Cùng Nhau Dựng Xây Đón Mừng Chúa Giáng S"
+     },
+     "monoShare": 0.15,
+     "monoProseShare": 0.15,
+     "monoFamilies": [
+      "IBM Plex Mono"
+     ],
+     "monoSamples": [
+      "Parish Grotto Coordination",
+      "12+",
+      "250+",
+      "100%",
+      "Lk 2, 14",
+      "Tài khoản demo — mật khẩu: GxThanhTam@20"
+     ],
+     "microLabels": 1,
+     "microLabelShare": 0.051,
+     "microSamples": [
+      "Tài khoản demo — mật khẩu: GxThanhTam@20"
+     ],
+     "upperShare": 0.1,
+     "centerShare": 0.18,
+     "smallText": 19
+    },
+    "eyebrows": [
+     {
+      "text": "Tinh Thần Hiệp Hành & Phụng Sự Giáo Xứ",
+      "above": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừ",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": true,
+      "size": 12,
+      "top": 324
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9fafb",
+     "bodyBgHsl": {
+      "h": 210,
+      "s": 0.2,
+      "l": 0.98
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9fafb",
+       "top": 0,
+       "hsl": {
+        "h": 210,
+        "s": 0.2,
+        "l": 0.98
+       }
+      },
+      {
+       "color": "#e8f5e9",
+       "top": 0,
+       "hsl": {
+        "h": 125,
+        "s": 0.39,
+        "l": 0.94
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 48,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#d2f9e6",
+       "share": 0.17
+      },
+      {
+       "color": "#64748b",
+       "share": 0.17
+      },
+      {
+       "color": "#475569",
+       "share": 0.09
+      },
+      {
+       "color": "#a8f2cf",
+       "share": 0.09
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.07
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#2c2e44"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 6,
+     "radius": 12,
+     "height": 55,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Đăng Nhập",
+      "Quản trị hoa.nguyen",
+      "Ban hành giáo bao.tran",
+      "Trưởng khu ngan.nguyen",
+      "Trưởng ban hành giáo anh.pham"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.w-full.max-w-md → rgba(10, 92, 54, 0.16) 0px 25px 50px -12px, rgba(255, 255, 255, 0.4) 0px 0px 0px"
+     ],
+     "gradients": 1,
+     "scrims": 1,
+     "gradientSamples": [
+      "div.absolute.inset-0 → linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0), rgba(10, 92, 54, 0.15))"
+     ],
+     "gradientText": 1,
+     "hairlines": 2,
+     "hairlineSamples": [
+      "div.relative.z-10 728px",
+      "div.mt-6.pt-4 382px"
+     ],
+     "outlinedBoxes": 4,
+     "dashed": 0,
+     "blurred": 5,
+     "roundedBoxes": 5,
+     "boxRadius": 16,
+     "squareMedia": 2,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 1
+     }
+    ],
+    "nav": null,
+    "fontsLoaded": [
+     "be vietnam pro",
+     "ibm plex mono"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "pageH": 1040,
+    "margins": {
+     "left": 56,
+     "right": 109
+    },
+    "sections": [],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+      "size": 48,
+      "top": 361,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 56,
+      "n": 4
+     }
+    ],
+    "leftBlocks": 4,
+    "bodySize": 16,
+    "stage": true,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 1440,
+     "h": 900
+    },
+    "dark": false,
+    "ground": "#f9fafb",
+    "sidebar": null,
+    "topbar": null,
+    "canvas": {
+     "left": 56,
+     "right": 109
+    },
+    "hero": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "chars": 58,
+     "lines": 4,
+     "size": 48,
+     "vw": 3.3,
+     "font": "ui-serif",
+     "weight": 800,
+     "tracking": -0.02,
+     "leading": 1,
+     "top": 361,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 4,
+     "firstScreen": 4,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 4,
+     "radii": [
+      [
+       16,
+       3
+      ],
+      [
+       24,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 1,
+     "softShadows": 0,
+     "shadowSamples": [
+      "rgba(10, 92, 54, 0.16) 0px 25px 50px -12px"
+     ],
+     "glass": 4
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 1,
+     "tabularShare": 0,
+     "kpiMax": 24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.71,
+     "tiny": 7,
+     "tinySamples": [
+      "Parish Grotto Coordinati 10px",
+      "Tài khoản demo — mật khẩ 10px",
+      "Bấm để tự điền 10px",
+      "hoa.nguyen 10px"
+     ],
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      24,
+      48
+     ]
+    },
+    "title": {
+     "text": "Cùng Nhau Dựng Xây\nHang Đá Bê-lem\nĐón Mừng Chúa Giáng Sinh",
+     "size": 48,
+     "top": 361
+    },
+    "colourShare": 0.022
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 768,
+   "height": 1024,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.49,
+    0.54
+   ],
+   "motion": {
+    "elements": 78,
+    "css": 78,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "page": {
+     "height": 1570,
+     "screens": 1.5,
+     "words": 173,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 18,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 2,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "Login_background@2x.webp",
+      "Logo_GrottoWorks.png"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "chars": 58,
+     "lines": 3,
+     "size": 36,
+     "vw": 4.7,
+     "font": "ui-serif",
+     "weight": 800,
+     "tracking": -0.02,
+     "leading": 1.11,
+     "top": 158,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "lines": 3,
+     "size": 36,
+     "font": "Be Vietnam Pro"
+    },
+    "headings": [
+     {
+      "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+      "words": 12,
+      "chars": 58,
+      "lines": 3,
+      "size": 36,
+      "vw": 4.7,
+      "font": "Be Vietnam Pro",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.11,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.75,
+      "top": 158,
+      "mixedFonts": [
+       "Be Vietnam Pro",
+       "ui-serif"
+      ],
+      "gradientText": true,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 3,
+     "over2Lines": 1,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 1
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Be Vietnam Pro",
+       "share": 0.82,
+       "mono": false
+      },
+      {
+       "family": "IBM Plex Mono",
+       "share": 0.15,
+       "mono": true
+      },
+      {
+       "family": "ui-serif",
+       "share": 0.03,
+       "mono": false
+      }
+     ],
+     "familyCount": 3,
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      24,
+      36
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Be Vietnam Pro",
+      "size": 16,
+      "leading": 1.5,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 1.1
+     },
+     "measureChars": 72,
+     "max": {
+      "size": 36,
+      "vw": 4.7,
+      "font": "Be Vietnam Pro",
+      "text": "Cùng Nhau Dựng Xây Đón Mừng Chúa Giáng S"
+     },
+     "monoShare": 0.15,
+     "monoProseShare": 0.15,
+     "monoFamilies": [
+      "IBM Plex Mono"
+     ],
+     "monoSamples": [
+      "Parish Grotto Coordination",
+      "12+",
+      "250+",
+      "100%",
+      "Lk 2, 14",
+      "Tài khoản demo — mật khẩu: GxThanhTam@20"
+     ],
+     "microLabels": 1,
+     "microLabelShare": 0.051,
+     "microSamples": [
+      "Tài khoản demo — mật khẩu: GxThanhTam@20"
+     ],
+     "upperShare": 0.1,
+     "centerShare": 0.18,
+     "smallText": 19
+    },
+    "eyebrows": [
+     {
+      "text": "Tinh Thần Hiệp Hành & Phụng Sự Giáo Xứ",
+      "above": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừ",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": true,
+      "size": 12,
+      "top": 121
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9fafb",
+     "bodyBgHsl": {
+      "h": 210,
+      "s": 0.2,
+      "l": 0.98
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9fafb",
+       "top": 0,
+       "hsl": {
+        "h": 210,
+        "s": 0.2,
+        "l": 0.98
+       }
+      },
+      {
+       "color": "#e8f5e9",
+       "top": 0,
+       "hsl": {
+        "h": 125,
+        "s": 0.39,
+        "l": 0.94
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 594,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#d2f9e6",
+       "share": 0.17
+      },
+      {
+       "color": "#64748b",
+       "share": 0.17
+      },
+      {
+       "color": "#475569",
+       "share": 0.09
+      },
+      {
+       "color": "#a8f2cf",
+       "share": 0.09
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.07
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#2c2e44"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 1,
+     "radius": 12,
+     "height": 55,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": [
+      "Đăng Nhập"
+     ]
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.w-full.max-w-md → rgba(10, 92, 54, 0.16) 0px 25px 50px -12px, rgba(255, 255, 255, 0.4) 0px 0px 0px"
+     ],
+     "gradients": 1,
+     "scrims": 1,
+     "gradientSamples": [
+      "div.absolute.inset-0 → linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0), rgba(10, 92, 54, 0.15))"
+     ],
+     "gradientText": 1,
+     "hairlines": 2,
+     "hairlineSamples": [
+      "div.relative.z-10 688px",
+      "div.mt-6.pt-4 382px"
+     ],
+     "outlinedBoxes": 4,
+     "dashed": 0,
+     "blurred": 5,
+     "roundedBoxes": 5,
+     "boxRadius": 16,
+     "squareMedia": 2,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 1
+     }
+    ],
+    "nav": null,
+    "fontsLoaded": [
+     "be vietnam pro",
+     "ibm plex mono"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "pageH": 1570,
+    "margins": {
+     "left": 40,
+     "right": 55
+    },
+    "sections": [
+     {
+      "sel": "div.relative.z-10",
+      "tag": "div",
+      "top": 0,
+      "height": 562,
+      "words": 90,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Cùng Nhau Dựng Xây",
+       "size": 36,
+       "tag": "h1"
+      },
+      "left": 40,
+      "right": 40,
+      "textLeft": 40,
+      "textRight": 40,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.relative.z-20",
+      "tag": "div",
+      "top": 562,
+      "height": 1008,
+      "words": 81,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": 193,
+      "right": 193,
+      "textLeft": 193,
+      "textRight": 193,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+      "size": 36,
+      "top": 158,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 40,
+      "n": 4
+     }
+    ],
+    "leftBlocks": 4,
+    "bodySize": 16,
+    "stage": true,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 768,
+     "h": 1024
+    },
+    "dark": false,
+    "ground": "#f9fafb",
+    "sidebar": null,
+    "topbar": null,
+    "canvas": {
+     "left": 40,
+     "right": 55
+    },
+    "hero": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "chars": 58,
+     "lines": 3,
+     "size": 36,
+     "vw": 4.7,
+     "font": "ui-serif",
+     "weight": 800,
+     "tracking": -0.02,
+     "leading": 1.11,
+     "top": 158,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 4,
+     "firstScreen": 4,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 4,
+     "radii": [
+      [
+       16,
+       3
+      ],
+      [
+       24,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 1,
+     "softShadows": 0,
+     "shadowSamples": [
+      "rgba(10, 92, 54, 0.16) 0px 25px 50px -12px"
+     ],
+     "glass": 4
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 1,
+     "tabularShare": 0,
+     "kpiMax": 24
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.71,
+     "tiny": 7,
+     "tinySamples": [
+      "Parish Grotto Coordinati 10px",
+      "Tài khoản demo — mật khẩ 10px",
+      "Bấm để tự điền 10px",
+      "hoa.nguyen 10px"
+     ],
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      24,
+      36
+     ]
+    },
+    "title": {
+     "text": "Cùng Nhau Dựng Xây\nHang Đá Bê-lem\nĐón Mừng Chúa Giáng Sinh",
+     "size": 36,
+     "top": 158
+    },
+    "colourShare": 0.02
+   },
+   "consoleErrors": []
+  },
+  {
+   "width": 390,
+   "height": 844,
+   "load": "load",
+   "screens": 2,
+   "filled": [
+    0.57,
+    0.92
+   ],
+   "motion": {
+    "elements": 78,
+    "css": 78,
+    "transitions": 0,
+    "scripted": 0,
+    "videos": 0,
+    "playingVideos": 0
+   },
+   "metrics": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "page": {
+     "height": 1642,
+     "screens": 1.9,
+     "words": 173,
+     "img": 2,
+     "video": 0,
+     "canvas": 0,
+     "svg": 18,
+     "sections": 0,
+     "horizontalOverflow": 0,
+     "overflowCulprits": [],
+     "uiFragments": 0,
+     "uiAbuse": false,
+     "realPictures": 2,
+     "videoCount": 0,
+     "uiPictures": 0,
+     "pictureSamples": [
+      "Login_background@2x.webp",
+      "Logo_GrottoWorks.png"
+     ],
+     "blendText": 0,
+     "sideScrollers": 0,
+     "brokenImages": [],
+     "emoji": [],
+     "videosNoPoster": 0
+    },
+    "hero": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "chars": 58,
+     "lines": 4,
+     "size": 30,
+     "vw": 7.7,
+     "font": "ui-serif",
+     "weight": 800,
+     "tracking": -0.02,
+     "leading": 1.25,
+     "top": 160,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "h1": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "lines": 4,
+     "size": 30,
+     "font": "Be Vietnam Pro"
+    },
+    "headings": [
+     {
+      "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+      "words": 12,
+      "chars": 58,
+      "lines": 4,
+      "size": 30,
+      "vw": 7.7,
+      "font": "Be Vietnam Pro",
+      "weight": 800,
+      "tracking": -0.025,
+      "leading": 1.25,
+      "upper": false,
+      "italic": false,
+      "mono": false,
+      "align": "left",
+      "position": "center",
+      "widthRatio": 0.88,
+      "top": 160,
+      "mixedFonts": [
+       "Be Vietnam Pro",
+       "ui-serif"
+      ],
+      "gradientText": true,
+      "tag": "h1",
+      "kind": "heading"
+     }
+    ],
+    "headingSummary": {
+     "count": 1,
+     "maxLines": 4,
+     "over2Lines": 1,
+     "statements": 0,
+     "centered": 0,
+     "medianWords": null,
+     "mixedFontHeadings": 1
+    },
+    "type": {
+     "families": [
+      {
+       "family": "Be Vietnam Pro",
+       "share": 0.82,
+       "mono": false
+      },
+      {
+       "family": "IBM Plex Mono",
+       "share": 0.15,
+       "mono": true
+      },
+      {
+       "family": "ui-serif",
+       "share": 0.03,
+       "mono": false
+      }
+     ],
+     "familyCount": 3,
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18,
+      30
+     ],
+     "sizeCount": 7,
+     "notLoaded": [],
+     "body": {
+      "font": "Be Vietnam Pro",
+      "size": 14,
+      "leading": 1.63,
+      "weight": 400,
+      "tracking": 0,
+      "contrast": 1.1
+     },
+     "measureChars": 49,
+     "max": {
+      "size": 30,
+      "vw": 7.7,
+      "font": "Be Vietnam Pro",
+      "text": "Cùng Nhau Dựng Xây Đón Mừng Chúa Giáng S"
+     },
+     "monoShare": 0.15,
+     "monoProseShare": 0.15,
+     "monoFamilies": [
+      "IBM Plex Mono"
+     ],
+     "monoSamples": [
+      "Parish Grotto Coordination",
+      "12+",
+      "250+",
+      "100%",
+      "Lk 2, 14",
+      "Tài khoản demo — mật khẩu: GxThanhTam@20"
+     ],
+     "microLabels": 1,
+     "microLabelShare": 0.051,
+     "microSamples": [
+      "Tài khoản demo — mật khẩu: GxThanhTam@20"
+     ],
+     "upperShare": 0.1,
+     "centerShare": 0.18,
+     "smallText": 19
+    },
+    "eyebrows": [
+     {
+      "text": "Tinh Thần Hiệp Hành & Phụng Sự Giáo Xứ",
+      "above": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừ",
+      "upper": false,
+      "tracked": false,
+      "mono": false,
+      "pill": true,
+      "size": 12,
+      "top": 123
+     }
+    ],
+    "numbered": [],
+    "color": {
+     "bodyBg": "#f9fafb",
+     "bodyBgHsl": {
+      "h": 210,
+      "s": 0.2,
+      "l": 0.98
+     },
+     "dark": false,
+     "sectionBgs": [
+      {
+       "color": "#f9fafb",
+       "top": 0,
+       "hsl": {
+        "h": 210,
+        "s": 0.2,
+        "l": 0.98
+       }
+      },
+      {
+       "color": "#e8f5e9",
+       "top": 0,
+       "hsl": {
+        "h": 125,
+        "s": 0.39,
+        "l": 0.94
+       }
+      },
+      {
+       "color": "#ffffff",
+       "top": 666,
+       "hsl": {
+        "h": 0,
+        "s": 0,
+        "l": 1
+       }
+      }
+     ],
+     "textColors": [
+      {
+       "color": "#d2f9e6",
+       "share": 0.17
+      },
+      {
+       "color": "#64748b",
+       "share": 0.17
+      },
+      {
+       "color": "#475569",
+       "share": 0.09
+      },
+      {
+       "color": "#a8f2cf",
+       "share": 0.09
+      },
+      {
+       "color": "#ffffff",
+       "share": 0.07
+      }
+     ],
+     "button": {
+      "bg": "#ffffff",
+      "hsl": {
+       "h": 0,
+       "s": 0,
+       "l": 1
+      },
+      "fg": "#2c2e44"
+     },
+     "lowContrast": []
+    },
+    "buttons": {
+     "count": 6,
+     "inHero": 0,
+     "radius": 12,
+     "height": 55,
+     "withShadow": 0,
+     "withGradient": 0,
+     "mono": 0,
+     "upper": 0,
+     "heroLabels": []
+    },
+    "surfaces": {
+     "shadowStatic": 1,
+     "shadowOverlay": 0,
+     "shadowSamples": [
+      "div.w-full.max-w-md → rgba(10, 92, 54, 0.16) 0px 25px 50px -12px, rgba(255, 255, 255, 0.4) 0px 0px 0px"
+     ],
+     "gradients": 1,
+     "scrims": 1,
+     "gradientSamples": [
+      "div.absolute.inset-0 → linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0), rgba(10, 92, 54, 0.15))"
+     ],
+     "gradientText": 1,
+     "hairlines": 2,
+     "hairlineSamples": [
+      "div.relative.z-10 342px",
+      "div.mt-6.pt-4 308px"
+     ],
+     "outlinedBoxes": 1,
+     "dashed": 0,
+     "blurred": 5,
+     "roundedBoxes": 2,
+     "boxRadius": 99,
+     "squareMedia": 2,
+     "roundedMedia": 0,
+     "mediaRadius": 0,
+     "textShadow": 0,
+     "cardRows": []
+    },
+    "heroMedia": [
+     {
+      "type": "img",
+      "ratio": 1
+     },
+     {
+      "type": "img",
+      "ratio": 0.11
+     }
+    ],
+    "nav": null,
+    "fontsLoaded": [
+     "be vietnam pro",
+     "ibm plex mono"
+    ]
+   },
+   "layout": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "pageH": 1642,
+    "margins": {
+     "left": 24,
+     "right": 41
+    },
+    "sections": [
+     {
+      "sel": "div.relative.z-10",
+      "tag": "div",
+      "top": 0,
+      "height": 650,
+      "words": 90,
+      "media": 0,
+      "middle": 0,
+      "heading": {
+       "text": "Cùng Nhau Dựng Xây",
+       "size": 30,
+       "tag": "h1"
+      },
+      "left": 24,
+      "right": 44,
+      "textLeft": 24,
+      "textRight": 44,
+      "fullBleed": false,
+      "footer": false,
+      "hero": true,
+      "continues": false,
+      "pinned": false
+     },
+     {
+      "sel": "div.relative.z-20",
+      "tag": "div",
+      "top": 650,
+      "height": 992,
+      "words": 81,
+      "media": 1,
+      "middle": 0,
+      "heading": null,
+      "left": 41,
+      "right": 41,
+      "textLeft": 41,
+      "textRight": 41,
+      "fullBleed": false,
+      "footer": true,
+      "hero": false,
+      "continues": false,
+      "pinned": false
+     }
+    ],
+    "gaps": [],
+    "h1s": [
+     {
+      "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+      "size": 30,
+      "top": 160,
+      "firstScreen": true
+     }
+    ],
+    "edgeText": [],
+    "edges": [
+     {
+      "x": 24,
+      "n": 4
+     }
+    ],
+    "leftBlocks": 4,
+    "bodySize": 14,
+    "stage": true,
+    "explains": false,
+    "slivers": [],
+    "voidShare": 0,
+    "voidBox": null
+   },
+   "app": {
+    "viewport": {
+     "w": 390,
+     "h": 844
+    },
+    "dark": false,
+    "ground": "#f9fafb",
+    "sidebar": null,
+    "topbar": null,
+    "canvas": {
+     "left": 24,
+     "right": 41
+    },
+    "hero": {
+     "text": "Cùng Nhau Dựng Xây Hang Đá Bê-lem Đón Mừng Chúa Giáng Sinh",
+     "words": 12,
+     "chars": 58,
+     "lines": 4,
+     "size": 30,
+     "vw": 7.7,
+     "font": "ui-serif",
+     "weight": 800,
+     "tracking": -0.02,
+     "leading": 1.25,
+     "top": 160,
+     "tag": "h1",
+     "kind": "heading",
+     "align": "left",
+     "position": "left"
+    },
+    "charts": 0,
+    "layout": {
+     "panels": 2,
+     "firstScreen": 2,
+     "ragged": [],
+     "voids": []
+    },
+    "tiles": 0,
+    "panels": {
+     "count": 2,
+     "radii": [
+      [
+       0,
+       1
+      ],
+      [
+       24,
+       1
+      ]
+     ],
+     "heavyBorders": 0,
+     "borderSamples": [],
+     "heavyShadows": 1,
+     "softShadows": 0,
+     "shadowSamples": [
+      "rgba(10, 92, 54, 0.16) 0px 25px 50px -12px"
+     ],
+     "glass": 1
+    },
+    "chips": {
+     "count": 0,
+     "hues": 0,
+     "samples": []
+    },
+    "numbers": {
+     "cells": 0,
+     "leftAligned": 0,
+     "figures": 1,
+     "tabularShare": 0,
+     "kpiMax": 18
+    },
+    "rows": null,
+    "chartHues": 0,
+    "placeholders": [],
+    "type": {
+     "under13": 0.71,
+     "tiny": 7,
+     "tinySamples": [
+      "Parish Grotto Coordinati 10px",
+      "Tài khoản demo — mật khẩ 10px",
+      "Bấm để tự điền 10px",
+      "hoa.nguyen 10px"
+     ],
+     "sizes": [
+      10,
+      11,
+      12,
+      14,
+      16,
+      18,
+      30
+     ]
+    },
+    "title": {
+     "text": "Cùng Nhau Dựng Xây\nHang Đá Bê-lem\nĐón Mừng Chúa Giáng Sinh",
+     "size": 30,
+     "top": 160
+    },
+    "colourShare": 0.038
+   },
+   "consoleErrors": []
+  }
+ ],
+ "findings": [],
+ "images": [
+  {
+   "viewport": "desktop",
+   "width": 1440,
+   "fold": "E:\\FA26\\SAP490\\GrottoWorks_FE\\docs\\gate\\after\\desktop-fold.jpg",
+   "pages": [
+    "E:\\FA26\\SAP490\\GrottoWorks_FE\\docs\\gate\\after\\desktop-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "tablet",
+   "width": 768,
+   "fold": "E:\\FA26\\SAP490\\GrottoWorks_FE\\docs\\gate\\after\\tablet-fold.jpg",
+   "pages": [
+    "E:\\FA26\\SAP490\\GrottoWorks_FE\\docs\\gate\\after\\tablet-page-01.jpg"
+   ],
+   "film": []
+  },
+  {
+   "viewport": "mobile",
+   "width": 390,
+   "fold": "E:\\FA26\\SAP490\\GrottoWorks_FE\\docs\\gate\\after\\mobile-fold.jpg",
+   "pages": [
+    "E:\\FA26\\SAP490\\GrottoWorks_FE\\docs\\gate\\after\\mobile-page-01.jpg"
+   ],
+   "film": []
+  }
+ ]
+}

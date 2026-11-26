@@ -2,14 +2,17 @@
 // Chọn khu vực công tác, nhập lý do chung, thêm các dòng vật tư từ catalog.
 // Tự động kiểm tra số lượng thiếu hụt (Shortages API).
 // Nếu quantity > shortage, bắt buộc nhập shortageOverrideReason (BA 8.6).
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { InlineAlert } from '@/components/ui/inline-alert'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { fieldError, fieldErrorsOf, type FieldErrors } from '@/lib/apiFieldErrors'
 import { useAreas } from '@/features/areas/api'
 import { useMaterialCatalog, useWorkAreaShortages, type MaterialCatalogItemDto } from '@/features/materials/api'
 import {
@@ -77,7 +80,28 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
   const create = useCreatePurchaseRequest()
   const update = useUpdatePurchaseRequest()
 
+  // Lỗi theo trường của BE (422) + cảnh báo rời trang khi còn thay đổi chưa lưu.
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [dirty, setDirty] = useState(false)
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+
+  useEffect(() => {
+    if (!dirty) return
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [dirty])
+
+  const requestClose = () => {
+    if (dirty) setConfirmDiscard(true)
+    else onClose()
+  }
+
   const handleAddItem = () => {
+    setDirty(true)
     setItems((prev) => [
       ...prev,
       {
@@ -91,10 +115,12 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
   }
 
   const handleRemoveItem = (index: number) => {
+    setDirty(true)
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
 
   const handleItemChange = (index: number, patch: Partial<ItemRow>) => {
+    setDirty(true)
     setItems((prev) => {
       const next = [...prev]
       const current = { ...next[index], ...patch }
@@ -132,6 +158,7 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isValid) return
+    setFieldErrors({})
 
     const payloadItems: PurchaseRequestItemInput[] = items.map((i) => ({
       materialId: i.materialId,
@@ -162,23 +189,30 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
         })
         toast(t('features.purchases.created'))
       }
+      setDirty(false)
       onClose()
-    } catch {
-      toast(t('common.error'), 'alert')
+    } catch (error) {
+      // 422: hiện lỗi đúng trường, GIỮ nguyên nội dung đã nhập.
+      const errors = fieldErrorsOf(error)
+      setFieldErrors(errors)
+      if (Object.keys(errors).length === 0) {
+        toast(error instanceof Error ? error.message : t('common.error'), 'alert')
+      }
     }
   }
 
   const isSubmitting = create.isPending || update.isPending
 
   return (
+    <>
     <Dialog
       open
-      onClose={onClose}
+      onClose={requestClose}
       size="lg"
       title={initialData ? t('features.purchases.editTitle') : t('features.purchases.createTitle')}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={requestClose}>
             {t('common.cancel')}
           </Button>
           <Button
@@ -192,6 +226,15 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       }
     >
       <form id="purchase-request-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
+        {Object.keys(fieldErrors).length > 0 && (
+          <InlineAlert tone="alert" title={t('common.serverFieldErrors')}>
+            <ul className="list-disc space-y-0.5 pl-4">
+              {[...new Set(Object.values(fieldErrors))].map((message, index) => (
+                <li key={index}>{message}</li>
+              ))}
+            </ul>
+          </InlineAlert>
+        )}
         {/* Chọn khu vực (chỉ khi tạo mới) */}
         {!initialData && (
           <div>
@@ -200,7 +243,10 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
               id="purchase-area"
               className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
               value={workAreaId}
-              onChange={(e) => setWorkAreaId(e.target.value)}
+              onChange={(e) => {
+                setDirty(true)
+                setWorkAreaId(e.target.value)
+              }}
               required
             >
               <option value="">{t('features.purchases.selectArea')}</option>
@@ -210,6 +256,9 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                 </option>
               ))}
             </select>
+            {fieldError(fieldErrors, 'workAreaId') ? (
+              <p className="mt-1 text-xs text-destructive">{fieldError(fieldErrors, 'workAreaId')}</p>
+            ) : null}
           </div>
         )}
 
@@ -223,8 +272,14 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
             placeholder={t('features.purchases.reasonLabel')}
             maxLength={2000}
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => {
+              setDirty(true)
+              setReason(e.target.value)
+            }}
           />
+          {fieldError(fieldErrors, 'reason') ? (
+            <p className="mt-1 text-xs text-destructive">{fieldError(fieldErrors, 'reason')}</p>
+          ) : null}
         </div>
 
         {/* Danh sách vật tư */}
@@ -306,6 +361,19 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                         }
                         required
                       />
+                      {fieldError(
+                        fieldErrors,
+                        `items[${index}].requestedQuantity`,
+                        `items[${index}].quantity`,
+                      ) ? (
+                        <p className="mt-1 text-[11px] text-destructive">
+                          {fieldError(
+                            fieldErrors,
+                            `items[${index}].requestedQuantity`,
+                            `items[${index}].quantity`,
+                          )}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
@@ -372,5 +440,19 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
         </div>
       </form>
     </Dialog>
+    {confirmDiscard && (
+      <ConfirmDialog
+        open
+        title={t('common.unsavedTitle')}
+        description={t('common.unsavedWarning')}
+        confirmLabel={t('common.leave')}
+        onConfirm={() => {
+          setConfirmDiscard(false)
+          onClose()
+        }}
+        onClose={() => setConfirmDiscard(false)}
+      />
+    )}
+    </>
   )
 }

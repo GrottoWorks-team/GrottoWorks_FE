@@ -2,10 +2,7 @@
 // theo role. Dữ liệu là `NotificationDto` thật của NotificationAudit.
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import {
-  Bell, Calendar, ClipboardList, Clock, Gift, LifeBuoy, ListChecks, MapPin, ShoppingCart,
-} from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
+import { DOMAIN_ICON, domainOfEventType } from '@/components/shared/statusMeta'
 import { cn } from '@/lib/utils'
 import { relTime } from '@/lib/format'
 import { rolePrefix } from '@/lib/roles'
@@ -13,24 +10,6 @@ import { NAV } from '@/components/shared/nav-config'
 import { useAuth } from '@/lib/auth'
 import type { Role } from '@/types'
 import type { NotificationDto } from './api'
-
-const ICON_BY_PREFIX: Array<[string, LucideIcon]> = [
-  ['task.', ClipboardList],
-  ['purchase.', ShoppingCart],
-  ['resource.', ShoppingCart],
-  ['attendance.', Clock],
-  ['planning.season.', Calendar],
-  ['planning.work-area.', MapPin],
-  ['readiness.', ListChecks],
-  ['support.', LifeBuoy],
-  ['contribution.', Gift],
-  ['recognition.', Gift],
-]
-
-function iconFor(eventType: string): LucideIcon {
-  const hit = ICON_BY_PREFIX.find(([prefix]) => eventType.startsWith(prefix))
-  return hit ? hit[1] : Bell
-}
 
 /** Trang đích của thông báo — chỉ trả về route role hiện tại THẬT SỰ có. */
 export function notificationHref(item: NotificationDto, role: Role): string | undefined {
@@ -93,7 +72,7 @@ export function NotificationRow({
 }) {
   const { t } = useTranslation()
   const { user } = useAuth()
-  const Icon = iconFor(item.eventType)
+  const Icon = DOMAIN_ICON[domainOfEventType(item.eventType)]
   const href = user ? notificationHref(item, user.role) : undefined
   const isUnread = unread ?? !item.isRead
 

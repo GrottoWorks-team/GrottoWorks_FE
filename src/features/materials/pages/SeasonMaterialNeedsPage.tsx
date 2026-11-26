@@ -21,6 +21,7 @@ import {
 import { useSeasons } from '@/features/season/api'
 import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas } from '@/features/areas/api'
+import i18n from '@/lib/i18n'
 
 const SELECT_CLS =
   'flex h-9 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -92,13 +93,13 @@ export default function SeasonMaterialNeedsPage() {
         title={t('features.needs.title', { defaultValue: 'Tổng hợp nhu cầu mua vật tư mùa vụ' })}
         sub={t('features.needs.sub', {
           defaultValue:
-            'Bảng tổng hợp các mặt hàng phát sinh thiếu hụt trên toàn giáo xứ để lập dự toán và kế hoạch mua sắm',
+            i18n.t('features.materials.needsSub'),
         })}
       />
 
       {/* Summary KPI Badges */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <div className="flex items-center gap-3 rounded-lg border border-border/80 bg-card p-3 shadow-xs">
+        <div className="flex items-center gap-3 rounded-lg border border-border/80 bg-card p-3">
           <div className="flex size-10 items-center justify-center rounded-md bg-brand-pine/10 text-brand-pine">
             <ShoppingBag className="size-5" />
           </div>
@@ -110,7 +111,7 @@ export default function SeasonMaterialNeedsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border border-border/80 bg-card p-3 shadow-xs">
+        <div className="flex items-center gap-3 rounded-lg border border-border/80 bg-card p-3">
           <div className="flex size-10 items-center justify-center rounded-md bg-amber-500/10 text-amber-500">
             <Layers className="size-5" />
           </div>
@@ -122,7 +123,7 @@ export default function SeasonMaterialNeedsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/5 p-3 shadow-xs">
+        <div className="flex items-center gap-3 rounded-lg border border-red-500/30 bg-red-500/5 p-3">
           <div className="flex size-10 items-center justify-center rounded-md bg-red-500/10 text-red-500">
             <AlertTriangle className="size-5" />
           </div>
@@ -211,7 +212,7 @@ export default function SeasonMaterialNeedsPage() {
           <AlertCircle className="size-8 text-destructive" />
           <p className="text-sm text-destructive">
             {t('features.needs.loadError', {
-              defaultValue: 'Không thể tải danh sách tổng hợp nhu cầu mua vật tư.',
+              defaultValue: i18n.t('features.materials.needsLoadError'),
             })}
           </p>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -221,7 +222,7 @@ export default function SeasonMaterialNeedsPage() {
       ) : rows.length === 0 ? (
         <EmptyState
           text={t('features.needs.empty', {
-            defaultValue: 'Không có nhu cầu mua sắm thiếu hụt nào phù hợp với bộ lọc.',
+            defaultValue: i18n.t('features.materials.needsEmpty'),
           })}
         />
       ) : (
@@ -284,10 +285,6 @@ export default function SeasonMaterialNeedsPage() {
                 from: (pageInfo.page - 1) * pageInfo.size + 1,
                 to: Math.min(pageInfo.page * pageInfo.size, pageInfo.totalItems),
                 total: pageInfo.totalItems,
-                defaultValue: `Hiển thị ${(pageInfo.page - 1) * pageInfo.size + 1} - ${Math.min(
-                  pageInfo.page * pageInfo.size,
-                  pageInfo.totalItems
-                )} trong tổng số ${pageInfo.totalItems} nhu cầu`,
               })}
             </div>
             <div className="flex items-center gap-2">

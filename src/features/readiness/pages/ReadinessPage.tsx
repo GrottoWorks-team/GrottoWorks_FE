@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { StatCard } from '@/components/shared/StatCard'
 import { Button } from '@/components/ui/button'
+import { InlineAlert } from '@/components/ui/inline-alert'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog } from '@/components/ui/dialog'
@@ -26,6 +27,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { errorMessage } from '@/lib/errorMessage'
+import { cn } from '@/lib/utils'
+import i18n from '@/lib/i18n'
 import {
   getReadinessEvidenceDownloadUrl,
   useAttachReadinessEvidence,
@@ -43,17 +46,17 @@ function getStatusBadge(status: ChecklistStatus) {
   const norm = String(status).toUpperCase()
   switch (norm) {
     case 'PLANNING':
-      return <Badge className="bg-muted text-muted-foreground border-border">Đang chuẩn bị</Badge>
+      return <Badge className="bg-muted text-muted-foreground border-border">{i18n.t('features.readiness.statusPlanning')}</Badge>
     case 'INREVIEW':
     case 'IN_REVIEW':
-      return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">Đang kiểm tra</Badge>
+      return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">{i18n.t('features.readiness.statusInReview')}</Badge>
     case 'NEEDSCORRECTION':
     case 'NEEDS_CORRECTION':
-      return <Badge className="bg-destructive/15 text-destructive border-destructive/30">Cần khắc phục</Badge>
+      return <Badge className="bg-destructive/15 text-destructive border-destructive/30">      {i18n.t('features.readiness.statusNeedsCorrection')}</Badge>
     case 'READY':
-      return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">Sẵn sàng</Badge>
+      return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">{i18n.t('features.readiness.statusReady')}</Badge>
     case 'REOPENED':
-      return <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30">Mở lại</Badge>
+      return <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/30">{i18n.t('features.readiness.statusReopened')}</Badge>
     default:
       return <Badge>{status}</Badge>
   }
@@ -63,16 +66,16 @@ function getItemStatusBadge(status: ItemStatus) {
   const norm = String(status).toUpperCase()
   switch (norm) {
     case 'PENDING':
-      return <Badge className="bg-muted text-muted-foreground border-border">Chờ kiểm tra</Badge>
+      return <Badge className="bg-muted text-muted-foreground border-border">{i18n.t('features.readiness.itemPending')}</Badge>
     case 'PASSED':
-      return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 flex items-center gap-1 w-fit"><CheckCircle2 className="size-3" /> Đã đạt</Badge>
+      return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 flex items-center gap-1 w-fit"><CheckCircle2 className="size-3" /> {i18n.t('features.readiness.itemPassed')}</Badge>
     case 'FAILED':
-      return <Badge className="bg-destructive/15 text-destructive border-destructive/30 flex items-center gap-1 w-fit"><XCircle className="size-3" /> Không đạt</Badge>
+      return <Badge className="bg-destructive/15 text-destructive border-destructive/30 flex items-center gap-1 w-fit"><XCircle className="size-3" /> {i18n.t('features.readiness.itemFailed')}</Badge>
     case 'CORRECTIVEACTION':
     case 'CORRECTIVE_ACTION':
-      return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 flex items-center gap-1 w-fit"><AlertTriangle className="size-3" /> Đang khắc phục</Badge>
+      return <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 flex items-center gap-1 w-fit"><AlertTriangle className="size-3" /> {i18n.t('features.readiness.itemCorrective')}</Badge>
     case 'RECHECK':
-      return <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 flex items-center gap-1 w-fit"><RotateCcw className="size-3" /> Kiểm tra lại</Badge>
+      return <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 flex items-center gap-1 w-fit"><RotateCcw className="size-3" /> {i18n.t('features.readiness.itemRecheck')}</Badge>
     default:
       return <Badge>{status}</Badge>
   }
@@ -118,6 +121,10 @@ export default function ReadinessPage() {
   const passedItems = items.filter((i) => String(i.status).toUpperCase() === 'PASSED').length
   const failedItems = items.filter((i) => String(i.status).toUpperCase() === 'FAILED').length
   const pendingItems = items.filter((i) => String(i.status).toUpperCase() === 'PENDING').length
+  // F-25: mục bắt buộc chưa đạt chặn "Xác nhận Ready" — BE coi Ready là khoá dữ liệu.
+  const blockingItems = items.filter(
+    (i) => i.mandatory && String(i.status).toUpperCase() !== 'PASSED',
+  )
 
   const isReady = checklist ? String(checklist.status).toUpperCase() === 'READY' : false
 
@@ -131,7 +138,7 @@ export default function ReadinessPage() {
         version: checklist.version,
         data: {
           result: 'Passed',
-          note: item.note || 'Đã kiểm tra đạt yêu cầu kỹ thuật',
+          note: item.note || t('features.readiness.notePassDefault'),
           evidenceFileIds: item.evidenceFileIds,
         },
       })
@@ -151,7 +158,7 @@ export default function ReadinessPage() {
         version: checklist.version,
         data: {
           result: 'Failed',
-          note: failNote.trim() || 'Hạng mục chưa đạt tiêu chuẩn an toàn',
+          note: failNote.trim() || t('features.readiness.noteFailDefault'),
           evidenceFileIds: selectedItem.evidenceFileIds,
         },
       })
@@ -174,7 +181,7 @@ export default function ReadinessPage() {
         version: checklist.version,
         data: {
           result: 'Passed',
-          note: 'Kiểm tra lại: đã khắc phục đạt chuẩn',
+          note: t('features.readiness.noteRecheckDefault'),
           evidenceFileIds: item.evidenceFileIds,
         },
       })
@@ -212,7 +219,7 @@ export default function ReadinessPage() {
         itemId: selectedItem.id,
         fileIds: [...selectedItem.evidenceFileIds, newFileId.trim()],
       })
-      toast('Đã đính kèm minh chứng thành công')
+      toast(t('features.readiness.evidenceAttached'))
       setEvidenceDialogOpen(false)
       setNewFileId('')
       setSelectedItem(null)
@@ -229,7 +236,7 @@ export default function ReadinessPage() {
       if (res?.downloadUrl) {
         window.open(res.downloadUrl, '_blank')
       } else {
-        toast('Không tìm thấy liên kết tải minh chứng', 'alert')
+        toast(t('features.readiness.evidenceLinkMissing'), 'alert')
       }
     } catch (err) {
       toast(errorMessage(err), 'alert')
@@ -289,7 +296,7 @@ export default function ReadinessPage() {
         version: checklist.version,
         items: newItems,
       })
-      toast('Đã cập nhật danh mục kiểm tra')
+      toast(t('features.readiness.itemsUpdated'))
       setAddItemDialogOpen(false)
       setNewItemName('')
       setNewItemDesc('')
@@ -346,7 +353,7 @@ export default function ReadinessPage() {
             <h1 className="text-2xl font-bold tracking-tight text-foreground">{checklist.name}</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            {t('features.readiness.workArea')}: <span className="font-semibold text-foreground">{checklist.workAreaName}</span> · Phiên bản: #{checklist.version}
+            {t('features.readiness.workArea')}: <span className="font-semibold text-foreground">{checklist.workAreaName}</span> · {t('features.readiness.versionLabel', { version: checklist.version })}
           </p>
         </div>
 
@@ -356,7 +363,13 @@ export default function ReadinessPage() {
           {!isReady ? (
             <Button
               onClick={() => setConfirmOpen(true)}
-              className="bg-brand-pine hover:bg-brand-pine/90 text-white flex items-center gap-1.5 shadow-xs"
+              disabled={blockingItems.length > 0}
+              title={
+                blockingItems.length > 0
+                  ? t('features.readiness.confirmBlockedTitle')
+                  : undefined
+              }
+              className="bg-brand-pine hover:bg-brand-pine/90 text-white flex items-center gap-1.5"
             >
               <ShieldCheck className="size-4" />
               {t('features.readiness.confirm')}
@@ -385,11 +398,21 @@ export default function ReadinessPage() {
         </div>
       </div>
 
+      {!isReady && blockingItems.length > 0 ? (
+        <InlineAlert tone="warn" title={t('features.readiness.confirmBlockedTitle')}>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {blockingItems.map((item) => (
+              <li key={item.id}>{item.name}</li>
+            ))}
+          </ul>
+        </InlineAlert>
+      ) : null}
+
       {checklist.reopenReason && (
         <Card className="p-4 border-orange-500/30 bg-orange-500/10 text-orange-800 dark:text-orange-200 flex items-start gap-3">
           <AlertTriangle className="size-5 shrink-0 text-orange-600 mt-0.5" />
           <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-wider">{t('features.readiness.reopenReason')}</p>
+            <p className="text-xs font-bold">{t('features.readiness.reopenReason')}</p>
             <p className="text-sm">{checklist.reopenReason}</p>
           </div>
         </Card>
@@ -397,11 +420,11 @@ export default function ReadinessPage() {
 
       {/* Stats summary */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
-        <StatCard label="Tổng số hạng mục" value={totalItems} />
-        <StatCard label="Bắt buộc" value={mandatoryItems} />
-        <StatCard label="Đã đạt" value={passedItems} />
-        <StatCard label="Không đạt" value={failedItems} />
-        <StatCard label="Chờ kiểm tra" value={pendingItems} />
+        <StatCard label={t('features.readiness.statTotal')} value={totalItems} />
+        <StatCard label={t('features.readiness.statMandatory')} value={mandatoryItems} />
+        <StatCard label={t('features.readiness.statPassed')} value={passedItems} />
+        <StatCard label={t('features.readiness.statFailed')} value={failedItems} />
+        <StatCard label={t('features.readiness.statPending')} value={pendingItems} />
       </div>
 
       {/* Items List */}
@@ -410,10 +433,10 @@ export default function ReadinessPage() {
           <div>
             <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <FileCheck className="size-5 text-brand-pine" />
-              Hạng mục kiểm tra sẵn sàng ({totalItems})
+              {t('features.readiness.itemsTitle', { count: totalItems })}
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Tất cả các hạng mục bắt buộc phải đạt kiểm tra trước khi xác nhận sẵn sàng
+              {t('features.readiness.itemsHint')}
             </p>
           </div>
         </div>
@@ -423,7 +446,15 @@ export default function ReadinessPage() {
         ) : (
           <div className="divide-y divide-border/40">
             {items.map((item, idx) => (
-              <div key={item.id} className="py-4 first:pt-0 last:pb-0 space-y-3">
+              <div
+                key={item.id}
+                className={cn(
+                  'py-4 first:pt-0 last:pb-0 space-y-3',
+                  item.mandatory && String(item.status).toUpperCase() === 'FAILED'
+                    ? '-mx-3 rounded-md border-l-2 border-destructive bg-status-dangerBg/40 px-3'
+                    : null,
+                )}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                   <div className="space-y-1 max-w-2xl">
                     <div className="flex flex-wrap items-center gap-2">
@@ -459,7 +490,7 @@ export default function ReadinessPage() {
                 {item.correctiveTaskId && (
                   <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-300">
                     <AlertTriangle className="size-3.5" />
-                    <span>Nhiệm vụ khắc phục liên kết: <code className="font-mono font-bold">{item.correctiveTaskId}</code></span>
+                    <span>{t('features.readiness.correctiveTaskLinked')} <code className="font-mono font-bold">{item.correctiveTaskId}</code></span>
                   </div>
                 )}
 
@@ -467,7 +498,7 @@ export default function ReadinessPage() {
                 {item.evidenceFileIds && item.evidenceFileIds.length > 0 && (
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Paperclip className="size-3" /> Minh chứng ({item.evidenceFileIds.length}):
+                      <Paperclip className="size-3" /> {t('features.readiness.evidenceCount', { count: item.evidenceFileIds.length })}:
                     </span>
                     {item.evidenceFileIds.map((fid) => (
                       <button
@@ -496,7 +527,7 @@ export default function ReadinessPage() {
                     className="h-8 text-xs flex items-center gap-1"
                   >
                     <Paperclip className="size-3.5" />
-                    Đính kèm minh chứng
+                    {t('features.readiness.attachEvidence')}
                   </Button>
 
                   {String(item.status).toUpperCase() === 'FAILED' && (
@@ -510,7 +541,7 @@ export default function ReadinessPage() {
                       className="h-8 text-xs border-amber-500/40 text-amber-700 hover:bg-amber-500/10 flex items-center gap-1"
                     >
                       <AlertTriangle className="size-3.5" />
-                      Gán nhiệm vụ khắc phục
+                      {t('features.readiness.assignCorrective')}
                     </Button>
                   )}
 
@@ -523,7 +554,7 @@ export default function ReadinessPage() {
                       className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1"
                     >
                       <RotateCcw className="size-3.5" />
-                      Kiểm tra lại
+                      {t('features.readiness.recheck')}
                     </Button>
                   )}
 
@@ -537,7 +568,7 @@ export default function ReadinessPage() {
                     className="h-8 text-xs border-destructive/40 text-destructive hover:bg-destructive/10 flex items-center gap-1"
                   >
                     <XCircle className="size-3.5" />
-                    Không đạt
+                    {t('features.readiness.markFailed')}
                   </Button>
 
                   <Button
@@ -546,7 +577,7 @@ export default function ReadinessPage() {
                     className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1"
                   >
                     <CheckCircle2 className="size-3.5" />
-                    Đạt
+                    {t('features.readiness.markPassed')}
                   </Button>
                 </div>
               </div>
@@ -562,8 +593,8 @@ export default function ReadinessPage() {
             {t('features.readiness.confirmDesc')}
           </p>
           <div className="rounded-md bg-muted/40 p-3 text-xs space-y-1 text-muted-foreground border border-border/50">
-            <p>• Phân khu: <b className="text-foreground">{checklist.workAreaName}</b></p>
-            <p>• Số hạng mục bắt buộc đạt: <b className="text-foreground">{passedItems}/{mandatoryItems}</b></p>
+            <p>• {t('features.readiness.confirmArea')} <b className="text-foreground">{checklist.workAreaName}</b></p>
+            <p>• {t('features.readiness.confirmPassed')} <b className="text-foreground">{passedItems}/{mandatoryItems}</b></p>
             <p>• Concurrency Version: <code className="font-mono font-bold text-foreground">#{checklist.version}</code></p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -606,18 +637,18 @@ export default function ReadinessPage() {
       </Dialog>
 
       {/* Dialog: Mark Failed with Note */}
-      <Dialog open={failDialogOpen} onClose={() => setFailDialogOpen(false)} title="Đánh giá không đạt">
+      <Dialog open={failDialogOpen} onClose={() => setFailDialogOpen(false)} title={t('features.readiness.failDialogTitle')}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Hạng mục: <b className="text-foreground">{selectedItem?.name}</b>
+            {t('features.readiness.itemLabel')} <b className="text-foreground">{selectedItem?.name}</b>
           </p>
           <div className="space-y-2">
-            <Label htmlFor="fail-note">Lý do không đạt &amp; Yêu cầu khắc phục *</Label>
+            <Label htmlFor="fail-note">{t('features.readiness.failNoteLabel')}</Label>
             <Textarea
               id="fail-note"
               value={failNote}
               onChange={(e) => setFailNote(e.target.value)}
-              placeholder="Nhập chi tiết hiện trạng không đạt và yêu cầu xử lý..."
+              placeholder={t('features.readiness.failNotePlaceholder')}
               rows={3}
             />
           </div>
@@ -626,25 +657,25 @@ export default function ReadinessPage() {
               {t('common.cancel')}
             </Button>
             <Button onClick={handleSubmitFail} className="bg-destructive hover:bg-destructive/90 text-white">
-              Ghi nhận Không đạt
+              {t('features.readiness.submitFailed')}
             </Button>
           </div>
         </div>
       </Dialog>
 
       {/* Dialog: Link Corrective Task */}
-      <Dialog open={linkTaskDialogOpen} onClose={() => setLinkTaskDialogOpen(false)} title="Gán nhiệm vụ khắc phục">
+      <Dialog open={linkTaskDialogOpen} onClose={() => setLinkTaskDialogOpen(false)} title={t('features.readiness.linkTaskTitle')}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Gán nhiệm vụ khắc phục cho hạng mục: <b className="text-foreground">{selectedItem?.name}</b>
+            {t('features.readiness.linkTaskDesc')} <b className="text-foreground">{selectedItem?.name}</b>
           </p>
           <div className="space-y-2">
-            <Label htmlFor="task-id">Mã nhiệm vụ (Task ID) *</Label>
+            <Label htmlFor="task-id">{t('features.readiness.taskIdLabel')}</Label>
             <Input
               id="task-id"
               value={correctiveTaskId}
               onChange={(e) => setCorrectiveTaskId(e.target.value)}
-              placeholder="Nhập mã nhiệm vụ khắc phục (ví dụ: task-corr-102)..."
+              placeholder={t('features.readiness.taskIdPlaceholder')}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -652,25 +683,25 @@ export default function ReadinessPage() {
               {t('common.cancel')}
             </Button>
             <Button onClick={handleLinkTask} disabled={!correctiveTaskId.trim()} className="bg-brand-pine hover:bg-brand-pine/90 text-white">
-              Xác nhận gán
+              {t('features.readiness.confirmLink')}
             </Button>
           </div>
         </div>
       </Dialog>
 
       {/* Dialog: Attach Evidence */}
-      <Dialog open={evidenceDialogOpen} onClose={() => setEvidenceDialogOpen(false)} title="Đính kèm minh chứng">
+      <Dialog open={evidenceDialogOpen} onClose={() => setEvidenceDialogOpen(false)} title={t('features.readiness.evidenceDialogTitle')}>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Đính kèm minh chứng cho hạng mục: <b className="text-foreground">{selectedItem?.name}</b>
+            {t('features.readiness.evidenceDialogDesc')} <b className="text-foreground">{selectedItem?.name}</b>
           </p>
           <div className="space-y-2">
-            <Label htmlFor="file-id">Mã tệp minh chứng (File ID) *</Label>
+            <Label htmlFor="file-id">{t('features.readiness.fileIdLabel')}</Label>
             <Input
               id="file-id"
               value={newFileId}
               onChange={(e) => setNewFileId(e.target.value)}
-              placeholder="Nhập mã tệp đã tải lên hệ thống..."
+              placeholder={t('features.readiness.fileIdPlaceholder')}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -678,31 +709,31 @@ export default function ReadinessPage() {
               {t('common.cancel')}
             </Button>
             <Button onClick={handleAttachEvidence} disabled={!newFileId.trim()} className="bg-brand-pine hover:bg-brand-pine/90 text-white">
-              Đính kèm
+              {t('features.readiness.attach')}
             </Button>
           </div>
         </div>
       </Dialog>
 
       {/* Dialog: Add Item */}
-      <Dialog open={addItemDialogOpen} onClose={() => setAddItemDialogOpen(false)} title="Thêm hạng mục kiểm tra">
+      <Dialog open={addItemDialogOpen} onClose={() => setAddItemDialogOpen(false)} title={t('features.readiness.addItemTitle')}>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="new-item-name">Tên hạng mục *</Label>
+            <Label htmlFor="new-item-name">{t('features.readiness.itemNameLabel')}</Label>
             <Input
               id="new-item-name"
               value={newItemName}
               onChange={(e) => setNewItemName(e.target.value)}
-              placeholder="Ví dụ: Kiểm tra neo giằng chống bão..."
+              placeholder={t('features.readiness.itemNamePlaceholder')}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="new-item-desc">Mô tả tiêu chuẩn</Label>
+            <Label htmlFor="new-item-desc">{t('features.readiness.itemDescLabel')}</Label>
             <Textarea
               id="new-item-desc"
               value={newItemDesc}
               onChange={(e) => setNewItemDesc(e.target.value)}
-              placeholder="Mô tả tiêu chí và phương pháp đo đạc..."
+              placeholder={t('features.readiness.itemDescPlaceholder')}
               rows={2}
             />
           </div>
@@ -715,7 +746,7 @@ export default function ReadinessPage() {
               className="rounded border-border text-brand-pine focus:ring-brand-pine"
             />
             <Label htmlFor="new-item-mandatory" className="text-sm font-normal cursor-pointer">
-              Hạng mục bắt buộc phải đạt
+              {t('features.readiness.mandatoryToggle')}
             </Label>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -723,7 +754,7 @@ export default function ReadinessPage() {
               {t('common.cancel')}
             </Button>
             <Button onClick={handleAddItem} disabled={!newItemName.trim()} className="bg-brand-pine hover:bg-brand-pine/90 text-white">
-              Thêm hạng mục
+              {t('features.readiness.addItem')}
             </Button>
           </div>
         </div>

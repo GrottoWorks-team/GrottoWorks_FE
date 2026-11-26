@@ -19,14 +19,13 @@ import { useScopedAreas } from '@/features/areas/api'
 import { DonorsDialog } from '@/features/donors/DonorsDialog'
 import { useAuth } from '@/lib/auth'
 import { exportCsv } from '@/lib/csv'
-import i18n from '@/lib/i18n'
+import { formatQuantity, formatVnd, MISSING } from '@/lib/format'
 import { useCancelDonation, useContributionNeeds, useDonation, useDonations, useRecordDonationReceipt } from '../api'
 import { useSeasonContext } from '@/features/season/season-context'
 import { AdjustReceiptDialog } from '../AdjustReceiptDialog'
 import { DonationFormDialog } from './DonationFormDialog'
+import { DirectDonationDialog } from './DirectDonationDialog'
 import type { Donation } from '@/types'
-
-const fmt = (n: number) => n.toLocaleString(i18n.language === 'en' ? 'en-US' : 'vi-VN')
 
 function ReceiptDialog({ donation, onClose }: { donation: Donation; onClose: () => void }) {
   const { t } = useTranslation()
@@ -228,6 +227,7 @@ export default function DonationListPage() {
   )
 
   const [creating, setCreating] = useState(false)
+  const [directOpen, setDirectOpen] = useState(false)
   const [donorsOpen, setDonorsOpen] = useState(false)
   const [recording, setRecording] = useState<Donation | null>(null)
   const [canceling, setCanceling] = useState<Donation | null>(null)
@@ -235,22 +235,29 @@ export default function DonationListPage() {
 
   const materialSummary = (d: Donation) =>
     d.type === 'MONEY'
-      ? `${t('features.donations.money')} · ${fmt(d.pledgedAmount ?? 0)} ₫`
-      : d.items.map((item) => `${item.materialName} (${item.unit})`).join(', ')
+      ? `${t('features.donations.money')} · ${formatVnd(d.pledgedAmount)}`
+      : d.items.length
+        ? d.items.map((item) => `${item.materialName} (${item.unit})`).join(', ')
+        : MISSING
 
   // "Khu vực nhận" — BE trả `workAreaId`; tên khu lấy từ danh sách khu đã tải.
   const areaNameOf = (d: Donation) =>
-    d.workAreaId ? (areas.find((a) => a.id === d.workAreaId)?.name ?? '—') : '—'
+    d.workAreaId ? (areas.find((a) => a.id === d.workAreaId)?.name ?? MISSING) : MISSING
 
+  // Pledge KHÔNG phải tiền đã nhận: hai cột tách riêng, thiếu số hiện '—'.
   const pledgedOf = (d: Donation) =>
     d.type === 'MONEY'
-      ? `${fmt(d.pledgedAmount ?? 0)} ₫`
-      : d.items.map((item) => `${item.pledgedQuantity} ${item.unit}`).join(' + ')
+      ? formatVnd(d.pledgedAmount)
+      : d.items.length
+        ? d.items.map((item) => formatQuantity(item.pledgedQuantity, item.unit)).join(' + ')
+        : MISSING
 
   const receivedOf = (d: Donation) =>
     d.type === 'MONEY'
-      ? `${fmt(d.receivedAmount ?? 0)} ₫`
-      : d.items.map((item) => `${item.receivedQuantity} ${item.unit}`).join(' + ')
+      ? formatVnd(d.receivedAmount)
+      : d.items.length
+        ? d.items.map((item) => formatQuantity(item.receivedQuantity, item.unit)).join(' + ')
+        : MISSING
 
   const columns = useMemo(
     () => [
@@ -371,6 +378,12 @@ export default function DonationListPage() {
               <Download className="size-4" />
               {t('features.donations.export')}
             </Button>
+            {(user?.role === 'COMMUNITY' || user?.role === 'MATERIAL_OFFICER') && (
+              <Button variant="outline" onClick={() => setDirectOpen(true)}>
+                <Plus className="size-4" />
+                {t('features.donations.directCreate')}
+              </Button>
+            )}
             <Button onClick={() => setCreating(true)}>
               <Plus className="size-4" />
               {t('features.donations.create')}
@@ -383,7 +396,7 @@ export default function DonationListPage() {
         <StatCard label={t('features.donations.statTotal')} value={rows.length} unit={t('features.donations.statTotalUnit')} />
         <StatCard label={t('features.donations.statReceived')} value={fullReceived} unit={t('features.donations.statReceivedUnit')} tone="ok" />
         <StatCard label={t('features.donations.statPending')} value={pending} unit={t('features.donations.statPendingUnit')} />
-        <StatCard label={t('features.donations.statMoney')} value={fmt(totalMoney)} unit="₫" tone="ok" />
+        <StatCard label={t('features.donations.statMoney')} value={formatVnd(totalMoney)} tone="ok" />
       </div>
 
       {isPending ? (
@@ -418,6 +431,7 @@ export default function DonationListPage() {
       )}
 
       {creating && <DonationFormDialog open onClose={() => setCreating(false)} />}
+      {directOpen && <DirectDonationDialog onClose={() => setDirectOpen(false)} />}
       {recording && <ReceiptDialog donation={recording} onClose={() => setRecording(null)} />}
       {canceling && <CancelDialog donation={canceling} onClose={() => setCanceling(null)} />}
       {adjusting && <AdjustReceiptDialog donation={adjusting} onClose={() => setAdjusting(null)} />}

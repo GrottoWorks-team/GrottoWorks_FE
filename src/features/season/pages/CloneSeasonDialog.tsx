@@ -215,7 +215,7 @@ export function CloneSeasonDialog({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="space-y-2 rounded-card border border-border p-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-bold text-muted-foreground">
             {t('features.season.cloneAreas')}
           </p>
           {sourceAreas.length === 0 ? (

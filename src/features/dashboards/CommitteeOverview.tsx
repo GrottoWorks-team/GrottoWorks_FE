@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,8 +23,26 @@ export default function CommitteeOverview() {
   const { areas, coverage, communities, userNameById, isPending } = useDashboardData({
     withCommunities: true,
   })
-  const { data: dashboard, isPending: dashboardPending } = useSeasonDashboard(season?.id)
+  const { data: dashboard, isPending: dashboardPending, isError: dashboardError, refetch: refetchDashboard } = useSeasonDashboard(season?.id)
   const summary = dashboard?.summary
+
+  // "Cả mùa tắc ở đâu": khu thiếu người lên đầu, cùng số vai thiếu thì tiến độ thấp trước.
+  const riskRows = useMemo(() => {
+    const progressById = new Map((dashboard?.workAreas ?? []).map((row) => [row.workAreaId, row]))
+    return areas
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        missingLeader: !a.leaderId,
+        missingMaterialOfficer: !a.officerId,
+        progress: progressById.get(a.id)?.progressPercent,
+      }))
+      .sort((x, y) => {
+        const xIssues = Number(x.missingLeader) + Number(x.missingMaterialOfficer)
+        const yIssues = Number(y.missingLeader) + Number(y.missingMaterialOfficer)
+        return yIssues - xIssues || (x.progress ?? 101) - (y.progress ?? 101)
+      })
+  }, [areas, dashboard])
 
   const columns = useMemo(
     () => [
@@ -65,6 +84,10 @@ export default function CommitteeOverview() {
     <div>
       <PageHeader
         title={t('features.dashboards.committeeTitle')}
+        finding={t('features.dashboards.committeeFinding', {
+          missing: coverage.total - coverage.fullyStaffed,
+          total: coverage.total,
+        })}
         sub={season?.name ?? t('features.dashboards.noSeason')}
         actions={
           season && (
@@ -99,6 +122,59 @@ export default function CommitteeOverview() {
               tone={coverage.fullyStaffed === coverage.total ? 'ok' : 'warn'}
             />
           </div>
+
+          <Card className="p-5">
+            <p className="lbl-mono mb-3">{t('features.dashboards.riskTableTitle')}</p>
+            {riskRows.length === 0 ? (
+              <EmptyState text={t('features.dashboards.noAreas')} className="py-6" />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-gw-tableHead text-left">
+                      <th scope="col" className="px-3 py-2 font-semibold text-primary">
+                        {t('features.tasks.area')}
+                      </th>
+                      <th scope="col" className="px-3 py-2 font-semibold text-primary">
+                        {t('features.dashboards.missingRoles')}
+                      </th>
+                      <th scope="col" className="px-3 py-2 text-right font-semibold text-primary">
+                        {t('features.dashboards.progress')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {riskRows.map((row) => (
+                      <tr key={row.id} className="border-b border-border/60 last:border-0">
+                        <td className="px-3 py-2 font-semibold text-foreground">{row.name}</td>
+                        <td className="px-3 py-2">
+                          {row.missingLeader || row.missingMaterialOfficer ? (
+                            <span className="text-xs font-medium text-status-pendingText">
+                              {[
+                                row.missingLeader ? t('features.dashboards.missingLeader') : null,
+                                row.missingMaterialOfficer
+                                  ? t('features.dashboards.missingMaterialOfficer')
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              {t('features.dashboards.staffed')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="tabular px-3 py-2 text-right">
+                          {typeof row.progress === 'number' ? `${Math.round(row.progress)}%` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
 
           <Card className="p-5">
             <div className="mb-3 flex items-center justify-between gap-3">
@@ -136,7 +212,9 @@ export default function CommitteeOverview() {
 
             <Card className="p-5">
               <p className="lbl-mono mb-3">{t('features.dashboards.summaryTitle')}</p>
-              {dashboardPending || !summary ? (
+              {dashboardError ? (
+                <ErrorState compact onRetry={() => void refetchDashboard()} />
+              ) : dashboardPending || !summary ? (
                 <EmptyState text={t('common.loading')} className="py-6" />
               ) : (
                 <dl className="space-y-2 text-sm">

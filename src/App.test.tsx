@@ -27,7 +27,7 @@ describe('App', () => {
     expect(await screen.findByText('Không tìm thấy trang', {}, { timeout: 10_000 })).toBeDefined()
   })
 
-  it('NAV: COMMUNITY có seasons, areas, support, checklist, reports, volunteers; LEADER có trang duyệt mua', () => {
+  it('NAV: COMMUNITY có seasons, areas, support, checklist, reports, volunteers và kho tổng; LEADER không duyệt mua', () => {
     const commItems = NAV.COMMUNITY.flatMap((g) => g.items)
     const commPaths = commItems.map((i) => i.to)
     expect(commPaths).toContain('/community')
@@ -37,7 +37,11 @@ describe('App', () => {
     expect(commPaths).toContain('/community/support')
     expect(commPaths).toContain('/community/checklist')
     expect(commPaths).toContain('/community/reports')
-    expect(commPaths).not.toContain('/community/purchases')
+    // Kho tổng + duyệt mua + quyên góp chuyển sang Ban hành giáo (BE role PARISH).
+    expect(commPaths).toContain('/community/warehouse')
+    expect(commPaths).toContain('/community/warehouse/distributions')
+    expect(commPaths).toContain('/community/purchases')
+    expect(commPaths).toContain('/community/donations')
 
     const parishItems = NAV.PARISH.flatMap((g) => g.items)
     const parishPaths = parishItems.map((i) => i.to)
@@ -52,7 +56,7 @@ describe('App', () => {
     expect(parishPaths).not.toContain('/parish/purchases')
 
     const leaderPaths = NAV.LEADER.flatMap((g) => g.items).map((i) => i.to)
-    // BE chỉ cho LEADER approve/reject → trang duyệt mua thuộc nhánh LEADER.
-    expect(leaderPaths).toContain('/leader/purchases')
+    // BE chỉ cho PARISH duyệt mua → LEADER không còn mục duyệt mua.
+    expect(leaderPaths).not.toContain('/leader/purchases')
   })
 })

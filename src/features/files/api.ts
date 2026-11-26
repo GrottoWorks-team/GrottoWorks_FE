@@ -102,6 +102,26 @@ export interface UploadedFileResult {
  * 3. POST /files/{id}/complete
  * 4. GET /files/{id}/download-url
  */
+export async function uploadFileViaGateway(file: File, purpose: FilePurpose): Promise<UploadedFileResult> {
+  const upload = await createUploadRequest({
+    fileName: file.name,
+    contentType: file.type || 'application/octet-stream',
+    sizeBytes: file.size,
+    purpose,
+  })
+  const completed = await api<FileReferenceDto>(`/api/v1/files/${upload.fileId}/proxy-upload`, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+  })
+  return {
+    fileId: completed.id,
+    fileName: completed.fileName,
+    contentType: completed.contentType,
+    sizeBytes: completed.sizeBytes,
+  }
+}
+
 export async function uploadFile(
   file: File,
   purpose: FilePurpose = 'Other',

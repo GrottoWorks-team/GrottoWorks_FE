@@ -22,7 +22,6 @@ import {
   Info,
   Check,
   ShieldCheck,
-  Map as MapIcon,
   ListChecks,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -53,6 +52,8 @@ import {
 import { useParishScope } from '../hooks'
 import { ParishSwitcher } from '../components/ParishSwitcher'
 import type { Community, WorkArea } from '@/types'
+import i18n from '@/lib/i18n'
+import ParishMapPage from '@/features/map/pages/ParishMapPage'
 
 const schema = z.object({
   name: z.string().trim().min(1, 'features.parish.communityNameRequired'),
@@ -152,7 +153,7 @@ function CommunityFormDialog({
 }
 
 const parishCreateSchema = z.object({
-  name: z.string().trim().min(1, 'Tên giáo xứ không được để trống'),
+  name: z.string().trim().min(1, i18n.t('features.parish.nameRequired')),
   address: z.string().optional(),
   description: z.string().optional(),
 })
@@ -210,7 +211,7 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
           <Input
             id="create-parish-name"
             {...register('name')}
-            placeholder="Ví dụ: Giáo xứ Thánh Giuse"
+            placeholder={t('features.parish.namePlaceholder')}
           />
           {errors.name?.message && (
             <p className="mt-1 text-xs font-semibold text-destructive">{errors.name.message}</p>
@@ -223,7 +224,7 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
           <Input
             id="create-parish-address"
             {...register('address')}
-            placeholder="Ví dụ: 123 Đường Hai Bà Trưng, Quận 1"
+            placeholder={t('features.parish.addressPlaceholder')}
           />
         </div>
         <div>
@@ -233,7 +234,7 @@ function ParishCreateDialog({ onClose }: { onClose: () => void }) {
           <Input
             id="create-parish-desc"
             {...register('description')}
-            placeholder="Ví dụ: Giáo phận Sài Gòn"
+            placeholder={t('features.parish.diocesePlaceholder')}
           />
         </div>
       </form>
@@ -270,7 +271,7 @@ function ParishCard({ parishId }: { parishId: string }) {
   }
 
   return (
-    <Card className="overflow-hidden border border-border p-5 shadow-card transition-shadow hover:shadow-hover">
+    <Card className="overflow-hidden border border-border p-5">
       <div className="grid grid-cols-1 gap-6 md:grid-cols-12">
         {/* Cột trái: Tên giáo xứ, địa chỉ, mô tả */}
         <div className="space-y-4 md:col-span-7 lg:col-span-8">
@@ -367,7 +368,7 @@ function ParishCard({ parishId }: { parishId: string }) {
             <ShieldCheck className="size-4 shrink-0" />
             <span className="font-medium">
               {t('features.parish.certifiedCoordination', {
-                defaultValue: 'Cơ sở điều phối chính thức của Giáo xứ',
+                defaultValue: t('features.parish.defaultDescription'),
               })}
             </span>
           </div>
@@ -508,7 +509,8 @@ function CommunitiesPanel({ parishId, canEdit }: { parishId: string; canEdit: bo
 // Tab Khu vực công tác — CHỈ XEM với admin (11/11/2026): việc tạo/sửa và phân
 // công trưởng khu, trưởng nhóm vật tư thuộc Ban hành giáo (role FE `COMMUNITY`,
 // trang /community/areas). Admin dùng tab này để theo dõi toàn bộ giáo xứ.
-const areaLabel = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
+const areaLabel = (a: WorkArea) =>
+    a.name?.trim() || i18n.t('features.areas.fallbackName', { id: a.id.slice(0, 8) })
 
 function AreasPanel({ parishId }: { parishId: string }) {
   const { t } = useTranslation()
@@ -672,12 +674,12 @@ const TABS = [
   // vẫn dùng trang riêng /community/seasons để tạo & tương tác).
   { key: 'seasons', labelKey: 'features.parish.tabSeasons' },
   { key: 'areas', labelKey: 'features.parish.tabAreas' },
+  { key: 'map', labelKey: 'features.parish.openMap' },
 ] as const
 type TabKey = (typeof TABS)[number]['key']
 
 export default function CommunitiesPage() {
   const { t } = useTranslation()
-  const navigate = useNavigate()
   const { pathname } = useLocation()
   const [params, setParams] = useSearchParams()
   const scope = useParishScope()
@@ -705,8 +707,6 @@ export default function CommunitiesPage() {
     )
   }
 
-  const mapHref = `/parish/communities/map${parishId ? `?parish=${encodeURIComponent(parishId)}` : ''}`
-
   return (
     <div>
       <PageHeader
@@ -715,10 +715,6 @@ export default function CommunitiesPage() {
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">
             <ParishSwitcher scope={scope} />
-            <Button variant="outline" onClick={() => navigate(mapHref)}>
-              <MapIcon className="size-4 mr-1.5" />
-              {t('features.parish.openMap')}
-            </Button>
             {canPickParish && (
               <Button
                 variant="outline"
@@ -776,8 +772,10 @@ export default function CommunitiesPage() {
         ) : null
       ) : tab === 'seasons' ? (
         <SeasonListPage embedded />
+      ) : tab === 'areas' ? (
+        parishId ? <AreasPanel parishId={parishId} /> : null
       ) : parishId ? (
-        <AreasPanel parishId={parishId} />
+        <ParishMapPage embedded />
       ) : null}
 
       {parishCreateOpen && <ParishCreateDialog onClose={() => setParishCreateOpen(false)} />}

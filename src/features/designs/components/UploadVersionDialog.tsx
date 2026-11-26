@@ -11,7 +11,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { deleteBlob, newBlobKey, putBlob } from '@/lib/blobStore'
+import { uploadFile } from '@/features/files/api'
 import {
   ACCEPTED_IMAGE_TYPES,
   ACCEPTED_MODEL_EXTENSIONS,
@@ -103,14 +103,13 @@ export function UploadVersionDialog({
       return
     }
     setBusy(true)
-    const key = newBlobKey('design')
     try {
-      await putBlob(key, file)
+      const uploaded = await uploadFile(file, 'DESIGN_ASSET')
       const now = new Date().toISOString()
       const version = await createVersion.mutateAsync({
         designId,
         versionNumber: nextVersionNumber,
-        fileKey: key,
+        fileKey: uploaded.fileId,
         fileName: file.name,
         mimeType: file.type,
         fileSize: file.size,
@@ -124,8 +123,6 @@ export function UploadVersionDialog({
       onUploaded(version.id)
       onClose()
     } catch (err) {
-      // Không để lại blob mồ côi khi tạo bản ghi thất bại.
-      await deleteBlob(key).catch(() => {})
       toast(t(isQuotaError(err) ? 'features.design.errQuota' : 'common.error'), 'alert')
     } finally {
       setBusy(false)

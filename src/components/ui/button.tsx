@@ -5,7 +5,7 @@ const buttonBase =
   'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0'
 
 const buttonVariants = {
-  default: 'bg-primary text-primary-foreground shadow-card hover:bg-brand-pineHover',
+  default: 'bg-primary text-primary-foreground hover:bg-brand-pineHover',
   secondary:
     'bg-secondary text-secondary-foreground border border-border hover:bg-secondary/80',
   outline: 'border border-border bg-background hover:bg-accent hover:text-accent-foreground',

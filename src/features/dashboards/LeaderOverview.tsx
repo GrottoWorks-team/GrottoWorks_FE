@@ -5,16 +5,17 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FileImage } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { useTasks } from '@/features/tasks/api'
+import { formatDate } from '@/lib/format'
 import { useDashboardData, useWorkAreaDashboard } from './api'
-import type { WorkArea } from '@/types'
+import type { Task, WorkArea } from '@/types'
 
 const SELECT_CLS =
   'h-10 max-w-56 rounded-md border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -27,10 +28,21 @@ export default function LeaderOverview() {
 
   const requestedAreaId = searchParams.get('area')
   const area = areas.find((a) => a.id === requestedAreaId) ?? areas[0] ?? null
-  const { data: workAreaDashboard, isPending: workAreaDashboardPending } = useWorkAreaDashboard(
+  const { data: workAreaDashboard, isPending: workAreaDashboardPending, isError: workAreaDashboardError, refetch: refetchWorkArea } = useWorkAreaDashboard(
     area?.id,
   )
   const workAreaSummary = workAreaDashboard?.summary
+
+  // "Việc nào chưa ai làm": việc chưa bắt đầu lên đầu, rồi tới hạn gần nhất.
+  const { data: areaTasks = [], isPending: tasksPending, isError: tasksError, refetch: refetchTasks } =
+    useTasks(area?.id)
+  const priorityTasks = useMemo(() => {
+    const rank = (task: Task) =>
+      task.backendStatus === 'NOT_STARTED' || task.backendStatus === 'OPEN' ? 0 : 1
+    return [...areaTasks]
+      .sort((a, b) => rank(a) - rank(b) || String(a.dueDate).localeCompare(String(b.dueDate)))
+      .slice(0, 8)
+  }, [areaTasks])
 
   const selectArea = (areaId: string) => {
     setSearchParams(
@@ -72,7 +84,7 @@ export default function LeaderOverview() {
           area
             ? // BE chưa trả `name` → toWorkArea() đã dùng fallback "Khu vực #id"
               // (đã có tiền tố) nên tránh lặp thành "Khu Khu vực #id".
-              area.name.startsWith('Khu vực')
+              area.name.startsWith(t('features.areas.namePrefix'))
               ? area.name
               : t('features.dashboards.leaderTitle', { name: area.name })
             : t('features.dashboards.leaderTitleNoArea')
@@ -81,6 +93,14 @@ export default function LeaderOverview() {
           areas.length > 1
             ? t('features.dashboards.leaderSubMulti', { count: areas.length })
             : t('features.dashboards.leaderSub')
+        }
+        finding={
+          area
+            ? t('features.dashboards.leaderFinding', {
+                unassigned: workAreaSummary?.tasks.unassigned ?? 0,
+                overdue: workAreaSummary?.tasks.overdue ?? 0,
+              })
+            : undefined
         }
         actions={
           area && (
@@ -99,10 +119,6 @@ export default function LeaderOverview() {
                   ))}
                 </select>
               )}
-              <Button variant="outline" onClick={() => navigate(`/leader/areas/${area.id}/design`)}>
-                <FileImage className="size-4" />
-                {t('features.design.title')}
-              </Button>
             </div>
           )
         }
@@ -155,8 +171,50 @@ export default function LeaderOverview() {
           </Card>
 
           <Card className="p-5">
+            <p className="lbl-mono mb-3">{t('features.dashboards.priorityTitle')}</p>
+            {tasksError ? (
+              <ErrorState compact onRetry={() => void refetchTasks()} />
+            ) : tasksPending ? (
+              <EmptyState text={t('common.loading')} className="py-6" />
+            ) : priorityTasks.length === 0 ? (
+              <EmptyState
+                text={t('features.dashboards.priorityEmpty')}
+                hint={t('features.dashboards.priorityEmptyHint')}
+                className="py-6"
+              />
+            ) : (
+              <ul className="divide-y divide-border/60">
+                {priorityTasks.map((task) => (
+                  <li key={task.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/leader/tasks/${task.id}`)}
+                      className="flex w-full items-center justify-between gap-3 py-2 text-left transition-colors hover:bg-gw-hover"
+                    >
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-foreground">
+                          {task.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {formatDate(task.dueDate)}
+                          {task.backendStatus === 'NOT_STARTED' || task.backendStatus === 'OPEN'
+                            ? ` · ${t('features.dashboards.notStarted')}`
+                            : ''}
+                        </span>
+                      </span>
+                      <StatusTag status={task.status} scope="task" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card className="p-5">
             <p className="lbl-mono mb-3">{t('features.dashboards.workAreaProgress')}</p>
-            {workAreaDashboardPending || !workAreaSummary ? (
+            {workAreaDashboardError ? (
+              <ErrorState compact onRetry={() => void refetchWorkArea()} />
+            ) : workAreaDashboardPending || !workAreaSummary ? (
               <EmptyState text={t('common.loading')} className="py-6" />
             ) : (
               <dl className="space-y-2 text-sm">

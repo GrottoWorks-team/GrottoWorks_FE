@@ -6,8 +6,10 @@ import { useTranslation } from 'react-i18next'
 import { Download, FileSpreadsheet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { InlineAlert } from '@/components/ui/inline-alert'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { useSeasons } from '@/features/season/api'
@@ -46,7 +48,7 @@ export default function ReportPage() {
   const [type, setType] = useState<ReportType>('TASKS')
 
   const selectedSeason = seasonId || seasons[0]?.id || ''
-  const { data, isPending, isError } = useReportData({
+  const { data, isPending, isError, refetch } = useReportData({
     type,
     seasonId: selectedSeason,
     workAreaId: areaId || undefined,
@@ -54,16 +56,33 @@ export default function ReportPage() {
 
   const rows = useMemo(() => data?.rows ?? [], [data])
 
-  const [jobId, setJobId] = useState<string | undefined>()
+  const [jobId, setJobId] = useState<string | undefined>(() => {
+    try {
+      return sessionStorage.getItem('grotto-report-job') ?? undefined
+    } catch {
+      return undefined
+    }
+  })
+  const [jobError, setJobError] = useState<string | null>(null)
   const createExport = useCreateReportExport()
   const { data: job, refetch: refetchJob } = useReportExportJob(jobId)
   const { data: recognition } = useSeasonRecognition(selectedSeason)
 
-  // BE giới hạn 3 request/phút cho system-jobs → hỏi lại trạng thái một lần sau khi tạo.
+  // F-27: job chạy ở BE — giữ jobId qua điều hướng để rời trang vẫn xem lại được.
+  useEffect(() => {
+    try {
+      if (jobId) sessionStorage.setItem('grotto-report-job', jobId)
+      else sessionStorage.removeItem('grotto-report-job')
+    } catch {
+      // trình duyệt chặn storage → chỉ mất khả năng theo dõi sau khi rời trang
+    }
+  }, [jobId])
+
+  // BE giới hạn 3 request/phút cho system-jobs → hỏi lại mỗi 25 giây khi còn chạy.
   useEffect(() => {
     if (!jobId) return
-    const timer = setTimeout(() => void refetchJob(), 10_000)
-    return () => clearTimeout(timer)
+    const timer = setInterval(() => void refetchJob(), 25_000)
+    return () => clearInterval(timer)
   }, [jobId, refetchJob])
 
   const onExport = () => {
@@ -91,13 +110,14 @@ export default function ReportPage() {
         .catch(() => toast(t('common.error'), 'alert'))
         .finally(() => setJobId(undefined))
     } else if (job.status === 'FAILED') {
-      toast(job.errorMessage ?? t('common.error'), 'alert')
+      setJobError(job.errorMessage ?? t('common.error'))
       setJobId(undefined)
     }
   }, [job, jobId, t, toast])
 
   const onServerExport = async () => {
     if (!selectedSeason) return
+    setJobError(null)
     try {
       const created = await createExport.mutateAsync({
         reportType: type,
@@ -135,8 +155,34 @@ export default function ReportPage() {
         }
       />
 
-      <Card className="mb-6 grid gap-4 p-5 md:grid-cols-2">
-        <div>
+      {jobId ? (
+        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 border-brand-pine/25 bg-brand-pineLight/40 p-4">
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {job?.status === 'RUNNING'
+                ? t('features.reports.jobRunning')
+                : t('features.reports.jobQueued')}
+            </p>
+            <p className="text-xs text-muted-foreground">{t('features.reports.jobCanLeave')}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => void refetchJob()}>
+              {t('features.parish.jobRefresh')}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setJobId(undefined)}>
+              {t('common.close')}
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {jobError ? (
+        <InlineAlert tone="alert" title={t('features.reports.jobFailedTitle')} className="mb-4">
+          <p>{jobError}</p>
+        </InlineAlert>
+      ) : null}
+
+      <Card className="mb-6 grid gap-4 p-5 md:grid-cols-2">        <div>
           <label className="lbl-mono text-xs" htmlFor="report-season">
             {t('features.donations.season')}
           </label>
@@ -184,9 +230,12 @@ export default function ReportPage() {
       {isPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
       ) : isError ? (
-        <EmptyState text={t('features.reports.error')} />
+        <ErrorState message={t('features.reports.error')} onRetry={() => void refetch()} />
       ) : !data ? (
-        <EmptyState text={t('features.reports.empty')} />
+        <EmptyState
+          text={t('features.reports.empty')}
+          hint={t('features.reports.emptyHint')}
+        />
       ) : (
         <>
           <Card className="mb-4 p-4 text-xs text-muted-foreground">

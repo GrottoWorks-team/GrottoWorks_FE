@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect } from 'react'
 import type { ComponentType } from 'react'
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { AppShell } from '@/components/shared/AppShell'
@@ -32,6 +32,8 @@ const SupportListPage = lazy(() => import('@/features/support/pages/SupportListP
 const MaterialCategoriesPage = lazy(() => import('@/features/materials/pages/MaterialCategoriesPage'))
 const MaterialListPage = lazy(() => import('@/features/materials/pages/MaterialListPage'))
 const MaterialInventoryPage = lazy(() => import('@/features/materials/pages/MaterialInventoryPage'))
+const ParishInventoryPage = lazy(() => import('@/features/warehouse/pages/ParishInventoryPage'))
+const DistributionListPage = lazy(() => import('@/features/warehouse/pages/DistributionListPage'))
 const SeasonMaterialNeedsPage = lazy(() => import('@/features/materials/pages/SeasonMaterialNeedsPage'))
 const PurchaseDetailPage = lazy(() => import('@/features/purchases/pages/PurchaseDetailPage'))
 const PurchaseListPage = lazy(() => import('@/features/purchases/pages/PurchaseListPage'))
@@ -57,7 +59,6 @@ const NotificationsPage = lazy(() => import('@/features/parish/pages/Notificatio
 const RoleNotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'))
 const ActivityPage = lazy(() => import('@/features/parish/pages/ActivityPage'))
 const BackupPage = lazy(() => import('@/features/parish/pages/BackupPage'))
-const DesignReviewPage = lazy(() => import('@/features/designs/pages/DesignReviewPage'))
 const BuilderPage = lazy(() => import('@/features/builder/pages/BuilderPage'))
 const ParishMapPage = lazy(() => import('@/features/map/pages/ParishMapPage'))
 const GrottoDesignerPage = lazy(() => import('@/features/designer/pages/GrottoDesignerPage'))
@@ -79,6 +80,11 @@ const PAGES: Record<string, ComponentType> = {
   '/material-officer/categories': MaterialCategoriesPage,
   '/material-officer/materials': MaterialListPage,
   '/material-officer/inventory': MaterialInventoryPage,
+  '/material-officer/distributions': DistributionListPage,
+  '/community/warehouse': ParishInventoryPage,
+  '/community/warehouse/distributions': DistributionListPage,
+  '/community/purchases': CommitteeApprovalPage,
+  '/community/donations': DonationListPage,
   '/material-officer/material-reports': MaterialReportsPage,
   '/material-officer/support-materials': MaterialReceiptsPage,
   '/material-officer/material-needs': SeasonMaterialNeedsPage,
@@ -116,7 +122,7 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'purchases/:id', Page: PurchaseDetailPage },
     { path: 'tasks/:id', Page: TaskDetailPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
-    { path: 'areas/:id/design', Page: DesignReviewPage },
+    { path: 'areas/:id/design', Page: LegacyDesignRedirect },
     // 3D Layer Builder (giai đoạn A) — chỉ LEADER, giữ nguyên chính sách quyền hiện có.
     { path: 'areas/:id/builder', Page: BuilderPage },
     // Designer 2D (phác thảo mặt bằng + BOM) — module riêng của main.
@@ -126,6 +132,7 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'areas/:id/tasks', Page: TaskListPage },
     { path: 'volunteers/:id', Page: VolunteerDetailPage },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
+    { path: 'purchases/:id', Page: PurchaseDetailPage },
   ],
   PARISH: [
     { path: 'purchases/:id', Page: PurchaseDetailPage },
@@ -136,7 +143,7 @@ const DYNAMIC: Partial<Record<Role, { path: string; Page: ComponentType }[]>> = 
     { path: 'map', Page: LegacyParishMapRedirect },
     { path: 'seasons', Page: LegacyParishSeasonsRedirect },
     { path: 'areas/:id/tasks', Page: TaskListPage },
-    { path: 'areas/:id/design', Page: DesignReviewPage },
+    { path: 'areas/:id/design', Page: LegacyDesignRedirect },
     { path: 'areas/:areaId/designer', Page: GrottoDesignerPage },
   ],
 }
@@ -162,12 +169,21 @@ function LegacyParishAreasRedirect() {
 
 function LegacyParishMapRedirect() {
   const { search } = useLocation()
-  return <Navigate to={`/parish/communities/map${search}`} replace />
+  const params = new URLSearchParams(search)
+  const parish = params.get('parish')
+  return <Navigate to={`/parish/communities?tab=map${parish ? `&parish=${encodeURIComponent(parish)}` : ''}`} replace />
 }
 
 // URL cũ `/parish/seasons` → tab "Mùa Giáng sinh" trong hub (12/11/2026).
 function LegacyParishSeasonsRedirect() {
   return <Navigate to="/parish/communities?tab=seasons" replace />
+}
+
+function LegacyDesignRedirect() {
+  const { id } = useParams()
+  const { pathname } = useLocation()
+  const prefix = pathname.startsWith('/parish') ? '/parish' : '/leader'
+  return <Navigate to={`${prefix}/areas/${id}/builder`} replace />
 }
 
 const ROLES: Role[] = ['COMMUNITY', 'LEADER', 'MATERIAL_OFFICER', 'PARISH']
@@ -203,14 +219,19 @@ function LoginGate() {
 function SessionWatch() {
   const { logout } = useAuth()
   const navigate = useNavigate()
+  const { pathname, search } = useLocation()
   useEffect(() => {
     const onExpired = () => {
       void logout()
-      navigate('/login', { replace: true })
+      const from = pathname + search
+      navigate('/login', {
+        replace: true,
+        state: from.startsWith('/login') ? undefined : { from },
+      })
     }
     window.addEventListener('grotto:unauthorized', onExpired)
     return () => window.removeEventListener('grotto:unauthorized', onExpired)
-  }, [logout, navigate])
+  }, [logout, navigate, pathname, search])
   return null
 }
 

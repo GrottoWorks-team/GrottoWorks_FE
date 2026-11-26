@@ -39,6 +39,15 @@ export const NAV: Record<Role, NavGroup[]> = {
       ],
     },
     {
+      section: 'nav.section.materials',
+      items: [
+        { label: 'nav.community.warehouse', to: '/community/warehouse', icon: 'boxes' },
+        { label: 'nav.community.distributions', to: '/community/warehouse/distributions', icon: 'boxes' },
+        { label: 'nav.community.purchases', to: '/community/purchases', icon: 'cart', badge: 'purchases' },
+        { label: 'nav.community.donations', to: '/community/donations', icon: 'gift' },
+      ],
+    },
+    {
       section: 'nav.section.wrapup',
       items: [
         { label: 'nav.community.checklist', to: '/community/checklist', icon: 'checklist' },
@@ -63,13 +72,6 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.leader.volunteers', to: '/leader/volunteers', icon: 'users' },
         { label: 'nav.leader.timesheets', to: '/leader/timesheets', icon: 'clock' },
         { label: 'nav.leader.checklist', to: '/leader/checklist', icon: 'checklist' },
-        // BE: approve/reject /purchase-requests chỉ cho LEADER → trang duyệt thuộc nhánh này.
-        {
-          label: 'nav.leader.purchases',
-          to: '/leader/purchases',
-          icon: 'cart',
-          badge: 'purchases',
-        },
         {
           label: 'nav.leader.notifications',
           to: '/leader/notifications',
@@ -86,6 +88,7 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.material-officer.dashboard', to: '/material-officer', icon: 'dashboard' },
         { label: 'nav.material-officer.material-needs', to: '/material-officer/material-needs', icon: 'cart' },
         { label: 'nav.material-officer.inventory', to: '/material-officer/inventory', icon: 'boxes' },
+        { label: 'nav.material-officer.distributions', to: '/material-officer/distributions', icon: 'boxes' },
         { label: 'nav.material-officer.material-reports', to: '/material-officer/material-reports', icon: 'checklist' },
         { label: 'nav.material-officer.support-materials', to: '/material-officer/support-materials', icon: 'lifebuoy' },
         { label: 'nav.material-officer.categories', to: '/material-officer/categories', icon: 'tags' },

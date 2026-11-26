@@ -40,7 +40,7 @@ function LockSwitch({
       <span
         aria-hidden
         className={cn(
-          'inline-block size-3.5 rounded-full bg-card shadow transition-transform',
+          'inline-block size-3.5 rounded-full bg-card transition-transform',
           checked ? 'translate-x-[18px]' : 'translate-x-[3px]',
         )}
       />
@@ -65,10 +65,10 @@ export default function AccountsPage() {
   const toggleLock = async (u: User) => {
     try {
       if (u.locked) {
-        await unlockUser.mutateAsync({ id: u.id, reason: 'Mở khoá tài khoản từ trang quản trị' })
+        await unlockUser.mutateAsync({ id: u.id, reason: t('features.parish.unlockReason') })
         toast(t('features.parish.unlocked', { name: u.name }))
       } else {
-        await lockUser.mutateAsync({ id: u.id, reason: 'Khoá tài khoản từ trang quản trị' })
+        await lockUser.mutateAsync({ id: u.id, reason: t('features.parish.lockReason') })
         toast(t('features.parish.locked', { name: u.name }))
       }
     } catch {

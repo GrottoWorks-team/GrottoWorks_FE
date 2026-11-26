@@ -104,8 +104,8 @@ test('ReadinessPage renders checklist items and status badges', async () => {
       screen.getByText('Kiểm tra kết cấu chịu lực giàn giáo & khung vòm hang đá'),
     ).toBeTruthy()
     expect(
-      screen.getByText('Hệ thống điện nguồn & tủ ngắt CB chống rò rỉ an toàn'),
-    ).toBeTruthy()
+      screen.getAllByText('Hệ thống điện nguồn & tủ ngắt CB chống rò rỉ an toàn').length,
+    ).toBeGreaterThan(0)
     expect(screen.getByText('Tổng số hạng mục')).toBeTruthy()
   } finally {
     globalThis.fetch = origFetch
@@ -156,10 +156,41 @@ test('clicking Mark Pass calls recordResult mutation', async () => {
   }
 })
 
-test('clicking Confirm Readiness opens confirmation dialog', async () => {
+test('Confirm Readiness bị khoá khi còn mục bắt buộc chưa đạt', async () => {
   const origFetch = globalThis.fetch
   globalThis.fetch = (async () => {
     return new Response(JSON.stringify({ data: mockChecklist }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }) as typeof fetch
+
+  try {
+    renderComponent()
+
+    const confirmBtn = (await screen.findByRole('button', {
+      name: /Xác nhận sẵn sàng/i,
+    })) as HTMLButtonElement
+    expect(confirmBtn.disabled).toBe(true)
+    // Danh sách mục bắt buộc còn thiếu phải hiện ngay trên trang.
+    expect(screen.getByText(/Còn mục bắt buộc chưa đạt/i)).toBeTruthy()
+  } finally {
+    globalThis.fetch = origFetch
+  }
+})
+
+test('Confirm Readiness mở hộp xác nhận khi mọi mục bắt buộc đã đạt', async () => {
+  const origFetch = globalThis.fetch
+  const passedChecklist: ReadinessCheckDto = {
+    ...mockChecklist,
+    items: mockChecklist.items.map((item) => ({
+      ...item,
+      status: 'Passed',
+      evidenceFileIds: item.evidenceFileIds.length ? item.evidenceFileIds : ['file-evidence-x'],
+    })),
+  }
+  globalThis.fetch = (async () => {
+    return new Response(JSON.stringify({ data: passedChecklist }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     })
@@ -172,7 +203,7 @@ test('clicking Confirm Readiness opens confirmation dialog', async () => {
     const confirmBtn = await screen.findByRole('button', { name: /Xác nhận sẵn sàng/i })
     await user.click(confirmBtn)
 
-    expect(screen.getByText(/Xác nhận phân khu sẵn sàng/i)).toBeTruthy()
+    expect(await screen.findByText(/Xác nhận phân khu sẵn sàng/i)).toBeTruthy()
     expect(screen.getByText(/Concurrency Version/i)).toBeTruthy()
   } finally {
     globalThis.fetch = origFetch

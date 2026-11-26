@@ -103,6 +103,14 @@ export const mapStore = {
     return row
   },
 
+  /** Xoá record bản đồ orphan hoặc dữ liệu legacy không còn file đích. */
+  removeMap(parishId: string): void {
+    if (!parishId) return
+    const db = load()
+    delete db.maps[parishId]
+    save(db)
+  },
+
   /** Toạ độ ghim của tất cả khu trong giáo xứ: `areaId → { x, y }`. */
   listPins(parishId: string): Record<string, MapPin> {
     if (!parishId) return {}

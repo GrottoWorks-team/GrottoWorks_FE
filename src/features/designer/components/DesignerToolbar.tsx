@@ -10,6 +10,7 @@ import {
   Save,
   RotateCcw,
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -48,6 +49,7 @@ export function DesignerToolbar({
   onExportPng,
   onSave,
 }: DesignerToolbarProps) {
+  const { t } = useTranslation()
   return (
     <header className="h-14 border-b border-border bg-card/95 backdrop-blur px-4 flex items-center justify-between gap-4 select-none shrink-0 z-20">
       {/* Cụm trái: Nút Quay lại & Tên phân khu */}
@@ -80,7 +82,7 @@ export function DesignerToolbar({
           onClick={onUndo}
           disabled={!canUndo}
           className="size-7 text-xs"
-          title="Hoàn tác (Ctrl+Z)"
+          title={t('designer.undo')}
         >
           <Undo2 className="size-3.5" />
         </Button>
@@ -90,7 +92,7 @@ export function DesignerToolbar({
           onClick={onRedo}
           disabled={!canRedo}
           className="size-7 text-xs"
-          title="Làm lại (Ctrl+Y)"
+          title={t('designer.redo')}
         >
           <Redo2 className="size-3.5" />
         </Button>
@@ -102,10 +104,10 @@ export function DesignerToolbar({
           size="sm"
           onClick={onToggleGridSnap}
           className="h-7 px-2 text-[11px] font-medium"
-          title="Bật/Tắt bám dính lưới"
+          title={t('designer.toggleSnap')}
         >
           <Grid className="size-3 mr-1" />
-          Lưới ({gridSnap ? 'Bật' : 'Tắt'})
+          {t('designer.grid')} ({gridSnap ? t('designer.on') : t('designer.off')})
         </Button>
 
         <div className="h-3.5 w-px bg-border mx-0.5" />
@@ -115,7 +117,7 @@ export function DesignerToolbar({
           size="icon"
           onClick={onZoomOut}
           className="size-7"
-          title="Thu nhỏ"
+          title={t('designer.zoomOut')}
         >
           <ZoomOut className="size-3.5" />
         </Button>
@@ -127,7 +129,7 @@ export function DesignerToolbar({
           size="icon"
           onClick={onZoomIn}
           className="size-7"
-          title="Phóng to"
+          title={t('designer.zoomIn')}
         >
           <ZoomIn className="size-3.5" />
         </Button>
@@ -136,7 +138,7 @@ export function DesignerToolbar({
           size="icon"
           onClick={onResetZoom}
           className="size-7"
-          title="Vừa màn hình (100%)"
+          title={t('designer.fit')}
         >
           <Maximize2 className="size-3.5" />
         </Button>
@@ -148,7 +150,7 @@ export function DesignerToolbar({
           size="icon"
           onClick={onResetDraft}
           className="size-7 text-destructive hover:bg-destructive/10"
-          title="Làm mới toàn bộ bản vẽ"
+          title={t('designer.reset')}
         >
           <RotateCcw className="size-3.5" />
         </Button>
@@ -168,7 +170,7 @@ export function DesignerToolbar({
         <Button
           size="sm"
           onClick={onSave}
-          className="h-8 text-xs font-semibold bg-brand-pine hover:bg-brand-pine/90 text-white shadow-sm"
+          className="h-8 text-xs font-semibold bg-brand-pine hover:bg-brand-pine/90 text-white"
         >
           <Save className="size-3.5 mr-1.5" />
           Lưu thiết kế

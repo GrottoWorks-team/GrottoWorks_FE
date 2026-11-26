@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
             <div className="pt-2">
               <Link
                 to="/login"
-                className="btn-festive inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-pine text-white text-xs font-bold shadow hover:bg-brand-pineHover"
+                className="btn-festive inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-pine text-white text-xs font-bold hover:bg-brand-pineHover"
               >
                 <span>{t('auth.backToLogin')}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
                 <Input
                   id="token"
                   type="text"
-                  placeholder="Nhập mã token từ email"
+                  placeholder={t('reset.tokenPlaceholder')}
                   className="pl-10 pr-3.5 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm font-mono focus-visible:ring-brand-pine"
                   {...register('token')}
                 />
@@ -131,7 +131,7 @@ export default function ResetPasswordPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                   className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -178,7 +178,7 @@ export default function ResetPasswordPage() {
 
             <Button
               type="submit"
-              className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm shadow-lg shadow-brand-pine/25 flex items-center justify-center gap-2"
+              className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm flex items-center justify-center gap-2"
               disabled={isSubmitting}
             >
               {isSubmitting ? (

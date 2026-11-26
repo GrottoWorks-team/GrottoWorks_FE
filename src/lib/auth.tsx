@@ -5,6 +5,7 @@ import type { ReactNode } from 'react'
 import { api } from './api'
 import type { Role, User } from '../types'
 import type { TokenPair } from '../types/identity'
+import i18n from '@/lib/i18n'
 
 // Role code BE phát hành (Identity.Domain/RoleCodes): ADMIN | PARISH | LEADER | MO | VOLUNTEER.
 // Web có 4 nhánh giao diện, nên phải map 1-1 để admin và ban hành giáo KHÔNG dùng
@@ -47,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const p = await api<any>('/api/v1/users/me')
     const u: User = {
       id: p.id,
-      name: p.displayName ?? p.name ?? 'Người dùng',
+      name: p.displayName ?? p.name ?? i18n.t('common.user'),
       email: p.email,
       role: normalizeRole(p.role),
       rawRole: p.role,

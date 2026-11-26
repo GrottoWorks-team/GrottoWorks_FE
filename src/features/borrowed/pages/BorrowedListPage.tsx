@@ -134,11 +134,12 @@ function ReturnDialog({ item, onClose }: { item: BorrowedItem; onClose: () => vo
   const { t } = useTranslation()
   const toast = useToast()
   const ret = useReturnBorrowedItem()
-  const [condition, setCondition] = useState<ReturnCondition>('GOOD')
+  const [condition, setCondition] = useState<ReturnCondition | ''>('')
   const [qty, setQty] = useState(String(item.quantity))
   const [note, setNote] = useState('')
 
   const submit = async () => {
+    if (!condition) return
     try {
       await ret.mutateAsync({
         itemId: item.id,
@@ -163,7 +164,7 @@ function ReturnDialog({ item, onClose }: { item: BorrowedItem; onClose: () => vo
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit} disabled={ret.isPending}>
+          <Button onClick={submit} disabled={ret.isPending || !condition || Number(qty) <= 0}>
             {t('common.save')}
           </Button>
         </>
@@ -176,8 +177,9 @@ function ReturnDialog({ item, onClose }: { item: BorrowedItem; onClose: () => vo
             id="return-condition"
             className={SELECT_CLS}
             value={condition}
-            onChange={(e) => setCondition(e.target.value as ReturnCondition)}
+            onChange={(e) => setCondition(e.target.value as ReturnCondition | '')}
           >
+            <option value="">{t('features.borrowed.chooseCondition')}</option>
             <option value="GOOD">{t('features.borrowed.condition.GOOD')}</option>
             <option value="DAMAGED">{t('features.borrowed.condition.DAMAGED')}</option>
             <option value="LOST">{t('features.borrowed.condition.LOST')}</option>

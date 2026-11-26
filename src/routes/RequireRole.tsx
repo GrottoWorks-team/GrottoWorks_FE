@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/lib/auth'
 import { Forbidden } from '@/pages/Forbidden'
 import { beRoleCanAccess } from '@/lib/roleMapping'
@@ -8,8 +8,13 @@ import type { Role } from '@/types'
 // Chặn route theo role: chưa đăng nhập → /login; sai role → trang 403 thật.
 export function RequireRole({ roles, children }: { roles: Role[]; children: ReactNode }) {
   const { user, isPending } = useAuth()
+  const location = useLocation()
   if (isPending) return null
-  if (!user) return <Navigate to="/login" replace />
+  // Giữ đường dẫn quay lại sau khi đăng nhập (kể cả query/hash).
+  if (!user)
+    return (
+      <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
+    )
   if (user.rawRole === 'VOLUNTEER') return <Navigate to="/volunteer" replace />
   // BE trả mã vai trò khác mã web (PARISH → ADMIN, PARISH → COMMUNITY…):
   // cho vào khi vai trò BE ánh xạ được sang khu vực này, tránh chặn oan.

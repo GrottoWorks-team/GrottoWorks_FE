@@ -6,7 +6,7 @@
 import { useMemo, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { FileImage, Pencil, Plus } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -20,6 +20,7 @@ import { viDate } from '@/lib/format'
 import { useTasks } from '../api'
 import { SELECT_CLS, TaskFormDialog } from './TaskFormDialog'
 import type { Task } from '@/types'
+import { TaskDesignPanel } from '../components/TaskDesignPanel'
 
 export default function TaskListPage() {
   const { t } = useTranslation()
@@ -102,91 +103,47 @@ export default function TaskListPage() {
         ),
       },
       { key: 'status', header: t('common.status'), render: (x: Task) => <StatusTag status={x.status} scope="task" /> },
-      ...(readOnly
-        ? []
-        : [
-            {
-              key: 'actions',
-              header: t('common.actions'),
-              render: (x: Task) => (
-                <div className="flex justify-end gap-1">
-                  {/* BE chỉ cho sửa task khi còn OPEN (sau POST /ready = 409 TASK_INVALID_STATE). */}
-                  {x.backendStatus === 'OPEN' && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={t('common.edit')}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setEditing(x)
-                        setFormOpen(true)
-                      }}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                  )}
-                </div>
-              ),
-            },
-          ]),
     ],
-    [t, areas, readOnly],
+    [t, areas],
   )
 
   return (
     <div className="space-y-6">
       <PageHeader
         title={t('features.tasks.title')}
+        finding={t('features.tasks.listFinding', { total: stats.total, doing: stats.doing, revise: stats.revise })}
         sub={
           areaId
             ? `${t('features.tasks.area')}: ${areaName(areaId)}`
             : t('features.tasks.sub')
         }
         actions={
-          areaId && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() =>
-                  navigate(
-                    `${pathname.startsWith('/parish') ? '/parish' : pathname.startsWith('/leader') ? '/leader' : '/community'}/areas/${areaId}/design`,
-                  )
-                }
-              >
-                <FileImage className="size-4" />
-                {t('features.design.title')}
-              </Button>
-              {!readOnly && (
-                <>
-                  {myAreas.length > 1 && (
-                    <select
-                      aria-label={t('features.tasks.area')}
-                      className={`${SELECT_CLS} w-48`}
-                      value={leaderAreaId}
-                      onChange={(e) => setSelectedArea(e.target.value)}
-                    >
-                      {myAreas.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <Button
-                    onClick={() => {
-                      setEditing(null)
-                      setFormOpen(true)
-                    }}
-                  >
-                    <Plus className="size-4" />
-                    {t('features.tasks.create')}
-                  </Button>
-                </>
-              )}
-            </>
-          )
+          !readOnly && myAreas.length > 1
+            ? (
+                <select
+                  aria-label={t('features.tasks.area')}
+                  className={`${SELECT_CLS} w-48`}
+                  value={leaderAreaId}
+                  onChange={(e) => setSelectedArea(e.target.value)}
+                >
+                  {myAreas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+                </select>
+              )
+            : undefined
         }
       />
+
+      {areaId && (
+        <TaskDesignPanel
+          workAreaId={areaId}
+          builderHref={`${pathname.startsWith('/leader') ? '/leader' : '/community'}/areas/${areaId}/builder`}
+          readOnly={readOnly}
+        />
+      )}
 
       {isPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
@@ -207,10 +164,10 @@ export default function TaskListPage() {
         <>
           {tasks.length > 0 && (
             <div className="stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <StatCard label="Tổng công việc" value={stats.total} tone="ok" />
-              <StatCard label="Đang triển khai" value={stats.doing} tone="warn" />
-              <StatCard label="Cần chỉnh sửa" value={stats.revise} tone={stats.revise > 0 ? 'alert' : 'ok'} />
-              <StatCard label="Đã hoàn thành" value={stats.done} tone="ok" />
+              <StatCard label={t('features.tasks.statTotal')} value={stats.total} tone="ok" />
+              <StatCard label={t('features.tasks.statDoing')} value={stats.doing} tone="warn" />
+              <StatCard label={t('features.tasks.statRevise')} value={stats.revise} tone={stats.revise > 0 ? 'alert' : 'ok'} />
+              <StatCard label={t('features.tasks.statDone')} value={stats.done} tone="ok" />
             </div>
           )}
 
@@ -219,8 +176,47 @@ export default function TaskListPage() {
             columns={columns}
             searchKeys={['title']}
             filters={[{ key: 'status', options: ['TODO', 'DOING', 'REVIEW', 'DONE', 'REVISE'] }]}
+            toolbarActions={
+              !readOnly
+                ? (
+                    <>
+                      <Button
+                        onClick={() => {
+                          setEditing(null)
+                          setFormOpen(true)
+                        }}
+                      >
+                        <Plus className="size-4" />
+                        {t('features.tasks.create')}
+                      </Button>
+                    </>
+                  )
+                : null
+            }
             pageSize={8}
             emptyText={t('features.tasks.empty')}
+            rowActions={
+              readOnly
+                ? undefined
+                : (x) => (
+                    <div className='flex justify-end gap-1'>
+                      {x.backendStatus === 'OPEN' ? (
+                        <Button
+                          variant='ghost'
+                          size='icon'
+                          aria-label={t('common.edit')}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditing(x)
+                            setFormOpen(true)
+                          }}
+                        >
+                          <Pencil className='size-4' />
+                        </Button>
+                      ) : null}
+                    </div>
+                  )
+            }
             onRowClick={readOnly ? undefined : (x) => navigate(`/leader/tasks/${x.id}`)}
           />
         </>

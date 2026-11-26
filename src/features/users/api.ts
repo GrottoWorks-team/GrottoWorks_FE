@@ -80,6 +80,7 @@ export function useUsers(options: { enabled?: boolean; withSkills?: boolean } = 
         name: dto.displayName || dto.email,
         email: dto.email,
         role: normalizeRole(dto.role),
+        rawRole: dto.role,
         communityId: dto.communityId ?? undefined,
         locked: dto.status?.toUpperCase() === 'LOCKED',
         skills: (dto.skillIds ?? [])

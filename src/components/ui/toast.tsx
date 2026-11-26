@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
+import i18n from '@/lib/i18n'
 
 type ToastFn = (msg: string, tone?: 'ok' | 'alert') => void
 
@@ -53,6 +54,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast(): ToastFn {
   const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast phải dùng bên trong ToastProvider')
+  if (!ctx) throw new Error(i18n.t('errors.toastProvider'))
   return ctx
 }

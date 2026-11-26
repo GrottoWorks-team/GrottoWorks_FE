@@ -1,14 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
-  Crown,
-  Users,
-  Hammer,
-  Package,
   Mail,
   Lock,
   Eye,
@@ -25,7 +21,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
-import type { Role } from '@/types'
 
 const schema = z.object({
   email: z.string().min(1, 'login.emailRequired'),
@@ -33,66 +28,34 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-interface DemoRoleConfig {
-  role: Role
-  email: string
-  icon: typeof Crown
-  color: string
-}
-
-const DEMO: DemoRoleConfig[] = [
-  { role: 'PARISH', email: 'hoa.nguyen@giaoxuthanhtam.org.vn', icon: Crown, color: 'text-amber-600' },
-  { role: 'COMMUNITY', email: 'bao.tran@giaoxuthanhtam.org.vn', icon: Users, color: 'text-emerald-700' },
-  { role: 'LEADER', email: 'ngan.nguyen@giaoxuthanhtam.org.vn', icon: Hammer, color: 'text-blue-700' },
-  { role: 'MATERIAL_OFFICER', email: 'anh.pham@giaoxuthanhtam.org.vn', icon: Package, color: 'text-indigo-700' },
-]
-
-// Mật khẩu của các tài khoản demo/test trong `ACCOUNTS.md`. Đọc từ `.env`
-// (`VITE_DEMO_PASSWORD`) — không hard-code trong source. Không khai báo thì
-// khối "tài khoản demo" bị ẩn để tránh điền sai mật khẩu.
-const DEMO_PASSWORD = import.meta.env.VITE_DEMO_PASSWORD ?? ''
-const SHOW_DEMO_ACCOUNTS = DEMO_PASSWORD.length > 0
-
 export default function Login() {
   const { t } = useTranslation()
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  // 401 giữa phiên / vào route cần đăng nhập → quay lại đúng màn sau khi đăng nhập.
+  const returnTo = (location.state as { from?: string } | null)?.from
   const toast = useToast()
   const [serverError, setServerError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
-  const [activeDemo, setActiveDemo] = useState<string | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-    }
-  }, [])
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema) })
-
-  const fillDemo = (email: string) => {
-    setValue('email', email)
-    setValue('password', DEMO_PASSWORD)
-    setServerError('')
-    setActiveDemo(email)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    timerRef.current = setTimeout(() => setActiveDemo(null), 1200)
-  }
 
   const onSubmit = async (data: FormData) => {
     setServerError('')
     try {
       const user = await login(data.email, data.password)
+      // Chỉ nhận đường dẫn nội bộ; không quay lại /login để tránh vòng lặp.
+      const back =
+        returnTo && returnTo.startsWith('/') && !returnTo.startsWith('/login') ? returnTo : null
       if (user.rawRole === 'VOLUNTEER') {
-        navigate('/volunteer')
+        navigate(back ?? '/volunteer', { replace: true })
       } else {
-        navigate(roleHomePath(user.role))
+        navigate(back ?? roleHomePath(user.role), { replace: true })
       }
     } catch {
       const msg = t('login.invalid')
@@ -104,50 +67,6 @@ export default function Login() {
   return (
     <AuthSplitLayout activeTab="login">
       <div className="space-y-5">
-        {/* Hộp chọn nhanh tài khoản mẫu (1-Chạm) — chỉ hiện khi `.env` có
-            VITE_DEMO_PASSWORD, tránh điền sẵn mật khẩu sai. */}
-        {SHOW_DEMO_ACCOUNTS && (
-          <div>
-          <div className="flex items-center justify-between mb-2">
-            <span className="lbl-mono flex items-center gap-1.5 font-bold text-slate-600">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-gold animate-pulse" />
-              {t('login.demoAccounts', { password: DEMO_PASSWORD })}
-            </span>
-            <span className="text-[10px] text-slate-500 font-medium">Bấm để tự điền</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {DEMO.map((d) => {
-              const Icon = d.icon
-              const isSelected = activeDemo === d.email
-              return (
-                <button
-                  key={d.email}
-                  type="button"
-                  onClick={() => fillDemo(d.email)}
-                  title={d.email}
-                  className={`group relative rounded-xl border p-2.5 text-left transition-all duration-200 ${
-                    isSelected
-                      ? 'border-brand-pine bg-brand-pineLight/60 ring-2 ring-brand-pine/30 shadow-sm'
-                      : 'border-slate-200 bg-white/80 hover:border-brand-pine hover:bg-slate-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <Icon className={`w-3.5 h-3.5 shrink-0 ${d.color}`} />
-                    <span className="truncate text-xs font-bold text-slate-800 group-hover:text-brand-pine">
-                      {t(`role.${d.role}`)}
-                    </span>
-                  </div>
-                  <span className="block truncate font-mono text-[10px] text-slate-500 mt-0.5">
-                    {d.email.split('@')[0]}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-          </div>
-        )}
-
         {/* Form đăng nhập chính */}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
           {/* Ô nhập Email */}
@@ -205,7 +124,7 @@ export default function Login() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                 className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 transition-colors"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -233,7 +152,7 @@ export default function Login() {
           {/* Nút bấm Submit với hiệu ứng Shimmer */}
           <Button
             type="submit"
-            className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm shadow-lg shadow-brand-pine/25 flex items-center justify-center gap-2"
+            className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm flex items-center justify-center gap-2"
             disabled={isSubmitting}
           >
             {isSubmitting ? (
@@ -252,13 +171,13 @@ export default function Login() {
           {/* Liên kết điều hướng phụ */}
           <div className="pt-2 text-center text-xs text-slate-600 space-y-1">
             <div>
-              Chưa có tài khoản quản lý?{' '}
+              {t('login.noManagerAccount')}{' '}
               <Link to="/register-account" className="font-semibold text-brand-pine hover:underline">
                 Đăng ký tài khoản
               </Link>
             </div>
             <div>
-              Hoặc tham gia thiện nguyện?{' '}
+              {t('login.orVolunteer')}{' '}
               <Link to="/register" className="font-semibold text-brand-goldHover hover:underline">
                 Đăng ký Đồng Hành
               </Link>

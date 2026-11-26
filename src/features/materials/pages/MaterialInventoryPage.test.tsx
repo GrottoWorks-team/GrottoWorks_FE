@@ -87,6 +87,10 @@ vi.mock('../api', () => ({
   })),
 }))
 
+vi.mock('@/features/warehouse/api', () => ({
+  useParishDistributions: vi.fn(() => ({ data: { data: [] } })),
+}))
+
 vi.mock('@/features/season/api', () => ({
   useSeasons: vi.fn(() => ({
     data: [{ id: 'season-1', name: 'Mùa Giáng Sinh 2026', year: 2026 }],

@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { LayoutGrid, Table2, Pencil, Plus, UserPlus, FileImage } from 'lucide-react'
+import { LayoutGrid, Table2, Pencil, Plus, UserPlus, FileImage, Map as MapIcon } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -22,9 +22,10 @@ import { AreaCard } from '../components/AreaCard'
 import { AreaDetailDialog } from '../components/AreaDetailDialog'
 import { AreaFormDialog, SELECT_CLS } from './AreaFormDialog'
 import { AreaAssignDialog } from './AreaAssignDialog'
+import ParishMapPage from '@/features/map/pages/ParishMapPage'
 import type { WorkArea } from '@/types'
 
-type View = 'grid' | 'table'
+type View = 'grid' | 'table' | 'map'
 
 export default function AreaListPage() {
   const { t } = useTranslation()
@@ -104,8 +105,26 @@ export default function AreaListPage() {
   const [assigning, setAssigning] = useState<WorkArea | null>(null)
   const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
+  // Link từ màn Mùa ("thiếu trưởng khu / trưởng nhóm vật tư") → mở đúng khu để sửa.
+  const editAreaId = searchParams.get('area')
+  useEffect(() => {
+    if (!editAreaId || !canEdit) return
+    const hit = rawAreas.find((a) => a.id === editAreaId)
+    if (!hit) return
+    setEditing(hit)
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.delete('area')
+        return next
+      },
+      { replace: true },
+    )
+  }, [editAreaId, rawAreas, canEdit, setSearchParams])
+
   const nameOf = (id: string) => users.find((u) => u.id === id)?.name ?? '—'
-  const displayName = (a: WorkArea) => a.name?.trim() || `Khu vực #${a.id.slice(0, 8)}`
+  const displayName = (a: WorkArea) =>
+    a.name?.trim() || t('features.areas.fallbackName', { id: a.id.slice(0, 8) })
 
   const columns = useMemo(
     () => [
@@ -229,6 +248,7 @@ export default function AreaListPage() {
                 [
                   ['grid', LayoutGrid, t('features.areas.viewGrid')],
                   ['table', Table2, t('features.areas.viewTable')],
+                  ['map', MapIcon, t('features.map.title')],
                 ] as const
               ).map(([v, Icon, label]) => (
                 <button
@@ -285,7 +305,7 @@ export default function AreaListPage() {
             <option value="all">{t('features.areas.allSeasons')}</option>
             {seasons.map((s) => (
               <option key={s.id} value={s.id}>
-                {`Mùa Giáng sinh ${s.year} (${t(`status.${s.status}`, s.status)})`}
+                {t('features.season.optionLabel', { year: s.year, status: t(`status.${s.status}`, s.status) })}
               </option>
             ))}
           </select>
@@ -326,6 +346,8 @@ export default function AreaListPage() {
         ) : (
           <EmptyState text={t('features.areas.empty')} />
         )
+      ) : view === 'map' ? (
+        <ParishMapPage embedded />
       ) : (
         <DataTable
           rows={areas}

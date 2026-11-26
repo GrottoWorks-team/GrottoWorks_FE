@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { ErrorState } from '@/components/shared/ErrorState'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import {
@@ -27,7 +28,7 @@ export default function RoleNotificationsPage() {
   const toast = useToast()
   const [filter, setFilter] = useState<Filter>('ALL')
 
-  const { data, isPending } = useNotifications({
+  const { data, isPending, isError, refetch } = useNotifications({
     isRead: filter === 'UNREAD' ? false : undefined,
   })
   const { data: unreadCount = 0 } = useUnreadNotificationCount()
@@ -85,7 +86,13 @@ export default function RoleNotificationsPage() {
       </div>
 
       <Card className="overflow-hidden">
-        {items.length ? (
+        {isError ? (
+          <ErrorState
+            compact
+            message={t('notifications.loadError')}
+            onRetry={() => void refetch()}
+          />
+        ) : items.length ? (
           <ul>
             {items.map((item) => (
               <li key={item.id} className="border-b border-border last:border-0">

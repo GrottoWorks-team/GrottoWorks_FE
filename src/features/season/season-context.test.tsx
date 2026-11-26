@@ -4,7 +4,7 @@
 // F5 vẫn giữ đúng mùa (localStorage `grotto-season`).
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Season } from '@/types'
 import { SeasonProvider, SeasonSelect, useSeasonContext } from './season-context'
@@ -32,10 +32,12 @@ vi.mock('./api', () => ({
 
 function Probe() {
   const { seasonId } = useSeasonContext()
+  const location = useLocation()
   return (
     <>
       <SeasonSelect />
       <p data-testid="season-id">{seasonId ?? 'none'}</p>
+      <p data-testid="season-query">{location.search}</p>
       {/* Link sidebar thật không mang theo `?season=` */}
       <Link to="/other">Sang trang khác</Link>
     </>
@@ -103,6 +105,14 @@ describe('SeasonProvider — giữ mùa đã chọn', () => {
     renderApp()
 
     expect(seasonIdText()).toBe('s-active')
+    expect(localStorage.getItem('grotto-season')).toBe('s-active')
+  })
+
+  it('season trên URL đã stale sau khi reset → dùng mùa hợp lệ và thay query', () => {
+    renderApp('/leader?season=season-cu-khong-con')
+
+    expect(seasonIdText()).toBe('s-active')
+    expect(screen.getByTestId('season-query').textContent).toBe('?season=s-active')
     expect(localStorage.getItem('grotto-season')).toBe('s-active')
   })
 })

@@ -8,18 +8,12 @@ import {
   Ban,
   CheckCircle2,
   Package,
-  Plus,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/components/ui/toast'
-import { useAuth } from '@/lib/auth'
 import {
   useWorkAreaRequirements,
   useWorkAreaShortages,
-  useUpdateMaterialRequirement,
-  type MaterialRequirementDto,
 } from '@/features/materials/api'
-import { RequirementFormDialog } from './RequirementFormDialog'
 
 interface AreaMaterialsTabProps {
   workAreaId: string
@@ -27,12 +21,8 @@ interface AreaMaterialsTabProps {
 
 export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
   const { t } = useTranslation()
-  const toast = useToast()
-  const { user } = useAuth()
-  const isMaterialOfficer = user?.role === 'MATERIAL_OFFICER'
 
   const [activeSubTab, setActiveSubTab] = useState<'requirements' | 'shortages'>('requirements')
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
   // E1: GET /api/v1/work-areas/{workAreaId}/material-requirements
   const {
@@ -50,33 +40,6 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
     refetch: refetchShort,
   } = useWorkAreaShortages(workAreaId)
 
-  // E3: PATCH /api/v1/material-requirements/{requirementId}
-  const updateMutation = useUpdateMaterialRequirement()
-
-  const onCancelRequirement = async (req: MaterialRequirementDto) => {
-    if (
-      !window.confirm(
-        t('features.requirements.cancelConfirm', {
-          name: `${req.materialName} (${req.materialCode})`,
-        }),
-      )
-    ) {
-      return
-    }
-
-    try {
-      await updateMutation.mutateAsync({
-        requirementId: req.id,
-        workAreaId,
-        version: req.version,
-        status: 'CANCELLED',
-      })
-      toast(t('features.requirements.cancelledSuccess', { name: req.materialName }))
-    } catch {
-      toast(t('features.requirements.saveError'), 'alert')
-    }
-  }
-
   const positiveShortagesCount = shortages.filter((s) => s.shortage > 0).length
 
   return (
@@ -89,7 +52,7 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
             onClick={() => setActiveSubTab('requirements')}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
               activeSubTab === 'requirements'
-                ? 'bg-primary text-primary-foreground shadow-xs'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
             }`}
           >
@@ -105,7 +68,7 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
             onClick={() => setActiveSubTab('shortages')}
             className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
               activeSubTab === 'shortages'
-                ? 'bg-primary text-primary-foreground shadow-xs'
+                ? 'bg-primary text-primary-foreground'
                 : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
             }`}
           >
@@ -119,17 +82,6 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
           </button>
         </div>
 
-        {/* E2: Nút thêm nhu cầu cho MO */}
-        {isMaterialOfficer && activeSubTab === 'requirements' && (
-          <Button
-            size="sm"
-            onClick={() => setCreateDialogOpen(true)}
-            className="h-8 gap-1.5 bg-primary text-primary-foreground text-xs hover:bg-primary/90"
-          >
-            <Plus className="size-3.5" />
-            {t('features.requirements.addBtn')}
-          </Button>
-        )}
       </div>
 
       {/* SUBTAB 1: REQUIREMENTS (E1, E2, E3) */}
@@ -162,7 +114,6 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
                     <th scope="col" className="px-3 py-2.5 text-right">{t('features.requirements.colRequired')}</th>
                     <th scope="col" className="px-3 py-2.5 text-right">{t('features.requirements.colExisting')}</th>
                     <th scope="col" className="px-3 py-2.5 text-center">{t('features.requirements.colStatus')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-center">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -211,20 +162,6 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
                               <CheckCircle2 className="size-3" />
                               {t('features.requirements.statusActive')}
                             </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {isMaterialOfficer && !isCancelled && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onCancelRequirement(req)}
-                              disabled={updateMutation.isPending}
-                              className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            >
-                              <Ban className="size-3 mr-1" />
-                              {t('features.requirements.cancelBtn')}
-                            </Button>
                           )}
                         </td>
                       </tr>
@@ -332,13 +269,6 @@ export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
           )}
         </div>
       )}
-
-      {/* E2: Dialog thêm nhu cầu */}
-      <RequirementFormDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        workAreaId={workAreaId}
-      />
     </div>
   )
 }

@@ -102,6 +102,18 @@ export function SeasonProvider({
     writeStoredSeasonId(currentId)
   }, [season, storedSeasonId, scoped])
 
+  useEffect(() => {
+    if (!scoped || isPending || !season || !urlSeasonId || urlSeasonId === season.id) return
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev)
+        next.set('season', season.id)
+        return next
+      },
+      { replace: true },
+    )
+  }, [isPending, scoped, season, setSearchParams, urlSeasonId])
+
   const selectSeason = useCallback(
     (seasonId?: string) => {
       if (scoped) {
@@ -128,7 +140,7 @@ export function SeasonProvider({
       // Dùng ngay id đang chọn (URL/localStorage) TRƯỚC khi danh sách mùa tải xong:
       // nếu để `season?.id` thì mọi hook theo mùa sẽ bắn 1 request "không mùa"
       // rồi bắn lại lần nữa khi mùa resolve — BE bị gọi gấp đôi mỗi lần vào trang.
-      seasonId: scoped ? (requestedId ?? season?.id) : undefined,
+      seasonId: scoped ? (isPending ? requestedId : season?.id) : undefined,
       selectSeason,
       isPending,
     }),

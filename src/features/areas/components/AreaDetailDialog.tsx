@@ -73,7 +73,7 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
         <div className="space-y-4 py-2">
           <div className="rounded-xl border border-brand-pine/20 bg-brand-pine/5 p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-brand-pine uppercase tracking-wider">
+              <span className="text-xs font-semibold text-brand-pine">
                 Mã khu vực (ID)
               </span>
               <Badge className="font-mono text-xs">
@@ -81,7 +81,7 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
               </Badge>
             </div>
             <h3 className="mt-1 text-base font-extrabold text-foreground">
-              {area.name || `Khu vực #${area.id.slice(0, 8)}`}
+              {area.name || t('features.areas.fallbackName', { id: area.id.slice(0, 8) })}
             </h3>
             {area.description && (
               <p className="mt-1 text-xs text-muted-foreground">{area.description}</p>
@@ -92,7 +92,7 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
             <div className="rounded-lg border border-border/80 bg-card p-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Layers className="size-3.5 text-brand-pine" />
-                <span>Loại phân khu</span>
+                <span>{t('features.areas.typeLabel')}</span>
               </div>
               <p className="mt-1 text-sm font-bold text-foreground">
                 {area.type
@@ -104,7 +104,7 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
             <div className="rounded-lg border border-border/80 bg-card p-3">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Calendar className="size-3.5 text-brand-gold" />
-                <span>Trạng thái thi công</span>
+                <span>{t('features.areas.buildStatusLabel')}</span>
               </div>
               <div className="mt-1">
                 <StatusTag status={area.status} />
@@ -114,17 +114,17 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
 
           <div className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Mã mùa công tác:</span>
+              <span className="text-muted-foreground">{t('features.areas.seasonCodeLabel')}</span>
               <span className="font-mono text-foreground font-medium">{area.seasonId}</span>
             </div>
             {area.communityId && (
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Giáo khu phụ trách:</span>
+                <span className="text-muted-foreground">{t('features.areas.communityInCharge')}</span>
                 <span className="font-mono text-foreground font-medium">{area.communityId}</span>
               </div>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Phiên bản dữ liệu:</span>
+              <span className="text-muted-foreground">{t('features.areas.versionLabel')}</span>
               <Badge className="font-mono text-[10px]">v1</Badge>
             </div>
           </div>
@@ -138,7 +138,7 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
             ) : !progress ? (
               <p className="text-xs text-muted-foreground">
                 {t('features.areas.progressUnavailable', {
-                  defaultValue: 'Chưa có dữ liệu tiến độ cho khu này.',
+                  defaultValue: t('features.areas.noProgress'),
                 })}
               </p>
             ) : (
@@ -165,7 +165,7 @@ export function AreaDetailDialog({ areaId, open, onClose }: AreaDetailDialogProp
 
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground/80 pt-1">
             <ShieldCheck className="size-4 text-brand-pine shrink-0" />
-            <span>Dữ liệu phân khu được xác thực từ backend ParishCoordination theo ID</span>
+            <span>{t('features.areas.verifiedNote')}</span>
           </div>
         </div>
       )}

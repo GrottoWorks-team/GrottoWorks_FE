@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
-import { getBlob } from '@/lib/blobStore'
+import { getFileDownloadUrl } from '@/features/files/api'
 import { useCommunities, useCreateArea, useSeasons, useUpdateArea, useUsers } from '../api'
 import { useWorkAreaCategories } from '@/features/parish/api'
 import { useCreateReadinessCheck } from '@/features/checklist/api'
@@ -156,11 +156,13 @@ export function AreaFormDialog({
     setMapImageUrl('')
     void (async () => {
       if (!mapRecord?.imageKey) return
-      const blob = await getBlob(mapRecord.imageKey).catch(() => null)
-      if (cancelled || !blob) return
-      const url = URL.createObjectURL(blob)
-      urlRef.current = url
-      setMapImageUrl(url)
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(mapRecord.imageKey)) {
+        if (!cancelled) setMapImageUrl('')
+        return
+      }
+      const download = await getFileDownloadUrl(mapRecord.imageKey).catch(() => null)
+      if (cancelled || !download?.downloadUrl) return
+      setMapImageUrl(download.downloadUrl)
     })()
     return () => {
       cancelled = true
@@ -414,7 +416,7 @@ export function AreaFormDialog({
             <select id="area-season" className={SELECT_CLS} {...register('seasonId')}>
               {seasons.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {`Mùa Giáng sinh ${s.year} (${t(`status.${s.status}`, s.status)})`}
+                  {t('features.season.optionLabel', { year: s.year, status: t(`status.${s.status}`, s.status) })}
                 </option>
               ))}
             </select>

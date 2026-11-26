@@ -8,6 +8,8 @@ export interface Parish {
   address?: string
   description?: string
   status: ParishStatus
+  mapImageFileId?: string | null
+  mapImageFileName?: string | null
   /** Dùng cho If-Match khi PATCH — BE chặn ghi đè bằng 412. */
   version: number
 }
@@ -1150,7 +1152,7 @@ export interface ReviewCorrectionRequest {
 // File contracts (Đợt H)
 
 
-export type FilePurpose = 'ProgressEvidence' | 'ReadinessEvidence' | 'PurchaseReceipt' | 'Other' | string
+export type FilePurpose = 'ProgressEvidence' | 'ReadinessEvidence' | 'PurchaseReceipt' | 'MAP_IMAGE' | 'DESIGN_ASSET' | 'Other' | string
 
 
 export interface CreateUploadRequestDto {

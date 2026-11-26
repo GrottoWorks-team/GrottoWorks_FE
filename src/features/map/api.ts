@@ -10,6 +10,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/lib/auth'
 import type { ParishMap } from '@/types'
+import { api } from '@/lib/api'
 import { mapStore } from './localStore'
 import type { MapPin } from './localStore'
 
@@ -31,8 +32,18 @@ export function useParishMap(parishId?: string) {
   const scopeId = useScopeParishId(parishId)
   return useQuery({
     queryKey: mapKeys.parish(scopeId),
-    // React Query v5 không nhận `undefined` → chưa có bản đồ thì trả `null`.
-    queryFn: async (): Promise<ParishMap | null> => mapStore.getMap(scopeId) ?? null,
+    queryFn: async (): Promise<ParishMap | null> => {
+      const map = await api<{ imageFileId: string | null; fileName: string | null; updatedAt: string | null }>(
+        `/api/v1/parishes/${scopeId}/map`,
+      ).catch(() => null)
+      if (!map?.imageFileId) return null
+      return {
+        id: `pm-${scopeId}`,
+        imageKey: map.imageFileId,
+        fileName: map.fileName ?? undefined,
+        updatedAt: map.updatedAt ?? new Date().toISOString(),
+      }
+    },
     enabled: Boolean(scopeId),
   })
 }
@@ -42,8 +53,20 @@ export function useSaveParishMap(parishId?: string) {
   const qc = useQueryClient()
   const scopeId = useScopeParishId(parishId)
   return useMutation({
-    mutationFn: async (data: { id?: string; imageKey: string; fileName?: string }) =>
-      mapStore.saveMap(scopeId, { imageKey: data.imageKey, fileName: data.fileName }),
+    mutationFn: async (data: { id?: string; imageKey: string; fileName?: string }) => {
+      const saved = await api<{ imageFileId: string | null; fileName: string | null; updatedAt: string | null }>(
+        `/api/v1/parishes/${scopeId}/map`,
+        { method: 'PUT', body: JSON.stringify({ fileId: data.imageKey, fileName: data.fileName ?? '' }) },
+      )
+      if (!saved.imageFileId) throw new Error('Không lưu được bản đồ giáo xứ')
+      mapStore.removeMap(scopeId)
+      return {
+        id: data.id ?? `pm-${scopeId}`,
+        imageKey: saved.imageFileId,
+        fileName: saved.fileName ?? data.fileName,
+        updatedAt: saved.updatedAt ?? new Date().toISOString(),
+      } satisfies ParishMap
+    },
     onSuccess: () => void qc.invalidateQueries({ queryKey: mapKeys.parish(scopeId) }),
   })
 }

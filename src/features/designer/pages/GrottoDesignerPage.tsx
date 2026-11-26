@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getAssetById } from '../assets'
 import { AssetPalette } from '../components/AssetPalette'
@@ -10,12 +11,13 @@ import { useArea } from '@/features/areas/api'
 import { useToast } from '@/components/ui/toast'
 
 export default function GrottoDesignerPage() {
+  const { t } = useTranslation()
   const { areaId = 'default-area' } = useParams<{ areaId: string }>()
   const navigate = useNavigate()
   const toast = useToast()
 
   const { data: area } = useArea(areaId)
-  const areaName = area?.name || `Khu vực #${areaId.slice(0, 8)}`
+  const areaName = area?.name || t('features.areas.fallbackName', { id: areaId.slice(0, 8) })
 
   const {
     items,
@@ -106,7 +108,7 @@ export default function GrottoDesignerPage() {
       ctx.fillStyle = '#94a3b8'
       ctx.font = '12px monospace'
       ctx.fillText(
-        `Ngày xuất: ${new Date().toLocaleDateString('vi-VN')} | Quy cách: 2D Blueprint`,
+        `${t('designer.exportFooter', { date: new Date().toLocaleDateString('vi-VN') })}`,
         45,
         755,
       )
@@ -120,14 +122,14 @@ export default function GrottoDesignerPage() {
       link.click()
       document.body.removeChild(link)
 
-      toast('Đã xuất ảnh bản vẽ PNG thành công!')
+      toast(t('designer.exported'))
     } catch {
-      toast('Có lỗi khi tạo ảnh bản vẽ', 'alert')
+      toast(t('designer.exportFailed'), 'alert')
     }
   }, [items, areaId, areaName, toast])
 
   const handleSave = () => {
-    toast('Đã lưu bản thiết kế hang đá thành công!')
+    toast(t('designer.saved'))
   }
 
   return (
@@ -157,7 +159,7 @@ export default function GrottoDesignerPage() {
         <AssetPalette
           onSelectAsset={(asset) => {
             addItem(asset, { x: 450, y: 250 })
-            toast(`Đã thêm ${asset.name} vào bản vẽ`)
+            toast(t('designer.assetAdded', { name: asset.name }))
           }}
         />
 
@@ -177,7 +179,7 @@ export default function GrottoDesignerPage() {
               const asset = getAssetById(assetId)
               if (asset) {
                 addItem(asset, pos)
-                toast(`Đã đặt ${asset.name}`)
+                toast(t('designer.assetPlaced', { name: asset.name }))
               }
             }}
           />

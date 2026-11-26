@@ -30,6 +30,7 @@ import { OpeningStockDialog } from './OpeningStockDialog'
 import { InventoryAdjustDialog } from './InventoryAdjustDialog'
 import { MaterialHistoryDrawer } from './MaterialHistoryDrawer'
 import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
+import { useParishDistributions } from '@/features/warehouse/api'
 
 const SELECT_CLS =
   'flex h-9 rounded-md border border-border bg-card px-2.5 py-1 text-xs text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -85,6 +86,10 @@ export default function MaterialInventoryPage() {
     onlyShortage: onlyShortage ? true : undefined,
   })
 
+  // Phiếu kho tổng đã xuất nhưng khu chưa xác nhận nhận — nhắc MO xử lý.
+  const { data: pendingDistributions } = useParishDistributions({ status: 'IN_TRANSIT', size: 100 })
+  const pendingCount = pendingDistributions?.data?.length ?? 0
+
   const rows = inventoryResult?.data || []
   const pageInfo = inventoryResult?.page || {
     page: 1,
@@ -124,8 +129,19 @@ export default function MaterialInventoryPage() {
         }
       />
 
+      {pendingCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-200">
+          <span>
+            {t('features.inventory.pendingDistributions', { count: pendingCount })}
+          </span>
+          <a href="/material-officer/distributions" className="font-semibold underline">
+            {t('features.inventory.openDistributions')}
+          </a>
+        </div>
+      )}
+
       {/* Bộ lọc thanh công cụ */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-3 shadow-xs">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-card p-3">
         <div className="flex flex-wrap items-center gap-2">
           <Filter className="size-4 text-muted-foreground ml-1" />
 
@@ -207,7 +223,7 @@ export default function MaterialInventoryPage() {
       </div>
 
       {/* Data Table */}
-      <div className="overflow-hidden rounded-card border border-border bg-card shadow-xs">
+      <div className="overflow-hidden rounded-card border border-border bg-card">
         {isPending ? (
           <div className="p-8 text-center text-sm text-muted-foreground">{t('common.loading')}</div>
         ) : isError ? (

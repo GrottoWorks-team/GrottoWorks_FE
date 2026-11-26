@@ -19,6 +19,8 @@ export interface ParishDto {
   status: ParishStatus
   createdAt: string
   updatedAt: string | null
+  mapImageFileId?: string | null
+  mapImageFileName?: string | null
   version: number
 }
 

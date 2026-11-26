@@ -108,10 +108,10 @@ export function AppShell({ role }: { role?: Role }) {
 
   return (
     <SeasonProvider scoped={showSeasonPicker}>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex min-h-screen">
       <aside
         className={cn(
-          'flex shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
+          'sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
           collapsed ? 'w-[76px]' : 'w-64',
         )}
       >
@@ -155,7 +155,7 @@ export function AppShell({ role }: { role?: Role }) {
                           'g-item relative flex items-center gap-2.5 rounded-md py-2 text-sm font-semibold transition-colors',
                           collapsed ? 'justify-center px-0' : 'px-3',
                           isActive
-                            ? 'bg-primary text-primary-foreground shadow-card'
+                            ? 'bg-primary text-primary-foreground'
                             : 'text-muted-foreground hover:bg-background hover:text-foreground',
                         )
                       }
@@ -222,7 +222,7 @@ export function AppShell({ role }: { role?: Role }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6">
+        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6">
           <div className="lbl-mono flex items-center gap-2">
             <span className="text-primary">{t('app.name')}</span>
             <span aria-hidden>/</span>
@@ -259,7 +259,7 @@ export function AppShell({ role }: { role?: Role }) {
             </Button>
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
+        <main className="flex-1 p-6 md:p-8">
           <Outlet />
         </main>
       </div>

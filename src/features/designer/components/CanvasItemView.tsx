@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { getAssetById } from '../assets'
 import type { GrottoCanvasItem } from '../types'
 
@@ -15,12 +16,13 @@ export function CanvasItemView({
   onSelect,
   onStartDrag,
 }: CanvasItemViewProps) {
+  const { t } = useTranslation()
   const asset = getAssetById(item.assetId)
 
   return (
     <div
       data-testid={`canvas-item-${item.instanceId}`}
-      className="absolute select-none cursor-move transition-shadow"
+      className="absolute select-none cursor-move"
       style={{
         left: `${item.x}px`,
         top: `${item.y}px`,
@@ -50,8 +52,8 @@ export function CanvasItemView({
         >
           {/* Núm xoay trên đỉnh */}
           <div
-            className="absolute -top-6 left-1/2 -translate-x-1/2 size-3.5 rounded-full bg-amber-500 border-2 border-white shadow cursor-grab pointer-events-auto hover:scale-125 transition-transform"
-            title="Xoay góc"
+            className="absolute -top-6 left-1/2 -translate-x-1/2 size-3.5 rounded-full bg-amber-500 border-2 border-white cursor-grab pointer-events-auto hover:scale-125 transition-transform"
+            title={t('designer.rotate')}
             onMouseDown={(e) => {
               e.stopPropagation()
               onStartDrag(e, 'rotate')
@@ -61,28 +63,28 @@ export function CanvasItemView({
 
           {/* 4 điểm mút điều chỉnh kích thước ở góc */}
           <div
-            className="absolute -top-1.5 -left-1.5 size-3 rounded-full bg-white border-2 border-brand-pine shadow cursor-nwse-resize pointer-events-auto hover:scale-125 transition-transform"
+            className="absolute -top-1.5 -left-1.5 size-3 rounded-full bg-white border-2 border-brand-pine cursor-nwse-resize pointer-events-auto hover:scale-125 transition-transform"
             onMouseDown={(e) => {
               e.stopPropagation()
               onStartDrag(e, 'scale')
             }}
           />
           <div
-            className="absolute -top-1.5 -right-1.5 size-3 rounded-full bg-white border-2 border-brand-pine shadow cursor-nesw-resize pointer-events-auto hover:scale-125 transition-transform"
+            className="absolute -top-1.5 -right-1.5 size-3 rounded-full bg-white border-2 border-brand-pine cursor-nesw-resize pointer-events-auto hover:scale-125 transition-transform"
             onMouseDown={(e) => {
               e.stopPropagation()
               onStartDrag(e, 'scale')
             }}
           />
           <div
-            className="absolute -bottom-1.5 -left-1.5 size-3 rounded-full bg-white border-2 border-brand-pine shadow cursor-nesw-resize pointer-events-auto hover:scale-125 transition-transform"
+            className="absolute -bottom-1.5 -left-1.5 size-3 rounded-full bg-white border-2 border-brand-pine cursor-nesw-resize pointer-events-auto hover:scale-125 transition-transform"
             onMouseDown={(e) => {
               e.stopPropagation()
               onStartDrag(e, 'scale')
             }}
           />
           <div
-            className="absolute -bottom-1.5 -right-1.5 size-3 rounded-full bg-white border-2 border-brand-pine shadow cursor-nwse-resize pointer-events-auto hover:scale-125 transition-transform"
+            className="absolute -bottom-1.5 -right-1.5 size-3 rounded-full bg-white border-2 border-brand-pine cursor-nwse-resize pointer-events-auto hover:scale-125 transition-transform"
             onMouseDown={(e) => {
               e.stopPropagation()
               onStartDrag(e, 'scale')

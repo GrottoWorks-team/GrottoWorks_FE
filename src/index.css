@@ -67,16 +67,8 @@
   @apply font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground;
 }
 
-@keyframes g-rise {
-  from {
-    opacity: 0;
-    transform: translateY(14px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
+/* App screen: không animation lúc vào trang — chỉ phản hồi khi bấm/hover/focus.
+   Landing page vẫn dùng `.landing-reveal` (trang công khai). */
 
 /* Thanh tiến độ vươn ra từ 0 (giữ width đích ở style inline). */
 @keyframes g-bar {
@@ -87,19 +79,15 @@
 
 .g-bar {
   transform-origin: left;
-  animation: g-bar 0.9s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  animation-delay: calc(var(--d, 0) * 70ms + 200ms);
 }
 
 .stagger > * {
-  animation: g-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  animation-delay: calc(var(--d, 0) * 70ms);
+  animation: none;
 }
 
 /* Biến thể dùng trực tiếp trên một phần tử (nav item, hàng bảng…). */
 .g-item {
-  animation: g-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  animation-delay: calc(var(--d, 0) * 70ms);
+  animation: none;
 }
 
 /* Scroll-reveal cho landing page: ẩn nhẹ rồi trượt lên khi cuộn tới.
@@ -214,7 +202,7 @@
   left: -60%;
   width: 40%;
   height: 200%;
-  background: linear-gradient(
+  background: linear-gradient( /* taste-skill-ignore: shimmer cho n?t trang c?ng khai */
     60deg,
     rgba(255, 255, 255, 0) 0%,
     rgba(255, 255, 255, 0.3) 50%,

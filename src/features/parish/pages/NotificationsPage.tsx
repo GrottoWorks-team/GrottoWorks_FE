@@ -59,7 +59,7 @@ function Toggle({
       <span
         aria-hidden
         className={cn(
-          'inline-block size-3.5 rounded-full bg-card shadow transition-transform',
+          'inline-block size-3.5 rounded-full bg-card transition-transform',
           checked ? 'translate-x-[18px]' : 'translate-x-[3px]',
         )}
       />

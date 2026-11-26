@@ -43,21 +43,16 @@ beforeEach(() => {
   window.history.pushState({}, '', '/login')
 })
 
-test('hiện 4 chip tài khoản demo', async () => {
+test('không hiển thị nút tài khoản demo', () => {
   render(<App />)
-  for (const local of ['hoa.nguyen', 'bao.tran', 'ngan.nguyen', 'anh.pham']) {
-    expect(
-      await screen.findByRole('button', { name: new RegExp(local) }, { timeout: 10_000 }),
-    ).toBeDefined()
-  }
+  expect(screen.queryByRole('button', { name: /hoa\.nguyen|bao\.tran|ngan\.nguyen|anh\.pham/i })).toBeNull()
 })
 
 test('đăng nhập committee → vào shell với nav điều phối, hiện Mùa Giáng sinh & Khu vực công tác', async () => {
   const user = userEvent.setup()
   render(<App />)
-  await user.click(
-    await screen.findByRole('button', { name: /bao\.tran/ }, { timeout: 10_000 }),
-  )
+  await user.type(await screen.findByLabelText('Email'), 'bao.tran@giaoxuthanhtam.org.vn')
+  await user.type(await screen.findByLabelText('Mật khẩu'), 'test-password')
   await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
   expect(await screen.findByText('Điều phối', {}, { timeout: 10_000 })).toBeDefined()
   expect(await screen.findByText('Giuse Trần Văn Bình', {}, { timeout: 10_000 })).toBeDefined()

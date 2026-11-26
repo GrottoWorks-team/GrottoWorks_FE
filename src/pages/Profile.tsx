@@ -179,7 +179,7 @@ function ProfileForm({ user, onSaved }: { user: User; onSaved: () => Promise<unk
                   )}
                 >
                   <span>{t(s.labelKey)}</span>
-                  <span className="text-[10px] uppercase tracking-wider">{active ? '✓ Chọn' : '+ Thêm'}</span>
+                  <span className="text-[10px]">{active ? t('common.selected') : t('common.add')}</span>
                 </button>
               )
             })}
