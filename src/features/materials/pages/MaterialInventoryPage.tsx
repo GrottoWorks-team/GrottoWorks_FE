@@ -28,7 +28,6 @@ import { useSeasonContext } from '@/features/season/season-context'
 import { useAreas } from '@/features/areas/api'
 import { useAuth } from '@/lib/auth'
 import { formatVnd } from '@/lib/format'
-import { OpeningStockDialog } from './OpeningStockDialog'
 import { InventoryAdjustDialog } from './InventoryAdjustDialog'
 import { MaterialHistoryDrawer } from './MaterialHistoryDrawer'
 import { SelfPurchaseDialog } from './SelfPurchaseDialog'
@@ -54,7 +53,6 @@ export default function MaterialInventoryPage() {
   const [onlyShortage, setOnlyShortage] = useState(false)
 
   // Sub-dialog & Drawer state
-  const [openingStockOpen, setOpeningStockOpen] = useState(false)
   const [adjustOpen, setAdjustOpen] = useState(false)
   const [selfPurchaseOpen, setSelfPurchaseOpen] = useState(false)
   const [historyTarget, setHistoryTarget] = useState<InventoryBalanceDto | null>(null)
@@ -149,13 +147,6 @@ export default function MaterialInventoryPage() {
             >
               <Plus className="size-4" />
               {t('features.selfPurchase.entryBtn')}
-            </Button>
-            <Button
-              onClick={() => setOpeningStockOpen(true)}
-              className="flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="size-4" />
-              {t('features.inventory.openingStockBtn')}
             </Button>
           </div>
         }
@@ -431,18 +422,6 @@ export default function MaterialInventoryPage() {
           </>
         )}
       </div>
-
-      {/* D1: Dialog Nhập tồn đầu kỳ — chỉ mount khi mở để không gọi areas/materials sớm */}
-      {openingStockOpen && (
-        <OpeningStockDialog
-          open
-          onClose={() => {
-            setOpeningStockOpen(false)
-            refetch()
-          }}
-          defaultWorkAreaId={selectedWorkArea}
-        />
-      )}
 
       {/* D1b: Dialog điều chỉnh tồn kho (hỏng / mất / thanh lý) */}
       {adjustOpen && (
