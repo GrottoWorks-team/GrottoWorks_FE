@@ -52,7 +52,7 @@ import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import { ApiError } from '@/lib/api'
 import { viDate, viDateTime } from '@/lib/format'
-import { ScenePreview } from '@/features/builder/components/ScenePreview'
+import { TaskDesignPanel } from '../components/TaskDesignPanel'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -559,19 +559,14 @@ export default function TaskDetailPage() {
 
         {/* Phải: mô hình công trình + phân công tình nguyện viên + thao tác trạng thái. */}
         <div className="space-y-6">
-          {!readOnly && isAreaLeader && task.areaId && (
-            <Card className="p-4">
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="lbl-mono text-sm font-semibold text-foreground">
-                  {t('builder.taskModelTitle', { defaultValue: 'Mô hình 3D công trình' })}
-                </p>
-              </div>
-              <ScenePreview
-                workAreaId={task.areaId}
-                builderHref={`/leader/areas/${task.areaId}/builder`}
-                className="overflow-hidden"
-              />
-            </Card>
+          {task.areaId && (
+            <TaskDesignPanel
+              workAreaId={task.areaId}
+              taskId={task.id}
+              builderHref={`/leader/areas/${task.areaId}/builder`}
+              designHref={readOnly ? `/community/areas/${task.areaId}/design` : `/leader/areas/${task.areaId}/design`}
+              readOnly={readOnly}
+            />
           )}
           {/* Đơn đăng ký của TNV — duyệt/từ chối ngay trong chi tiết việc. */}
           {!readOnly && isAreaLeader && (

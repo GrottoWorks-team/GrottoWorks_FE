@@ -5,7 +5,7 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
@@ -25,6 +25,11 @@ import {
 } from '../api'
 import { ApiError } from '@/lib/api'
 import type { Task } from '@/types'
+import { useAuth } from '@/lib/auth'
+import { sceneRepository } from '@/features/builder/repository'
+import { linkTask, unlinkTask } from '@/features/builder/scene'
+import { syncSceneDesign } from '@/features/builder/designLink'
+import type { ConstructionScene } from '@/features/builder/types'
 
 export const SELECT_CLS =
   'flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -83,6 +88,7 @@ export function TaskFormDialog({
 }) {
   const { t } = useTranslation()
   const toast = useToast()
+  const { user } = useAuth()
   const { data: areas = [] } = useScopedAreas()
   // Danh mục kỹ năng dùng id (GUID) — BE nhận `skillId` trong PUT /tasks/{id}/skills.
   const { data: skills = [] } = useSkillsCatalog()
@@ -138,6 +144,40 @@ export function TaskFormDialog({
 
   const areaId = watch('areaId')
   const { data: materials = [] } = useMaterials(areaId || undefined)
+  const [designScene, setDesignScene] = useState<ConstructionScene | null>(null)
+  const [linkedLayerId, setLinkedLayerId] = useState('')
+
+  useEffect(() => {
+    let live = true
+    setDesignScene(null)
+    setLinkedLayerId('')
+    if (!areaId) return () => { live = false }
+    void sceneRepository.load(areaId).then((scene) => {
+      if (!live) return
+      setDesignScene(scene)
+      if (scene && task) {
+        const linked = scene.layers.find((layer) => layer.taskIds.includes(task.id))
+        setLinkedLayerId(linked?.id ?? '')
+      }
+    })
+    return () => { live = false }
+  }, [areaId, task])
+
+  const saveTaskDesignLink = async (taskId: string) => {
+    if (!designScene) return
+    let next = designScene
+    for (const layer of next.layers) {
+      if (layer.taskIds.includes(taskId)) next = unlinkTask(next, layer.id, taskId)
+    }
+    if (linkedLayerId) next = linkTask(next, linkedLayerId, taskId)
+    const saved = await sceneRepository.save(next)
+    setDesignScene(saved)
+    syncSceneDesign({
+      areaId: saved.workAreaId,
+      scene: saved,
+      userId: user?.id ?? 'system',
+    })
+  }
   // BE chặn deadline của task vượt deadline khu vực (`TASK_DATE_OUT_OF_WORK_AREA`).
   const areaDeadline = areas.find((a) => a.id === areaId)?.deadline?.slice(0, 10)
   const selectedMaterialIds = watch('materialIds') ?? []
@@ -197,6 +237,7 @@ export function TaskFormDialog({
             version: latest.version,
           })
         }
+        await saveTaskDesignLink(task.id)
         toast(t('features.tasks.updated', { name: data.title }))
       } else {
         const created = await create.mutateAsync({
@@ -225,6 +266,7 @@ export function TaskFormDialog({
             version: latest.version,
           })
         }
+        if (created?.id) await saveTaskDesignLink(created.id)
         toast(t('features.tasks.created', { name: data.title }))
       }
       onClose()
@@ -281,6 +323,28 @@ export function TaskFormDialog({
               ))}
             </select>
             {err(errors.areaId?.message)}
+          </div>
+        )}
+        {areaId && (
+          <div>
+            <Label htmlFor="task-design-layer">{t('features.tasks.designLayer')}</Label>
+            {designScene ? (
+              <select
+                id="task-design-layer"
+                className={SELECT_CLS}
+                value={linkedLayerId}
+                onChange={(event) => setLinkedLayerId(event.target.value)}
+              >
+                <option value="">{t('features.tasks.designLayerNone')}</option>
+                {designScene.layers.map((layer) => (
+                  <option key={layer.id} value={layer.id}>{layer.name}</option>
+                ))}
+              </select>
+            ) : (
+              <p className="rounded-md border border-dashed border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                {t('features.tasks.designLayerMissing')}
+              </p>
+            )}
           </div>
         )}
         <div>

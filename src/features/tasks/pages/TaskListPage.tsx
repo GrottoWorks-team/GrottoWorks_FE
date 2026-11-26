@@ -20,6 +20,7 @@ import { viDate } from '@/lib/format'
 import { useTasks } from '../api'
 import { SELECT_CLS, TaskFormDialog } from './TaskFormDialog'
 import type { Task } from '@/types'
+import { TaskDesignPanel } from '../components/TaskDesignPanel'
 
 export default function TaskListPage() {
   const { t } = useTranslation()
@@ -161,6 +162,15 @@ export default function TaskListPage() {
           )
         }
       />
+
+      {areaId && (
+        <TaskDesignPanel
+          workAreaId={areaId}
+          builderHref={`${pathname.startsWith('/leader') ? '/leader' : '/community'}/areas/${areaId}/builder`}
+          designHref={`${pathname.startsWith('/leader') ? '/leader' : '/community'}/areas/${areaId}/design`}
+          readOnly={readOnly}
+        />
+      )}
 
       {isPending ? (
         <p className="lbl-mono">{t('common.loading')}</p>
