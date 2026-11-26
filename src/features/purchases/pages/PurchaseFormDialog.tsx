@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { fieldError, fieldErrorsOf, type FieldErrors } from '@/lib/apiFieldErrors'
-import { useAreas } from '@/features/areas/api'
+import { useMyOfficerAreas } from '@/features/areas/api'
 import { useMaterialCatalog, useWorkAreaShortages, type MaterialCatalogItemDto } from '@/features/materials/api'
 import {
   useCreatePurchaseRequest,
@@ -39,7 +39,8 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
   const { t } = useTranslation()
   const toast = useToast()
 
-  const { data: areas = [] } = useAreas()
+  // 26/11/2026: chỉ khu vực MO đang đảm nhận trong mùa đang chọn.
+  const { data: areas = [] } = useMyOfficerAreas()
   const { data: catalogResult } = useMaterialCatalog({ page: 1, size: 100, status: 'ACTIVE' })
   const catalog: MaterialCatalogItemDto[] = catalogResult?.data ?? []
 

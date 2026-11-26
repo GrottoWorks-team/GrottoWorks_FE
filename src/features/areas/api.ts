@@ -2,7 +2,9 @@
 // mùa (/api/v1/seasons/{seasonId}/work-areas), nên "tất cả các mùa" = gọi
 // song song từng mùa rồi gộp.
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { api } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import type { CreateWorkAreaRequest, WorkAreaDto } from '@/types/parish'
 import { toWorkArea } from '@/features/parish/mappers'
 import { useSeasons } from '@/features/season/api'
@@ -64,6 +66,21 @@ export function useScopedAreas() {
   // Chưa biết mùa hiệu lực (danh sách mùa đang tải) → KHÔNG gọi /work-areas cho
   // mọi mùa (N request thừa rồi gọi lại lần nữa khi mùa resolve).
   return useAreas(seasonId ? [seasonId] : isPending ? [] : undefined)
+}
+
+/**
+ * Khu vực do người dùng hiện tại phụ trách vật tư (officerId = user.id) trong
+ * mùa đang chọn — dùng cho form MO để không thấy/lộ khu của người khác hoặc
+ * khu của mùa khác (26/11/2026).
+ */
+export function useMyOfficerAreas() {
+  const { user } = useAuth()
+  const { data, isPending } = useScopedAreas()
+  const data2 = useMemo(
+    () => (user?.id ? data.filter((area) => !area.officerId || area.officerId === user.id) : data),
+    [data, user?.id],
+  )
+  return { data: data2, isPending }
 }
 
 /** GET /api/v1/work-areas/{id}/progress — tiến độ task của khu (ParishCoordination). */
