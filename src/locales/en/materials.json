@@ -1,5 +1,10 @@
 {
   "features.allocations.taskMaterials": "Task material requirements",
+  "features.allocations.materials": "Materials to allocate (multiple lines)",
+  "features.allocations.addLine": "Add material",
+  "features.allocations.lineRequired": "Add at least one material line with a quantity.",
+  "features.allocations.duplicateMaterial": "Each material may appear only once per allocation.",
+  "features.allocations.createdMulti": "Created an allocation with {{count}} material lines.",
   "features.allocations.onlyMyAreas": "Only work areas you are the material officer of are listed.",
   "features.allocations.taskNeedRemaining": "Remaining need for this task: {{n}} (required {{required}})",
   "features.allocations.qtyExceedsTaskNeed": "Exceeds the remaining need of this task.",

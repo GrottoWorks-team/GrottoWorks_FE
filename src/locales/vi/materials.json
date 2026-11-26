@@ -1,5 +1,10 @@
 {
   "features.allocations.taskMaterials": "Vật tư việc yêu cầu",
+  "features.allocations.materials": "Vật tư cấp phát (nhiều dòng)",
+  "features.allocations.addLine": "Thêm vật tư",
+  "features.allocations.lineRequired": "Thêm ít nhất một dòng vật tư có số lượng.",
+  "features.allocations.duplicateMaterial": "Mỗi vật tư chỉ được xuất hiện một lần trong phiếu.",
+  "features.allocations.createdMulti": "Đã tạo phiếu cấp phát với {{count}} dòng vật tư.",
   "features.allocations.onlyMyAreas": "Chỉ hiển thị khu vực bạn phụ trách vật tư.",
   "features.allocations.taskNeedRemaining": "Nhu cầu còn lại của việc: {{n}} (yêu cầu {{required}})",
   "features.allocations.qtyExceedsTaskNeed": "Vượt quá nhu cầu còn lại của việc.",
