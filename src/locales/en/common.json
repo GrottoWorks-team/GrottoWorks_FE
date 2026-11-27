@@ -60,6 +60,7 @@
   "notifications.hourAgo": "{{n}} h ago",
   "notifications.dayAgo": "{{n}} d ago",
   "nav.section.overview": "Overview",
+  "nav.section.settings": "Settings",
   "nav.section.coordination": "Coordination",
   "nav.section.wrapup": "Wrap-up",
   "nav.community.dashboard": "Season dashboard",

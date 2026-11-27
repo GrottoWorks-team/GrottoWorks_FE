@@ -237,5 +237,16 @@
   "features.skills.updated": "Cập nhật kỹ năng thành công!",
   "features.skills.created": "Thêm kỹ năng mới thành công!",
   "features.skills.failed": "Thao tác không thành công",
-  "features.volunteers.taskUnit": "việc"
+  "features.volunteers.taskUnit": "việc",
+  "features.parish.addNew": "Thêm {{name}} mới",
+  "features.parish.categoryHelper": "Tên danh mục không được trùng và sẽ hiển thị trong biểu mẫu phân công.",
+  "features.parish.createCategory": "Tạo danh mục",
+  "features.parish.groups": "Nhóm danh mục",
+  "features.parish.groupsSub": "Loại khu vực, kỹ năng, vật tư, đóng góp",
+  "features.parish.itemCount": "{{n}} mục",
+  "features.parish.totalItems": "Tổng mục",
+  "features.parish.totalSub": "Trong nhóm {{tab}}",
+  "features.parish.usesCount": "Lượt sử dụng",
+  "features.parish.usesSub": "{{n}} mục đang được dùng",
+  "features.parish.hubCount": "{{communities}} cộng đoàn · {{areas}} khu vực đang chạy"
 }

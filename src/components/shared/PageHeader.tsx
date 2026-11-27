@@ -23,18 +23,18 @@ export function PageHeader({
   className?: string
 }) {
   return (
-    <div className={cn('mb-6 flex flex-wrap items-start justify-between gap-4', className)}>
-      <div className="min-w-0">
-        <h1 className="text-[25px] font-extrabold leading-[29px] tracking-[-0.7px] text-foreground">{title}</h1>
+    <div className={cn('mb-[16px] flex flex-row items-center justify-between gap-[20px]', className)}>
+      <div className="flex min-w-0 flex-1 flex-col gap-[4px]">
+        <h1 className="text-[25px] font-extrabold leading-[29px] tracking-[-0.7px] text-[#0B2E1F]">{title}</h1>
         {finding ? (
-          <p className="mt-1 max-w-[72ch] text-sm font-medium text-foreground">{finding}</p>
+          <p className="max-w-[72ch] text-sm font-medium text-foreground">{finding}</p>
         ) : null}
         {sub ? (
-          <p className="mt-1 max-w-[72ch] text-[11.5px] leading-relaxed text-[#7C9287]">{sub}</p>
+          <p className="w-full max-w-[72ch] text-[11.5px] leading-[17px] text-[#7C9287]">{sub}</p>
         ) : null}
         {children}
       </div>
-      {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+      {actions ? <div className="flex shrink-0 flex-row items-center gap-[8px]">{actions}</div> : null}
     </div>
   )
 }

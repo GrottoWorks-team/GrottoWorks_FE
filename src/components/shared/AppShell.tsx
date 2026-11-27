@@ -6,8 +6,8 @@ import { useQuery } from '@tanstack/react-query'
 import {
   LogOut, LayoutDashboard, Calendar, MapPin, Users, ShoppingCart, LifeBuoy,
   ListChecks, FileText, ClipboardList, ClipboardCheck, UserPlus, Inbox, Clock,
-  Package, Gift, Backpack, Boxes, UserCog, Church, Tags, Star, History, Database,
-  MapPinned, Info, Bell, PanelLeftClose, PanelLeftOpen,
+  Package, Gift, Backpack, Boxes, Church, Tags, Star, History, Database,
+  MapPinned, Info, Bell, PanelLeftClose, PanelLeftOpen, ChevronRight,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
@@ -27,7 +27,7 @@ const ICONS: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard, calendar: Calendar, areas: MapPin, users: Users,
   cart: ShoppingCart, lifebuoy: LifeBuoy, checklist: ListChecks, reports: FileText,
   tasks: ClipboardList, inbox: Inbox, clock: Clock, materials: Package,
-  gift: Gift, borrowed: Backpack, boxes: Boxes, accounts: UserCog,
+  gift: Gift, borrowed: Backpack, boxes: Boxes, accounts: Users,
   church: Church, tags: Tags, star: Star, history: History, backup: Database,
   assign: UserPlus, confirm: ClipboardCheck, map: MapPinned, bell: Bell,
 }
@@ -108,43 +108,53 @@ export function AppShell({ role }: { role?: Role }) {
 
   return (
     <SeasonProvider scoped={showSeasonPicker}>
-      <div className="flex min-h-screen">
-      <aside
-        className={cn(
-          'sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden bg-brand-deeper transition-[width] duration-200',
-          collapsed ? 'w-[76px]' : 'w-[248px]',
-        )}
-      >
-        <div
+      <div className="flex min-h-screen bg-[#F4F6F1]">
+        {/* SIDEBAR — số đo/màu lấy đúng từ bản thiết kế Pen (KHOA.pen) */}
+        <aside
           className={cn(
-            'relative flex items-center gap-[11px] pb-[18px] pt-[22px]',
-            collapsed ? 'justify-center px-0' : 'px-[18px]',
+            'sticky top-0 flex h-screen shrink-0 flex-col justify-start overflow-hidden bg-[#06281B] transition-[width] duration-200',
+            collapsed ? 'w-[76px]' : 'w-[248px]',
           )}
         >
-          <div className="grid size-[38px] shrink-0 place-items-center rounded-xl border border-brand-gold/35 bg-gradient-to-br from-[#12805A] to-[#0A5C36] text-brand-gold">
-            <Church className="size-[18px]" aria-hidden />
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="truncate text-[13.5px] font-extrabold uppercase leading-tight tracking-[0.6px] text-white">
-                {t('app.name')}
-              </p>
-              <p className="truncate text-[8px] font-semibold uppercase tracking-[1.6px] text-brand-mint/70">
-                {t('app.parish')}
-              </p>
+          <div
+            className="pointer-events-none absolute left-[-120px] top-[520px] size-[340px] rounded-full bg-[#0E7A4626] blur-[45px]"
+            aria-hidden
+          />
+
+          <div
+            className={cn(
+              'relative z-[1] flex shrink-0 items-center gap-[11px] pb-[18px] pt-[22px]',
+              collapsed ? 'justify-center px-0' : 'px-[18px]',
+            )}
+          >
+            <div className="grid size-[38px] shrink-0 place-items-center rounded-[12px] border border-[#E9B94959] bg-gradient-to-br from-[#12805A] to-[#0A5C36]">
+              <Church className="size-[18px] text-[#E9B949]" aria-hidden />
             </div>
-          )}
-        </div>
-        <div className="h-px w-full shrink-0 bg-white/[0.08]" aria-hidden />
-        <nav className={cn('flex flex-1 flex-col gap-[2px] overflow-y-auto py-[14px]', collapsed ? 'px-2' : 'px-3')}>
-          {groups.map((g) => (
-            <div key={g.section || 'main'} className="flex flex-col gap-[2px]">
-              {g.section && !collapsed && (
-                <p className="mb-0 px-[11px] font-mono text-[10px] font-semibold uppercase leading-[21px] tracking-[1.6px] text-[#5F8271]">
-                  {t(g.section)}
-                </p>
-              )}
-              <div className="space-y-[2px]">
+            {!collapsed && (
+              <div className="flex min-w-0 flex-col gap-px">
+                <span className="truncate text-[14.5px] font-extrabold tracking-[-0.2px] text-white">
+                  GrottoWorks
+                </span>
+                <span className="truncate text-[11px] text-[#8FAF9D]">{t('app.parish')}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="h-px w-full shrink-0 bg-white/[0.08]" aria-hidden />
+
+          <nav
+            className={cn(
+              'relative z-[3] flex flex-1 flex-col gap-[2px] overflow-y-auto py-[14px]',
+              collapsed ? 'items-center px-2' : 'px-3',
+            )}
+          >
+            {groups.map((g) => (
+              <div key={g.section || 'main'} className={cn('flex w-full flex-col gap-[2px]', collapsed && 'items-center')}>
+                {g.section && !collapsed && (
+                  <p className="w-full px-[11px] font-mono text-[10px] font-semibold uppercase leading-[21px] tracking-[1.6px] text-[#5F8271]">
+                    {t(g.section)}
+                  </p>
+                )}
                 {g.items.map((item) => {
                   const n = item.badge ? badgeCount(item.badge) : 0
                   const Icon = item.icon ? ICONS[item.icon] : undefined
@@ -157,11 +167,9 @@ export function AppShell({ role }: { role?: Role }) {
                       style={{ '--d': delayOf(item.to) } as CSSProperties}
                       className={({ isActive }) =>
                         cn(
-                          'g-item relative flex h-[37px] items-center gap-2.5 rounded-[10px] text-[12.5px] font-bold transition-colors',
+                          'relative flex h-[37px] w-full shrink-0 items-center gap-[10px] rounded-[10px] transition-colors',
                           collapsed ? 'justify-center px-0' : 'px-[11px]',
-                          isActive
-                            ? 'bg-white/[0.08] text-white'
-                            : 'text-brand-mint hover:bg-white/[0.04] hover:text-white',
+                          isActive ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]',
                         )
                       }
                     >
@@ -170,19 +178,33 @@ export function AppShell({ role }: { role?: Role }) {
                           {isActive && (
                             <span
                               aria-hidden
-                              className="absolute left-0 top-1/2 h-[17px] w-[3px] -translate-y-1/2 rounded-[2px] bg-[#E9B949]"
+                              className="absolute left-0 top-[10px] h-[17px] w-[3px] rounded-[2px] bg-[#E9B949]"
                             />
                           )}
-                          {Icon && <Icon className="size-[15px] shrink-0" aria-hidden />}
-                          {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
+                          {Icon && (
+                            <Icon
+                              className={cn('size-[15px] shrink-0', isActive ? 'text-white' : 'text-[#A8C4B4]')}
+                              aria-hidden
+                            />
+                          )}
+                          {!collapsed && (
+                            <span
+                              className={cn(
+                                'flex-1 truncate text-[12.5px] leading-4',
+                                isActive ? 'font-bold text-white' : 'font-medium text-[#A8C4B4]',
+                              )}
+                            >
+                              {t(item.label)}
+                            </span>
+                          )}
                           {n > 0 &&
                             (collapsed ? (
                               <span
                                 aria-hidden
-                                className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand-gold"
+                                className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[#E9B949]"
                               />
                             ) : (
-                              <span className="rounded-full bg-[#E9B949] px-1.5 py-0.5 text-[10px] font-bold text-brand-deeper">
+                              <span className="rounded-full bg-[#E9B949] px-1.5 py-0.5 text-[10px] font-bold text-[#06281B]">
                                 {n}
                               </span>
                             ))}
@@ -192,92 +214,95 @@ export function AppShell({ role }: { role?: Role }) {
                   )
                 })}
               </div>
-            </div>
-          ))}
-        </nav>
+            ))}
+          </nav>
 
-        {/* Ghi chú cuối sidebar: mục đích của role đang đăng nhập (ẩn khi thu gọn). */}
-        {!collapsed && (
-          <div className="shrink-0 p-3">
-            <div className="rounded-[10px] border border-white/10 bg-white/[0.06] px-[12px] py-[12px]">
-              <p className="flex items-center gap-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[1.2px] text-[#E9B949]">
-                <Info className="size-3 shrink-0" aria-hidden />
-                <span className="truncate">{t(`role.${r}`)}</span>
-              </p>
-              <p className="mt-[7px] text-[10.5px] leading-[16px] text-[#9DBBA9]">
-                {t(`shell.roleNote.${r}`)}
-              </p>
+          {/* Thẻ ghi chú role — bản thiết kế: khối "QUẢN TRỊ HỆ THỐNG" ở chân sidebar */}
+          {!collapsed && (
+            <div className="relative z-[5] flex w-full shrink-0 flex-col gap-[7px] p-[12px]">
+              <div className="flex w-full flex-col gap-[7px] border border-white/10 bg-white/[0.06] p-3">
+                <p className="flex w-full items-center gap-1.5">
+                  <Info className="size-3 shrink-0 text-[#E9B949]" aria-hidden />
+                  <span className="truncate font-mono text-[9.5px] font-bold uppercase tracking-[1.2px] text-[#E9B949]">
+                    {t(`role.${r}`)}
+                  </span>
+                </p>
+                <p className="w-full text-[10.5px] leading-4 text-[#9DBBA9]">
+                  {t(`shell.roleNote.${r}`)}
+                </p>
+              </div>
             </div>
+          )}
+
+          {/* Thu gọn / mở rộng sidebar — nhớ lựa chọn ở localStorage. */}
+          <div className="shrink-0 border-t border-white/[0.08] p-2">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+              title={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-md py-2 text-[11px] font-semibold text-[#97AB9E] transition-colors hover:bg-white/[0.06] hover:text-white',
+                collapsed ? 'justify-center px-0' : 'px-3',
+              )}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-4 shrink-0" aria-hidden />
+              ) : (
+                <>
+                  <PanelLeftClose className="size-4 shrink-0" aria-hidden />
+                  <span className="truncate">{t('shell.collapseSidebar')}</span>
+                </>
+              )}
+            </button>
           </div>
-        )}
+        </aside>
 
-        {/* Thu gọn / mở rộng sidebar — nhớ lựa chọn ở localStorage. */}
-        <div className="shrink-0 border-t border-white/[0.08] p-2">
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
-            title={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
-            className={cn(
-              'flex w-full items-center gap-2 rounded-md py-2 text-[11px] font-semibold text-brand-mint transition-colors hover:bg-white/[0.06] hover:text-white',
-              collapsed ? 'justify-center px-0' : 'px-3',
-            )}
-          >
-            {collapsed ? (
-              <PanelLeftOpen className="size-4 shrink-0" aria-hidden />
-            ) : (
-              <>
-                <PanelLeftClose className="size-4 shrink-0" aria-hidden />
-                <span className="truncate">{t('shell.collapseSidebar')}</span>
-              </>
-            )}
-          </button>
+        <div className="flex min-w-0 flex-1 flex-col">
+          {/* HEADER — 62px, breadcrumb mono, chuông + người dùng theo bản thiết kế */}
+          <header className="sticky top-0 z-20 flex h-[62px] shrink-0 items-center justify-between border-b border-[#E3EAE0] bg-white px-[22px]">
+            <div className="flex items-center gap-[7px] font-mono text-[10.5px] uppercase tracking-[1.3px]">
+              <span className="font-bold text-[#0A5C36]">{t('app.name')}</span>
+              <ChevronRight className="size-3 text-[#C3D2C7]" aria-hidden />
+              <span className="font-medium text-[#8AA298]">{crumb}</span>
+            </div>
+            <div className="flex items-center gap-[6px]">
+              {showSeasonPicker && <SeasonSelect />}
+              <div className="grid size-[34px] place-items-center rounded-[10px] bg-[#F6F8F4]">
+                <NotificationsDropdown />
+              </div>
+              <Link to="/profile" className="flex items-center gap-[9px] pl-2 pr-1 transition-colors hover:opacity-80">
+                <span className="h-[26px] w-px bg-[#E3EAE0]" aria-hidden />
+                <Avatar name={user?.name ?? ''} hue={user?.avatarHue} />
+                <span className="hidden flex-col gap-px md:flex">
+                  <span className="block max-w-40 truncate text-[11.5px] font-bold text-[#0B2E1F]">
+                    {user?.name}
+                  </span>
+                  <span className="block max-w-40 truncate text-[10px] text-[#8AA298]">
+                    {user ? t(`role.${user.role}`) : ''}
+                  </span>
+                </span>
+              </Link>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-[34px] rounded-[10px] bg-[#F6F8F4] hover:bg-[#ECF1E9]"
+                aria-label={t('common.logout')}
+                title={t('common.logout')}
+                onClick={() => {
+                  void logout()
+                  navigate('/login', { replace: true })
+                }}
+              >
+                <LogOut className="size-4 text-[#5C7468]" />
+              </Button>
+            </div>
+          </header>
+          <main className="flex-1 bg-[#F4F6F1] p-6">
+            <Outlet />
+          </main>
         </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-[62px] shrink-0 items-center justify-between border-b border-border bg-white px-[22px]">
-          <div className="flex items-center gap-[7px] font-mono text-[10.5px] uppercase tracking-[1.3px]">
-            <span className="font-bold text-[#0A5C36]">{t('app.name')}</span>
-            <span aria-hidden className="text-[#B9C8BC]">/</span>
-            <span className="font-medium text-[#8AA298]">{crumb}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {showSeasonPicker && <SeasonSelect />}
-            <NotificationsDropdown />
-            <Link
-              to="/profile"
-              className="flex items-center gap-2.5 rounded-md py-1 pl-1 pr-2.5 transition-colors hover:bg-background"
-            >
-              <Avatar name={user?.name ?? ''} hue={user?.avatarHue} />
-              <span className="hidden text-left md:block">
-                <span className="block max-w-40 truncate text-sm font-semibold leading-tight text-foreground">
-                  {user?.name}
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  {user ? t(`role.${user.role}`) : ''}
-                </span>
-              </span>
-            </Link>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={t('common.logout')}
-              title={t('common.logout')}
-              onClick={() => {
-                void logout()
-                navigate('/login', { replace: true })
-              }}
-            >
-              <LogOut className="size-4 text-muted-foreground" />
-            </Button>
-          </div>
-        </header>
-        <main className="flex-1 p-6">
-          <Outlet />
-        </main>
-      </div>
       </div>
     </SeasonProvider>
   )

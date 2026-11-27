@@ -15,7 +15,7 @@ import { useLockUser, useUnlockUser } from '../api'
 import { AccountFormDialog } from './AccountFormDialog'
 import type { User } from '@/types'
 
-// Switch khoá/mở — pattern trang Checklist.
+// Switch khoá/mở — kích thước/màu lấy từ Pen (32×18, đỏ #C7503F khi khoá).
 function LockSwitch({
   checked,
   label,
@@ -33,17 +33,11 @@ function LockSwitch({
       aria-label={label}
       onClick={onToggle}
       className={cn(
-        'relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border transition-colors',
-        checked ? 'border-destructive bg-destructive' : 'border-border bg-brand-pine',
+        'flex h-[18px] w-[32px] shrink-0 items-center rounded-full p-[2px] transition-colors',
+        checked ? 'justify-start bg-[#C7503F]' : 'justify-end bg-[#12805A]',
       )}
     >
-      <span
-        aria-hidden
-        className={cn(
-          'inline-block size-3.5 rounded-full bg-card transition-transform',
-          checked ? 'translate-x-[18px]' : 'translate-x-[3px]',
-        )}
-      />
+      <span aria-hidden className="block size-[14px] rounded-full bg-white" />
     </button>
   )
 }
@@ -84,14 +78,17 @@ export default function AccountsPage() {
         key: 'role',
         header: t('features.parish.role'),
         render: (u: User) => (
+          // Nhãn role dạng viên thuốc — màu lấy đúng từ Pen (KHOA.pen).
           <span
             className={cn(
-              'inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-semibold',
+              'inline-flex whitespace-nowrap rounded-full border px-[9px] py-[4px] text-[10px] font-bold',
               u.role === 'PARISH' || u.role === 'LEADER'
-                ? 'bg-[#FDF3D8] text-[#8A5A00]'
+                ? u.role === 'PARISH'
+                  ? 'border-[#0A5C36] bg-[#0A5C36] text-white'
+                  : 'border-[#EDD9A6] bg-[#FCF3DE] text-[#9A6A0C]'
                 : u.role === 'MATERIAL_OFFICER'
-                  ? 'bg-[#E8F5E9] text-[#0A5C36]'
-                  : 'bg-[#EEF3EB] text-[#3B5348]',
+                  ? 'border-[#DDE4D9] bg-[#EFF2EE] text-[#5C7468]'
+                  : 'border-[#CBE3D2] bg-[#E9F4EC] text-[#1B6B45]',
             )}
           >
             {t(`role.${u.role}`)}
@@ -148,15 +145,17 @@ export default function AccountsPage() {
         title={t('features.parish.accountsTitle')}
         sub={t('features.parish.accountsSub')}
         actions={
-          <Button
+          <button
+            type="button"
             onClick={() => {
               setEditing(null)
               setFormOpen(true)
             }}
+            className="flex h-[38px] items-center gap-[7px] rounded-[11px] bg-[#0A5C36] px-[13px] shadow-[0px_6px_14px_#0A5C362E] transition-colors hover:bg-[#0D7344]"
           >
-            <Plus className="size-4" />
-            {t('features.parish.createAccount')}
-          </Button>
+            <Plus className="size-[14px] text-white" aria-hidden />
+            <span className="text-[12px] font-bold text-white">{t('features.parish.createAccount')}</span>
+          </button>
         }
       />
 

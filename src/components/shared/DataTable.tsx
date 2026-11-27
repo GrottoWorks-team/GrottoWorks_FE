@@ -92,8 +92,9 @@ export function DataTable<T>({
 
   return (
     <div className="w-full">
+      <div className="overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
       {showToolbar && (
-        <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 border-b border-[#ECF1E9] px-[18px] py-[14px]">
           {searchKeys?.length ? (
             <SearchInput
               value={q}
@@ -132,9 +133,9 @@ export function DataTable<T>({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-card border border-border bg-card">
+      <div className="overflow-x-auto">
         {toolbarActions ? (
-          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-border px-4 py-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 border-b border-[#ECF1E9] px-[18px] py-[14px]">
             {toolbarActions}
           </div>
         ) : null}
@@ -218,6 +219,7 @@ export function DataTable<T>({
         {!isPending && !isError && filtered.length === 0 && (
           <EmptyState text={emptyText ?? t('common.empty')} hint={emptyHint} action={emptyAction} />
         )}
+      </div>
       </div>
 
       {filtered.length > pageSize && (

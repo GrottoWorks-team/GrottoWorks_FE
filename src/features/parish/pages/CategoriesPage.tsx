@@ -5,19 +5,18 @@
 //     'grotto-unit-catalog' dạng delta so với 13 unit mặc định (FE-only).
 //   • Loại đóng góp (donationKind): READ-ONLY + đếm cam kết.
 // Tab readonly: enum cố định trong types (compile-time) → không sửa được.
-import { useMemo, useState } from 'react'
+// Bố cục/số đo lấy đúng bản thiết kế Pen (KHOA.pen 27/11/2026): dải 3 thẻ số,
+// cột danh sách + cột biểu mẫu 300px bên phải.
+import { useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Check, CircleAlert, CircleCheck, Pencil, Plus, Tags, Trash2, X } from 'lucide-react'
+import { Check, CircleCheck, Info, Layers, Pencil, Plus, Tags, Trash2, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { StatCard } from '@/components/shared/StatCard'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { useAreas } from '@/features/areas/api'
 import { useDonations } from '@/features/donations/api'
@@ -73,7 +72,11 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-// Hàng danh mục: tên + số tham chiếu + sửa inline + xoá (chặn khi refCount > 0).
+// Mảnh dùng lại: nút biểu tượng 26px trong hàng danh mục (Pen: Actions).
+const ROW_BTN =
+  'grid size-[26px] place-items-center rounded-[8px] text-[#8AA298] transition-colors hover:bg-[#F1F6EE] hover:text-[#0A5C36]'
+
+// Hàng danh mục: chip biểu tượng + tên + số tham chiếu + sửa inline + xoá.
 function CategoryRow({
   name,
   refCount,
@@ -99,7 +102,7 @@ function CategoryRow({
   }
 
   return (
-    <li className="flex items-center justify-between gap-3 border-b border-border/60 py-2.5 last:border-0">
+    <li className="flex w-full items-center justify-between gap-3 border-b border-[#F0F4EC] px-[18px] py-[12px] last:border-0">
       {editing ? (
         <form
           className="flex flex-1 gap-2"
@@ -129,28 +132,40 @@ function CategoryRow({
         </form>
       ) : (
         <>
-          <span className="font-semibold text-foreground">{name}</span>
-          <div className="flex items-center gap-1">
-            <span className="lbl-mono !text-[11px]">
-              {refCount === null ? '—' : `${refCount} ${refLabel}`}
+          <div className="flex min-w-0 items-center gap-[11px]">
+            <span className="grid size-[30px] shrink-0 place-items-center rounded-[9px] border border-[#DDE8D6] bg-[#EDF4EA]">
+              <Tags className="size-[13px] text-[#4F7A61]" aria-hidden />
             </span>
+            <div className="flex min-w-0 flex-col gap-px">
+              <span className="truncate text-[13px] font-bold text-[#0B2E1F]">{name}</span>
+              <span className="truncate font-mono text-[9.5px] uppercase tracking-[1.2px] text-[#A3B4A9]">
+                {refCount === null ? '—' : `${refCount} ${refLabel}`}
+              </span>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-[2px]">
             {onRename && (
-              <Button
-                variant="ghost"
-                size="icon"
+              <button
+                type="button"
+                className={ROW_BTN}
                 aria-label={t('common.edit')}
                 onClick={() => {
                   setDraft(name)
                   setEditing(true)
                 }}
               >
-                <Pencil className="size-4" />
-              </Button>
+                <Pencil className="size-3" aria-hidden />
+              </button>
             )}
             {onDelete && (
-              <Button variant="ghost" size="icon" aria-label={t('common.delete')} onClick={onDelete}>
-                <Trash2 className="size-4" />
-              </Button>
+              <button
+                type="button"
+                className={ROW_BTN}
+                aria-label={t('common.delete')}
+                onClick={onDelete}
+              >
+                <Trash2 className="size-3" aria-hidden />
+              </button>
             )}
           </div>
         </>
@@ -159,9 +174,15 @@ function CategoryRow({
   )
 }
 
-// Form thêm nhanh: input + nút tạo — reset sau khi add (await để isSubmitting
-// giữ nút disabled trong lúc mutation chạy).
-function AddCategoryForm({ onAdd }: { onAdd: (name: string) => void | Promise<unknown> }) {
+// Form thêm nhanh (cột phải) — reset sau khi add (await để isSubmitting giữ nút
+// disabled trong lúc mutation chạy).
+function AddCategoryForm({
+  inputRef,
+  onAdd,
+}: {
+  inputRef?: React.RefObject<HTMLInputElement | null>
+  onAdd: (name: string) => void | Promise<unknown>
+}) {
   const { t } = useTranslation()
   const {
     register,
@@ -169,10 +190,13 @@ function AddCategoryForm({ onAdd }: { onAdd: (name: string) => void | Promise<un
     reset,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({ resolver: zodResolver(schema), defaultValues: { name: '' } })
+  // ref của react-hook-form + ref ngoài (để nút "Tạo danh mục" trên header focus
+  // vào ô nhập) — gộp bằng callback ref, không truyền 2 prop `ref`.
+  const nameField = register('name')
 
   return (
     <form
-      className="mt-4 flex items-start gap-2"
+      className="flex w-full flex-col gap-[10px] p-[14px_16px_16px]"
       onSubmit={handleSubmit(async (d) => {
         // onAdd trả promise thật (caller không discard) — reset chỉ khi thành công;
         // lỗi đã toast ở caller, giữ nguyên input để sửa lại.
@@ -184,23 +208,31 @@ function AddCategoryForm({ onAdd }: { onAdd: (name: string) => void | Promise<un
         }
       })}
     >
-      <div className="flex-1">
-        <Label htmlFor="add-category" className="sr-only">
-          {t('features.parish.categoryName')}
-        </Label>
-        <Input
-          id="add-category"
-          placeholder={t('features.parish.categoryAddPlaceholder')}
-          {...register('name')}
-        />
-        {errors.name?.message && (
-          <p className="mt-1 text-xs font-semibold text-destructive">{t(errors.name.message)}</p>
-        )}
-      </div>
-      <Button type="submit" disabled={isSubmitting}>
-        <Plus className="size-4" />
-        {t('common.create')}
-      </Button>
+      <label className="text-[11px] font-semibold text-[#5C7468]" htmlFor="add-category">
+        {t('features.parish.categoryName')}
+      </label>
+      <Input
+        id="add-category"
+        placeholder={t('features.parish.categoryAddPlaceholder')}
+        className="h-[38px] rounded-[10px] border-[#DFE7DC] bg-[#FBFCFA] text-[11.5px]"
+        {...nameField}
+        ref={(el: HTMLInputElement | null) => {
+          nameField.ref(el)
+          if (inputRef) inputRef.current = el
+        }}
+      />
+      {errors.name?.message && (
+        <p className="text-[11px] font-semibold text-destructive">{t(errors.name.message)}</p>
+      )}
+      <button
+        type="submit"
+        disabled={isSubmitting}
+        className="flex h-[38px] w-full items-center justify-center gap-[7px] rounded-[10px] bg-[#0A5C36] shadow-[0px_6px_14px_#0A5C3626] transition-colors hover:bg-[#0D7344] disabled:opacity-60"
+      >
+        <Plus className="size-[13px] text-white" aria-hidden />
+        <span className="text-[12px] font-bold text-white">{t('common.create')}</span>
+      </button>
+      <p className="text-[10px] leading-[15px] text-[#A3B4A9]">{t('features.parish.categoryHelper')}</p>
     </form>
   )
 }
@@ -209,6 +241,7 @@ export default function CategoriesPage() {
   const { t } = useTranslation()
   const toast = useToast()
   const [tab, setTab] = useState<Tab>('skill')
+  const addInputRef = useRef<HTMLInputElement | null>(null)
 
   const { data: users = [] } = useUsers()
   const { data: tasks = [] } = useTasks()
@@ -298,7 +331,7 @@ export default function CategoriesPage() {
       const code = name
         .toUpperCase()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[̀-ͯ]/g, '')
         .replace(/[^A-Z0-9]/g, '_')
         .slice(0, 16) || 'CAT'
       const finalCode = `${code}_${Math.floor(Math.random() * 899 + 100)}`
@@ -337,34 +370,30 @@ export default function CategoriesPage() {
           ? unitUses(name) > 0
           : false
   const usedCount = currentList.filter(isUsed).length
+  const tabLabel = t(`features.parish.catTab.${tab}`)
+  const addHandler =
+    tab === 'areaType' ? addAreaCategory : tab === 'skill' ? addSkill : tab === 'unit' ? addUnit : undefined
 
   return (
-    <div className="grid gap-[18px] xl:grid-cols-[minmax(0,1fr)_312px]">
-      <div className="min-w-0">
-        <PageHeader title={t('features.parish.categoriesTitle')} sub={t('features.parish.categoriesSub')} />
+    <div className="flex flex-col gap-[16px]">
+      <PageHeader
+        title={t('features.parish.categoriesTitle')}
+        sub={t('features.parish.categoriesSub')}
+        actions={
+          <button
+            type="button"
+            onClick={() => addInputRef.current?.focus()}
+            className="flex h-[38px] items-center gap-[7px] rounded-[11px] bg-[#0A5C36] px-[13px] shadow-[0px_6px_14px_#0A5C362E] transition-colors hover:bg-[#0D7344]"
+          >
+            <Plus className="size-[14px] text-white" aria-hidden />
+            <span className="text-[12px] font-bold text-white">{t('features.parish.createCategory')}</span>
+          </button>
+        }
+      />
 
-        <div className="mb-[18px] grid gap-[14px] sm:grid-cols-3">
-          <StatCard
-            label={t(`features.parish.catTab.${tab}`)}
-            value={currentList.length}
-            icon={Tags}
-          />
-          <StatCard
-            label={t('features.parish.refUses')}
-            value={usedCount}
-            tone="ok"
-            icon={CircleCheck}
-          />
-          <StatCard
-            label={t('features.parish.unused')}
-            value={Math.max(0, currentList.length - usedCount)}
-            tone="warn"
-            icon={CircleAlert}
-          />
-        </div>
-
+      <div className="flex w-full flex-wrap items-center justify-between gap-[16px]">
         <div
-          className="mb-5 flex flex-wrap gap-1.5"
+          className="flex w-fit flex-wrap gap-[4px] rounded-[12px] bg-[#EAF0E6] p-[4px]"
           role="tablist"
           aria-label={t('features.parish.categoriesTitle')}
         >
@@ -376,22 +405,62 @@ export default function CategoriesPage() {
               aria-selected={tab === x}
               onClick={() => setTab(x)}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors',
+                'flex h-[32px] items-center justify-center rounded-[9px] px-[13px] text-[12px] transition-colors',
                 tab === x
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary',
+                  ? 'bg-white font-bold text-[#0A5C36] shadow-[0px_1px_3px_#06281B1A]'
+                  : 'font-medium text-[#7C9287] hover:text-[#0B2E1F]',
               )}
             >
               {t(`features.parish.catTab.${x}`)}
             </button>
           ))}
         </div>
+        <span className="flex w-fit items-center gap-[6px] rounded-full border border-[#E3EAE0] bg-white px-[10px] py-[5px]">
+          <span className="text-[10.5px] font-semibold text-[#4F7A61]">
+            {t('features.parish.itemCount', { n: currentList.length })}
+          </span>
+        </span>
+      </div>
 
-        <Card className="p-5">
-        {tab === 'areaType' && (
-          <>
-            <p className="lbl-mono mb-2">{t('features.parish.catHint.areaType')}</p>
-            <ul>
+      <div className="grid gap-[14px] sm:grid-cols-3">
+        <StatCard
+          label={t('features.parish.totalItems')}
+          value={currentList.length}
+          hint={t('features.parish.totalSub', { tab: tabLabel })}
+          icon={Tags}
+        />
+        <StatCard
+          label={t('features.parish.groups')}
+          value={TABS.length}
+          hint={t('features.parish.groupsSub')}
+          icon={Layers}
+        />
+        <StatCard
+          label={t('features.parish.usesCount')}
+          value={usedCount}
+          tone="ok"
+          hint={t('features.parish.usesSub', { n: usedCount })}
+          icon={CircleCheck}
+        />
+      </div>
+
+      <div className="flex w-full flex-col items-start gap-[16px] xl:flex-row">
+        {/* Danh sách danh mục — một thẻ liền, đầu thẻ là nhãn + chip đếm */}
+        <div className="flex w-full flex-1 flex-col overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+          <div className="flex w-full items-center justify-between px-[18px] py-[14px]">
+            <p className="font-mono text-[9.5px] font-semibold tracking-[1.2px] text-[#8C9F94]">
+              {tabLabel}
+            </p>
+            <span className="flex items-center gap-[6px] rounded-full bg-[#F1F6EE] px-[9px] py-[4px]">
+              <span className="text-[10px] font-bold text-[#4F7A61]">
+                {t('features.parish.itemCount', { n: currentList.length })}
+              </span>
+            </span>
+          </div>
+          <div className="h-px w-full bg-[#ECF1E9]" aria-hidden />
+
+          {tab === 'areaType' && (
+            <ul className="w-full">
               {areaCategories.length > 0 ? (
                 areaCategories.map((c) => (
                   <CategoryRow
@@ -403,18 +472,15 @@ export default function CategoriesPage() {
                   />
                 ))
               ) : (
-                <li className="px-4 py-6 text-center text-sm text-muted-foreground">
+                <li className="px-[20px] py-[20px] text-center text-[11px] text-[#A3B4A9]">
                   {t('features.parish.areaCategoriesEmpty', { defaultValue: 'Chưa có hạng mục khu vực nào.' })}
                 </li>
               )}
             </ul>
-            <AddCategoryForm onAdd={addAreaCategory} />
-          </>
-        )}
+          )}
 
-        {tab === 'skill' && (
-          <>
-            <ul>
+          {tab === 'skill' && (
+            <ul className="w-full">
               {skillCatalog.map((s) => (
                 <CategoryRow
                   key={s.id}
@@ -424,15 +490,17 @@ export default function CategoriesPage() {
                   onRename={(next) => void renameSkillAt(s.id, next)}
                 />
               ))}
+              {!skillCatalog.length && (
+                <li className="flex flex-col items-center gap-[7px] px-[20px] py-[20px] text-center">
+                  <Layers className="size-5 text-[#C3D2C7]" aria-hidden />
+                  <span className="text-[11px] text-[#A3B4A9]">{t('features.parish.empty')}</span>
+                </li>
+              )}
             </ul>
-            {!skillCatalog.length && <EmptyState text={t('features.parish.empty')} />}
-            <AddCategoryForm onAdd={addSkill} />
-          </>
-        )}
+          )}
 
-        {tab === 'unit' && (
-          <>
-            <ul>
+          {tab === 'unit' && (
+            <ul className="w-full">
               {units.map((u, i) => (
                 <CategoryRow
                   key={u}
@@ -444,14 +512,10 @@ export default function CategoriesPage() {
                 />
               ))}
             </ul>
-            <AddCategoryForm onAdd={addUnit} />
-          </>
-        )}
+          )}
 
-        {tab === 'donationKind' && (
-          <>
-            <p className="lbl-mono mb-2">{t('features.parish.catHint.donationKind')}</p>
-            <ul>
+          {tab === 'donationKind' && (
+            <ul className="w-full">
               {DONATION_KINDS.map((x) => (
                 <CategoryRow
                   key={x}
@@ -465,26 +529,66 @@ export default function CategoriesPage() {
                 />
               ))}
             </ul>
-          </>
-        )}
-      </Card>
-      </div>
+          )}
 
-      <aside className="space-y-[18px]">
-        <Card className="p-[18px]">
-          <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[1.2px] text-brand-mint">
-            {t('features.parish.catTab.' + tab)}
-          </p>
-          <p className="text-[13px] leading-relaxed text-foreground">
-            {t(`features.parish.catHint.${tab}`, { defaultValue: t('features.parish.categoriesSub') })}
-          </p>
-          <Card className="mt-3 bg-[#F6F8F4] p-3">
-            <p className="tabular text-[11px] leading-relaxed text-[#5C7468]">
-              {t('features.parish.refUses')}: {usedCount}/{currentList.length}
+          {/* Lối tắt sang nhóm khác — thiết kế đặt ngay dưới danh sách */}
+          <div className="flex w-fit flex-wrap gap-[6px] px-[18px] pb-[14px]">
+            {TABS.filter((x) => x !== tab).map((x) => (
+              <button
+                key={x}
+                type="button"
+                onClick={() => setTab(x)}
+                className="flex items-center gap-[5px] rounded-full border border-[#E3EAE0] bg-white px-[9px] py-[5px] text-[10px] font-semibold text-[#6B8175] transition-colors hover:border-[#CBE3D2] hover:text-[#0A5C36]"
+              >
+                {t(`features.parish.catTab.${x}`)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cột biểu mẫu 300px: thẻ thêm mới + thẻ ghi chú quyền */}
+        <div className="flex w-full flex-col justify-between gap-[16px] xl:w-[300px] xl:shrink-0">
+          {addHandler ? (
+            <div className="flex w-full flex-col overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+              <div className="flex items-center justify-between px-[16px] py-[14px]">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[1.2px] text-[#8C9F94]">
+                  {t('features.parish.addNew', { name: tabLabel })}
+                </p>
+              </div>
+              <div className="h-px w-full bg-[#ECF1E9]" aria-hidden />
+              <AddCategoryForm inputRef={addInputRef} onAdd={addHandler} />
+            </div>
+          ) : (
+            <div className="flex w-full flex-col overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+              <div className="flex items-center justify-between px-[16px] py-[14px]">
+                <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[1.2px] text-[#8C9F94]">
+                  {tabLabel}
+                </p>
+              </div>
+              <div className="h-px w-full bg-[#ECF1E9]" aria-hidden />
+              <p className="p-[14px_16px_16px] text-[11.5px] leading-[17px] text-[#5C7468]">
+                {t(`features.parish.catHint.${tab}`, { defaultValue: t('features.parish.categoriesSub') })}
+              </p>
+            </div>
+          )}
+
+          <div className="relative flex w-full flex-col gap-[8px] overflow-hidden rounded-[14px] bg-[#0A5C36] p-[13px_14px]">
+            <div
+              className="pointer-events-none absolute left-[180px] top-[-80px] size-[200px] rounded-full bg-[#E9B9492E] blur-[25px]"
+              aria-hidden
+            />
+            <p className="relative z-[1] flex items-center gap-[7px]">
+              <Info className="size-3 shrink-0 text-[#F2D07A]" aria-hidden />
+              <span className="font-mono text-[9px] font-semibold uppercase tracking-[1.2px] text-[#F2D07A]">
+                {t(`role.${user?.role ?? 'PARISH'}`)}
+              </span>
             </p>
-          </Card>
-        </Card>
-      </aside>
+            <p className="relative z-[1] text-[10.5px] leading-[16px] text-[#A9D7BF]">
+              {t(`shell.roleNote.${user?.role ?? 'PARISH'}`)}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

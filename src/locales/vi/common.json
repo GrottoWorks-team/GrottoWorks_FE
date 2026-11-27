@@ -60,6 +60,7 @@
   "notifications.hourAgo": "{{n}} giờ trước",
   "notifications.dayAgo": "{{n}} ngày trước",
   "nav.section.overview": "Tổng quan",
+  "nav.section.settings": "Cấu hình",
   "nav.section.coordination": "Điều phối",
   "nav.section.wrapup": "Kết mùa",
   "nav.community.dashboard": "Dashboard mùa",

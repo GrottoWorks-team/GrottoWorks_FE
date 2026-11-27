@@ -698,6 +698,17 @@ export default function CommunitiesPage() {
   const canEdit = user?.role === 'PARISH'
   const [parishCreateOpen, setParishCreateOpen] = useState(false)
 
+  // Chip đếm cạnh hàng tab (bản thiết kế Pen): số cộng đoàn + số khu đang chạy.
+  // Dùng lại đúng query key của panel nên không phát sinh request thừa.
+  const { data: hubCommunities = [] } = useCommunities({ parishId, enabled: Boolean(parishId) })
+  const { data: hubSeasons = [] } = useSeasons()
+  const hubSeasonIds = useMemo(
+    () => hubSeasons.filter((x) => x.parishId === parishId).map((x) => x.id),
+    [hubSeasons, parishId],
+  )
+  const { data: hubAreas = [] } = useAreas(hubSeasonIds)
+  const runningAreas = hubAreas.filter((a) => a.status === 'IN_PROGRESS').length
+
   const tabFromUrl = params.get('tab')
   const tab: TabKey =
     pathname.endsWith('/areas')
@@ -726,24 +737,28 @@ export default function CommunitiesPage() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <ParishSwitcher scope={scope} />
             {canPickParish && (
-              <Button
-                variant="outline"
+              <button
+                type="button"
                 onClick={() => setParishCreateOpen(true)}
-                className="border-brand-pine/30 text-brand-pine hover:bg-brand-pine/10"
+                className="flex h-[38px] items-center gap-[7px] rounded-[11px] bg-[#0A5C36] px-[13px] shadow-[0px_6px_14px_#0A5C362E] transition-colors hover:bg-[#0D7344]"
               >
-                <Church className="size-4 mr-1.5" />
-                {t('features.parish.createParish', { defaultValue: 'Tạo giáo xứ mới' })}
-              </Button>
+                <Church className="size-[15px] text-white" aria-hidden />
+                <span className="text-[12px] font-bold text-white">
+                  {t('features.parish.createParish', { defaultValue: 'Tạo giáo xứ mới' })}
+                </span>
+              </button>
             )}
           </div>
         }
       />
 
-      {/* Sub-tabs: Giáo xứ / Cộng đoàn / Khu vực công tác */}
+      {/* Sub-tabs: Giáo xứ / Cộng đoàn / Khu vực công tác — chip đếm nằm bên phải
+          đúng bản thiết kế Pen (Tabs Bar: tabs bên trái, Count Chip bên phải). */}
+      <div className="mb-4 flex w-full flex-wrap items-center justify-between gap-[16px]">
       <div
         role="tablist"
         aria-label={t('features.parish.hubTitle')}
-        className="mb-5 flex flex-wrap gap-1 border-b border-border"
+        className="flex w-fit flex-wrap gap-[4px] rounded-[12px] bg-[#EAF0E6] p-[4px]"
       >
         {TABS.map((item) => {
           const active = tab === item.key
@@ -755,16 +770,22 @@ export default function CommunitiesPage() {
               aria-selected={active}
               onClick={() => setTab(item.key)}
               className={cn(
-                '-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition-colors',
+                'flex h-[32px] items-center justify-center rounded-[9px] px-[13px] text-[12px] transition-colors',
                 active
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground',
+                  ? 'bg-white font-bold text-[#0A5C36] shadow-[0px_1px_3px_#06281B1A]'
+                  : 'font-medium text-[#7C9287] hover:text-[#0B2E1F]',
               )}
             >
               {t(item.labelKey)}
             </button>
           )
         })}
+      </div>
+        <span className="flex w-fit items-center gap-[6px] rounded-full border border-[#E3EAE0] bg-white px-[10px] py-[5px]">
+          <span className="text-[10.5px] font-semibold text-[#4F7A61]">
+            {t('features.parish.hubCount', { communities: hubCommunities.length, areas: runningAreas })}
+          </span>
+        </span>
       </div>
 
       {!parishId && !scope.isPending ? (

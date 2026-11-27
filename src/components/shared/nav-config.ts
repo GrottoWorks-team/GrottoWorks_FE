@@ -116,7 +116,7 @@ export const NAV: Record<Role, NavGroup[]> = {
   ],
   PARISH: [
     {
-      section: '',
+      section: 'nav.section.overview',
       items: [
         { label: 'nav.parish.dashboard', to: '/parish', icon: 'dashboard' },
         // Hub duy nhất cho giáo xứ: tab Giáo xứ / Cộng đoàn / Mùa Giáng sinh /
@@ -125,6 +125,11 @@ export const NAV: Record<Role, NavGroup[]> = {
         // và "mùa Giáng sinh" (12/11/2026 — ADMIN chỉ xem, mùa nằm trong hub).
         { label: 'nav.parish.communities', to: '/parish/communities', icon: 'church' },
         { label: 'nav.parish.accounts', to: '/parish/accounts', icon: 'accounts' },
+      ],
+    },
+    {
+      section: 'nav.section.settings',
+      items: [
         { label: 'nav.parish.categories', to: '/parish/categories', icon: 'tags' },
         { label: 'nav.parish.point-rules', to: '/parish/point-rules', icon: 'star' },
         { label: 'nav.parish.notifications', to: '/parish/notifications', icon: 'bell' },

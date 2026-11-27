@@ -237,5 +237,16 @@
   "features.skills.updated": "Skill updated",
   "features.skills.created": "Skill added",
   "features.skills.failed": "Action failed",
-  "features.volunteers.taskUnit": "tasks"
+  "features.volunteers.taskUnit": "tasks",
+  "features.parish.addNew": "Add new {{name}}",
+  "features.parish.categoryHelper": "Names must be unique and will appear in assignment forms.",
+  "features.parish.createCategory": "Create category",
+  "features.parish.groups": "Catalog groups",
+  "features.parish.groupsSub": "Area types, skills, materials, donations",
+  "features.parish.itemCount": "{{n}} items",
+  "features.parish.totalItems": "Total items",
+  "features.parish.totalSub": "In {{tab}}",
+  "features.parish.usesCount": "Usage",
+  "features.parish.usesSub": "{{n}} items in use",
+  "features.parish.hubCount": "{{communities}} communities · {{areas}} areas running"
 }

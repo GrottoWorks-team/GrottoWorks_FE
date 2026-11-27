@@ -86,7 +86,7 @@ export function StatCard({
       {(hint || delta) && (
         <p
           className={cn(
-            'text-[10.5px]',
+            'text-[11px]',
             delta ? (delta.dir === 'up' ? 'text-brand-pine' : 'text-destructive') : 'text-[#8AA298]',
           )}
         >
