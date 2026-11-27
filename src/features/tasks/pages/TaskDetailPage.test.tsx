@@ -8,6 +8,8 @@ import TaskDetailPage from './TaskDetailPage'
 
 let backendStatus = 'OPEN'
 let readyCalls: { taskId: string; version?: number }[] = []
+// 26/11/2026: POST /tasks/{id}/start — nút "Bắt đầu làm" cho trưởng khu.
+let startCalls: { taskId: string; version?: number }[] = []
 let currentUserId = 'u1'
 let applicationsMock: Array<{
   id: string
@@ -50,8 +52,16 @@ vi.mock('../api', () => ({
     }),
     isPending: false,
   }),
-  useUnassign: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useStartTask: () => ({
+    mutateAsync: vi.fn(async (vars: { taskId: string; version?: number }) => {
+      startCalls.push(vars)
+      backendStatus = 'IN_PROGRESS'
+      return { task: { id: vars.taskId }, warnings: [] }
+    }),
+    isPending: false,
+  }),
   useReplaceCompletionCriteria: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useUnassign: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useReplaceTaskSkills: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useApproveTask: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRequestTaskRevision: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -131,6 +141,7 @@ vi.mock('@/features/allocations/api', () => ({
 beforeEach(() => {
   backendStatus = 'OPEN'
   readyCalls = []
+  startCalls = []
   currentUserId = 'u1'
   applicationsMock = []
   approvedApplications = []
@@ -166,6 +177,16 @@ test('không còn nút chuyển trạng thái chưa có API (Bắt đầu / Mở
 
   expect(screen.queryByRole('button', { name: 'Mở lại' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Bắt đầu làm' })).toBeNull()
+})
+
+test('việc đã phát hành (NOT_STARTED): bấm "Bắt đầu làm" → gọi POST /tasks/{id}/start với version thật', async () => {
+  backendStatus = 'NOT_STARTED'
+  renderDetail('/leader/tasks/t6', '/leader/tasks/:id')
+  expect(await screen.findByText('Gắn bạt che mưa phía sau hang')).toBeDefined()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Bắt đầu làm' }))
+
+  expect(startCalls).toEqual([{ taskId: 't6', version: 3 }])
 })
 
 test('hiện vật tư MO đã cấp cho việc', async () => {

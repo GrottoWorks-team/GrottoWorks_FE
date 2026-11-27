@@ -123,13 +123,12 @@ test('qty vượt khả dụng → lỗi zod, không POST', async () => {
   )
 
   fireEvent.change(await screen.findByLabelText('Khu vực'), { target: { value: 'a3' } })
+  fireEvent.change(await screen.findByLabelText('Nhiệm vụ'), { target: { value: 't17' } })
   const material = await screen.findByLabelText('Vật tư')
   fireEvent.change(material, { target: { value: 'm12' } })
   expect(await screen.findByText('Khả dụng: 40')).toBeDefined()
 
   fireEvent.change(screen.getByLabelText('Số lượng'), { target: { value: '41' } })
-  fireEvent.change(screen.getByLabelText('Đích phân bổ'), { target: { value: 'TASK' } })
-  fireEvent.change(await screen.findByLabelText('Nhiệm vụ'), { target: { value: 't17' } })
   fireEvent.submit(document.getElementById('allocation-form')!)
 
   expect(await screen.findByText('Số lượng vượt mức khả dụng')).toBeDefined()

@@ -1,4 +1,5 @@
 import { api } from '@/lib/api'
+import { putFileObject } from '@/lib/fileUpload'
 import type {
   CreateUploadRequestDto,
   UploadRequestDto,
@@ -136,9 +137,13 @@ export async function uploadFile(
     checksum: checksum ?? null,
   })
 
-  await uploadToStorage(uploadReq.uploadUrl, file, uploadReq.method, uploadReq.headers)
-
-  const completed = await completeUpload(uploadReq.fileId, { checksum: checksum ?? null })
+  // 26/11/2026: nếu presigned PUT bị CORS chặn (bucket R2 chưa có CORS cho origin này) thì
+  // chuyển sang proxy-upload qua gateway; BE trả luôn FileReferenceDto đã hoàn tất.
+  const transport = await putFileObject(file, uploadReq)
+  const completed =
+    transport === 'direct'
+      ? await completeUpload(uploadReq.fileId, { checksum: checksum ?? null })
+      : await getFile(uploadReq.fileId)
 
   let downloadUrl: string | undefined
   try {

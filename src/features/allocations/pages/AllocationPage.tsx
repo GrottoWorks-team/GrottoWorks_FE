@@ -1,12 +1,12 @@
 // Phân bổ vật tư (route /material-officer/allocations): tạo phiếu cấp phát từ kho
 // của một khu vực (`MaterialAllocation`). Số khả dụng = `unallocated` lấy từ
 // GET /api/v1/inventory; BE kiểm tra lại trong transaction và trả 409 nếu vượt.
-import { useMemo, useRef } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
@@ -27,15 +27,8 @@ import { useAllocations, useCreateAllocation } from '../api'
 const SELECT_CLS =
   'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
-const qtyField = z.preprocess(
-  (v) => (v === '' || v == null ? undefined : v),
-  z.coerce.number({ invalid_type_error: 'features.allocations.qtyInvalid' }).min(1, 'features.allocations.qtyInvalid'),
-)
-
 type FormData = {
   workAreaId: string
-  materialId: string
-  qty: number
   targetType: 'AREA' | 'TASK'
   taskId: string
 }
@@ -66,34 +59,22 @@ export default function AllocationPage() {
     () => (isOfficer ? areas.filter((a) => a.officerId === user.id) : areas),
     [areas, isOfficer, user],
   )
-  // available đổi theo query data → validate lúc submit đọc ref (schema tạo 1 lần).
-  const availRef = useRef(0)
-  // Trần theo nhu cầu còn lại của việc (BE chặn bằng 409 ALLOCATION_EXCEEDS_TASK_REQUIREMENT).
-  const needRef = useRef(Number.POSITIVE_INFINITY)
+  // 26/11/2026: một phiếu cấp NHIỀU dòng vật tư cùng lúc (BE đã nhận `items[]`).
+  const [lines, setLines] = useState<Array<{ materialId: string; qty: string }>>([
+    { materialId: '', qty: '' },
+  ])
+  const addLine = () => setLines((prev) => [...prev, { materialId: '', qty: '' }])
+  const removeLine = (index: number) => setLines((prev) => prev.filter((_, i) => i !== index))
+  const updateLine = (index: number, patch: Partial<{ materialId: string; qty: string }>) =>
+    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)))
 
   const schema = useMemo(
     () =>
-      z
-        .object({
-          workAreaId: z.string().min(1, 'features.allocations.areaRequired'),
-          materialId: z.string().min(1, 'features.allocations.materialRequired'),
-          qty: qtyField,
-          targetType: z.enum(['AREA', 'TASK']),
-          taskId: z.string(),
-        })
-        .superRefine((data, ctx) => {
-          const max = availRef.current
-          if ((data.qty ?? 0) > max)
-            ctx.addIssue({ code: 'custom', path: ['qty'], message: 'features.allocations.qtyExceeds' })
-          if ((data.qty ?? 0) > needRef.current)
-            ctx.addIssue({
-              code: 'custom',
-              path: ['qty'],
-              message: 'features.allocations.qtyExceedsTaskNeed',
-            })
-          if (data.targetType === 'TASK' && !data.taskId)
-            ctx.addIssue({ code: 'custom', path: ['taskId'], message: 'features.allocations.targetRequired' })
-        }),
+      z.object({
+        workAreaId: z.string().min(1, 'features.allocations.areaRequired'),
+        // 26/11/2026: MO chỉ cấp phát cho nhiệm vụ (không còn cấp cho khu vực).
+        taskId: z.string().min(1, 'features.allocations.taskRequired'),
+      }),
     [],
   )
 
@@ -105,12 +86,10 @@ export default function AllocationPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { workAreaId: '', materialId: '', targetType: 'AREA', taskId: '' },
+    defaultValues: { workAreaId: '', taskId: '' },
   })
 
   const workAreaId = watch('workAreaId')
-  const materialId = watch('materialId')
-  const targetType = watch('targetType')
 
   // BE chỉ nhận `size` ≤ 100 (`INVALID_PAGE_SIZE`) → lọc tồn kho theo khu vực đang chọn.
   const { data: inventoryPage } = useInventory({
@@ -138,35 +117,46 @@ export default function AllocationPage() {
     }
     return map
   }, [taskAllocations])
-  const requirement = selectedTask?.materialRequirements?.find(
-    (row) => row.materialId === materialId,
-  )
-  const allocatedForSelected = allocatedByMaterial.get(materialId) ?? 0
-  const remainingNeed = requirement
-    ? Math.max(0, requirement.requiredQuantity - allocatedForSelected)
-    : undefined
   const areaStock = useMemo(
     () => stock.filter((row) => row.workAreaId === workAreaId && row.unallocated > 0),
     [stock, workAreaId],
   )
-  const selected = areaStock.find((row) => row.materialId === materialId)
-
-  // available đổi theo query data → validate lúc submit đọc ref (schema tạo 1 lần).
-  availRef.current = selected?.unallocated ?? 0
-  needRef.current = remainingNeed ?? Number.POSITIVE_INFINITY
+  const remainingNeedFor = (materialId: string): number | undefined => {
+    const requirement = selectedTask?.materialRequirements?.find((row) => row.materialId === materialId)
+    if (!requirement) return undefined
+    return Math.max(0, requirement.requiredQuantity - (allocatedByMaterial.get(materialId) ?? 0))
+  }
 
   const onSubmit = async (data: FormData) => {
+    const filled = lines.filter((line) => line.materialId && Number(line.qty) > 0)
+    if (!filled.length) {
+      toast(t('features.allocations.lineRequired'), 'alert')
+      return
+    }
+    if (new Set(filled.map((line) => line.materialId)).size !== filled.length) {
+      toast(t('features.allocations.duplicateMaterial'), 'alert')
+      return
+    }
+    for (const line of filled) {
+      const stockRow = areaStock.find((row) => row.materialId === line.materialId)
+      if (!stockRow || Number(line.qty) > stockRow.unallocated) {
+        toast(t('features.allocations.qtyExceeds'), 'alert')
+        return
+      }
+      const need = remainingNeedFor(line.materialId)
+      if (need !== undefined && Number(line.qty) > need) {
+        toast(t('features.allocations.qtyExceedsTaskNeed'), 'alert')
+        return
+      }
+    }
     try {
       await create.mutateAsync({
         workAreaId: data.workAreaId,
-        ...(data.targetType === 'TASK' && data.taskId ? { taskId: data.taskId } : {}),
-        items: [{ materialId: data.materialId, quantity: data.qty }],
+        taskId: data.taskId,
+        items: filled.map((line) => ({ materialId: line.materialId, quantity: Number(line.qty) })),
       })
-      toast(
-        t('features.allocations.created', { n: data.qty, unit: selected?.unit ?? '' }),
-      )
-      resetField('materialId')
-      resetField('qty')
+      toast(t('features.allocations.createdMulti', { count: filled.length }))
+      setLines([{ materialId: '', qty: '' }])
     } catch {
       toast(t('common.error'), 'alert')
     }
@@ -266,7 +256,7 @@ export default function AllocationPage() {
             <select
               id="allocation-area"
               className={SELECT_CLS}
-              {...register('workAreaId', { onChange: () => { resetField('materialId'); resetField('taskId') } })}
+              {...register('workAreaId', { onChange: () => { resetField('taskId'); setLines([{ materialId: '', qty: '' }]) } })}
             >
               <option value="">{t('features.tasks.selectPlaceholder')}</option>
               {myAreas.map((a) => (
@@ -283,95 +273,111 @@ export default function AllocationPage() {
             {err(errors.workAreaId?.message)}
           </div>
           <div>
-            <Label htmlFor="allocation-material">{t('features.allocations.material')}</Label>
-            <select id="allocation-material" className={SELECT_CLS} {...register('materialId')} disabled={!workAreaId}>
+            <Label htmlFor="allocation-task">{t('features.allocations.task')}</Label>
+            <select id="allocation-task" className={SELECT_CLS} {...register('taskId')} disabled={!workAreaId}>
               <option value="">{t('features.tasks.selectPlaceholder')}</option>
-              {areaStock.map((row) => (
-                <option key={row.materialId} value={row.materialId}>
-                  {row.materialName} ({row.unit})
+              {tasks.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.title}
                 </option>
               ))}
             </select>
-            {workAreaId && areaStock.length === 0 && (
+            {workAreaId && tasks.length === 0 && (
               <p className="mt-1 text-xs font-semibold text-muted-foreground">
-                {t('features.allocations.materialEmpty')}
+                {t('features.allocations.taskEmpty')}
               </p>
             )}
-            {selected && (
-              <p className="mt-1 text-xs font-semibold text-brand-pine">
-                {t('features.allocations.available', { n: selected.unallocated })}
-              </p>
-            )}
-            {remainingNeed !== undefined && (
-              <p
-                className={`mt-1 text-xs font-semibold ${
-                  remainingNeed === 0 ? 'text-destructive' : 'text-muted-foreground'
-                }`}
-              >
-                {t('features.allocations.taskNeedRemaining', {
-                  n: remainingNeed,
-                  required: requirement?.requiredQuantity ?? 0,
-                })}
-              </p>
-            )}
-            {err(errors.materialId?.message)}
+            {err(errors.taskId?.message)}
           </div>
-          <div>
-            <Label htmlFor="allocation-qty">{t('features.allocations.qty')}</Label>
-            <Input
-              id="allocation-qty"
-              type="number"
-              min={1}
-              step={1}
-              max={
-                remainingNeed === undefined
-                  ? undefined
-                  : Math.min(selected?.unallocated ?? remainingNeed, remainingNeed)
-              }
-              {...register('qty')}
-            />
-            {err(errors.qty?.message)}
-          </div>
-          <div>
-            <Label htmlFor="allocation-target-type">{t('features.allocations.target')}</Label>
-            <select id="allocation-target-type" className={SELECT_CLS} {...register('targetType')}>
-              <option value="AREA">{t('features.allocations.target.AREA')}</option>
-              <option value="TASK">{t('features.allocations.target.TASK')}</option>
-            </select>
-          </div>
-          {targetType === 'TASK' ? (
-            <div>
-              <Label htmlFor="allocation-task">{t('features.allocations.task')}</Label>
-              <select id="allocation-task" className={SELECT_CLS} {...register('taskId')} disabled={!workAreaId}>
-                <option value="">{t('features.tasks.selectPlaceholder')}</option>
-                {tasks.map((x) => (
-                  <option key={x.id} value={x.id}>
-                    {x.title}
-                  </option>
-                ))}
-              </select>
-              {err(errors.taskId?.message)}
-            </div>
-          ) : (
-            <div className="flex items-end">
-              <Button type="submit" disabled={isSubmitting || !workAreaId}>
-                <ArrowRight className="size-4" />
-                {t('features.allocations.create')}
+          {/* Nhiều dòng vật tư trong cùng một phiếu cấp phát */}
+          <div className="md:col-span-2 xl:col-span-5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <Label>{t('features.allocations.materials')}</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addLine} disabled={!workAreaId}>
+                <Plus className="size-3.5" />
+                {t('features.allocations.addLine')}
               </Button>
             </div>
-          )}
-          {targetType === 'TASK' && (
-            <div className="flex items-end">
-              <Button type="submit" disabled={isSubmitting || !workAreaId}>
-                <ArrowRight className="size-4" />
-                {t('features.allocations.create')}
-              </Button>
+            {workAreaId && areaStock.length === 0 && (
+              <p className="text-xs font-semibold text-muted-foreground">{t('features.allocations.materialEmpty')}</p>
+            )}
+            <div className="space-y-2">
+              {lines.map((line, index) => {
+                const stockRow = areaStock.find((row) => row.materialId === line.materialId)
+                const need = line.materialId ? remainingNeedFor(line.materialId) : undefined
+                const requirement = line.materialId
+                  ? selectedTask?.materialRequirements?.find((row) => row.materialId === line.materialId)
+                  : undefined
+                return (
+                  <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_120px_auto]">
+                    <div>
+                      <select
+                        aria-label={t('features.allocations.material')}
+                        className="mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+                        value={line.materialId}
+                        disabled={!workAreaId}
+                        onChange={(event) => updateLine(index, { materialId: event.target.value })}
+                      >
+                        <option value="">{t('features.tasks.selectPlaceholder')}</option>
+                        {areaStock.map((row) => (
+                          <option key={row.materialId} value={row.materialId} disabled={
+                            lines.some((other, i) => i !== index && other.materialId === row.materialId)
+                          }>
+                            {row.materialName} ({row.unit})
+                          </option>
+                        ))}
+                      </select>
+                      {stockRow && (
+                        <p className="mt-1 text-xs font-semibold text-brand-pine">
+                          {t('features.allocations.available', { n: stockRow.unallocated })}
+                        </p>
+                      )}
+                      {need !== undefined && (
+                        <p
+                          className={`mt-1 text-xs font-semibold ${need === 0 ? 'text-destructive' : 'text-muted-foreground'}`}
+                        >
+                          {t('features.allocations.taskNeedRemaining', {
+                            n: need,
+                            required: requirement?.requiredQuantity ?? 0,
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <Input
+                      aria-label={t('features.allocations.qty')}
+                      type="number"
+                      min={1}
+                      step={1}
+                      className="mt-1"
+                      max={need === undefined ? stockRow?.unallocated : Math.min(stockRow?.unallocated ?? need, need)}
+                      value={line.qty}
+                      onChange={(event) => updateLine(index, { qty: event.target.value })}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeLine(index)}
+                      disabled={lines.length === 1}
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                )
+              })}
             </div>
-          )}
+          </div>
+          <div className="flex items-end md:col-span-2 xl:col-span-5">
+            <Button type="submit" disabled={isSubmitting || !workAreaId || !selectedTaskId}>
+              <ArrowRight className="size-4" />
+              {t('features.allocations.create')}
+            </Button>
+          </div>
         </form>
 
         {/* LEADER khai báo vật tư khi tạo/sửa việc → MO xem tại đây để biết cần cấp gì. */}
-        {targetType === 'TASK' && selectedTask && (
+        {selectedTask && (
           <div className="mt-4 rounded-lg border border-border bg-muted/20 p-3">
             <p className="lbl-mono mb-1">{t('features.allocations.taskMaterials')}</p>
             <p className="mb-2 text-[11px] text-muted-foreground">

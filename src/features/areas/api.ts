@@ -2,7 +2,9 @@
 // mùa (/api/v1/seasons/{seasonId}/work-areas), nên "tất cả các mùa" = gọi
 // song song từng mùa rồi gộp.
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import { api } from '@/lib/api'
+import { useAuth } from '@/lib/auth'
 import type { CreateWorkAreaRequest, WorkAreaDto } from '@/types/parish'
 import { toWorkArea } from '@/features/parish/mappers'
 import { useSeasons } from '@/features/season/api'
@@ -66,6 +68,21 @@ export function useScopedAreas() {
   return useAreas(seasonId ? [seasonId] : isPending ? [] : undefined)
 }
 
+/**
+ * Khu vực do người dùng hiện tại phụ trách vật tư (officerId = user.id) trong
+ * mùa đang chọn — dùng cho form MO để không thấy/lộ khu của người khác hoặc
+ * khu của mùa khác (26/11/2026).
+ */
+export function useMyOfficerAreas() {
+  const { user } = useAuth()
+  const { data, isPending } = useScopedAreas()
+  const data2 = useMemo(
+    () => (user?.id ? data.filter((area) => !area.officerId || area.officerId === user.id) : data),
+    [data, user?.id],
+  )
+  return { data: data2, isPending }
+}
+
 /** GET /api/v1/work-areas/{id}/progress — tiến độ task của khu (ParishCoordination). */
 export interface WorkAreaProgressDto {
   workAreaId: string
@@ -126,6 +143,9 @@ export interface AreaUpdateInput {
   communityId?: string | null
   leaderId?: string
   officerId?: string
+  /** Ghim vị trí trên sơ đồ (0..1); `null` = bỏ ghim. */
+  mapX?: number | null
+  mapY?: number | null
 }
 
 /**
@@ -150,11 +170,23 @@ export function useUpdateArea() {
       communityId,
       leaderId,
       officerId,
+      mapX,
+      mapY,
     }: AreaUpdateInput) => {
       let current = version
       let dto: WorkAreaDto | undefined
 
-      const planning = { name, description, startDate, deadline, categoryId }
+      const planning = {
+        name,
+        description,
+        startDate,
+        deadline,
+        categoryId,
+        // 26/11/2026: ghim khu lưu ở BE — `null` để xoá, bỏ trống = không đổi.
+        ...(mapX !== undefined || mapY !== undefined
+          ? { mapX: mapX ?? null, mapY: mapY ?? null }
+          : {}),
+      }
       if (Object.values(planning).some((v) => v !== undefined)) {
         dto = await api<WorkAreaDto>(`/api/v1/work-areas/${id}`, {
           method: 'PATCH',

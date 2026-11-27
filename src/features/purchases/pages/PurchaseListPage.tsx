@@ -97,16 +97,6 @@ export default function PurchaseListPage() {
         },
       },
       {
-        key: 'estimatedTotal',
-        header: t('features.purchases.total'),
-        align: 'right' as const,
-        render: (r: PurchaseRequestDto) => (
-          <span className="tabular font-medium">
-            {(r.estimatedTotal?.amount ?? 0).toLocaleString()} {r.estimatedTotal?.currency ?? 'VND'}
-          </span>
-        ),
-      },
-      {
         key: 'createdAt',
         header: t('features.purchases.createdAt'),
         render: (r: PurchaseRequestDto) => (

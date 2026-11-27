@@ -63,6 +63,10 @@ export function toWorkArea(dto: WorkAreaDto): WorkArea {
     deadline: opt(dto.deadline),
     status: dto.status,
     version: dto.version,
+    // 26/11/2026: ghim khu trên sơ đồ giờ do BE lưu (`mapX/mapY`, chuẩn hoá 0..1).
+    ...(typeof dto.mapX === 'number' && typeof dto.mapY === 'number'
+      ? { mapX: dto.mapX, mapY: dto.mapY }
+      : {}),
     // KHÔNG map type/level/progress/volunteerCount/taskCount: `WorkAreaDto` của BE
     // không có (trước đây hardcode 'GROTTO'/0 khiến UI hiện dữ liệu giả).
   }

@@ -23,7 +23,7 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.community.dashboard', to: '/community', icon: 'dashboard' },
         { label: 'nav.community.seasons', to: '/community/seasons', icon: 'calendar' },
         { label: 'nav.community.areas', to: '/community/areas', icon: 'areas' },
-        { label: 'nav.community.map', to: '/community/map', icon: 'map' },
+        // 26/11/2026: "Bản đồ giáo xứ" đã gộp vào trang Khu vực (chế độ xem sơ đồ).
       ],
     },
     {
@@ -45,6 +45,8 @@ export const NAV: Record<Role, NavGroup[]> = {
         { label: 'nav.community.distributions', to: '/community/warehouse/distributions', icon: 'boxes' },
         { label: 'nav.community.purchases', to: '/community/purchases', icon: 'cart', badge: 'purchases' },
         { label: 'nav.community.donations', to: '/community/donations', icon: 'gift' },
+        // 26/11/2026: trang đối chiếu tiền (mua vật tư / quyên góp / vật tư tự mua).
+        { label: 'nav.community.finance', to: '/community/finance', icon: 'reports' },
       ],
     },
     {

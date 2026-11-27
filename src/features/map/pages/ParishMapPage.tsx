@@ -7,8 +7,10 @@
 // Trang này KHÔNG liên quan tới bản thiết kế công trình (design review). ADMIN
 // xem nhiều giáo xứ nên mỗi giáo xứ có ảnh + ghim riêng (`?parish=`).
 //
-// Ảnh và metadata bản đồ dùng API; toạ độ ghim còn lưu ở localStorage.
-// Khung ảnh tái dùng ImageReviewCanvas (zoom/pan + marker theo %).
+// ⚠️ TẠM THỜI (FE-only): BE chưa có endpoint `/parishMaps` → metadata bản đồ +
+// toạ độ ghim lưu ở localStorage (features/map/localStore), ảnh ở IndexedDB
+// (lib/blobStore). Khung ảnh tái dùng ImageReviewCanvas (zoom/pan + marker theo
+// %), KHÔNG dùng thư viện bản đồ ngoài.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
@@ -25,9 +27,9 @@ import { useAuth } from '@/lib/auth'
 import { useAreas, useSeasons } from '@/features/areas/api'
 import { useSeasonContext } from '@/features/season/season-context'
 import { useParishScope } from '@/features/parish/hooks'
-import type { ParishScope } from '@/features/parish/hooks'
 import { ParishSwitcher } from '@/features/parish/components/ParishSwitcher'
 import { AREA_ICONS } from '@/features/areas/components/AreaCard'
+import { AreaDetailDialog } from '@/features/areas/components/AreaDetailDialog'
 import { ImageReviewCanvas } from '@/features/designs/components/ImageReviewCanvas'
 import type { CanvasMarker } from '@/features/designs/components/ImageReviewCanvas'
 import type { NormalizedPoint } from '@/features/designs/coords'
@@ -38,7 +40,7 @@ import {
   formatBytes,
   validateImageFile,
 } from '@/features/designs/config'
-import { useParishMap, useMapPins, useSaveParishMap, useSetMapPin } from '../api'
+import { useParishMap, pinsOfAreas, useSaveParishMap, useSetMapPin } from '../api'
 
 const FILE_ERROR_KEY: Record<'type' | 'size' | 'empty', string> = {
   type: 'features.map.errType',
@@ -46,23 +48,11 @@ const FILE_ERROR_KEY: Record<'type' | 'size' | 'empty', string> = {
   empty: 'features.map.errEmpty',
 }
 
-interface UploadedMap {
-  parishId: string
-  id?: string
-  fileId: string
-  fileName: string
-}
-
 export default function ParishMapPage({ embedded = false }: { embedded?: boolean } = {}) {
-  const scope = useParishScope()
-  // Đổi giáo xứ huỷ trạng thái thử lại và tách các request của giáo xứ cũ.
-  return <ParishMapContent key={scope.parishId} scope={scope} embedded={embedded} />
-}
-
-function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: boolean }) {
   const { t } = useTranslation()
   const toast = useToast()
   const { user } = useAuth()
+  const scope = useParishScope()
   const { parishId, parish, canPickParish } = scope
   // Bản đồ của một mùa: role có khung chọn mùa chỉ lấy khu vực của mùa đó;
   // ADMIN xem mọi khu của giáo xứ đang chọn.
@@ -76,18 +66,9 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
   const { data: areas = [] } = useAreas(seasonIds)
   const { data: mapRecord, isPending: mapPending } = useParishMap(parishId)
   const saveMap = useSaveParishMap(parishId)
-  const { data: pins = {} } = useMapPins(parishId)
-  const setPin = useSetMapPin(parishId)
+  const pins = useMemo(() => pinsOfAreas(areas), [areas])
+  const setPin = useSetMapPin()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [uploadedMap, setUploadedMap] = useState<UploadedMap | null>(null)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const submittingRef = useRef(false)
-  const mountedRef = useRef(false)
-  useEffect(() => {
-    mountedRef.current = true
-    return () => { mountedRef.current = false }
-  }, [])
 
   // Ảnh sơ đồ: ADMIN (role FE `PARISH`) tải lên. Ghim vị trí khu vực: Ban hành
   // giáo (role FE `COMMUNITY`) — ADMIN chỉ xem, KHÔNG được ghim (11/11/2026).
@@ -104,6 +85,8 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
 
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null)
   const [placingId, setPlacingId] = useState<string | null>(null)
+  // 26/11/2026: bấm vào khu trên bản đồ mở chi tiết (có tab Hình ảnh).
+  const [detailAreaId, setDetailAreaId] = useState<string | null>(null)
 
   // ── Ảnh bản đồ: nạp blob IndexedDB → object URL, thu hồi khi đổi/xoá ──
   const [imageUrl, setImageUrl] = useState('')
@@ -153,58 +136,42 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
     [numbered, pins, activeAreaId],
   )
 
-  const submitMap = async (file?: File) => {
-    if (submittingRef.current || !canUpload || !parishId) return
-    if (file) {
-      const check = validateImageFile(file)
-      if (!check.ok) {
-        toast(t(FILE_ERROR_KEY[check.reason]), 'alert')
-        if (fileRef.current) fileRef.current.value = ''
-        return
-      }
-    }
-    if (!file && !uploadedMap) return
-    submittingRef.current = true
-    setIsSubmitting(true)
-    if (file) {
-      setSaveError(null)
-      setUploadedMap(null)
+  const onPickFile = async (file: File | null) => {
+    if (!file) return
+    const check = validateImageFile(file)
+    if (!check.ok) {
+      toast(t(FILE_ERROR_KEY[check.reason]), 'alert')
+      if (fileRef.current) fileRef.current.value = ''
+      return
     }
     try {
-      let draft = uploadedMap
-      if (file) {
-        const uploaded = await uploadFileViaGateway(file, 'MAP_IMAGE')
-        if (!mountedRef.current) return
-        draft = { parishId, id: mapRecord?.id, fileId: uploaded.fileId, fileName: uploaded.fileName }
-        setUploadedMap(draft)
-      }
-      if (!draft || draft.parishId !== parishId) return
-      await saveMap.mutateAsync({ id: draft.id, imageKey: draft.fileId, fileName: draft.fileName })
-      if (!mountedRef.current) return
-      setUploadedMap(null)
+      const uploaded = await uploadFileViaGateway(file, 'MAP_IMAGE')
+      await saveMap.mutateAsync({ id: mapRecord?.id, imageKey: uploaded.fileId, fileName: file.name })
       toast(t('features.map.mapSaved'))
     } catch (error) {
-      if (!mountedRef.current) return
-      const message = error instanceof ApiError && error.status === 503 && error.code === 'FILE_ATTACHMENT_PENDING'
-        ? t('features.map.imageProcessing')
-        : error instanceof TypeError && /fetch|network/i.test(error.message)
-          ? t('features.map.uploadCorsFailed')
-          : error instanceof Error ? error.message : t('common.error')
-      setSaveError(message)
-      toast(message, 'alert')
-    } finally {
-      if (mountedRef.current) {
-        submittingRef.current = false
-        setIsSubmitting(false)
-        if (fileRef.current) fileRef.current.value = ''
+      if (error instanceof ApiError && error.code === 'FILE_ATTACHMENT_PENDING') {
+        // BE đã lưu bản đồ, file đang được chốt (worker thử lại) — không phải lỗi mất dữ liệu.
+        toast(t('features.map.mapPendingFinalize'), 'alert')
+      } else if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
+        toast(t('features.map.uploadCorsFailed'), 'alert')
+      } else if (error instanceof Error) {
+        toast(error.message, 'alert')
+      } else {
+        toast(t('common.error'), 'alert')
       }
+    } finally {
+      if (fileRef.current) fileRef.current.value = ''
     }
   }
 
   const placeAt = async (point: NormalizedPoint) => {
     if (!placingId) return
     try {
-      await setPin.mutateAsync({ areaId: placingId, pin: { x: point.x, y: point.y } })
+      await setPin.mutateAsync({
+        areaId: placingId,
+        version: areas.find((area) => area.id === placingId)?.version,
+        pin: { x: point.x, y: point.y },
+      })
       toast(t('features.map.positionSaved'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -215,7 +182,7 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
 
   const clearPosition = async (id: string) => {
     try {
-      await setPin.mutateAsync({ areaId: id, pin: null })
+      await setPin.mutateAsync({ areaId: id, version: areas.find((area) => area.id === id)?.version, pin: null })
       toast(t('features.map.positionCleared'))
     } catch {
       toast(t('common.error'), 'alert')
@@ -232,11 +199,7 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
           type="file"
           accept={IMAGE_ACCEPT_ATTR}
           className="hidden"
-          disabled={isSubmitting || !parishId}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void submitMap(file)
-          }}
+          onChange={(e) => void onPickFile(e.target.files?.[0] ?? null)}
         />
       )}
       {!embedded && canPickParish && (
@@ -258,7 +221,6 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
               <>
                 <Button
                   variant={mapRecord ? 'outline' : 'default'}
-                  disabled={isSubmitting || !parishId}
                   onClick={() => fileRef.current?.click()}
                 >
                   <Upload className="size-4" />
@@ -270,12 +232,21 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
         }
       />}
 
-      {canUpload && uploadedMap && saveError && (
-        <div role="status" className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-border bg-muted/30 p-4">
-          <p className="flex-1 text-sm">{saveError}</p>
-          <Button variant="outline" disabled={isSubmitting} onClick={() => void submitMap()}>
-            {t('common.retry')}
+      {embedded && canUpload && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card border border-border bg-card p-3">
+          <span className="text-sm font-semibold text-foreground">{t('features.map.title')}</span>
+          <Button
+            variant={mapRecord ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="size-4" />
+            {mapRecord ? t('features.map.replace') : t('features.map.upload')}
           </Button>
+          {mapRecord?.fileName ? (
+            <span className="text-xs text-muted-foreground">{mapRecord.fileName}</span>
+          ) : null}
+          <span className="ml-auto text-[11px] text-muted-foreground">{t('features.map.uploadHint')}</span>
         </div>
       )}
 
@@ -291,7 +262,7 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
             text={t('features.map.noMap')}
             action={
               canUpload ? (
-                <Button disabled={isSubmitting || !parishId} onClick={() => fileRef.current?.click()}>
+                <Button onClick={() => fileRef.current?.click()}>
                   <Upload className="size-4" />
                   {t('features.map.upload')}
                 </Button>
@@ -321,7 +292,10 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
                 src={imageUrl}
                 markers={markers}
                 addMode={canPin && !!placingId}
-                onSelectMarker={(id) => setActiveAreaId(id)}
+                onSelectMarker={(id) => {
+                  setActiveAreaId(id)
+                  if (!placingId) setDetailAreaId(id)
+                }}
                 onAddMarker={canPin ? (point) => void placeAt(point) : undefined}
                 onLoadError={() => setImageError(true)}
               />
@@ -361,7 +335,10 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
                     <li key={area.id}>
                       <button
                         type="button"
-                        onClick={() => setActiveAreaId(area.id)}
+                        onClick={() => {
+                          setActiveAreaId(area.id)
+                          if (!isPlacing) setDetailAreaId(area.id)
+                        }}
                         className={cn(
                           'flex w-full items-center gap-3 rounded-md border px-3 py-2 text-left transition-colors',
                           activeAreaId === area.id
@@ -416,6 +393,9 @@ function ParishMapContent({ scope, embedded }: { scope: ParishScope; embedded: b
           </Card>
         </div>
       )}
+
+      {/* Chi tiết khu vực — mở từ marker/danh sách, có tab Hình ảnh */}
+      <AreaDetailDialog areaId={detailAreaId} open={Boolean(detailAreaId)} onClose={() => setDetailAreaId(null)} />
     </div>
   )
 }

@@ -65,6 +65,9 @@ export interface WorkAreaDto {
   status: WorkAreaStatus
   /** Optimistic concurrency — BE bắt buộc gửi lại qua header If-Match khi PATCH/PUT. */
   version?: number
+  /** 26/11/2026: toạ độ ghim khu trên ảnh sơ đồ (chuẩn hoá 0..1), lưu ở BE. */
+  mapX?: number | null
+  mapY?: number | null
 }
 
 export interface CreateParishRequest {
@@ -102,6 +105,9 @@ export interface CreateWorkAreaRequest {
   communityId?: string | null
   startDate?: string | null
   deadline?: string | null
+  /** Ghim vị trí trên sơ đồ (0..1) — gửi cả hai hoặc không gửi. */
+  mapX?: number | null
+  mapY?: number | null
 }
 
 export interface WorkAreaCategoryDto {
