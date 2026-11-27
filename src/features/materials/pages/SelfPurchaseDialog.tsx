@@ -253,12 +253,7 @@ export function SelfPurchaseDialog({
                           className="h-8 w-full rounded-md border border-border bg-card px-2 text-sm"
                           value={line.materialId}
                           onChange={(event) => {
-                            const material = materials.find((item) => item.id === event.target.value)
-                            updateLine(index, {
-                              materialId: event.target.value,
-                              unitPrice:
-                                line.unitPrice || (material?.referenceUnitPrice ? String(material.referenceUnitPrice) : ''),
-                            })
+                            updateLine(index, { materialId: event.target.value })
                           }}
                         >
                           <option value="">{t('features.selfPurchase.chooseMaterial')}</option>

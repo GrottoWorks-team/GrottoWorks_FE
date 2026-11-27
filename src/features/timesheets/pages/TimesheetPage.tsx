@@ -43,6 +43,11 @@ import type {
 const SELECT_CLS =
   'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
+// BE main CHƯA có `POST /attendance/{id}/close` (chỉ nằm ở nhánh
+// `phongnltse/task-team-leader-progress`). Gọi vào là 404 nên nút bị khoá;
+// khi BE merge thì đổi thành true — không phải sửa chỗ nào khác.
+const CLOSE_SESSION_SUPPORTED = false
+
 /** Tab trạng thái — BE đã hỗ trợ `?status=` cho cả đơn check-in và đơn sửa giờ. */
 function StatusTabs<T extends string>({
   value,
@@ -435,7 +440,17 @@ export default function TimesheetPage() {
                     <span className="tabular font-semibold text-status-dangerText">
                       {t('features.timesheets.hoursOpen', { hours: hoursOpen.toFixed(1) })}
                     </span>
-                    <Button size="sm" variant="outline" onClick={() => setClosing(session)}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setClosing(session)}
+                      disabled={!CLOSE_SESSION_SUPPORTED}
+                      title={
+                        CLOSE_SESSION_SUPPORTED
+                          ? undefined
+                          : t('features.timesheets.closeSessionUnavailable')
+                      }
+                    >
                       <Check className="size-3.5" />
                       {t('features.timesheets.closeSession')}
                     </Button>

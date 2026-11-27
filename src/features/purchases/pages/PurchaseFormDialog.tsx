@@ -25,6 +25,8 @@ import {
 interface ItemRow {
   materialId: string
   requestedQuantity: number
+  /** Ước tính chi phí CẢ DÒNG (VND) — tuỳ chọn; có số thì BE mới kiểm vượt dự toán (BR-32). */
+  estimatedCost: string
   note: string
   shortageOverrideReason: string
 }
@@ -61,6 +63,7 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       return initialData.items.map((i) => ({
         materialId: i.materialId,
         requestedQuantity: i.requestedQuantity,
+        estimatedCost: i.estimatedCost == null ? '' : String(i.estimatedCost),
         note: i.note ?? '',
         shortageOverrideReason: i.shortageOverrideReason ?? '',
       }))
@@ -69,6 +72,7 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       {
         materialId: '',
         requestedQuantity: 1,
+        estimatedCost: '',
         note: '',
         shortageOverrideReason: '',
       },
@@ -105,6 +109,7 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
       {
         materialId: '',
         requestedQuantity: 1,
+        estimatedCost: '',
         note: '',
         shortageOverrideReason: '',
       },
@@ -153,6 +158,11 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
     const payloadItems: PurchaseRequestItemInput[] = items.map((i) => ({
       materialId: i.materialId,
       requestedQuantity: Number(i.requestedQuantity),
+      // Tuỳ chọn: chỉ gửi khi có số, để BE biết request có dự toán hay không (BR-32).
+      estimatedCost:
+        i.estimatedCost.trim() === '' || Number.isNaN(Number(i.estimatedCost))
+          ? null
+          : Number(i.estimatedCost),
       note: i.note.trim() || null,
       shortageOverrideReason: null,
     }))
@@ -191,6 +201,15 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
   }
 
   const isSubmitting = create.isPending || update.isPending
+
+  const estimateTotal = useMemo(
+    () =>
+      items.reduce((sum, item) => {
+        const value = Number(item.estimatedCost)
+        return item.estimatedCost.trim() !== '' && Number.isFinite(value) ? sum + value : sum
+      }, 0),
+    [items],
+  )
 
   return (
     <>
@@ -368,7 +387,27 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {/* Ước tính chi phí cả dòng (tuỳ chọn) — có số thì BE mới kiểm vượt dự toán */}
+                    <div>
+                      <Label className="text-xs">{t('features.purchases.estimatedCostLabel')}</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step="1000"
+                        className="mt-1 h-9 text-xs tabular"
+                        placeholder={t('features.purchases.estimatedCostPlaceholder')}
+                        value={row.estimatedCost}
+                        onChange={(e) =>
+                          handleItemChange(index, { estimatedCost: e.target.value })
+                        }
+                      />
+                      {fieldError(fieldErrors, `items[${index}].estimatedCost`) ? (
+                        <p className="mt-1 text-[11px] text-destructive">
+                          {fieldError(fieldErrors, `items[${index}].estimatedCost`)}
+                        </p>
+                      ) : null}
+                    </div>
                     {/* Ghi chú */}
                     <div>
                       <Label className="text-xs">{t('features.purchases.note')}</Label>
@@ -396,10 +435,18 @@ export function PurchaseFormDialog({ onClose, initialData }: PurchaseFormDialogP
             })}
           </div>
 
-          {/* 26/11/2026: bỏ ước tính chi phí — Ban phụ trách là người đi mua, giá thực tế ghi khi nhập hoá đơn. */}
-          <p className="text-xs text-muted-foreground">
-            {t('features.purchases.noEstimateHint')}
-          </p>
+          {/* 27/11/2026: ước tính chi phí là TUỲ CHỌN. Có số thì BE mới bật kiểm vượt dự toán
+              (BR-32) và trưởng khu mới có nút "Duyệt vượt dự toán"; bỏ trống thì không kiểm. */}
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-muted-foreground">
+              {t('features.purchases.estimateOptionalHint')}
+            </p>
+            {estimateTotal > 0 && (
+              <p className="shrink-0 text-xs font-semibold tabular text-foreground">
+                {t('features.purchases.estimateTotal', { value: estimateTotal.toLocaleString('vi-VN') })}
+              </p>
+            )}
+          </div>
         </div>
       </form>
     </Dialog>

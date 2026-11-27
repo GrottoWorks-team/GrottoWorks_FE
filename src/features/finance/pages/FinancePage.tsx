@@ -3,6 +3,8 @@
 //   - Báo cáo mua sắm: GET /reports/purchases   → totals.actualCost / estimatedApproved
 //   - Báo cáo đóng góp: GET /reports/contributions → totals.receivedMoney (tiền đã nhận)
 //   - Vật tư người khác tự mua: GET /self-purchases?seasonId= → tổng totalCost
+// 27/11/2026: thêm lọc theo KHU VỰC — BE nhận `workAreaId` cho cả 2 báo cáo và
+// `self-purchases`, nên xem được tiền của từng vùng trong mùa.
 // Trang này KHÔNG trừ quỹ (chưa có sổ quỹ) — chỉ đối chiếu ba con số để thấy tiền đi đâu.
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { formatVnd } from '@/lib/format'
 import { useSeasons } from '@/features/season/api'
 import { useSeasonContext } from '@/features/season/season-context'
+import { useSeasonAreas } from '@/features/areas/api'
 import { useOperationalReport } from '@/features/reports/api'
 import { useSelfPurchases } from '@/features/materials/selfPurchaseApi'
 
@@ -28,12 +31,19 @@ export default function FinancePage() {
   const { t } = useTranslation()
   const { seasonId: headerSeasonId } = useSeasonContext()
   const [seasonId, setSeasonId] = useState(headerSeasonId ?? '')
+  const [workAreaId, setWorkAreaId] = useState('')
   const { data: seasons = [] } = useSeasons()
+  const { data: areas = [] } = useSeasonAreas(seasonId || undefined)
 
   useEffect(() => {
     if (!headerSeasonId) return
     setSeasonId((current) => current || headerSeasonId)
   }, [headerSeasonId])
+
+  // Đổi mùa thì bỏ lọc khu — khu của mùa cũ không còn trong danh sách.
+  useEffect(() => {
+    setWorkAreaId('')
+  }, [seasonId])
 
   useEffect(() => {
     if (seasonId) return
@@ -41,9 +51,12 @@ export default function FinancePage() {
     if (fallback) setSeasonId(fallback.id)
   }, [seasonId, seasons])
 
-  const purchases = useOperationalReport('purchases', seasonId || undefined)
-  const contributions = useOperationalReport('contributions', seasonId || undefined)
-  const selfPurchases = useSelfPurchases({ seasonId: seasonId || undefined, size: 500 }, { enabled: Boolean(seasonId) })
+  const purchases = useOperationalReport('purchases', seasonId || undefined, workAreaId || undefined)
+  const contributions = useOperationalReport('contributions', seasonId || undefined, workAreaId || undefined)
+  const selfPurchases = useSelfPurchases(
+    { seasonId: seasonId || undefined, workAreaId: workAreaId || undefined, size: 500 },
+    { enabled: Boolean(seasonId) },
+  )
 
   const purchaseActual = amount(purchases.data?.totals, 'actualCost')
   const purchaseEstimate = amount(purchases.data?.totals, 'estimatedApproved')
@@ -86,14 +99,29 @@ export default function FinancePage() {
         title={t('features.finance.title')}
         sub={t('features.finance.sub')}
         actions={
-          <select className={SELECT_CLS} value={seasonId} onChange={(event) => setSeasonId(event.target.value)}>
-            <option value="">{t('features.finance.chooseSeason')}</option>
-            {seasons.map((season) => (
-              <option key={season.id} value={season.id}>
-                {season.name} ({season.year})
-              </option>
-            ))}
-          </select>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              className={SELECT_CLS}
+              value={workAreaId}
+              disabled={!seasonId || areas.length === 0}
+              onChange={(event) => setWorkAreaId(event.target.value)}
+            >
+              <option value="">{t('features.finance.allAreas')}</option>
+              {areas.map((area) => (
+                <option key={area.id} value={area.id}>
+                  {area.name}
+                </option>
+              ))}
+            </select>
+            <select className={SELECT_CLS} value={seasonId} onChange={(event) => setSeasonId(event.target.value)}>
+              <option value="">{t('features.finance.chooseSeason')}</option>
+              {seasons.map((season) => (
+                <option key={season.id} value={season.id}>
+                  {season.name} ({season.year})
+                </option>
+              ))}
+            </select>
+          </div>
         }
       />
 

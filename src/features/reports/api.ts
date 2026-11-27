@@ -250,13 +250,18 @@ export function useOperationalReport(
 
   seasonId?: string,
 
+  workAreaId?: string,
+
 ) {
+
+  const qs = new URLSearchParams({ seasonId: seasonId ?? '' })
+  if (workAreaId) qs.set('workAreaId', workAreaId)
 
   return useQuery({
 
-    queryKey: reportKeys.operational(type, seasonId),
+    queryKey: reportKeys.operational(type, `${seasonId ?? ''}|${workAreaId ?? ''}`),
 
-    queryFn: () => api<OperationalReportDto>(`/api/v1/reports/${type}?seasonId=${seasonId}`),
+    queryFn: () => api<OperationalReportDto>(`/api/v1/reports/${type}?${qs.toString()}`),
 
     enabled: Boolean(seasonId),
 

@@ -109,6 +109,7 @@
   "features.finance.title": "Tài chính mùa",
   "features.finance.sub": "Đối chiếu tiền quyên góp, tiền mua vật tư và vật tư người khác tự mua — ba kênh tách riêng.",
   "features.finance.chooseSeason": "Chọn mùa",
+  "features.finance.allAreas": "Tất cả khu vực",
   "features.finance.chooseSeasonHint": "Chọn một mùa để xem số liệu tài chính.",
   "features.finance.disclaimer": "Trang này chỉ đọc số liệu: chưa có sổ quỹ nên chưa trừ tiền theo thời điểm và chưa có hoàn tiền. Số \"còn lại\" là chênh lệch thô giữa tiền đã nhận và tiền đã chi.",
   "features.finance.loadError": "Không tải được số liệu tài chính của mùa này.",

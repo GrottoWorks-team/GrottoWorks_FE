@@ -109,6 +109,7 @@
   "features.finance.title": "Season finance",
   "features.finance.sub": "Reconcile donated money, purchase spending and materials bought outside the purchase flow — three separate channels.",
   "features.finance.chooseSeason": "Choose a season",
+  "features.finance.allAreas": "All work areas",
   "features.finance.chooseSeasonHint": "Pick a season to see the finance figures.",
   "features.finance.disclaimer": "This page is read-only: there is no fund ledger yet, so nothing is netted over time and there is no reimbursement. \"Balance\" is the raw difference between money received and money spent.",
   "features.finance.loadError": "Could not load the finance figures for this season.",

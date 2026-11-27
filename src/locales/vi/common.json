@@ -384,6 +384,7 @@
   "features.timesheets.closeSession": "Đóng phiên",
   "features.timesheets.closeSessionTitle": "Đóng phiên hộ tình nguyện viên",
   "features.timesheets.closeSessionReason": "Lý do (bắt buộc)",
+  "features.timesheets.closeSessionUnavailable": "Máy chủ chưa hỗ trợ đóng phiên hộ — chờ bản cập nhật BE.",
   "features.timesheets.sessionClosed": "Đã đóng phiên điểm danh và chốt giờ công",
   "features.timesheets.otherAreasPending": "Còn {{count}} đơn chờ ở khu khác — chọn khu ở trên để duyệt.",
   "features.timesheets.hoursTitle": "Giờ công đã duyệt theo khu",

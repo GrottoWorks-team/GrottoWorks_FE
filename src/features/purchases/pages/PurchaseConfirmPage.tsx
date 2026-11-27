@@ -65,6 +65,11 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
     }
   }
 
+  // BE chặn 2 trường hợp này ở ConfirmDelivery: thiếu hoá đơn (PURCHASE_RECEIPT_REQUIRED)
+  // và vượt dự toán chưa duyệt (PURCHASE_COST_OVERRUN_NOT_APPROVED, BR-32).
+  const overrunPending = Boolean(purchase.costOverrun && !purchase.costOverrunApprovedBy)
+  const missingReceipt = purchase.receiptFileIds.length === 0
+
   return (
     <Dialog
       open
@@ -75,7 +80,17 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
           <Button variant="outline" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={submit} disabled={confirm.isPending}>
+          <Button
+            onClick={submit}
+            disabled={confirm.isPending || overrunPending || missingReceipt}
+            title={
+              overrunPending
+                ? t('features.purchases.overrunPending')
+                : missingReceipt
+                  ? t('features.purchases.receiptRequired')
+                  : undefined
+            }
+          >
             {t('common.save')}
           </Button>
         </>
@@ -94,6 +109,11 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
         {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
           <p className="rounded-md bg-status-dangerBg p-2 text-xs font-semibold text-status-dangerText">
             {t('features.purchases.overrunPending')}
+          </p>
+        )}
+        {missingReceipt && (
+          <p className="rounded-md bg-status-dangerBg p-2 text-xs font-semibold text-status-dangerText">
+            {t('features.purchases.receiptRequired')}
           </p>
         )}
         {purchase.items.map((item) => (

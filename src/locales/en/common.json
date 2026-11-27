@@ -384,6 +384,7 @@
   "features.timesheets.closeSession": "Close session",
   "features.timesheets.closeSessionTitle": "Close the session on the volunteer's behalf",
   "features.timesheets.closeSessionReason": "Reason (required)",
+  "features.timesheets.closeSessionUnavailable": "The server does not support closing a session on behalf yet — waiting for the BE release.",
   "features.timesheets.sessionClosed": "Session closed and hours approved",
   "features.timesheets.otherAreasPending": "{{count}} request(s) pending in other work areas — switch area above to review.",
   "features.timesheets.hoursTitle": "Approved hours by area",
