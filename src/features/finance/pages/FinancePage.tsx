@@ -129,7 +129,7 @@ export default function FinancePage() {
               return (
                 <div key={stat.key} className="rounded-card border border-border bg-card p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{stat.label}</p>
+                    <p className="text-xs font-semibold text-muted-foreground">{stat.label}</p>
                     <Icon className="size-4 text-muted-foreground" aria-hidden />
                   </div>
                   <p className="tabular mt-2 text-xl font-bold text-foreground">
@@ -141,7 +141,7 @@ export default function FinancePage() {
             })}
             <div className="rounded-card border border-border bg-card p-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-xs font-semibold text-muted-foreground">
                   {t('features.finance.balance')}
                 </p>
               </div>
