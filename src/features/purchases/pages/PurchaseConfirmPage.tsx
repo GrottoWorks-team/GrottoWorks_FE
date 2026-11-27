@@ -22,12 +22,22 @@ import {
   usePurchaseRequests,
   useRequestPurchaseInfo,
   type PurchaseDto,
+  type PurchaseRequestDto,
 } from '../api'
+import { isOverrunPending } from '../overrun'
 import { viDate } from '@/lib/format'
 
 const CONFIRMABLE = new Set(['SUBMITTED', 'NEEDS_INFO'])
 
-function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: () => void }) {
+function ConfirmDialog({
+  request,
+  purchase,
+  onClose,
+}: {
+  request: PurchaseRequestDto
+  purchase: PurchaseDto
+  onClose: () => void
+}) {
   const { t } = useTranslation()
   const toast = useToast()
   const confirm = useConfirmPurchaseDelivery()
@@ -67,7 +77,7 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
 
   // BE chặn 2 trường hợp này ở ConfirmDelivery: thiếu hoá đơn (PURCHASE_RECEIPT_REQUIRED)
   // và vượt dự toán chưa duyệt (PURCHASE_COST_OVERRUN_NOT_APPROVED, BR-32).
-  const overrunPending = Boolean(purchase.costOverrun && !purchase.costOverrunApprovedBy)
+  const overrunPending = isOverrunPending(request, purchase)
   const missingReceipt = purchase.receiptFileIds.length === 0
 
   return (
@@ -106,7 +116,7 @@ function ConfirmDialog({ purchase, onClose }: { purchase: PurchaseDto; onClose: 
             </ul>
           </InlineAlert>
         )}
-        {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
+        {overrunPending && (
           <p className="rounded-md bg-status-dangerBg p-2 text-xs font-semibold text-status-dangerText">
             {t('features.purchases.overrunPending')}
           </p>
@@ -212,7 +222,7 @@ function RequestInfoDialog({ purchase, onClose }: { purchase: PurchaseDto; onClo
   )
 }
 
-function PurchaseRow({ purchase }: { purchase: PurchaseDto }) {
+function PurchaseRow({ request, purchase }: { request: PurchaseRequestDto; purchase: PurchaseDto }) {
   const { t } = useTranslation()
   const toast = useToast()
   const [confirming, setConfirming] = useState(false)
@@ -230,7 +240,7 @@ function PurchaseRow({ purchase }: { purchase: PurchaseDto }) {
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
+          {isOverrunPending(request, purchase) && (
             <span className="text-xs font-semibold text-status-dangerText">{t('features.purchases.overrun')}</span>
           )}
           <StatusTag status={purchase.status} />
@@ -281,7 +291,7 @@ function PurchaseRow({ purchase }: { purchase: PurchaseDto }) {
           </Button>
         </div>
       )}
-      {confirming && <ConfirmDialog purchase={purchase} onClose={() => setConfirming(false)} />}
+      {confirming && <ConfirmDialog request={request} purchase={purchase} onClose={() => setConfirming(false)} />}
       {requesting && <RequestInfoDialog purchase={purchase} onClose={() => setRequesting(false)} />}
     </Card>
   )
@@ -293,13 +303,14 @@ function RequestPurchases({ requestId }: { requestId: string }) {
   const purchases = useMemo(() => detail?.purchases ?? [], [detail])
 
   if (isPending) return <p className="lbl-mono">{t('common.loading')}</p>
+  if (!detail) return <p className="lbl-mono">{t('common.error')}</p>
   if (purchases.length === 0)
     return <EmptyState text={t('features.purchases.noPurchases')} />
 
   return (
     <div className="space-y-3">
       {purchases.map((purchase) => (
-        <PurchaseRow key={purchase.id} purchase={purchase} />
+        <PurchaseRow key={purchase.id} request={detail} purchase={purchase} />
       ))}
     </div>
   )

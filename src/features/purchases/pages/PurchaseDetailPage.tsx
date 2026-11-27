@@ -27,6 +27,7 @@ import {
   useCreatePurchaseTask,
   type StateChangeDto,
 } from '../api'
+import { isOverrunPending } from '../overrun'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
@@ -370,7 +371,7 @@ export default function PurchaseDetailPage() {
                       {purchase.supplierName || '—'} · {viDate(purchase.purchaseDate)} ·{' '}
                       {purchase.totalCost.amount.toLocaleString()} ₫
                     </p>
-                    {purchase.costOverrun && !purchase.costOverrunApprovedBy && (
+                    {isOverrunPending(request, purchase) && (
                       <div className="mt-2 flex items-center justify-between gap-2">
                         <span className="text-xs font-semibold text-status-dangerText">
                           {t('features.purchases.overrun')}
