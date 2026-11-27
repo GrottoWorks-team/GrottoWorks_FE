@@ -118,6 +118,7 @@
   "features.parish.categoryInUse": "\"{{name}}\" is in use — cannot delete",
   "features.parish.categoryDuplicate": "\"{{name}}\" is already in the list",
   "features.parish.refUses": "uses",
+  "features.parish.unused": "Unused",
   "features.parish.refAreas": "areas",
   "features.parish.rulesTitle": "Point rules",
   "features.parish.rulesSub": "Recognition points per contribution type — managed live on Reporting",

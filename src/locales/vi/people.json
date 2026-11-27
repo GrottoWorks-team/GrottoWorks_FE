@@ -118,6 +118,7 @@
   "features.parish.categoryInUse": "\"{{name}}\" đang được dùng — không thể xoá",
   "features.parish.categoryDuplicate": "\"{{name}}\" đã có trong danh mục",
   "features.parish.refUses": "lượt dùng",
+  "features.parish.unused": "Chưa dùng",
   "features.parish.refAreas": "khu",
   "features.parish.rulesTitle": "Quy tắc điểm",
   "features.parish.rulesSub": "Điểm vinh danh theo loại đóng góp — quản lý trực tiếp trên Reporting",

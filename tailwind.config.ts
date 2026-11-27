@@ -13,9 +13,15 @@ export default {
           gold: '#EEB902', // champagne gold (accent)
           goldLight: '#FEF9C3',
           warm: '#F4A261', // warm gold (pending/shortage)
+          // Bảng màu sidebar tối — bản thiết kế Pen "KHOA.pen" (27/11/2026).
+          deep: '#0B2E1F', // nền sidebar
+          deeper: '#06281B', // đáy gradient sidebar
+          mint: '#97AB9E', // chữ phụ trên nền tối
+          mintSoft: '#A8C4B4', // chữ mờ hơn
+          goldDeep: '#C98A12', // vàng trên nền sáng
         },
         gw: {
-          canvas: '#F8F9FA',
+          canvas: '#F2F5F0',
           card: '#FFFFFF',
           ink: '#2B2D42',
           muted: '#6C757D',
@@ -69,6 +75,7 @@ export default {
       },
       fontFamily: {
         sans: ['"Be Vietnam Pro"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+        display: ['"Playfair Display"', 'Georgia', 'serif'],
         mono: ['"IBM Plex Mono"', 'monospace'],
       },
       borderRadius: {

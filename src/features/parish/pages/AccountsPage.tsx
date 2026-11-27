@@ -80,7 +80,24 @@ export default function AccountsPage() {
     () => [
       { key: 'name', header: t('features.parish.name'), render: (u: User) => <span className="font-semibold">{u.name}</span> },
       { key: 'email', header: t('features.parish.email') },
-      { key: 'role', header: t('features.parish.role'), render: (u: User) => t(`role.${u.role}`) },
+      {
+        key: 'role',
+        header: t('features.parish.role'),
+        render: (u: User) => (
+          <span
+            className={cn(
+              'inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-semibold',
+              u.role === 'PARISH' || u.role === 'LEADER'
+                ? 'bg-[#FDF3D8] text-[#8A5A00]'
+                : u.role === 'MATERIAL_OFFICER'
+                  ? 'bg-[#E8F5E9] text-[#0A5C36]'
+                  : 'bg-[#EEF3EB] text-[#3B5348]',
+            )}
+          >
+            {t(`role.${u.role}`)}
+          </span>
+        ),
+      },
       { key: 'communityId', header: t('features.parish.community'), render: (u: User) => communityName(u.communityId) },
       {
         key: 'skills',

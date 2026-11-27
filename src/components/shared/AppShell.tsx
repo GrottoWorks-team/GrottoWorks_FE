@@ -111,35 +111,40 @@ export function AppShell({ role }: { role?: Role }) {
       <div className="flex min-h-screen">
       <aside
         className={cn(
-          'sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-card transition-[width] duration-200',
-          collapsed ? 'w-[76px]' : 'w-64',
+          'sticky top-0 flex h-screen shrink-0 flex-col overflow-hidden bg-brand-deeper transition-[width] duration-200',
+          collapsed ? 'w-[76px]' : 'w-[248px]',
         )}
       >
         <div
           className={cn(
-            'flex items-center gap-3 border-b border-border py-5',
-            collapsed ? 'justify-center px-0' : 'px-5',
+            'relative flex items-center gap-[11px] pb-[18px] pt-[22px]',
+            collapsed ? 'justify-center px-0' : 'px-[18px]',
           )}
         >
-          <div className="grid size-11 shrink-0 place-items-center rounded-card bg-primary text-lg font-extrabold text-primary-foreground">
-            G
+          <div className="grid size-[38px] shrink-0 place-items-center rounded-xl border border-brand-gold/35 bg-gradient-to-br from-[#12805A] to-[#0A5C36] text-brand-gold">
+            <Church className="size-[18px]" aria-hidden />
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-base font-extrabold leading-tight tracking-tight text-foreground">
+              <p className="truncate text-[13.5px] font-extrabold uppercase leading-tight tracking-[0.6px] text-white">
                 {t('app.name')}
               </p>
-              <p className="truncate text-xs text-muted-foreground">{t('app.parish')}</p>
+              <p className="truncate text-[8px] font-semibold uppercase tracking-[1.6px] text-brand-mint/70">
+                {t('app.parish')}
+              </p>
             </div>
           )}
         </div>
-        <nav className={cn('flex-1 space-y-5 overflow-y-auto py-4', collapsed ? 'px-2' : 'px-3')}>
+        <div className="h-px w-full shrink-0 bg-white/[0.08]" aria-hidden />
+        <nav className={cn('flex flex-1 flex-col gap-[2px] overflow-y-auto py-[14px]', collapsed ? 'px-2' : 'px-3')}>
           {groups.map((g) => (
-            <div key={g.section || 'main'}>
+            <div key={g.section || 'main'} className="flex flex-col gap-[2px]">
               {g.section && !collapsed && (
-                <p className="lbl-mono !mb-1.5 !px-3">{t(g.section)}</p>
+                <p className="mb-0 px-[11px] font-mono text-[10px] font-semibold uppercase leading-[21px] tracking-[1.6px] text-[#5F8271]">
+                  {t(g.section)}
+                </p>
               )}
-              <div className="space-y-1">
+              <div className="space-y-[2px]">
                 {g.items.map((item) => {
                   const n = item.badge ? badgeCount(item.badge) : 0
                   const Icon = item.icon ? ICONS[item.icon] : undefined
@@ -152,27 +157,37 @@ export function AppShell({ role }: { role?: Role }) {
                       style={{ '--d': delayOf(item.to) } as CSSProperties}
                       className={({ isActive }) =>
                         cn(
-                          'g-item relative flex items-center gap-2.5 rounded-md py-2 text-sm font-semibold transition-colors',
-                          collapsed ? 'justify-center px-0' : 'px-3',
+                          'g-item relative flex h-[37px] items-center gap-2.5 rounded-[10px] text-[12.5px] font-bold transition-colors',
+                          collapsed ? 'justify-center px-0' : 'px-[11px]',
                           isActive
-                            ? 'bg-primary text-primary-foreground'
-                            : 'text-muted-foreground hover:bg-background hover:text-foreground',
+                            ? 'bg-white/[0.08] text-white'
+                            : 'text-brand-mint hover:bg-white/[0.04] hover:text-white',
                         )
                       }
                     >
-                      {Icon && <Icon className="size-4 shrink-0" aria-hidden />}
-                      {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
-                      {n > 0 &&
-                        (collapsed ? (
-                          <span
-                            aria-hidden
-                            className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand-gold"
-                          />
-                        ) : (
-                          <span className="rounded-full bg-brand-gold px-1.5 py-0.5 text-[10px] font-bold text-foreground">
-                            {n}
-                          </span>
-                        ))}
+                      {({ isActive }) => (
+                        <>
+                          {isActive && (
+                            <span
+                              aria-hidden
+                              className="absolute left-0 top-1/2 h-[17px] w-[3px] -translate-y-1/2 rounded-[2px] bg-[#E9B949]"
+                            />
+                          )}
+                          {Icon && <Icon className="size-[15px] shrink-0" aria-hidden />}
+                          {!collapsed && <span className="flex-1 truncate">{t(item.label)}</span>}
+                          {n > 0 &&
+                            (collapsed ? (
+                              <span
+                                aria-hidden
+                                className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-brand-gold"
+                              />
+                            ) : (
+                              <span className="rounded-full bg-[#E9B949] px-1.5 py-0.5 text-[10px] font-bold text-brand-deeper">
+                                {n}
+                              </span>
+                            ))}
+                        </>
+                      )}
                     </NavLink>
                   )
                 })}
@@ -183,13 +198,13 @@ export function AppShell({ role }: { role?: Role }) {
 
         {/* Ghi chú cuối sidebar: mục đích của role đang đăng nhập (ẩn khi thu gọn). */}
         {!collapsed && (
-          <div className="shrink-0 border-t border-border p-3">
-            <div className="rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2.5">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-pine">
-                <Info className="size-3.5 shrink-0" aria-hidden />
+          <div className="shrink-0 p-3">
+            <div className="rounded-[10px] border border-white/10 bg-white/[0.06] px-[12px] py-[12px]">
+              <p className="flex items-center gap-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[1.2px] text-[#E9B949]">
+                <Info className="size-3 shrink-0" aria-hidden />
                 <span className="truncate">{t(`role.${r}`)}</span>
               </p>
-              <p className="mt-1 text-xs leading-relaxed text-brand-pine/80">
+              <p className="mt-[7px] text-[10.5px] leading-[16px] text-[#9DBBA9]">
                 {t(`shell.roleNote.${r}`)}
               </p>
             </div>
@@ -197,7 +212,7 @@ export function AppShell({ role }: { role?: Role }) {
         )}
 
         {/* Thu gọn / mở rộng sidebar — nhớ lựa chọn ở localStorage. */}
-        <div className="shrink-0 border-t border-border p-2">
+        <div className="shrink-0 border-t border-white/[0.08] p-2">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -205,7 +220,7 @@ export function AppShell({ role }: { role?: Role }) {
             aria-label={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
             title={collapsed ? t('shell.expandSidebar') : t('shell.collapseSidebar')}
             className={cn(
-              'flex w-full items-center gap-2 rounded-md py-2 text-xs font-semibold text-muted-foreground transition-colors hover:bg-background hover:text-foreground',
+              'flex w-full items-center gap-2 rounded-md py-2 text-[11px] font-semibold text-brand-mint transition-colors hover:bg-white/[0.06] hover:text-white',
               collapsed ? 'justify-center px-0' : 'px-3',
             )}
           >
@@ -222,13 +237,13 @@ export function AppShell({ role }: { role?: Role }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-border bg-card px-6">
-          <div className="lbl-mono flex items-center gap-2">
-            <span className="text-primary">{t('app.name')}</span>
-            <span aria-hidden>/</span>
-            <span>{crumb}</span>
+        <header className="sticky top-0 z-20 flex h-[62px] shrink-0 items-center justify-between border-b border-border bg-white px-[22px]">
+          <div className="flex items-center gap-[7px] font-mono text-[10.5px] uppercase tracking-[1.3px]">
+            <span className="font-bold text-[#0A5C36]">{t('app.name')}</span>
+            <span aria-hidden className="text-[#B9C8BC]">/</span>
+            <span className="font-medium text-[#8AA298]">{crumb}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {showSeasonPicker && <SeasonSelect />}
             <NotificationsDropdown />
             <Link
@@ -259,7 +274,7 @@ export function AppShell({ role }: { role?: Role }) {
             </Button>
           </div>
         </header>
-        <main className="flex-1 p-6 md:p-8">
+        <main className="flex-1 p-6">
           <Outlet />
         </main>
       </div>

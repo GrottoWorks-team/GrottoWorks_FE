@@ -1060,6 +1060,7 @@
   "features.dashboards.noAreas": "Mùa này chưa có khu vực nào",
   "features.dashboards.parishFinding": "{{ready}}/{{total}} khu đã sẵn sàng",
   "features.dashboards.readinessTitle": "Đã sẵn sàng chưa",
+  "features.dashboards.progress": "Tiến độ",
   "features.dashboards.readySeason": "Mùa đang chạy: {{name}}",
   "features.dashboards.readyAreasCount": "{{count}} khu vực trong mùa",
   "features.dashboards.readyLeader": "{{count}} khu thiếu trưởng khu",

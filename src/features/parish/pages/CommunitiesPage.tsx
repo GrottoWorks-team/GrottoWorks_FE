@@ -23,10 +23,12 @@ import {
   Check,
   ShieldCheck,
   ListChecks,
+  Users,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import ParishMapPage from '@/features/map/pages/ParishMapPage'
 import { DataTable } from '@/components/shared/DataTable'
+import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
@@ -461,6 +463,12 @@ function CommunitiesPanel({ parishId, canEdit }: { parishId: string; canEdit: bo
 
   return (
     <div>
+      <div className="mb-[18px] grid gap-[14px] sm:grid-cols-3">
+        <StatCard label={t('features.parish.tabCommunities')} value={communities.length} icon={Church} />
+        <StatCard label={t('features.parish.members')} value={users.filter((u) => u.communityId).length} icon={Users} />
+        <StatCard label={t('features.parish.tabAreas')} value={areas.length} icon={MapPin} />
+      </div>
+
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">{t('features.parish.communitiesSub')}</p>
         {canEdit && (

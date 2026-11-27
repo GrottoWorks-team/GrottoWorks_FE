@@ -1060,6 +1060,7 @@
   "features.dashboards.noAreas": "No work areas in this season yet",
   "features.dashboards.parishFinding": "{{ready}}/{{total}} areas ready",
   "features.dashboards.readinessTitle": "Ready or not",
+  "features.dashboards.progress": "Progress",
   "features.dashboards.readySeason": "Running season: {{name}}",
   "features.dashboards.readyAreasCount": "{{count}} work areas in the season",
   "features.dashboards.readyLeader": "{{count}} areas missing an area leader",

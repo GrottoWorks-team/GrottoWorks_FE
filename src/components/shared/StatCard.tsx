@@ -26,13 +26,18 @@ function useCountUp(target: number, duration = 700): number {
   return val
 }
 
-const BAR = { ok: 'bg-brand-pine', warn: 'bg-brand-gold', alert: 'bg-destructive' } as const
+const CHIP = {
+  ok: 'bg-[#EDF4EA] text-[#0A5C36]',
+  warn: 'bg-[#FDF6E3] text-[#C98A12]',
+  alert: 'bg-[#FDE8E8] text-[#991B1B]',
+} as const
 
 export function StatCard({
   label,
   value,
   unit,
   delta,
+  hint,
   tone = 'ok',
   icon: Icon,
   className,
@@ -41,6 +46,8 @@ export function StatCard({
   /** Số → đếm động; chuỗi (vd "—") → hiển thị nguyên văn cho chỉ số chưa có API. */
   value: number | string
   unit?: string
+  /** Dòng phụ dưới số (bản thiết kế: "Mùa đang diễn ra, 2026"). */
+  hint?: string
   delta?: { dir: 'up' | 'down'; text: string }
   tone?: 'ok' | 'warn' | 'alert'
   icon?: React.ComponentType<{ className?: string }>
@@ -50,24 +57,40 @@ export function StatCard({
   const v = useCountUp(numeric ? value : 0)
   const locale = i18n.language === 'en' ? 'en-US' : 'vi-VN'
   return (
-    <Card className={cn('relative overflow-hidden p-5 duration-200', className)}>
-      <div className={cn('absolute inset-x-0 top-0 h-1.5', BAR[tone])} aria-hidden />
-      <div className="flex items-start justify-between">
-        <p className="lbl-mono">{label}</p>
-        {Icon && <Icon className="size-5 text-muted-foreground/50 transition-colors group-hover:text-foreground" />}
+    <Card
+      className={cn(
+        'col-span-1 flex flex-col items-start gap-[11px] rounded-[16px] border-[#E3EAE0] bg-white p-[16px] shadow-[0px_1px_2px_#06281B0A]',
+        className,
+      )}
+    >
+      <div className="flex w-full items-center justify-between">
+        {Icon ? (
+          <span className={cn('grid size-7 shrink-0 place-items-center rounded-[9px]', CHIP[tone])}>
+            <Icon className="size-3.5" />
+          </span>
+        ) : (
+          <span className={cn('size-7 shrink-0 rounded-[9px]', CHIP[tone])} aria-hidden />
+        )}
+        <p className="min-w-0 truncate font-mono text-[10px] font-semibold uppercase tracking-[1.2px] text-[#97AB9E]">
+          {label}
+        </p>
       </div>
-      <p className="tabular mt-2 text-3xl font-extrabold text-foreground">
-        {numeric ? v.toLocaleString(locale) : value}
-        {unit && <span className="ml-1.5 text-sm font-semibold text-muted-foreground">{unit}</span>}
-      </p>
-      {delta && (
+      <div className="flex w-full items-end gap-2">
+        <p className="tabular text-[30px] font-extrabold leading-[30px] tracking-[-1px] text-[#0B2E1F]">
+          {numeric ? v.toLocaleString(locale) : value}
+        </p>
+        {unit && (
+          <span className="pb-[3px] text-[10.5px] font-normal text-[#8AA298]">{unit}</span>
+        )}
+      </div>
+      {(hint || delta) && (
         <p
           className={cn(
-            'mt-1 text-xs font-semibold',
-            delta.dir === 'up' ? 'text-brand-pine' : 'text-destructive',
+            'text-[10.5px]',
+            delta ? (delta.dir === 'up' ? 'text-brand-pine' : 'text-destructive') : 'text-[#8AA298]',
           )}
         >
-          {delta.dir === 'up' ? '▲' : '▼'} {delta.text}
+          {delta ? `${delta.dir === 'up' ? '▲' : '▼'} ${delta.text}` : hint}
         </p>
       )}
     </Card>

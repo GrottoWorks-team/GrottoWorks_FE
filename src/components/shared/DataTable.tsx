@@ -145,13 +145,13 @@ export function DataTable<T>({
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-gw-tableHead">
+              <tr className="border-b border-[#E3EAE0] bg-[#F7F9F5]">
                 {columns.map((c) => (
                   <th
                     key={c.key}
                     scope="col"
                     className={cn(
-                      'px-4 py-3 text-[13px] font-semibold text-primary',
+                      'px-[18px] py-[10px] font-mono text-[9.5px] font-semibold uppercase tracking-[1px] text-[#97AB9E]',
                       ALIGN[c.align ?? 'left'],
                     )}
                   >
@@ -187,7 +187,7 @@ export function DataTable<T>({
                     <td
                       key={c.key}
                       className={cn(
-                        'h-[52px] px-4 py-3 align-middle',
+                        'h-[46px] px-[18px] py-[13px] align-middle text-[12.5px] text-[#2C463A]',
                         ALIGN[c.align ?? 'left'],
                         c.align === 'right' && 'tabular',
                       )}

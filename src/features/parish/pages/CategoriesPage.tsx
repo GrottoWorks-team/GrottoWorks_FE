@@ -10,8 +10,9 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Check, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { Check, CircleAlert, CircleCheck, Pencil, Plus, Tags, Trash2, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { StatCard } from '@/components/shared/StatCard'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -318,35 +319,75 @@ export default function CategoriesPage() {
     }
   }
 
+  // Số liệu cho dải thẻ đầu trang (bản thiết kế Pen 27/11/2026).
+  const currentList: string[] =
+    tab === 'areaType'
+      ? areaCategories.map((c) => c.name)
+      : tab === 'skill'
+        ? skillCatalog.map((s) => s.name)
+        : tab === 'unit'
+          ? units
+          : []
+  const isUsed = (name: string) =>
+    tab === 'areaType'
+      ? areas.some((a) => areaCategories.find((c) => c.name === name)?.id === a.categoryId)
+      : tab === 'skill'
+        ? skillUses(name) > 0
+        : tab === 'unit'
+          ? unitUses(name) > 0
+          : false
+  const usedCount = currentList.filter(isUsed).length
+
   return (
-    <div>
-      <PageHeader title={t('features.parish.categoriesTitle')} sub={t('features.parish.categoriesSub')} />
+    <div className="grid gap-[18px] xl:grid-cols-[minmax(0,1fr)_312px]">
+      <div className="min-w-0">
+        <PageHeader title={t('features.parish.categoriesTitle')} sub={t('features.parish.categoriesSub')} />
 
-      <div
-        className="mb-5 flex flex-wrap gap-1.5"
-        role="tablist"
-        aria-label={t('features.parish.categoriesTitle')}
-      >
-        {TABS.map((x) => (
-          <button
-            key={x}
-            type="button"
-            role="tab"
-            aria-selected={tab === x}
-            onClick={() => setTab(x)}
-            className={cn(
-              'rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors',
-              tab === x
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary',
-            )}
-          >
-            {t(`features.parish.catTab.${x}`)}
-          </button>
-        ))}
-      </div>
+        <div className="mb-[18px] grid gap-[14px] sm:grid-cols-3">
+          <StatCard
+            label={t(`features.parish.catTab.${tab}`)}
+            value={currentList.length}
+            icon={Tags}
+          />
+          <StatCard
+            label={t('features.parish.refUses')}
+            value={usedCount}
+            tone="ok"
+            icon={CircleCheck}
+          />
+          <StatCard
+            label={t('features.parish.unused')}
+            value={Math.max(0, currentList.length - usedCount)}
+            tone="warn"
+            icon={CircleAlert}
+          />
+        </div>
 
-      <Card className="p-5">
+        <div
+          className="mb-5 flex flex-wrap gap-1.5"
+          role="tablist"
+          aria-label={t('features.parish.categoriesTitle')}
+        >
+          {TABS.map((x) => (
+            <button
+              key={x}
+              type="button"
+              role="tab"
+              aria-selected={tab === x}
+              onClick={() => setTab(x)}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors',
+                tab === x
+                  ? 'border-primary bg-primary text-primary-foreground'
+                  : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary',
+              )}
+            >
+              {t(`features.parish.catTab.${x}`)}
+            </button>
+          ))}
+        </div>
+
+        <Card className="p-5">
         {tab === 'areaType' && (
           <>
             <p className="lbl-mono mb-2">{t('features.parish.catHint.areaType')}</p>
@@ -427,6 +468,23 @@ export default function CategoriesPage() {
           </>
         )}
       </Card>
+      </div>
+
+      <aside className="space-y-[18px]">
+        <Card className="p-[18px]">
+          <p className="mb-2 font-mono text-[10px] font-semibold uppercase tracking-[1.2px] text-brand-mint">
+            {t('features.parish.catTab.' + tab)}
+          </p>
+          <p className="text-[13px] leading-relaxed text-foreground">
+            {t(`features.parish.catHint.${tab}`, { defaultValue: t('features.parish.categoriesSub') })}
+          </p>
+          <Card className="mt-3 bg-[#F6F8F4] p-3">
+            <p className="tabular text-[11px] leading-relaxed text-[#5C7468]">
+              {t('features.parish.refUses')}: {usedCount}/{currentList.length}
+            </p>
+          </Card>
+        </Card>
+      </aside>
     </div>
   )
 }

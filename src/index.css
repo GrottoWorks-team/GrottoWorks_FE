@@ -6,20 +6,20 @@
   :root {
     /* GOLDEN WINTER — Design Tokens (DESIGN_SYSTEM.md mục 37) */
     /* shadcn variables mapped to Golden Winter palette (HSL) */
-    --background: 210 17% 98%; /* canvas #F8F9FA */
-    --foreground: 234 22% 22%; /* ink #2B2D42 */
+    --background: 84 22% 95%; /* canvas #F4F6F1 — bản thiết kế Pen 27/11 */
+    --foreground: 154 61% 11%; /* ink #0B2E1F */
     --primary: 152 80% 20%; /* pine #0A5C36 */
     --primary-foreground: 0 0% 100%; /* on-primary #FFFFFF */
     --secondary: 0 0% 100%; /* card #FFFFFF */
-    --secondary-foreground: 234 22% 22%; /* ink #2B2D42 */
-    --muted: 210 16% 96%; /* table-header #F1F5F2 */
-    --muted-foreground: 208 7% 46%; /* muted #6C757D */
+    --secondary-foreground: 154 61% 11%; /* ink #0B2E1F */
+    --muted: 96 20% 94%; /* table-header #ECF1E9 */
+    --muted-foreground: 145 10% 52%; /* muted #7C9287 */
     --accent: 45 97% 47%; /* gold #EEB902 */
-    --accent-foreground: 234 22% 22%; /* ink #2B2D42 */
+    --accent-foreground: 154 61% 11%; /* ink #0B2E1F */
     --destructive: 0 72% 37%; /* danger #991B1B */
     --destructive-foreground: 0 0% 100%;
-    --border: 210 14% 93%; /* hairline #E9ECEF */
-    --input: 210 14% 93%;
+    --border: 102 19% 90%; /* hairline #E3EAE0 */
+    --input: 102 19% 90%;
     --ring: 152 80% 20%; /* focus ring = primary */
     --radius: 10px;
 
