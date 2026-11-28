@@ -15,14 +15,19 @@ import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Church,
+  Info,
+  ListChecks,
+  MapPin,
   Pencil,
   Plus,
-  Church,
-  MapPin,
-  Info,
-  Check,
+  Search,
   ShieldCheck,
-  ListChecks,
+  SlidersHorizontal,
   Users,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -381,7 +386,17 @@ function ParishCard({ parishId }: { parishId: string }) {
 }
 
 // Tab Cộng đoàn — bảng giáo khu + CRUD.
-function CommunitiesPanel({ parishId, canEdit }: { parishId: string; canEdit: boolean }) {
+function CommunitiesPanel({
+  parishId,
+  parishName,
+  canEdit,
+  onGoAreas,
+}: {
+  parishId: string
+  parishName?: string
+  canEdit: boolean
+  onGoAreas: () => void
+}) {
   const { t } = useTranslation()
   const { data: communities = [], isPending } = useCommunities({ parishId })
   const { data: users = [] } = useUsers()
@@ -395,113 +410,348 @@ function CommunitiesPanel({ parishId, canEdit }: { parishId: string; canEdit: bo
   const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<Community | null>(null)
 
-  const columns = useMemo(
-    () => [
-      {
-        key: 'name',
-        header: t('features.parish.communityName'),
-        render: (c: Community) => (
-          <span className="font-semibold text-foreground hover:text-primary transition-colors">
-            {c.name}
-          </span>
-        ),
-      },
-      {
-        key: 'description',
-        header: t('features.parish.communityDescription'),
-        render: (c: Community) => (
-          <span className="text-xs text-muted-foreground" title={c.description}>
-            {c.description ? (c.description.length > 40 ? `${c.description.slice(0, 40)}…` : c.description) : '—'}
-          </span>
-        ),
-      },
-      {
-        key: 'members',
-        header: t('features.parish.members'),
-        align: 'right' as const,
-        render: (c: Community) => (
-          <span className="tabular">{users.filter((u) => u.communityId === c.id).length}</span>
-        ),
-      },
-      {
-        key: 'areas',
-        header: t('features.areas.title'),
-        align: 'right' as const,
-        render: (c: Community) => (
-          <span className="tabular">{areas.filter((a) => a.communityId === c.id).length}</span>
-        ),
-      },
-      {
-        key: 'status',
-        header: t('common.status'),
-        render: (c: Community) => <StatusTag status={c.status} />,
-      },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (c: Community) =>
-          canEdit ? (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('common.edit')}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setEditing(c)
-                  setFormOpen(true)
-                }}
-              >
-                <Pencil className="size-4" />
-              </Button>
-            </div>
-          ) : null,
-      },
-    ],
-    [t, users, areas, canEdit],
-  )
+  // Thanh công cụ + phân trang (bản thiết kế Pen: search 250px, chip lọc trạng
+  // thái, chọn sắp xếp, chân bảng có bộ đếm và 2 nút chuyển trang).
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'ACTIVE' | 'INACTIVE'>('all')
+  const [sort, setSort] = useState<'newest' | 'nameAsc' | 'nameDesc'>('newest')
+  const [page, setPage] = useState(0)
+  const PAGE_SIZE = 8
+
+  const membersOf = (id: string) => users.filter((u) => u.communityId === id).length
+  const areasOf = (id: string) => areas.filter((a) => a.communityId === id).length
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    const list = communities.filter((c) => {
+      if (statusFilter !== 'all' && c.status !== statusFilter) return false
+      if (!q) return true
+      return c.name.toLowerCase().includes(q) || (c.description ?? '').toLowerCase().includes(q)
+    })
+    if (sort === 'nameAsc') return [...list].sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+    if (sort === 'nameDesc') return [...list].sort((a, b) => b.name.localeCompare(a.name, 'vi'))
+    return list
+  }, [communities, query, statusFilter, sort])
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1)
+  const rows = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE)
+
+  const openCreate = () => {
+    setEditing(null)
+    setFormOpen(true)
+  }
+
+  const FILTERS = [
+    { key: 'all' as const, label: t('features.parish.filterAll', { defaultValue: 'Tất cả' }) },
+    { key: 'ACTIVE' as const, label: t('features.parish.filterActive', { defaultValue: 'Đang chạy' }) },
+    { key: 'INACTIVE' as const, label: t('features.parish.filterPaused', { defaultValue: 'Tạm dừng' }) },
+  ]
 
   return (
     <div>
       <div className="mb-[18px] grid gap-[14px] sm:grid-cols-3">
-        <StatCard label={t('features.parish.tabCommunities')} value={communities.length} icon={Church} />
-        <StatCard label={t('features.parish.members')} value={users.filter((u) => u.communityId).length} icon={Users} />
-        <StatCard label={t('features.parish.tabAreas')} value={areas.length} icon={MapPin} />
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">{t('features.parish.communitiesSub')}</p>
-        {canEdit && (
-          <Button
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-          >
-            <Plus className="size-4 mr-1.5" />
-            {t('features.parish.createCommunity')}
-          </Button>
-        )}
-      </div>
-
-      {isPending ? (
-        <p className="lbl-mono">{t('common.loading')}</p>
-      ) : (
-        <DataTable
-          rows={communities}
-          columns={columns}
-          searchKeys={['name']}
-          emptyText={t('features.parish.empty')}
-          onRowClick={
-            canEdit
-              ? (c) => {
-                  setEditing(c)
-                  setFormOpen(true)
-                }
-              : undefined
-          }
+        <StatCard
+          label={t('features.parish.tabCommunities')}
+          value={communities.length}
+          hint={t('features.parish.statCommunitiesSub', { defaultValue: 'Giáo khu trong giáo xứ' })}
+          icon={Church}
         />
-      )}
+        <StatCard
+          label={t('features.parish.members')}
+          value={users.filter((u) => u.communityId).length}
+          hint={t('features.parish.statMembersSub', { defaultValue: 'Người đã thuộc giáo khu' })}
+          icon={Users}
+        />
+        <StatCard
+          label={t('features.parish.tabAreas')}
+          value={areas.length}
+          hint={t('features.parish.statAreasSub', { defaultValue: 'Khu vực trong mùa hiện tại' })}
+          icon={MapPin}
+        />
+      </div>
+
+      <div className="flex w-full flex-col items-start gap-[16px] xl:flex-row">
+        {/* Bảng giáo khu — một thẻ liền: công cụ, hàng tiêu đề, hàng dữ liệu, chân */}
+        <div className="flex w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+          <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-[14px]">
+            <div className="flex h-9 w-full max-w-[250px] items-center gap-[9px] rounded-[10px] border border-[#E7EEE3] bg-[#F7F9F5] px-[11px]">
+              <Search className="size-[14px] shrink-0 text-[#9AAE9F]" aria-hidden />
+              <input
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setPage(0)
+                }}
+                placeholder={t('features.parish.communitiesSearch', { defaultValue: 'Tìm kiếm giáo khu…' })}
+                className="min-w-0 flex-1 bg-transparent text-[11.5px] text-[#0B2E1F] outline-none placeholder:text-[#9AAE9F]"
+                aria-label={t('common.search')}
+              />
+            </div>
+
+            <div className="flex items-center gap-[4px] rounded-[10px] bg-[#EAF0E6] p-[3px]">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(f.key)
+                    setPage(0)
+                  }}
+                  className={cn(
+                    'flex h-7 items-center rounded-[8px] px-[10px] text-[11px] transition-colors',
+                    statusFilter === f.key
+                      ? 'bg-white font-bold text-[#0A5C36]'
+                      : 'font-medium text-[#7C9287] hover:text-[#0B2E1F]',
+                  )}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="flex h-[30px] w-[96px] items-center gap-[6px] rounded-[8px] border border-[#E7EEE3] bg-white px-2">
+                <SlidersHorizontal className="size-3 shrink-0 text-[#8AA298]" aria-hidden />
+                <span className="sr-only">{t('common.sort')}</span>
+                <select
+                  value={sort}
+                  onChange={(e) => {
+                    setSort(e.target.value as typeof sort)
+                    setPage(0)
+                  }}
+                  className="min-w-0 flex-1 cursor-pointer appearance-none bg-transparent text-[11px] font-semibold text-[#5C7468] outline-none"
+                >
+                  <option value="newest">{t('features.parish.sortNewest', { defaultValue: 'Mới nhất' })}</option>
+                  <option value="nameAsc">{t('features.parish.sortNameAsc', { defaultValue: 'Tên A–Z' })}</option>
+                  <option value="nameDesc">{t('features.parish.sortNameDesc', { defaultValue: 'Tên Z–A' })}</option>
+                </select>
+              </label>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={openCreate}
+                  className="flex h-[30px] items-center gap-[5px] rounded-[8px] bg-[#0A5C36] px-[10px] transition-colors hover:bg-[#0D7344]"
+                >
+                  <Plus className="size-3 text-[#F2D07A]" aria-hidden />
+                  <span className="text-[11px] font-bold text-white">
+                    {t('features.parish.createCommunity')}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="h-px w-full bg-[#ECF1E9]" aria-hidden />
+
+          <div className="flex w-full items-center gap-3 bg-[#F7F9F5] px-4 py-[11px]">
+            <span className="min-w-0 flex-1 font-mono text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+              {t('features.parish.communityName')}
+            </span>
+            <span className="w-[86px] shrink-0 text-right font-mono text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+              {t('features.parish.members')}
+            </span>
+            <span className="w-[76px] shrink-0 text-right font-mono text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+              {t('features.parish.areaColumn', { defaultValue: 'Khu vực' })}
+            </span>
+            <span className="w-[104px] shrink-0 font-mono text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+              {t('common.status')}
+            </span>
+            <span className="w-[56px] shrink-0 text-right font-mono text-[9px] text-[#97AB9E]">
+              {t('common.actions')}
+            </span>
+          </div>
+
+          {isPending ? (
+            <p className="px-4 py-6 font-mono text-xs text-[#8AA298]">{t('common.loading')}</p>
+          ) : rows.length === 0 ? (
+            <p className="px-4 py-8 text-center text-[11px] text-[#A3B4A9]">{t('features.parish.empty')}</p>
+          ) : (
+            <ul className="w-full">
+              {rows.map((c) => {
+                const active = c.status === 'ACTIVE'
+                return (
+                  <li
+                    key={c.id}
+                    className={cn(
+                      'flex w-full items-center gap-3 border-b border-[#F0F4EC] px-4 py-[11px] last:border-0',
+                      canEdit && 'cursor-pointer hover:bg-[#FAFCF7]',
+                    )}
+                    onClick={
+                      canEdit
+                        ? () => {
+                            setEditing(c)
+                            setFormOpen(true)
+                          }
+                        : undefined
+                    }
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-[10px]">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-[10px] border border-[#DDE8D6] bg-[#EDF4EA]">
+                        <span className="text-[11px] font-extrabold text-[#3F7F5B]">
+                          {c.name.trim().charAt(0).toUpperCase()}
+                        </span>
+                      </span>
+                      <div className="flex min-w-0 flex-1 flex-col gap-[2px]">
+                        <span className="w-full truncate text-[12.5px] font-bold text-[#0B2E1F]">{c.name}</span>
+                        <span className="w-full truncate text-[10.5px] text-[#96AAA0]">
+                          {c.description || '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="w-[86px] shrink-0 text-right font-mono text-[11.5px] font-semibold text-[#5C7468]">
+                      {membersOf(c.id)}
+                    </span>
+                    <span className="w-[76px] shrink-0 text-right font-mono text-[11.5px] font-semibold text-[#5C7468]">
+                      {areasOf(c.id)}
+                    </span>
+                    <span className="w-[104px] shrink-0">
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-[6px] rounded-full border px-[9px] py-1',
+                          active
+                            ? 'border-[#CBE3D2] bg-[#E9F4EC]'
+                            : 'border-[#E7EEE3] bg-[#F7F9F5]',
+                        )}
+                      >
+                        <span
+                          className={cn('size-[5px] rounded-full', active ? 'bg-[#12805A]' : 'bg-[#97AB9E]')}
+                          aria-hidden
+                        />
+                        <span
+                          className={cn(
+                            'text-[10.5px] font-semibold',
+                            active ? 'text-[#1B6B45]' : 'text-[#5C7468]',
+                          )}
+                        >
+                          {active
+                            ? t('features.parish.filterActive', { defaultValue: 'Đang chạy' })
+                            : t('features.parish.filterPaused', { defaultValue: 'Tạm dừng' })}
+                        </span>
+                      </span>
+                    </span>
+                    <div className="flex w-[56px] shrink-0 items-center justify-end gap-1">
+                      {canEdit && (
+                        <button
+                          type="button"
+                          aria-label={t('common.edit')}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setEditing(c)
+                            setFormOpen(true)
+                          }}
+                          className="grid size-[26px] place-items-center rounded-[8px] text-[#8AA298] transition-colors hover:bg-[#F1F6EE] hover:text-[#0A5C36]"
+                        >
+                          <Pencil className="size-[13px]" aria-hidden />
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+
+          <div className="flex w-full items-center justify-between border-t border-[#ECF1E9] px-4 py-[11px]">
+            <span className="text-[10.5px] text-[#96AAA0]">
+              {t('features.parish.tableCount', {
+                defaultValue: 'Hiển thị {{shown}} / {{total}} cộng đoàn',
+                shown: filtered.length,
+                total: communities.length,
+              })}
+            </span>
+            <div className="flex items-center gap-[4px]">
+              <button
+                type="button"
+                aria-label={t('common.previousPage')}
+                disabled={safePage === 0}
+                onClick={() => setPage(Math.max(0, safePage - 1))}
+                className="grid size-[26px] place-items-center rounded-[8px] border border-[#E7EEE3] text-[#8AA298] transition-colors hover:bg-[#F4F8F1] disabled:opacity-40"
+              >
+                <ChevronLeft className="size-3" aria-hidden />
+              </button>
+              <button
+                type="button"
+                aria-label={t('common.nextPage')}
+                disabled={safePage >= pageCount - 1}
+                onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+                className="grid size-[26px] place-items-center rounded-[8px] border border-[#E7EEE3] text-[#8AA298] transition-colors hover:bg-[#F4F8F1] disabled:opacity-40"
+              >
+                <ChevronRight className="size-3" aria-hidden />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Cột phụ 300px: tổng quan giáo xứ + gợi ý sang tab khu vực */}
+        <aside className="flex w-full shrink-0 flex-col gap-[16px] xl:w-[300px]">
+          <section className="flex w-full flex-col overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+            <div className="flex items-center justify-between px-4 py-[14px]">
+              <p className="font-mono text-[9.5px] font-semibold uppercase tracking-[1.2px] text-[#97AB9E]">
+                {t('features.parish.overviewTitle', { defaultValue: 'Tổng quan giáo xứ' })}
+              </p>
+            </div>
+            <div className="h-px w-full bg-[#ECF1E9]" aria-hidden />
+            <div className="flex w-full flex-col gap-[14px] px-4 pb-4 pt-[14px]">
+              <div className="flex w-full items-center gap-[10px]">
+                <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-[#0A5C36]">
+                  <Church className="size-[15px] text-[#F2D07A]" aria-hidden />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col gap-px">
+                  <span className="w-full truncate text-[12.5px] font-bold text-[#0B2E1F]">
+                    {parishName ?? t('app.parish')}
+                  </span>
+                  <span className="truncate text-[10.5px] text-[#96AAA0]">
+                    {t('features.parish.overviewMeta', {
+                      defaultValue: 'Niên vụ {{year}}',
+                      year: new Date().getFullYear(),
+                    })}
+                  </span>
+                </div>
+              </div>
+              {[
+                { Icon: Users, label: t('features.parish.tabCommunities'), value: communities.length },
+                { Icon: Users, label: t('features.parish.members'), value: users.filter((u) => u.communityId).length },
+                { Icon: MapPin, label: t('features.parish.tabAreas'), value: areas.length },
+              ].map(({ Icon, label, value }) => (
+                <div
+                  key={label}
+                  className="flex w-full items-center justify-between border-t border-[#F0F4EC] pt-[10px]"
+                >
+                  <span className="flex items-center gap-2 text-[11.5px] text-[#5C7468]">
+                    <Icon className="size-[13px] text-[#8AA298]" aria-hidden />
+                    {label}
+                  </span>
+                  <span className="font-mono text-[12px] font-bold text-[#0B2E1F]">{value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="relative flex w-full items-start gap-[10px] overflow-hidden rounded-[16px] bg-[#0A5C36] px-[15px] py-[14px]">
+            <div
+              className="pointer-events-none absolute left-[180px] top-[-80px] z-0 size-[200px] rounded-full bg-[#E9B9492E] blur-[25px]"
+              aria-hidden
+            />
+            <Church className="relative z-[1] mt-px size-[15px] shrink-0 text-[#F2D07A]" aria-hidden />
+            <div className="relative z-[2] flex min-w-0 flex-1 flex-col gap-[6px]">
+              <span className="w-full text-[12.5px] font-bold text-white">
+                {t('features.parish.helpTitle', { defaultValue: 'Giáo khu trong mùa' })}
+              </span>
+              <p className="w-full text-[10.5px] leading-[16px] text-[#A9D7BF]">
+                {t('features.parish.helpBody', { defaultValue: 'Mỗi giáo khu có trưởng khu, danh sách thành viên và khu vực công tác riêng trong mùa.' })}
+              </p>
+              <button
+                type="button"
+                onClick={onGoAreas}
+                className="flex items-center gap-[5px] pt-0.5 text-[10.5px] font-bold text-[#F6E4B8] hover:underline"
+              >
+                {t('features.parish.helpLink', { defaultValue: 'Xem khu vực công tác' })}
+                <ArrowRight className="size-[11px]" aria-hidden />
+              </button>
+            </div>
+          </section>
+        </aside>
+      </div>
 
       {formOpen && (
         <CommunityFormDialog
@@ -782,6 +1032,7 @@ export default function CommunitiesPage() {
         })}
       </div>
         <span className="flex w-fit items-center gap-[6px] rounded-full border border-[#E3EAE0] bg-white px-[10px] py-[5px]">
+          <ListChecks className="size-3 text-[#4F7A61]" aria-hidden />
           <span className="text-[10.5px] font-semibold text-[#4F7A61]">
             {t('features.parish.hubCount', { communities: hubCommunities.length, areas: runningAreas })}
           </span>
@@ -799,7 +1050,12 @@ export default function CommunitiesPage() {
         ) : null
       ) : tab === 'communities' ? (
         parishId ? (
-          <CommunitiesPanel parishId={parishId} canEdit={canEdit} />
+          <CommunitiesPanel
+            parishId={parishId}
+            parishName={scope.parishes.find((x) => x.id === parishId)?.name}
+            canEdit={canEdit}
+            onGoAreas={() => setTab('areas')}
+          />
         ) : null
       ) : tab === 'seasons' ? (
         <SeasonListPage embedded />
