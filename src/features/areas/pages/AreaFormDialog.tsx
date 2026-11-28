@@ -10,12 +10,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
+import { viDate } from '@/lib/format'
 import { useAuth } from '@/lib/auth'
 import { MAX_PAGE_SIZE } from '@/lib/paging'
 import { getFileDownloadUrl } from '@/features/files/api'
@@ -486,328 +486,357 @@ export function AreaFormDialog({
   const err = (msg?: string) =>
     msg ? <p className="mt-1 text-xs font-semibold text-destructive">{t(msg)}</p> : null
 
+  const LBL = 'text-[10px] font-semibold text-[#5C7468]'
+  const FIELD =
+    'h-[34px] w-full rounded-[9px] border border-[#DFE7DC] bg-[#FBFCFA] px-[10px] text-[10.5px] text-[#0B2E1F] outline-none transition-colors focus:border-[#12805A] disabled:opacity-60'
+  const CARD = 'flex w-full flex-col gap-[7px] rounded-[12px] border border-[#E7EEE3] bg-[#FBFCFA] px-3 py-[11px]'
+  const CLABEL = 'font-mono text-[8px] font-semibold uppercase tracking-[1px] text-[#8C9F94]'
+  const CHINT = 'w-full text-[10px] leading-[15px] text-[#96AAA0]'
+
   return (
     <Dialog
       open
       onClose={onClose}
-      size="lg"
+      size="xl"
       title={editing ? t('features.areas.edit') : t('features.areas.create')}
       footer={
         <>
-          <Button variant="outline" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button type="submit" form="area-form" disabled={isSubmitting}>
-            {t('common.save')}
-          </Button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-[34px] items-center justify-center rounded-[10px] border border-[#E1E9DC] bg-white px-[14px] transition-colors hover:bg-[#F4F8F1]"
+          >
+            <span className="text-[11.5px] font-semibold text-[#5C7468]">{t('common.cancel')}</span>
+          </button>
+          <button
+            type="submit"
+            form="area-form"
+            disabled={isSubmitting}
+            className="flex h-[34px] items-center justify-center rounded-[10px] bg-[#0A5C36] px-4 transition-colors hover:bg-[#0D7344] disabled:opacity-55"
+          >
+            <span className="text-[11.5px] font-bold text-white">{t('common.save')}</span>
+          </button>
         </>
       }
     >
-      <form id="area-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="area-season">{t('features.areas.season')}</Label>
-            <select id="area-season" className={SELECT_CLS} {...register('seasonId')}>
-              {seasons.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {t('features.season.optionLabel', { year: s.year, status: t(`status.${s.status}`, s.status) })}
-                </option>
-              ))}
-            </select>
-            {err(errors.seasonId?.message)}
-          </div>
+      <form id="area-form" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <p className="pb-3 text-[10.5px] text-[#8AA298]">
+          {t('features.areas.dialogSub', { defaultValue: 'Mùa Giáng sinh' })}
+          {seasons.find((x) => x.id === currentSeasonId)?.year
+            ? ` ${seasons.find((x) => x.id === currentSeasonId)?.year}`
+            : ''}
+          {' · '}
+          {(() => {
+            const season = seasons.find((x) => x.id === currentSeasonId)
+            return season ? `${viDate(season.startDate)} → ${viDate(season.endDate)}` : ''
+          })()}
+        </p>
 
-          <div>
-            <Label htmlFor="area-name">{t('features.areas.name')}</Label>
-            <Input id="area-name" {...register('name')} />
-            {err(errors.name?.message)}
-          </div>
-        </div>
+        <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_330px]">
+          {/* Cột trái — thông tin cơ bản */}
+          <div className="flex min-w-0 flex-col gap-[11px]">
+            <p className={CLABEL}>{t('features.areas.basicHead', { defaultValue: 'Thông tin cơ bản' })}</p>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <Label htmlFor="area-type">{t('features.areas.type')}</Label>
-            <select id="area-type" className={SELECT_CLS} {...register('type')}>
-              {AREA_TYPES.map((v) => (
-                <option key={v} value={v}>
-                  {t(`features.areas.areaType.${v}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="area-level">{t('features.areas.level')}</Label>
-            <select id="area-level" className={SELECT_CLS} {...register('level')}>
-              {LEVELS.map((v) => (
-                <option key={v} value={v}>
-                  {t(`features.areas.level.${v}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {categories.length > 0 ? (
-          <div>
-            <Label htmlFor="area-category">{t('features.areas.category')}</Label>
-            <select id="area-category" className={SELECT_CLS} {...register('categoryId')}>
-              <option value="">{t('features.areas.selectPlaceholder')}</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          // BE không có bản ghi hạng mục nào (bảng rỗng, seeder chưa tạo) → không
-          // hiện select rỗng; chỉ nhắc ADMIN tạo danh mục trước.
-          <p className="text-[11px] text-muted-foreground">
-            {t('features.areas.categoryEmpty')}{' '}
-            {user?.role === 'PARISH' && (
-              <a href="/parish/categories" className="font-semibold text-primary hover:underline">
-                {t('features.areas.categoryEmptyAction')}
-              </a>
-            )}
-          </p>
-        )}
-
-        {level === 'COMMUNITY' && (
-          <div>
-            <Label htmlFor="area-community">{t('features.areas.community')}</Label>
-            <select
-              id="area-community"
-              className={SELECT_CLS}
-              disabled={isCommunity}
-              {...register('communityId')}
-              value={watch('communityId') || ''}
-            >
-              <option value="">{t('features.areas.selectPlaceholder')}</option>
-              {communities.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            {err(errors.communityId?.message)}
-          </div>
-        )}
-
-        {/* ponytail: BE chưa có endpoint phân công leader/officer cho khu vực
-            (WorkAreaDto có LeaderId/MaterialOfficerId nhưng chỉ đọc). Hai select
-            này chỉ có tác dụng với mock. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="area-leader">{t('features.areas.leader')}</Label>
-            <select id="area-leader" className={SELECT_CLS} {...register('leaderId')}>
-              <option value="">{t('features.areas.selectPlaceholder')}</option>
-              {leaderOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {leaderOptions.length <= 1 && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('features.areas.noLeaderInParish')}
-              </p>
-            )}
-            {err(errors.leaderId?.message)}
-          </div>
-          <div>
-            <Label htmlFor="area-officer">{t('features.areas.officer')}</Label>
-            <select id="area-officer" className={SELECT_CLS} {...register('officerId')}>
-              <option value="">{t('features.areas.selectPlaceholder')}</option>
-              {officerOptions.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
-            {err(errors.officerId?.message)}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor="area-start-date">{t('features.areas.startDate')}</Label>
-            <Input id="area-start-date" type="date" {...register('startDate')} />
-            {err(errors.startDate?.message)}
-          </div>
-          <div>
-            <Label htmlFor="area-deadline">{t('features.areas.deadline')}</Label>
-            <Input id="area-deadline" type="date" {...register('deadline')} />
-            {err(errors.deadline?.message)}
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="area-description">{t('features.areas.description')}</Label>
-          <textarea
-            id="area-description"
-            rows={2}
-            placeholder={t('features.areas.descriptionPlaceholder')}
-            className={TEXTAREA_CLS}
-            {...register('description')}
-          />
-          {err(errors.description?.message)}
-        </div>
-
-        {/* Ước lượng vật tư cần cho khu vực (26/11/2026) — nhập ngay khi tạo khu vực,
-            sửa được khi mùa còn PLANNING; khi clone mùa sẽ được sao chép sang khu mới. */}
-        {!editing || estimateEditable ? (
-          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  {t('features.areas.estimateSection')}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {t('features.areas.estimateHint')}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setEstimateRows((prev) => [...prev, { materialId: '', quantity: '1' }])}
-              >
-                {t('features.areas.estimateAdd')}
-              </Button>
-            </div>
-
-            {estimateRows.length === 0 ? (
-              <p className="text-xs text-muted-foreground">{t('features.areas.estimateEmpty')}</p>
-            ) : (
-              <div className="space-y-2">
-                {estimateRows.map((row, index) => (
-                  <div key={`${row.materialId}-${index}`} className="flex items-end gap-2">
-                    <div className="flex-1">
-                      <Label className="text-xs">{t('features.areas.estimateMaterial')}</Label>
-                      <select
-                        className={SELECT_CLS}
-                        value={row.materialId}
-                        onChange={(e) =>
-                          setEstimateRows((prev) =>
-                            prev.map((item, i) =>
-                              i === index ? { ...item, materialId: e.target.value } : item,
-                            ),
-                          )
-                        }
-                      >
-                        <option value="">{t('features.areas.estimateSelectMaterial')}</option>
-                        {catalog
-                          .filter(
-                            (m) =>
-                              m.id === row.materialId ||
-                              !estimateRows.some((item) => item.materialId === m.id),
-                          )
-                          .map((m) => (
-                            <option key={m.id} value={m.id}>
-                              [{m.code}] {m.name} ({m.unit})
-                            </option>
-                          ))}
-                      </select>
-                    </div>
-                    <div className="w-28">
-                      <Label className="text-xs">{t('features.areas.estimateQuantity')}</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="any"
-                        value={row.quantity}
-                        onChange={(e) =>
-                          setEstimateRows((prev) =>
-                            prev.map((item, i) =>
-                              i === index ? { ...item, quantity: e.target.value } : item,
-                            ),
-                          )
-                        }
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="mb-0.5 text-destructive"
-                      onClick={() =>
-                        setEstimateRows((prev) => prev.filter((_, i) => i !== index))
-                      }
-                    >
-                      {t('common.delete')}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : null}
-
-        {/* Tiêu chí sẵn sàng — BẮT BUỘC khi tạo khu vực: Ban hành giáo đặt tiêu chí,
-            LEADER nộp minh chứng rồi đánh dấu đạt, PARISH duyệt khu vực sau cùng. */}
-        {!editing && (
-          <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {t('features.areas.readinessSection')}
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                {t('features.areas.readinessHint')}
-              </p>
-            </div>
-            <div>
-              <Label htmlFor="area-readiness-name">{t('features.areas.readinessChecklistName')}</Label>
+            <div className="flex w-full flex-col gap-[5px]">
+              <Label htmlFor="area-name" className={LBL}>
+                {t('features.areas.name')}
+              </Label>
               <Input
-                id="area-readiness-name"
-                value={readinessName}
-                onChange={(e) => setReadinessName(e.target.value)}
+                id="area-name"
+                className={FIELD}
+                placeholder={t('features.areas.namePlaceholder', { defaultValue: 'VD: Phân khu hang đá chính' })}
+                {...register('name')}
               />
+              {err(errors.name?.message)}
             </div>
-            <div>
-              <Label>{t('features.checklist.items')}</Label>
-              <ReadinessItemsEditor
-                items={readinessItems}
-                onChange={setReadinessItems}
-                idPrefix="area-readiness-item"
-              />
-            </div>
-            {readinessError && (
-              <p className="text-xs font-semibold text-destructive">{t(readinessError)}</p>
-            )}
-          </div>
-        )}
 
-        {/* Ghim vị trí trên sơ đồ — tuỳ chọn, cùng một lần lưu với khu vực.
-            CHỈ Ban hành giáo (người tạo/điều chỉnh khu vực) thấy: 11/11/2026 ảnh
-            sơ đồ do ADMIN tải lên, nhưng quyền GHIM vị trí thuộc PARISH → ADMIN
-            chỉ xem (xem `ParishMapPage`). */}
-        {user?.role === 'COMMUNITY' && (
-          <div className="space-y-2">
-            <Label>{t('features.map.pinSection')}</Label>
-            {mapImageUrl ? (
-              <>
-                <MapPinPicker src={mapImageUrl} pin={pin} onPick={pickPin} />
-                <div className="flex items-start gap-2">
-                  <p className="flex-1 text-[11px] text-muted-foreground">
-                    {pin ? t('features.map.pinPicked') : t('features.map.pinHint')}
-                  </p>
-                  {pin && (
-                    <Button type="button" size="sm" variant="outline" onClick={clearPin}>
-                      {t('features.map.clearPosition')}
-                    </Button>
-                  )}
-                </div>
-              </>
+            <div className="flex w-full flex-col gap-[5px]">
+              <Label htmlFor="area-season" className={LBL}>
+                {t('features.areas.season')}
+              </Label>
+              <select id="area-season" className={FIELD} {...register('seasonId')}>
+                {seasons.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {t('features.season.optionLabel', { year: s.year, status: t(`status.${s.status}`, s.status) })}
+                  </option>
+                ))}
+              </select>
+              {err(errors.seasonId?.message)}
+            </div>
+
+            <div className="flex w-full items-start gap-[10px]">
+              <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
+                <Label htmlFor="area-type" className={LBL}>
+                  {t('features.areas.type')}
+                </Label>
+                <select id="area-type" className={FIELD} {...register('type')}>
+                  {AREA_TYPES.map((v) => (
+                    <option key={v} value={v}>
+                      {t(`features.areas.areaType.${v}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
+                <Label htmlFor="area-level" className={LBL}>
+                  {t('features.areas.level')}
+                </Label>
+                <select id="area-level" className={FIELD} {...register('level')}>
+                  {LEVELS.map((v) => (
+                    <option key={v} value={v}>
+                      {t(`features.areas.level.${v}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {categories.length > 0 ? (
+              <div className="flex w-full flex-col gap-[5px]">
+                <Label htmlFor="area-category" className={LBL}>
+                  {t('features.areas.category')}
+                </Label>
+                <select id="area-category" className={FIELD} {...register('categoryId')}>
+                  <option value="">{t('features.areas.selectPlaceholder')}</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             ) : (
-              <p className="text-[11px] text-muted-foreground">
-                {t('features.map.pinNoMap')}{' '}
-                <a href={mapHref} className="font-semibold text-primary hover:underline">
-                  {t('features.map.pinNoMapAction')}
-                </a>
+              <p className="text-[10px] leading-4 text-[#96AAA0]">
+                {t('features.areas.categoryEmpty')}{' '}
+                {user?.role === 'PARISH' && (
+                  <a href="/parish/categories" className="font-semibold text-[#0A5C36] hover:underline">
+                    {t('features.areas.categoryEmptyAction')}
+                  </a>
+                )}
               </p>
             )}
+
+            {level === 'COMMUNITY' && (
+              <div className="flex w-full flex-col gap-[5px]">
+                <Label htmlFor="area-community" className={LBL}>
+                  {t('features.areas.community')}
+                </Label>
+                <select
+                  id="area-community"
+                  className={FIELD}
+                  disabled={isCommunity}
+                  {...register('communityId')}
+                  value={watch('communityId') || ''}
+                >
+                  <option value="">{t('features.areas.selectPlaceholder')}</option>
+                  {communities.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {err(errors.communityId?.message)}
+              </div>
+            )}
+
+            <div className="flex w-full items-start gap-[10px]">
+              <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
+                <Label htmlFor="area-leader" className={LBL}>
+                  {t('features.areas.leader')}
+                </Label>
+                <select id="area-leader" className={FIELD} {...register('leaderId')}>
+                  <option value="">{t('features.areas.selectPlaceholder')}</option>
+                  {leaderOptions.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+                {leaderOptions.length <= 1 && (
+                  <p className="text-[10px] text-[#96AAA0]">{t('features.areas.noLeaderInParish')}</p>
+                )}
+                {err(errors.leaderId?.message)}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
+                <Label htmlFor="area-officer" className={LBL}>
+                  {t('features.areas.officer')}
+                </Label>
+                <select id="area-officer" className={FIELD} {...register('officerId')}>
+                  <option value="">{t('features.areas.selectPlaceholder')}</option>
+                  {officerOptions.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name}
+                    </option>
+                  ))}
+                </select>
+                {err(errors.officerId?.message)}
+              </div>
+            </div>
+
+            <div className="flex w-full items-start gap-[10px]">
+              <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
+                <Label htmlFor="area-start-date" className={LBL}>
+                  {t('features.areas.startDate')}
+                </Label>
+                <Input id="area-start-date" type="date" className={FIELD} {...register('startDate')} />
+                {err(errors.startDate?.message)}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-[5px]">
+                <Label htmlFor="area-deadline" className={LBL}>
+                  {t('features.areas.deadline')}
+                </Label>
+                <Input id="area-deadline" type="date" className={FIELD} {...register('deadline')} />
+                {err(errors.deadline?.message)}
+              </div>
+            </div>
+
+            <div className="flex w-full flex-col gap-[5px]">
+              <Label htmlFor="area-description" className={LBL}>
+                {t('features.areas.description')}
+              </Label>
+              <textarea
+                id="area-description"
+                rows={3}
+                placeholder={t('features.areas.descriptionPlaceholder')}
+                className="min-h-[76px] w-full rounded-[9px] border border-[#DFE7DC] bg-[#FBFCFA] px-[10px] py-[9px] text-[10.5px] leading-4 text-[#0B2E1F] outline-none transition-colors placeholder:text-[#9AAE9F] focus:border-[#12805A]"
+                {...register('description')}
+              />
+              {err(errors.description?.message)}
+            </div>
           </div>
-        )}
+
+          {/* Cột phải — khối phụ */}
+          <div className="flex h-fit w-full flex-col gap-[10px]">
+            {!editing || estimateEditable ? (
+              <div className={CARD}>
+                <span className={CLABEL}>{t('features.areas.estimateSection')}</span>
+                <p className={CHINT}>{t('features.areas.estimateHint')}</p>
+                {estimateRows.length === 0 ? (
+                  <p className="text-[10px] text-[#96AAA0]">{t('features.areas.estimateEmpty')}</p>
+                ) : (
+                  <div className="flex w-full flex-col gap-[6px]">
+                    {estimateRows.map((row, index) => (
+                      <div key={`${row.materialId}-${index}`} className="flex items-end gap-[6px]">
+                        <select
+                          aria-label={t('features.areas.estimateMaterial')}
+                          className="h-8 min-w-0 flex-1 rounded-[8px] border border-[#DFE7DC] bg-white px-2 text-[10px] text-[#0B2E1F] outline-none focus:border-[#12805A]"
+                          value={row.materialId}
+                          onChange={(e) =>
+                            setEstimateRows((prev) =>
+                              prev.map((item, i) =>
+                                i === index ? { ...item, materialId: e.target.value } : item,
+                              ),
+                            )
+                          }
+                        >
+                          <option value="">{t('features.areas.estimateSelectMaterial')}</option>
+                          {catalog
+                            .filter(
+                              (m) =>
+                                m.id === row.materialId ||
+                                !estimateRows.some((item) => item.materialId === m.id),
+                            )
+                            .map((m) => (
+                              <option key={m.id} value={m.id}>
+                                [{m.code}] {m.name} ({m.unit})
+                              </option>
+                            ))}
+                        </select>
+                        <input
+                          aria-label={t('features.areas.estimateQuantity')}
+                          type="number"
+                          min={0}
+                          step="any"
+                          value={row.quantity}
+                          onChange={(e) =>
+                            setEstimateRows((prev) =>
+                              prev.map((item, i) =>
+                                i === index ? { ...item, quantity: e.target.value } : item,
+                              ),
+                            )
+                          }
+                          className="h-8 w-14 shrink-0 rounded-[8px] border border-[#DFE7DC] bg-white px-2 text-right font-mono text-[10px] text-[#0B2E1F] outline-none focus:border-[#12805A]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setEstimateRows((prev) => prev.filter((_, i) => i !== index))}
+                          aria-label={t('common.delete')}
+                          className="h-8 shrink-0 rounded-[8px] px-1 text-[10px] font-semibold text-[#B4634F] hover:bg-[#FBEDEA]"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setEstimateRows((prev) => [...prev, { materialId: '', quantity: '1' }])}
+                  className="w-fit text-[10px] font-bold text-[#0A5C36] hover:underline"
+                >
+                  {t('features.areas.estimateAdd')}
+                </button>
+              </div>
+            ) : null}
+
+            {!editing && (
+              <div className={CARD}>
+                <span className={CLABEL}>{t('features.areas.readinessSection')}</span>
+                <p className={CHINT}>{t('features.areas.readinessHint')}</p>
+                <input
+                  id="area-readiness-name"
+                  aria-label={t('features.areas.readinessChecklistName')}
+                  value={readinessName}
+                  onChange={(e) => setReadinessName(e.target.value)}
+                  className="h-8 w-full rounded-[8px] border border-[#DFE7DC] bg-white px-[10px] text-[10px] text-[#0B2E1F] outline-none focus:border-[#12805A]"
+                />
+                <ReadinessItemsEditor
+                  items={readinessItems}
+                  onChange={setReadinessItems}
+                  idPrefix="area-readiness-item"
+                />
+                {readinessError && (
+                  <p className="text-[10px] font-semibold text-[#B42318]">{t(readinessError)}</p>
+                )}
+              </div>
+            )}
+
+            {user?.role === 'COMMUNITY' && (
+              <div className={CARD}>
+                <span className={CLABEL}>{t('features.map.pinSection')}</span>
+                {mapImageUrl ? (
+                  <>
+                    <MapPinPicker src={mapImageUrl} pin={pin} onPick={pickPin} />
+                    <div className="flex items-start gap-2">
+                      <p className="flex-1 text-[10px] leading-4 text-[#96AAA0]">
+                        {pin ? t('features.map.pinPicked') : t('features.map.pinHint')}
+                      </p>
+                      {pin && (
+                        <button
+                          type="button"
+                          onClick={clearPin}
+                          className="shrink-0 rounded-[8px] border border-[#E1E9DC] bg-white px-2 py-1 text-[10px] font-semibold text-[#5C7468]"
+                        >
+                          {t('features.map.clearPosition')}
+                        </button>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <p className={CHINT}>
+                    {t('features.map.pinNoMap')}{' '}
+                    <a href={mapHref} className="font-semibold text-[#0A5C36] hover:underline">
+                      {t('features.map.pinNoMapAction')}
+                    </a>
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+        <p className="pt-3 text-[10px] text-[#A3B4A9]">
+          {t('features.areas.createFoot', { defaultValue: 'Khu được tạo ở trạng thái Đang chuẩn bị' })}
+        </p>
       </form>
     </Dialog>
   )

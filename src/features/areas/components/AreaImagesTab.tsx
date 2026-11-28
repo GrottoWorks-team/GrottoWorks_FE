@@ -1,12 +1,12 @@
 // Tab "Hình ảnh" của khu vực: xem/chụp thêm ảnh hiện trường để bấm vào khu trên
 // bản đồ giáo xứ là thấy ngay. FE-only (xem `areaImages.ts`).
+// Bố cục/màu/cỡ chữ theo bản thiết kế Pen "Khu vực — Hình ảnh".
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ImagePlus, Loader2, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { EmptyState } from '@/components/shared/EmptyState'
 import { useToast } from '@/components/ui/toast'
 import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import { addAreaImage, getAreaImageUrl, listAreaImages, removeAreaImage, type AreaImageMeta } from '../areaImages'
 
 export function AreaImagesTab({ areaId }: { areaId: string }) {
@@ -18,6 +18,7 @@ export function AreaImagesTab({ areaId }: { areaId: string }) {
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = useCallback(async () => {
@@ -68,10 +69,12 @@ export function AreaImagesTab({ areaId }: { areaId: string }) {
     await load()
   }
 
+  const HEAD = 'font-mono text-[8.5px] font-semibold uppercase tracking-[1px] text-[#8C9F94]'
+
   return (
-    <div className="space-y-3 py-2">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-semibold text-foreground">{t('features.areas.imagesTitle')}</p>
+    <div className="flex w-full flex-col gap-[14px]">
+      <div className="flex w-full items-center justify-between">
+        <span className={HEAD}>{t('features.areas.imagesTitle')}</span>
         {canEdit ? (
           <>
             <input
@@ -86,37 +89,75 @@ export function AreaImagesTab({ areaId }: { areaId: string }) {
                 if (files && files.length > 0) void onFiles(files)
               }}
             />
-            <Button variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
-              {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
-              {t('features.areas.imagesAdd')}
-            </Button>
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() => fileRef.current?.click()}
+              className="flex h-[30px] items-center gap-[6px] rounded-[9px] bg-[#0A5C36] px-[11px] transition-colors hover:bg-[#0D7344] disabled:opacity-55"
+            >
+              {uploading ? (
+                <Loader2 className="size-[11px] animate-spin text-[#F2D07A]" aria-hidden />
+              ) : (
+                <ImagePlus className="size-[11px] text-[#F2D07A]" aria-hidden />
+              )}
+              <span className="text-[10.5px] font-bold text-white">{t('features.areas.imagesAdd')}</span>
+            </button>
           </>
         ) : null}
       </div>
 
       {loading ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">{t('common.loading')}</p>
+        <p className="py-6 text-center font-mono text-xs text-[#8AA298]">{t('common.loading')}</p>
       ) : metas.length === 0 ? (
-        <EmptyState text={t('features.areas.imagesEmpty')} />
+        <div
+          onDragOver={(event) => {
+            if (!canEdit) return
+            event.preventDefault()
+            setDragging(true)
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            if (!canEdit) return
+            event.preventDefault()
+            setDragging(false)
+            if (event.dataTransfer.files.length) void onFiles(event.dataTransfer.files)
+          }}
+          className={cn(
+            'flex w-full flex-col items-center justify-center gap-[10px] rounded-[14px] border border-dashed bg-[#FAFBF8] p-5',
+            dragging ? 'border-[#0A5C36] bg-[#F1F6EE]' : 'border-[#E3EAE0]',
+          )}
+        >
+          <span className="text-[11.5px] font-semibold text-[#7C9287]">
+            {t('features.areas.imagesEmpty')}
+          </span>
+          <span className="w-[260px] text-center text-[10px] leading-[15px] text-[#A3B4A9]">
+            {t('features.areas.imagesDropHint', { defaultValue: 'Kéo thả ảnh vào đây hoặc bấm Thêm ảnh' })}
+          </span>
+        </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid w-full gap-[10px] sm:grid-cols-2">
           {metas.map((meta) => (
-            <figure key={meta.key} className="overflow-hidden rounded-md border border-border bg-muted/30">
+            <figure
+              key={meta.key}
+              className="overflow-hidden rounded-[12px] border border-[#E3EAE0] bg-[#FAFBF8]"
+            >
               {urls[meta.key] ? (
-                <img src={urls[meta.key]} alt={meta.fileName} className="h-40 w-full object-cover" />
+                <img src={urls[meta.key]} alt={meta.fileName} className="h-36 w-full object-cover" />
               ) : (
-                <div className="grid h-40 place-items-center text-xs text-muted-foreground">{t('features.areas.imagesMissing')}</div>
+                <div className="grid h-36 place-items-center text-[10.5px] text-[#A3B4A9]">
+                  {t('features.areas.imagesMissing')}
+                </div>
               )}
-              <figcaption className="flex items-center justify-between gap-2 px-2 py-1.5 text-[11px] text-muted-foreground">
-                <span className="truncate">{meta.fileName}</span>
+              <figcaption className="flex items-center justify-between gap-2 px-[10px] py-[7px]">
+                <span className="truncate text-[10px] text-[#7C9287]">{meta.fileName}</span>
                 {canEdit ? (
                   <button
                     type="button"
                     onClick={() => void remove(meta.key)}
-                    className="text-destructive hover:underline"
+                    className="text-[#B4634F] transition-colors hover:text-[#8F3B32]"
                     aria-label={t('common.delete')}
                   >
-                    <Trash2 className="size-3.5" />
+                    <Trash2 className="size-[12px]" />
                   </button>
                 ) : null}
               </figcaption>
@@ -125,7 +166,11 @@ export function AreaImagesTab({ areaId }: { areaId: string }) {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground">{t('features.areas.imagesHint')}</p>
+      <div className="flex w-full items-center rounded-[10px] bg-[#F7F9F5] px-[11px] py-[9px]">
+        <span className="min-w-0 flex-1 text-[10px] leading-[15px] text-[#96AAA0]">
+          {t('features.areas.imagesHint')}
+        </span>
+      </div>
     </div>
   )
 }

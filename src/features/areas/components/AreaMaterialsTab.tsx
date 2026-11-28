@@ -1,272 +1,181 @@
-// Tab Quản lý Nhu cầu vật tư (E1, E2, E3) và Bảng cảnh báo thiếu hụt (E4)
-// Tích hợp trực tiếp trong AreaDetailDialog
-import { useState } from 'react'
+// Tab "Nhu cầu vật tư" của khu vực (trong ngăn kéo chi tiết):
+//   E1: GET /api/v1/work-areas/{id}/material-requirements
+//   E4: GET /api/v1/work-areas/{id}/shortages
+// Bố cục/màu/cỡ chữ theo bản thiết kế Pen "Khu vực — Nhu cầu vật tư (trống/thiếu hụt)".
 import { useTranslation } from 'react-i18next'
-import {
-  AlertCircle,
-  AlertTriangle,
-  Ban,
-  CheckCircle2,
-  Package,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import {
-  useWorkAreaRequirements,
-  useWorkAreaShortages,
-} from '@/features/materials/api'
+import { useWorkAreaRequirements, useWorkAreaShortages } from '@/features/materials/api'
+import { cn } from '@/lib/utils'
 
 interface AreaMaterialsTabProps {
   workAreaId: string
 }
 
+interface Row {
+  key: string
+  code: string
+  name: string
+  unit: string
+  required: number
+  available: number
+  allocated: number
+  shortage: number
+}
+
 export function AreaMaterialsTab({ workAreaId }: AreaMaterialsTabProps) {
   const { t } = useTranslation()
 
-  const [activeSubTab, setActiveSubTab] = useState<'requirements' | 'shortages'>('requirements')
+  const { data: requirements = [], isPending: isReqPending } = useWorkAreaRequirements(workAreaId)
+  const { data: shortages = [], isPending: isShortPending } = useWorkAreaShortages(workAreaId)
 
-  // E1: GET /api/v1/work-areas/{workAreaId}/material-requirements
-  const {
-    data: requirements = [],
-    isPending: isReqPending,
-    isError: isReqError,
-    refetch: refetchReq,
-  } = useWorkAreaRequirements(workAreaId)
+  const pending = isReqPending || isShortPending
 
-  // E4: GET /api/v1/work-areas/{workAreaId}/shortages
-  const {
-    data: shortages = [],
-    isPending: isShortPending,
-    isError: isShortError,
-    refetch: refetchShort,
-  } = useWorkAreaShortages(workAreaId)
+  const rows: Row[] =
+    shortages.length > 0
+      ? shortages.map((s) => ({
+          key: s.materialId,
+          code: s.materialCode,
+          name: s.materialName,
+          unit: s.unit,
+          required: s.required,
+          available: s.confirmedAvailable,
+          allocated: s.allocated,
+          shortage: s.shortage,
+        }))
+      : requirements.map((r) => ({
+          key: r.id,
+          code: r.materialCode,
+          name: r.materialName,
+          unit: r.unit,
+          required: r.requiredQuantity,
+          available: r.existingQuantity,
+          allocated: 0,
+          shortage: Math.max(0, r.requiredQuantity - r.existingQuantity),
+        }))
 
-  const positiveShortagesCount = shortages.filter((s) => s.shortage > 0).length
+  const shortageCount = rows.filter((row) => row.shortage > 0).length
+  const reqCount = rows.length
+
+  const metrics = (row: Row) => [
+    { key: 'required', label: t('features.shortages.colRequired'), value: row.required },
+    { key: 'available', label: t('features.shortages.colAvailable'), value: row.available },
+    { key: 'allocated', label: t('features.shortages.colAllocated'), value: row.allocated },
+    {
+      key: 'shortage',
+      label: t('features.shortages.colShortageShort', { defaultValue: 'Thiếu' }),
+      value: row.shortage,
+      tone: row.shortage > 0 ? 'text-[#A33F37]' : '',
+    },
+  ]
 
   return (
-    <div className="space-y-4">
-      {/* Sub Tabs: Requirements (E1) vs Shortages (E4) */}
-      <div className="flex items-center justify-between border-b border-border pb-2">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('requirements')}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-              activeSubTab === 'requirements'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-            }`}
-          >
-            <Package className="size-3.5" />
-            {t('features.requirements.tabRequirements')}
-            <span className="ml-1 rounded-full bg-background/20 px-1.5 py-0.2 text-[10px]">
-              {requirements.length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveSubTab('shortages')}
-            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
-              activeSubTab === 'shortages'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-            }`}
-          >
-            <AlertTriangle className={`size-3.5 ${positiveShortagesCount > 0 ? 'text-red-400' : ''}`} />
-            {t('features.requirements.tabShortages')}
-            {positiveShortagesCount > 0 && (
-              <span className="ml-1 rounded-full bg-red-600 px-1.5 py-0.2 text-[10px] text-white">
-                {positiveShortagesCount}
-              </span>
-            )}
-          </button>
-        </div>
-
-      </div>
-
-      {/* SUBTAB 1: REQUIREMENTS (E1, E2, E3) */}
-      {activeSubTab === 'requirements' && (
-        <div className="space-y-3">
-          {isReqPending ? (
-            <p className="lbl-mono py-8 text-center text-xs text-muted-foreground">
-              {t('common.loading')}
-            </p>
-          ) : isReqError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
-              <AlertCircle className="mx-auto size-5 text-red-500 mb-1" />
-              <p>{t('features.requirements.loadError')}</p>
-              <Button variant="outline" size="sm" onClick={() => refetchReq()} className="mt-2 h-7 text-xs">
-                {t('common.retry')}
-              </Button>
-            </div>
-          ) : requirements.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground">
-              {t('features.requirements.empty')}
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border bg-card">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-border bg-muted/40 font-semibold uppercase text-muted-foreground">
-                  <tr>
-                    <th scope="col" className="px-3 py-2.5">{t('features.requirements.colCode')}</th>
-                    <th scope="col" className="px-3 py-2.5">{t('features.requirements.colName')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-center">{t('features.requirements.colUnit')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-right">{t('features.requirements.colRequired')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-right">{t('features.requirements.colExisting')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-center">{t('features.requirements.colStatus')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {requirements.map((req) => {
-                    const isCancelled = req.status === 'CANCELLED'
-
-                    return (
-                      <tr
-                        key={req.id}
-                        className={`transition-colors hover:bg-muted/20 ${
-                          isCancelled ? 'opacity-60 bg-muted/10' : ''
-                        }`}
-                      >
-                        <td className="px-3 py-2 font-mono font-medium text-muted-foreground">
-                          {req.materialCode}
-                        </td>
-                        <td className="px-3 py-2">
-                          <div className="flex flex-col">
-                            <span className="font-semibold text-foreground">{req.materialName}</span>
-                            {req.note && (
-                              <span className="text-[11px] text-muted-foreground line-clamp-1">
-                                {req.note}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                            {req.unit}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right tabular font-mono font-bold text-foreground">
-                          {req.requiredQuantity}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular font-mono text-muted-foreground">
-                          {req.existingQuantity}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {isCancelled ? (
-                            <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                              <Ban className="size-3" />
-                              {t('features.requirements.statusCancelled')}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              <CheckCircle2 className="size-3" />
-                              {t('features.requirements.statusActive')}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+    <div className="flex w-full flex-col gap-[14px]">
+      {reqCount > 0 && (
+        <div
+          className={cn(
+            'flex w-full items-center gap-[9px] rounded-[12px] border px-3 py-[10px]',
+            shortageCount > 0
+              ? 'border-[#EECEC5] bg-[#FDF0EC]'
+              : 'border-[#EDDFBB] bg-[#FDF6E7]',
           )}
+        >
+          <span
+            className={cn(
+              'min-w-0 flex-1 text-[10.5px] font-semibold leading-[15px]',
+              shortageCount > 0 ? 'text-[#8F3B32]' : 'text-[#8A6412]',
+            )}
+          >
+            {shortageCount > 0
+              ? t('features.shortages.summaryCount', { count: shortageCount })
+              : t('features.shortages.summaryEnough', {
+                  defaultValue: 'Đã đủ vật tư cho toàn bộ {{count}} mặt hàng',
+                  count: reqCount,
+                })}
+          </span>
         </div>
       )}
 
-      {/* SUBTAB 2: SHORTAGES (E4) */}
-      {activeSubTab === 'shortages' && (
-        <div className="space-y-3">
-          {positiveShortagesCount > 0 && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
-              <AlertTriangle className="size-4 shrink-0 text-red-600 dark:text-red-400" />
-              <span className="font-medium">
-                {t('features.shortages.summaryCount', { count: positiveShortagesCount })}
-              </span>
-            </div>
-          )}
+      <div className="flex w-full items-start gap-[10px]">
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px] rounded-[12px] border border-[#E3EAE0] bg-white px-[13px] py-[11px]">
+          <span className="text-[10px] text-[#96AAA0]">
+            {t('features.requirements.tabTitle', { defaultValue: 'Nhu cầu vật tư' })}
+          </span>
+          <span className="font-mono text-[20px] font-bold leading-none text-[#0B2E1F]">{reqCount}</span>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col gap-[3px] rounded-[12px] border border-[#E3EAE0] bg-white px-[13px] py-[11px]">
+          <span className="text-[10px] text-[#96AAA0]">
+            {t('features.shortages.alertHead', { defaultValue: 'Cảnh báo thiếu hụt' })}
+          </span>
+          <span
+            className={cn(
+              'font-mono text-[20px] font-bold leading-none',
+              shortageCount > 0 ? 'text-[#B4483F]' : 'text-[#0B2E1F]',
+            )}
+          >
+            {shortageCount}
+          </span>
+        </div>
+      </div>
 
-          {isShortPending ? (
-            <p className="lbl-mono py-8 text-center text-xs text-muted-foreground">
-              {t('common.loading')}
-            </p>
-          ) : isShortError ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300">
-              <AlertCircle className="mx-auto size-5 text-red-500 mb-1" />
-              <p>{t('features.shortages.loadError')}</p>
-              <Button variant="outline" size="sm" onClick={() => refetchShort()} className="mt-2 h-7 text-xs">
-                {t('common.retry')}
-              </Button>
-            </div>
-          ) : shortages.length === 0 ? (
-            <p className="py-8 text-center text-xs text-muted-foreground">
-              {t('features.shortages.empty')}
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border bg-card">
-              <table className="w-full text-left text-xs">
-                <thead className="border-b border-border bg-muted/40 font-semibold uppercase text-muted-foreground">
-                  <tr>
-                    <th scope="col" className="px-3 py-2.5">{t('features.requirements.colCode')}</th>
-                    <th scope="col" className="px-3 py-2.5">{t('features.requirements.colName')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-center">{t('features.requirements.colUnit')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-right">{t('features.shortages.colRequired')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-right">{t('features.shortages.colAvailable')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-right">{t('features.shortages.colAllocated')}</th>
-                    <th scope="col" className="px-3 py-2.5 text-center">{t('features.shortages.colShortage')}</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {shortages.map((s) => {
-                    const isShortage = s.shortage > 0
-
-                    return (
-                      <tr
-                        key={s.materialId}
-                        className={`transition-colors hover:bg-muted/20 ${
-                          isShortage ? 'bg-red-50/20 dark:bg-red-950/10' : ''
-                        }`}
-                      >
-                        <td className="px-3 py-2 font-mono font-medium text-muted-foreground">
-                          {s.materialCode}
-                        </td>
-                        <td className="px-3 py-2 font-semibold text-foreground">
-                          {s.materialName}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
-                            {s.unit}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right tabular font-mono text-foreground">
-                          {s.required}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular font-mono font-medium text-foreground">
-                          {s.confirmedAvailable}
-                        </td>
-                        <td className="px-3 py-2 text-right tabular font-mono text-muted-foreground">
-                          {s.allocated}
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          {isShortage ? (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-100/90 px-2 py-0.5 text-[11px] font-bold text-red-700 dark:border-red-800 dark:bg-red-950/60 dark:text-red-300">
-                              <AlertTriangle className="size-3 text-red-600 dark:text-red-400" />
-                              {t('features.shortages.badgeShortage', { count: s.shortage, unit: s.unit })}
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              <CheckCircle2 className="size-3 text-emerald-600 dark:text-emerald-400" />
-                              {t('features.shortages.badgeSufficient')}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {pending ? (
+        <p className="py-8 text-center font-mono text-xs text-[#8AA298]">{t('common.loading')}</p>
+      ) : rows.length === 0 ? (
+        <div className="flex w-full flex-col items-center justify-center gap-[9px] rounded-[14px] border border-dashed border-[#E3EAE0] bg-[#FAFBF8] px-5 py-8">
+          <p className="w-full max-w-[300px] text-center text-[11px] leading-[17px] text-[#A3B4A9]">
+            {t('features.requirements.emptyArea', { defaultValue: 'Khu vực này chưa khai báo nhu cầu vật tư nào.' })}
+          </p>
+          <span className="flex w-fit items-center gap-[6px] rounded-full border border-[#E7EEE3] bg-[#F7F9F5] px-[10px] py-[5px] text-[10px] font-semibold text-[#6B8175]">
+            {t('features.requirements.declare', { defaultValue: 'Khai báo nhu cầu' })}
+          </span>
+        </div>
+      ) : (
+        <div className="flex w-full flex-col gap-2">
+          <span className="font-mono text-[8.5px] font-semibold uppercase tracking-[1px] text-[#8C9F94]">
+            {t('features.requirements.listHead', { defaultValue: 'Vật tư thiếu hụt & đã đủ' })}
+          </span>
+          <ul className="flex w-full flex-col gap-[7px]">
+            {rows.map((row) => (
+              <li
+                key={row.key}
+                className="flex w-full flex-col gap-[7px] rounded-[10px] border border-[#E9EFE6] bg-white px-[11px] py-[9px]"
+              >
+                <div className="flex w-full items-center justify-between gap-[10px]">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex w-fit shrink-0 items-center rounded-[6px] bg-[#F3F6F1] px-[6px] py-[3px] font-mono text-[8.5px] font-bold tracking-[0.6px] text-[#52705F]">
+                      {row.code}
+                    </span>
+                    <div className="flex min-w-0 flex-col">
+                      <span className="truncate text-[11px] font-bold text-[#0B2E1F]">{row.name}</span>
+                      <span className="font-mono text-[8.5px] text-[#A3B4A9]">{row.unit}</span>
+                    </div>
+                  </div>
+                  <span
+                    className={cn(
+                      'flex w-fit shrink-0 items-center rounded-full border px-2 py-[3px] text-[9.5px] font-semibold',
+                      row.shortage > 0
+                        ? 'border-[#EFCFC7] bg-[#FBEDEA] text-[#A33F37]'
+                        : 'border-[#CBE3D2] bg-[#E9F4EC] text-[#1B6B45]',
+                    )}
+                  >
+                    {row.shortage > 0
+                      ? t('features.shortages.badgeShortage', { count: row.shortage, unit: row.unit })
+                      : t('features.shortages.badgeSufficient')}
+                  </span>
+                </div>
+                <div className="flex w-full items-start">
+                  {metrics(row).map((metric) => (
+                    <div key={metric.key} className="flex min-w-0 flex-1 flex-col gap-px">
+                      <span className="font-mono text-[7.5px] font-semibold uppercase tracking-[0.6px] text-[#B0BFB4]">
+                        {metric.label}
+                      </span>
+                      <span className={cn('font-mono text-[11px] font-bold text-[#233A2E]', metric.tone)}>
+                        {metric.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ const SIZES = {
   sm: 'max-w-sm',
   md: 'max-w-lg',
   lg: 'max-w-2xl',
+  xl: 'max-w-[820px]',
 } as const
 
 // Dialog tự viết (không Radix): overlay + card grotto. Esc + click overlay đóng,

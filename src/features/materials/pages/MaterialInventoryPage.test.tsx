@@ -115,6 +115,8 @@ vi.mock('@/features/areas/api', () => ({
     isPending: false,
   })),
   useAreaProgress: vi.fn(() => ({ data: undefined, isPending: false })),
+  useSeasons: vi.fn(() => ({ data: [] })),
+  useUsers: vi.fn(() => ({ data: [] })),
 }))
 
 vi.mock('react-i18next', () => ({

@@ -21,6 +21,7 @@ vi.mock('@/features/areas/api', () => ({
   // AreaDetailDialog (mở khi bấm marker) gọi 2 hook này — stub rỗng cho test bản đồ.
   useArea: () => ({ data: undefined, isPending: false }),
   useAreaProgress: () => ({ data: undefined, isPending: false }),
+  useUsers: () => ({ data: [] }),
 }))
 vi.mock('@/features/season/season-context', () => ({ useSeasonContext: () => ({}) }))
 vi.mock('@/features/parish/hooks', () => ({
