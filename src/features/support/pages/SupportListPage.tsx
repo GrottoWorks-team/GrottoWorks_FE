@@ -2,21 +2,21 @@
 //   LEADER : list / create / publish / close + duyệt thành viên & vật tư của phản hồi
 //   PARISH (community): xem danh sách + tổng hợp hỗ trợ theo mùa
 //   MO/Volunteer: gửi phản hồi (app mobile / API)
+// Bố cục/màu/cỡ chữ theo bản thiết kế Pen "Mùa — Hỗ Trợ Khẩn Cấp".
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation } from 'react-router-dom'
-import { Eye, Plus } from 'lucide-react'
+import { CalendarClock, ChevronRight, HandHeart, LifeBuoy, Plus, Users2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { DataTable } from '@/components/shared/DataTable'
 import { StatusTag } from '@/components/shared/StatusTag'
-import { StatCard } from '@/components/shared/StatCard'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { useToast } from '@/components/ui/toast'
 import { ApiError } from '@/lib/api'
 import { useAuth } from '@/lib/auth'
+import { cn } from '@/lib/utils'
 import { useScopedAreas } from '@/features/areas/api'
 import { useMaterials } from '@/features/materials/api'
 import { useSeasonContext } from '@/features/season/season-context'
@@ -37,6 +37,19 @@ import { viDate } from '@/lib/format'
 
 const TEXTAREA_CLS =
   'mt-1 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
+
+const CARD =
+  'w-full overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]'
+const RULE = 'h-px w-full bg-[#ECF1E9]'
+const TH = 'font-mono text-[8.5px] font-semibold uppercase tracking-[0.8px] text-[#8C9F94]'
+const TONE: Record<string, string> = {
+  PLANNING: 'border-[#E7E0CB] bg-[#F8F6EE] text-[#8A6412]',
+  PUBLISHED: 'border-[#CBE3D2] bg-[#E9F4EC] text-[#1B6B45]',
+  PARTIALLY_FULFILLED: 'border-[#E7E0CB] bg-[#F8F6EE] text-[#8A6412]',
+  FULFILLED: 'border-[#CBE3D2] bg-[#E9F4EC] text-[#1B6B45]',
+  CLOSED: 'border-[#E7EEE3] bg-[#F7F9F5] text-[#6B8175]',
+  CANCELLED: 'border-[#E7EEE3] bg-[#F7F9F5] text-[#6B8175]',
+}
 
 export default function SupportListPage() {
   const { t } = useTranslation()
@@ -82,6 +95,78 @@ export default function SupportListPage() {
 
   const materialsOf = (r: SupportRequest) =>
     r.materials.map((m) => `${materialName(m.materialId)} ×${m.requiredQuantity}`).join(', ') || '—'
+
+  const totalRequests = summary?.totalRequests ?? requests.length
+  const communityCount = summary?.communities.length ?? 0
+  const approvedMembers = summary?.communities.reduce((sum, row) => sum + row.approvedMembers, 0) ?? 0
+  const openCount = summary
+    ? (summary.requests.find((row) => row.status === 'PUBLISHED')?.count ?? 0)
+    : requests.filter((r) => r.status !== 'CLOSED' && r.status !== 'CANCELLED').length
+  const today = new Date().toISOString().slice(0, 10)
+  const overdueCount = requests.filter(
+    (r) =>
+      r.deadline &&
+      r.deadline.slice(0, 10) < today &&
+      r.status !== 'CLOSED' &&
+      r.status !== 'CANCELLED' &&
+      r.status !== 'FULFILLED',
+  ).length
+
+  const stats = [
+    {
+      key: 'requests',
+      icon: HandHeart,
+      label: t('features.support.summaryRequests'),
+      value: totalRequests,
+      hint: totalRequests
+        ? t('features.support.statRequestsHint', { defaultValue: 'Yêu cầu trong mùa đang chạy' })
+        : t('features.support.statRequestsNone', { defaultValue: 'Chưa có yêu cầu' }),
+      warn: !totalRequests,
+    },
+    {
+      key: 'communities',
+      icon: Users2,
+      label: t('features.support.summaryCommunities'),
+      value: communityCount,
+      hint: t('features.support.statCommunitiesHint', { defaultValue: 'Cộng đoàn nhận hỗ trợ' }),
+      warn: false,
+    },
+    {
+      key: 'approved',
+      icon: LifeBuoy,
+      label: t('features.support.summaryApproved'),
+      value: approvedMembers,
+      hint: t('features.support.statApprovedHint', { defaultValue: 'Tình nguyện viên tham gia' }),
+      warn: false,
+    },
+  ]
+
+  const overview = [
+    {
+      key: 'open',
+      label: t('features.support.overviewOpen', { defaultValue: 'Yêu cầu mở' }),
+      value: openCount,
+      tone: 'text-[#0B2E1F]',
+    },
+    {
+      key: 'communities',
+      label: t('features.support.overviewCommunities', { defaultValue: 'Cộng đoàn tham gia' }),
+      value: communityCount,
+      tone: 'text-[#0B2E1F]',
+    },
+    {
+      key: 'approved',
+      label: t('features.support.overviewApproved', { defaultValue: 'Thành viên duyệt' }),
+      value: approvedMembers,
+      tone: 'text-[#0B2E1F]',
+    },
+    {
+      key: 'overdue',
+      label: t('features.support.overviewOverdue', { defaultValue: 'Quá hạn' }),
+      value: overdueCount,
+      tone: overdueCount > 0 ? 'text-[#A33F37]' : 'text-[#0B2E1F]',
+    },
+  ]
 
   const fail = (error: unknown) =>
     toast(error instanceof ApiError ? error.message : t('common.error'), 'alert')
@@ -152,72 +237,193 @@ export default function SupportListPage() {
     }
   }
 
-  const columns = useMemo(
-    () => [
-      { key: 'area', header: t('features.support.area'), render: (r: SupportRequest) => areaName(r.workAreaId) },
-      {
-        key: 'kind',
-        header: t('features.support.kind'),
-        render: (r: SupportRequest) => t(`features.support.type.${r.supportType}`),
-      },
-      { key: 'detail', header: t('features.support.detail'), render: (r: SupportRequest) => <span className="text-sm">{r.description || '—'}</span> },
-      { key: 'positions', header: t('features.support.positions'), render: positionsOf },
-      { key: 'materials', header: t('features.support.materials'), render: materialsOf },
-      {
-        key: 'deadline',
-        header: t('features.support.deadline'),
-        render: (r: SupportRequest) => <span className="tabular">{r.deadline ? viDate(r.deadline) : '—'}</span>,
-      },
-      { key: 'status', header: t('common.status'), render: (r: SupportRequest) => <StatusTag status={r.status} /> },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (r: SupportRequest) => (
-          <Button variant="ghost" size="icon" aria-label={t('features.support.detail')} onClick={() => setDetail(r)}>
-            <Eye className="size-4" />
-          </Button>
-        ),
-      },
-    ],
+  const rows = useMemo(
+    () =>
+      requests.map((request) => ({
+        request,
+        area: areaName(request.workAreaId),
+        kind: t(`features.support.type.${request.supportType}`),
+        detailText: request.description || '—',
+        positions: positionsOf(request),
+        materials: materialsOf(request),
+        deadline: request.deadline ? viDate(request.deadline) : '—',
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, areas, materials],
+    [requests, t, areas, materials],
   )
 
   return (
     <div>
       <PageHeader
         title={t('features.support.title')}
-        sub={t('features.support.sub')}
+        sub={`${t('features.support.sub')}.`}
         actions={
           canManage && (
-            <Button onClick={() => setCreating(true)}>
-              <Plus className="size-4" />
-              {t('features.support.create')}
-            </Button>
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="flex h-[38px] items-center gap-[7px] rounded-[11px] bg-[#0A5C36] px-3 transition-colors hover:bg-[#0D7344]"
+            >
+              <Plus className="size-[13px] text-[#F2D07A]" aria-hidden />
+              <span className="text-[12px] font-bold text-white">{t('features.support.create')}</span>
+            </button>
           )
         }
       />
 
-      {!canManage && summary && (
-        <div className="mb-6 grid gap-4 sm:grid-cols-3">
-          <StatCard label={t('features.support.summaryRequests')} value={summary.totalRequests} />
-          <StatCard
-            label={t('features.support.summaryCommunities')}
-            value={summary.communities.length}
-          />
-          <StatCard
-            label={t('features.support.summaryApproved')}
-            value={summary.communities.reduce((sum, row) => sum + row.approvedMembers, 0)}
-            tone="ok"
-          />
+      <div className="flex w-full flex-col gap-[16px]">
+        <div className="grid w-full gap-[14px] md:grid-cols-3">
+          {stats.map(({ key, icon: Icon, label, value, hint, warn }) => (
+            <section
+              key={key}
+              className="flex w-full flex-col gap-[9px] rounded-[16px] border border-[#E3EAE0] bg-white p-[15px]"
+            >
+              <div className="flex w-full items-center justify-between gap-2">
+                <span
+                  className={cn(
+                    'grid size-[26px] shrink-0 place-items-center rounded-[8px]',
+                    warn ? 'bg-[#F7F4E7]' : 'bg-[#EDF4EA]',
+                  )}
+                >
+                  <Icon
+                    className={cn('size-[13px]', warn ? 'text-[#A8830F]' : 'text-[#3F7F5B]')}
+                    aria-hidden
+                  />
+                </span>
+                <span className="min-w-0 flex-1 text-right font-mono text-[8.5px] font-semibold uppercase leading-[13px] tracking-[1px] text-[#97AB9E]">
+                  {label}
+                </span>
+              </div>
+              <span className="font-mono text-[28px] font-extrabold leading-none tracking-[-1px] text-[#0B2E1F]">
+                {value}
+              </span>
+              <span className="w-full text-[10.5px] leading-[15px] text-[#8AA298]">{hint}</span>
+            </section>
+          ))}
         </div>
-      )}
 
-      {isPending ? (
-        <p className="lbl-mono">{t('common.loading')}</p>
-      ) : (
-        <DataTable rows={requests} columns={columns} emptyText={t('features.support.empty')} />
-      )}
+        <div className="flex w-full flex-col items-start gap-[16px] xl:flex-row">
+          <div className={cn(CARD, 'min-w-0 flex-1')}>
+            <div className="flex w-full items-center justify-between gap-3 px-4 py-[14px]">
+              <span className="text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+                {t('features.support.listHead', { defaultValue: 'Yêu cầu hỗ trợ khẩn cấp' })}
+              </span>
+              <span className="flex w-fit items-center rounded-full bg-[#F1F6EE] px-[9px] py-1 text-[10px] font-bold text-[#4F7A61]">
+                {t('features.support.countRequests', {
+                  defaultValue: '{{count}} yêu cầu',
+                  count: requests.length,
+                })}
+              </span>
+            </div>
+            <div className={RULE} />
+            <div className="flex w-full items-center gap-[10px] bg-[#F7F9F5] px-4 py-[10px]">
+              <span className={cn(TH, 'min-w-0 flex-1')}>{t('features.support.area')}</span>
+              <span className={cn(TH, 'w-[120px] shrink-0')}>{t('features.support.kind')}</span>
+              <span className={cn(TH, 'min-w-0 flex-1')}>
+                {t('features.support.detailShort', { defaultValue: 'Chi tiết' })}
+              </span>
+              <span className={cn(TH, 'w-[140px] shrink-0')}>{t('features.support.positions')}</span>
+              <span className={cn(TH, 'w-[120px] shrink-0')}>{t('features.support.materials')}</span>
+              <span className={cn(TH, 'w-[100px] shrink-0')}>{t('features.support.deadline')}</span>
+              <span className={cn(TH, 'w-[120px] shrink-0')}>{t('common.status')}</span>
+            </div>
+
+            {isPending ? (
+              <p className="py-10 text-center font-mono text-xs text-[#8AA298]">{t('common.loading')}</p>
+            ) : rows.length === 0 ? (
+              <div className="flex w-full flex-col items-center justify-center gap-[10px] px-5 py-12">
+                <span className="grid size-[52px] place-items-center rounded-[16px] bg-[#EDF4EA]">
+                  <LifeBuoy className="size-[22px] text-[#3F7F5B]" aria-hidden />
+                </span>
+                <span className="text-[13px] font-bold text-[#4F7A61]">
+                  {t('features.support.empty')}
+                </span>
+                <span className="w-full max-w-[420px] text-center text-[10.5px] leading-[17px] text-[#A3B4A9]">
+                  {t('features.support.emptyBody')}
+                </span>
+              </div>
+            ) : (
+              <ul className="flex w-full flex-col">
+                {rows.map(({ request, area, kind, detailText, positions, materials: mats, deadline }) => (
+                  <li key={request.id}>
+                    <button
+                      type="button"
+                      onClick={() => setDetail(request)}
+                      aria-label={t('features.support.detail')}
+                      className="flex w-full items-center gap-[10px] border-b border-[#F0F4EC] px-4 py-[11px] text-left transition-colors hover:bg-[#FAFCF8]"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-[#0B2E1F]">
+                        {area}
+                      </span>
+                      <span className="w-[120px] shrink-0 text-[10.5px] text-[#2C463A]">{kind}</span>
+                      <span className="min-w-0 flex-1 truncate text-[10.5px] text-[#7C9287]">
+                        {detailText}
+                      </span>
+                      <span className="w-[140px] shrink-0 truncate text-[10.5px] text-[#2C463A]">
+                        {positions}
+                      </span>
+                      <span className="w-[120px] shrink-0 truncate text-[10.5px] text-[#2C463A]">
+                        {mats}
+                      </span>
+                      <span className="w-[100px] shrink-0 font-mono text-[10px] text-[#6B8175]">
+                        {deadline}
+                      </span>
+                      <span className="flex w-[120px] shrink-0 items-center gap-1">
+                        {TONE[request.status] ? (
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-full border px-2 py-[3px] text-[9.5px] font-semibold',
+                              TONE[request.status],
+                            )}
+                          >
+                            {t(`status.${request.status}`, { defaultValue: request.status })}
+                          </span>
+                        ) : (
+                          <StatusTag status={request.status} />
+                        )}
+                        <ChevronRight className="size-[11px] shrink-0 text-[#B0BFB4]" aria-hidden />
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="flex w-full shrink-0 flex-col gap-[14px] xl:w-[300px]">
+            <section className={CARD}>
+              <div className="flex w-full items-center justify-between px-[15px] py-[13px]">
+                <span className="font-mono text-[9px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+                  {t('features.support.overviewHead', { defaultValue: 'Tổng quan hỗ trợ' })}
+                </span>
+              </div>
+              <div className={RULE} />
+              <div className="flex w-full flex-col px-[15px] pb-[11px] pt-[5px]">
+                {overview.map((row) => (
+                  <div
+                    key={row.key}
+                    className="flex w-full items-center justify-between border-b border-[#F0F4EC] py-2 last:border-0"
+                  >
+                    <span className="text-[10.5px] text-[#6B8175]">{row.label}</span>
+                    <span className={cn('font-mono text-[10.5px] font-bold', row.tone)}>{row.value}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="relative flex w-full flex-col gap-[7px] overflow-hidden rounded-[16px] bg-[#06281B] p-[15px]">
+              <div className="absolute left-[170px] top-[-50px] size-[150px] rounded-full bg-[#0E7A4633] blur-[20px]" />
+              <span className="relative z-[1] flex w-fit items-center gap-[6px] font-mono text-[8.5px] font-bold tracking-[1.1px] text-[#F2D07A]">
+                <CalendarClock className="size-[10px]" aria-hidden />
+                {t('features.support.whenHead', { defaultValue: 'Khi nào dùng' })}
+              </span>
+              <p className="relative z-[2] w-full text-[10.5px] leading-[17px] text-[#CFE0D4]">
+                {t('features.support.whenBody')}
+              </p>
+            </section>
+          </div>
+        </div>
+      </div>
 
       {creating && <SupportFormDialog open onClose={() => setCreating(false)} />}
 
@@ -289,23 +495,21 @@ export default function SupportListPage() {
                             <span className="flex items-center gap-1">
                               <StatusTag status={member.status} />
                               {canManage && member.status === 'OFFERED' && (
-                                <>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    className="h-6 px-2"
-                                    onClick={() =>
-                                      setReviewTarget({
-                                        kind: 'member',
-                                        id: member.id,
-                                        version: member.version,
-                                        title: member.volunteerId,
-                                      })
-                                    }
-                                  >
-                                    {t('features.support.review')}
-                                  </Button>
-                                </>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2"
+                                  onClick={() =>
+                                    setReviewTarget({
+                                      kind: 'member',
+                                      id: member.id,
+                                      version: member.version,
+                                      title: member.volunteerId,
+                                    })
+                                  }
+                                >
+                                  {t('features.support.review')}
+                                </Button>
                               )}
                             </span>
                           </div>
