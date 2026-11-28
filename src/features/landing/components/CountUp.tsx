@@ -8,11 +8,14 @@ export function CountUp({
   to,
   duration = 1200,
   suffix = '',
+  pad = false,
   className,
 }: {
   to: number
   duration?: number
   suffix?: string
+  /** Đệm 0 đằng trước cho số < 10 (bản thiết kế Pen: "05", "04", "07"). */
+  pad?: boolean
   className?: string
 }) {
   const reduced =
@@ -37,7 +40,7 @@ export function CountUp({
 
   return (
     <span className={className}>
-      {value}
+      {pad && value < 10 ? `0${value}` : value}
       {suffix}
     </span>
   )

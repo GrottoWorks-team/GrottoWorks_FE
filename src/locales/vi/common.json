@@ -1305,5 +1305,11 @@
   "features.purchases.lineTotal": "Thành tiền",
   "features.purchases.requested": "Yêu cầu {{quantity}} {{unit}}",
   "features.inventory.pendingDistributions": "Có {{count}} phiếu từ kho tổng chờ bạn xác nhận nhận.",
-  "features.inventory.openDistributions": "Mở danh sách phiếu"
+  "features.inventory.openDistributions": "Mở danh sách phiếu",
+  "landing.about.card4.title": "Giờ công ghi nhận tại chỗ",
+  "landing.about.card4.desc": "Tình nguyện viên điểm danh bằng app, ban điều hành duyệt ngay trên hệ thống.",
+  "landing.stats.areasCaption": "Mỗi khu một trưởng khu và danh mục riêng",
+  "landing.stats.rolesCaption": "Ban hành giáo · trưởng khu · vật tư · kế toán",
+  "landing.stats.skillsCaption": "Điện, mộc, hàn, sơn, vận chuyển…",
+  "landing.stats.transparencyCaption": "Truy vết tới từng bản ghi gốc"
 }

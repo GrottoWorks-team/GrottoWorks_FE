@@ -1305,5 +1305,11 @@
   "features.purchases.lineTotal": "Line total",
   "features.purchases.requested": "Requested {{quantity}} {{unit}}",
   "features.inventory.pendingDistributions": "You have {{count}} parish hand-down(s) waiting for receipt.",
-  "features.inventory.openDistributions": "Open hand-downs"
+  "features.inventory.openDistributions": "Open hand-downs",
+  "landing.about.card4.title": "Hours logged on site",
+  "landing.about.card4.desc": "Volunteers check in with the app; the committee approves right in the system.",
+  "landing.stats.areasCaption": "Each area has its own leader and catalog",
+  "landing.stats.rolesCaption": "Parish council · area leader · materials · finance",
+  "landing.stats.skillsCaption": "Electrical, carpentry, welding, painting, transport…",
+  "landing.stats.transparencyCaption": "Traceable down to every source record"
 }

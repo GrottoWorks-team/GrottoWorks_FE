@@ -4,21 +4,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  ArrowRight,
-  Loader2,
-  AlertCircle,
-  HelpCircle,
-} from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { roleHomePath } from '@/lib/roles'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { useToast } from '@/components/ui/toast'
 import { AuthSplitLayout } from '@/components/auth/AuthSplitLayout'
 
@@ -27,6 +15,12 @@ const schema = z.object({
   password: z.string().min(1, 'login.passwordRequired'),
 })
 type FormData = z.infer<typeof schema>
+
+// Ô nhập theo bản thiết kế Pen: cao 46px, nền #FBFCFA, viền #DFE7DC, icon 15px.
+const FIELD =
+  'flex h-[46px] w-full items-center gap-[10px] rounded-[12px] border border-[#DFE7DC] bg-[#FBFCFA] px-[14px] transition-colors focus-within:border-[#12805A]'
+const INPUT = 'min-w-0 flex-1 bg-transparent text-[13px] text-[#0B2E1F] outline-none placeholder:text-[#9AAE9F]'
+const LABEL = 'text-[11.5px] font-semibold tracking-[0.2px] text-[#41564A]'
 
 export default function Login() {
   const { t } = useTranslation()
@@ -65,126 +59,126 @@ export default function Login() {
   }
 
   return (
-    <AuthSplitLayout activeTab="login">
-      <div className="space-y-5">
-        {/* Form đăng nhập chính */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          {/* Ô nhập Email */}
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-xs font-semibold text-slate-700">
-              {t('login.email')}
-            </Label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                <Mail className="w-4 h-4" />
-              </span>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="tenban@grottoworks.vn"
-                className="pl-10 pr-3.5 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
-                {...register('email')}
-              />
-            </div>
-            {errors.email && (
-              <p className="flex items-center gap-1 mt-1 text-xs font-semibold text-destructive">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{t(errors.email.message ?? '')}</span>
-              </p>
-            )}
+    <AuthSplitLayout
+      activeTab="login"
+      accent
+      badge={t('auth.badgeLogin', { defaultValue: 'Cổng Giáo Xứ' })}
+      title={t('auth.titleLogin', { defaultValue: 'Chào mừng trở lại' })}
+      subtitle={t('auth.subLogin', {
+        defaultValue: 'Đăng nhập để tiếp tục đồng hành cùng công trình mùa Giáng Sinh.',
+      })}
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="flex w-full flex-col gap-[14px] pt-[18px]" noValidate>
+        {/* Email */}
+        <div className="flex w-full flex-col gap-[7px]">
+          <label htmlFor="email" className={LABEL}>
+            {t('login.email')}
+          </label>
+          <div className={FIELD}>
+            <Mail className="size-[15px] shrink-0 text-[#9AAE9F]" aria-hidden />
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="tenban@grottoworks.vn"
+              className={INPUT}
+              {...register('email')}
+            />
           </div>
-
-          {/* Ô nhập Password */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password" className="text-xs font-semibold text-slate-700">
-                {t('login.password')}
-              </Label>
-              <Link
-                to="/forgot-password"
-                className="text-xs font-medium text-brand-pine hover:underline flex items-center gap-1"
-              >
-                <HelpCircle className="w-3 h-3" />
-                <span>{t('login.forgotPassword', { defaultValue: 'Quên mật khẩu?' })}</span>
-              </Link>
-            </div>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
-              </span>
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="pl-10 pr-10 py-2.5 rounded-xl border-slate-200 bg-white/90 text-sm focus-visible:ring-brand-pine"
-                {...register('password')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
-                className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-slate-700 transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="flex items-center gap-1 mt-1 text-xs font-semibold text-destructive">
-                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                <span>{t(errors.password.message ?? '')}</span>
-              </p>
-            )}
-          </div>
-
-          {/* Thông báo lỗi từ server */}
-          {serverError && (
-            <div
-              role="alert"
-              className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs font-semibold text-destructive flex items-center gap-2"
-            >
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{serverError}</span>
-            </div>
+          {errors.email && (
+            <p className="flex items-center gap-1 text-[11px] font-semibold text-[#B42318]">
+              <AlertCircle className="size-3 shrink-0" aria-hidden />
+              {t(errors.email.message ?? '')}
+            </p>
           )}
+        </div>
 
-          {/* Nút bấm Submit với hiệu ứng Shimmer */}
-          <Button
-            type="submit"
-            className="btn-festive w-full py-3.5 rounded-xl bg-brand-pine hover:bg-brand-pineHover text-white font-bold text-sm flex items-center justify-center gap-2"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>{t('login.loggingIn')}</span>
-              </>
-            ) : (
-              <>
-                <span>{t('login.submit')}</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </Button>
-
-          {/* Liên kết điều hướng phụ */}
-          <div className="pt-2 text-center text-xs text-slate-600 space-y-1">
-            <div>
-              {t('login.noManagerAccount')}{' '}
-              <Link to="/register-account" className="font-semibold text-brand-pine hover:underline">
-                Đăng ký tài khoản
-              </Link>
-            </div>
-            <div>
-              {t('login.orVolunteer')}{' '}
-              <Link to="/register" className="font-semibold text-brand-goldHover hover:underline">
-                Đăng ký Đồng Hành
-              </Link>
-            </div>
+        {/* Mật khẩu */}
+        <div className="flex w-full flex-col gap-[7px]">
+          <label htmlFor="password" className={LABEL}>
+            {t('login.password')}
+          </label>
+          <div className={FIELD}>
+            <Lock className="size-[15px] shrink-0 text-[#9AAE9F]" aria-hidden />
+            <input
+              id="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className={INPUT}
+              {...register('password')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
+              className="shrink-0 text-[#9AAE9F] transition-colors hover:text-[#0B2E1F]"
+            >
+              {showPassword ? <EyeOff className="size-[15px]" /> : <Eye className="size-[15px]" />}
+            </button>
           </div>
-        </form>
-      </div>
+          {errors.password && (
+            <p className="flex items-center gap-1 text-[11px] font-semibold text-[#B42318]">
+              <AlertCircle className="size-3 shrink-0" aria-hidden />
+              {t(errors.password.message ?? '')}
+            </p>
+          )}
+        </div>
+
+        {/* Ghi nhớ + quên mật khẩu */}
+        <div className="flex w-full items-center justify-between pt-px">
+          <label className="flex items-center gap-[7px] text-[11.5px] text-[#6B8175]">
+            <input
+              type="checkbox"
+              className="size-[15px] rounded-[5px] border-[#C6D6C6] accent-[#0A5C36]"
+            />
+            {t('auth.remember', { defaultValue: 'Ghi nhớ đăng nhập' })}
+          </label>
+          <Link to="/forgot-password" className="text-[11.5px] font-semibold text-[#0A5C36] hover:underline">
+            {t('login.forgotPassword', { defaultValue: 'Quên mật khẩu?' })}
+          </Link>
+        </div>
+
+        {serverError && (
+          <div
+            role="alert"
+            className="flex items-center gap-2 rounded-[12px] border border-[#F4C7C3] bg-[#FDF2F1] p-3 text-[11.5px] font-semibold text-[#B42318]"
+          >
+            <AlertCircle className="size-4 shrink-0" aria-hidden />
+            {serverError}
+          </div>
+        )}
+
+        {/* Gửi */}
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="flex h-[48px] w-full items-center justify-center gap-2 rounded-[13px] bg-gradient-to-r from-[#0E7A46] to-[#0A5C36] shadow-[0px_8px_18px_#0A5C3640] transition-opacity disabled:opacity-60"
+        >
+          {isSubmitting ? (
+            <Loader2 className="size-4 animate-spin text-white" aria-hidden />
+          ) : (
+            <>
+              <span className="text-[13.5px] font-bold tracking-[0.2px] text-white">{t('login.submit')}</span>
+              <ArrowRight className="size-4 text-white" aria-hidden />
+            </>
+          )}
+        </button>
+
+        {/* Chưa có tài khoản */}
+        <p className="flex w-full items-center justify-center gap-1 pt-[16px] text-[11.5px] text-[#6B8175]">
+          {t('login.noManagerAccount')}
+          <Link to="/register-account" className="font-bold text-[#0A5C36] hover:underline">
+            {t('auth.registerAccountLink', { defaultValue: 'Đăng ký tài khoản' })}
+          </Link>
+        </p>
+        <p className="flex w-full items-center justify-center gap-1 text-[11.5px] text-[#6B8175]">
+          {t('login.orVolunteer')}
+          <Link to="/register" className="font-bold text-[#C9A227] hover:underline">
+            {t('auth.joinLink')}
+          </Link>
+        </p>
+      </form>
     </AuthSplitLayout>
   )
 }

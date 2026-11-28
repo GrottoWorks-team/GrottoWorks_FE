@@ -14,10 +14,11 @@ describe('App', () => {
     expect(
       await screen.findByText('Nền tảng điều phối mùa Giáng Sinh giáo xứ', {}, { timeout: 10_000 }),
     ).toBeDefined()
-    expect(screen.getByText('Đăng nhập')).toBeDefined()
+    // 'Đăng nhập' xuất hiện ở nav và ở khối CTA cuối trang.
+    expect(screen.getAllByText('Đăng nhập').length).toBeGreaterThan(0)
     // Landing có liên kết tới trang đăng ký đồng hành.
     expect(
-      screen.getAllByRole('link').some((a) => a.getAttribute('href') === '/join'),
+      screen.getAllByRole('link').some((a) => a.getAttribute('href') === '/register'),
     ).toBe(true)
   })
 

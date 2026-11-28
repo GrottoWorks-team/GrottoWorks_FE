@@ -1,162 +1,248 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
-import { Church, Users, ShieldCheck, LogIn, UserPlus } from 'lucide-react'
-import { Snowfall } from '@/components/shared/Snowfall'
-import { WinterBackdrop } from '@/components/shared/WinterBackdrop'
-import { BethlehemStar } from '@/components/shared/BethlehemStar'
+import { Church, LogIn, UserPlus, ShieldCheck, Star } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface AuthSplitLayoutProps {
   children: ReactNode
   activeTab: 'login' | 'register'
+  /** Tiêu đề thẻ; bỏ trống thì đầu thẻ không render (màn quên/đặt lại mật khẩu tự có tiêu đề). */
+  title?: string
+  subtitle?: string
+  badge?: string
+  /** Thẻ đăng nhập có vạch vàng dưới đầu thẻ; thẻ đăng ký thì không (theo Pen). */
+  accent?: boolean
+  /** Hàng tab thấp hơn ở màn đăng ký (Pen: 34px thay vì 38px, không padding trên). */
+  compactTabs?: boolean
 }
 
-export function AuthSplitLayout({ children, activeTab }: AuthSplitLayoutProps) {
+/**
+ * Khung chia đôi cho Đăng nhập / Đăng ký — số đo và màu lấy đúng bản thiết kế
+ * Pen (KHOA.pen 27/11/2026): cột trái ảnh núi + lớp phủ tối, cột phải nền
+ * gradient sáng với thẻ trắng 428px.
+ */
+export function AuthSplitLayout({
+  children,
+  activeTab,
+  title,
+  subtitle,
+  badge,
+  accent = false,
+  compactTabs = false,
+}: AuthSplitLayoutProps) {
   const { t } = useTranslation()
+
   return (
-    <main className="relative min-h-screen w-full flex flex-col lg:flex-row overflow-hidden bg-background">
-      {/* Nền mùa đông & tuyết rơi đa tầng phủ toàn bộ không gian */}
-      <WinterBackdrop />
-      <Snowfall count={75} />
+    <main className="flex min-h-screen w-full bg-[#F6F8F4]">
+      {/* CỘT TRÁI — ảnh núi tuyết + lớp phủ tối, khối thương hiệu và trích Tin Mừng */}
+      <div className="relative hidden w-[748px] shrink-0 flex-col justify-between overflow-hidden p-[56px] text-white lg:flex">
+        <div
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: "url('/pic/Login_background@2x.webp')" }}
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0"
+          style={{ background: 'linear-gradient(180deg,#041C13F5 0%,#041C1366 50%,#041C13CC 100%)' }}
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute left-[-140px] top-[520px] z-[2] size-[520px] rounded-full bg-[#0E7A4633] blur-[55px]"
+          aria-hidden
+        />
 
-      {/* CỘT TRÁI: SACRED STORYTELLING & WINTER MISSION (Ẩn trên mobile nhỏ hoặc rút gọn thành header) */}
-      <div className="relative z-10 lg:w-7/12 min-h-[360px] lg:min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-14 text-white">
-        {/* Lớp phủ chuyển sắc tối nhẹ để văn bản đạt độ tương phản chuẩn WCAG AAA */}
-        <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/85 via-black/45 to-black/30 pointer-events-none" />
-        <div className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full bg-brand-pine/25 blur-3xl pointer-events-none" />
-
-        {/* Header Cột Trái */}
-        <div className="relative z-10 flex items-center justify-between">
-          <Link to="/" className="group flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-brand-pine to-emerald-600 border border-brand-gold/40 flex items-center justify-center shadow-brand-pine/50 transition-transform group-hover:scale-105">
-              <Church className="w-6 h-6 text-brand-gold" />
-            </div>
-            <div>
-              <span className="font-serif tracking-widest text-base font-bold text-white block">
-                GROTTO<span className="text-brand-gold">WORKS</span>
-              </span>
-              <span className="text-[10px] font-mono tracking-wider text-emerald-300 block uppercase">
-                Parish Grotto Coordination
-              </span>
-            </div>
-          </Link>
-
-          {/* Huy hiệu Mùa Vọng với Ngôi sao Bê-lem SVG */}
-          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/20">
-            <BethlehemStar size={20} />
-            <span className="text-xs font-semibold text-emerald-100">
-              Mùa Vọng & Giáng Sinh 2026
+        {/* Thương hiệu + huy hiệu mùa */}
+        <div className="relative z-[3] flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-[12px]">
+            <span className="grid size-[42px] place-items-center rounded-[13px] border border-[#E9B94966] bg-gradient-to-br from-[#12805A] to-[#0A5C36]">
+              <Church className="size-[20px] text-[#F2D07A]" aria-hidden />
             </span>
-          </div>
+            <span className="flex flex-col gap-[3px]">
+              <span className="text-[15px] font-extrabold tracking-[0.6px] text-white">GROTTO WORKS</span>
+              <span className="text-[8px] font-semibold tracking-[1.6px] text-[#A7F3D0B3]">
+                PARISH GROTTO COORDINATION
+              </span>
+            </span>
+          </Link>
+          <span className="flex items-center gap-[7px] rounded-full border border-[#FFFFFF2E] bg-[#FFFFFF14] px-[13px] py-[7px]">
+            <Star className="size-3 text-[#F2D07A]" aria-hidden />
+            <span className="text-[11px] font-semibold tracking-[0.4px] text-[#DFF3E7]">
+              {t('auth.seasonPill', { defaultValue: 'Mùa Vọng 2026' })}
+            </span>
+          </span>
         </div>
 
-        {/* Nội dung kể chuyện (Mission Storytelling) */}
-        <div className="relative z-10 my-auto py-8 lg:py-12 max-w-xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-gold/20 border border-brand-gold/40 text-brand-goldLight text-xs font-semibold mb-4">
-            <Church className="w-3.5 h-3.5 text-brand-gold" />
-            <span>{t('auth.tagline')}</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white ">
-            {t('auth.headline')} <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-gold via-amber-200 to-yellow-100 font-serif">
+        {/* Khối kể chuyện */}
+        <div className="relative z-[4] flex flex-col items-start">
+          <span className="flex items-center gap-[7px] rounded-full border border-[#E9B94959] bg-[#E9B9491A] px-3 py-[6px]">
+            <Church className="size-3 text-[#F2D07A]" aria-hidden />
+            <span className="text-[10px] font-bold uppercase tracking-[1.4px] text-[#F2D07A]">
+              {t('auth.tagline')}
+            </span>
+          </span>
+          <div className="h-[22px] w-full" aria-hidden />
+          <h1 className="flex w-full flex-col gap-[2px]">
+            <span className="text-[42px] font-extrabold leading-[47px] tracking-[-1.2px] text-white">
+              {t('auth.headline')}
+            </span>
+            <span className="bg-gradient-to-r from-[#E9B949] to-[#FBEFC0] bg-clip-text font-display text-[44px] font-semibold italic leading-[50px] tracking-[-0.8px] text-transparent">
               Hang Đá Bê-lem
-            </span>{' '}
-            <br />
-            Đón Mừng Chúa Giáng Sinh
+            </span>
+            <span className="text-[42px] font-extrabold leading-[47px] tracking-[-1.2px] text-white">
+              Đón Mừng Chúa Giáng Sinh
+            </span>
           </h1>
-          <p className="mt-4 text-sm sm:text-base text-emerald-100/90 leading-relaxed font-normal">
-            Hệ thống điều phối thi công, minh bạch vật tư, phân công tình nguyện viên và đồng hành cùng các ban hành giáo trong mùa lễ hội linh thiêng.
+          <div className="h-[20px] w-full" aria-hidden />
+          <p className="w-[470px] max-w-full text-[15px] leading-[25px] text-[#D6EADFD9]">
+            {t('auth.leftBody', { defaultValue: 'Hệ thống điều phối thi công, minh bạch vật tư, phân công tình nguyện viên và đồng hành cùng các ban hành giáo trong mùa lễ hội linh thiêng.' })}
           </p>
+          <div className="h-[34px] w-full" aria-hidden />
 
-          {/* 3 Thẻ thống kê trực quan với SVG icon */}
-          <div className="mt-8 grid grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 transition-colors hover:border-brand-gold/60">
-              <div className="flex items-center gap-1.5 text-brand-gold mb-1">
-                <Church className="w-4 h-4" />
-                <span className="text-lg sm:text-2xl font-bold font-mono">12+</span>
+          <div className="flex w-full gap-3">
+            {[
+              { value: '12+', label: t('auth.featureParish'), Icon: Church },
+              { value: '250+', label: t('auth.featureVolunteer'), Icon: Star },
+              { value: '100%', label: t('auth.featureMaterials'), Icon: ShieldCheck },
+            ].map(({ value, label, Icon }) => (
+              <div
+                key={label}
+                className="flex flex-1 flex-col gap-[6px] rounded-[16px] border border-[#FFFFFF24] bg-[#FFFFFF12] px-4 py-[15px] backdrop-blur-[7px]"
+              >
+                <span className="flex items-center gap-2">
+                  <Icon className="size-[14px] text-[#F2D07A]" aria-hidden />
+                  <span className="text-[22px] font-extrabold leading-[22px] text-white">{value}</span>
+                </span>
+                <span className="text-[11px] font-medium text-[#A7F3D0C4]">{label}</span>
               </div>
-              <div className="text-[11px] sm:text-xs text-emerald-200 font-medium">{t('auth.featureParish')}</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 transition-colors hover:border-brand-gold/60">
-              <div className="flex items-center gap-1.5 text-emerald-300 mb-1">
-                <Users className="w-4 h-4" />
-                <span className="text-lg sm:text-2xl font-bold font-mono">250+</span>
-              </div>
-              <div className="text-[11px] sm:text-xs text-emerald-200 font-medium">{t('auth.featureVolunteer')}</div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 transition-colors hover:border-brand-gold/60">
-              <div className="flex items-center gap-1.5 text-amber-300 mb-1">
-                <ShieldCheck className="w-4 h-4" />
-                <span className="text-lg sm:text-2xl font-bold font-mono">100%</span>
-              </div>
-              <div className="text-[11px] sm:text-xs text-emerald-200 font-medium">{t('auth.featureMaterials')}</div>
-            </div>
+            ))}
           </div>
+          <div className="h-10 w-full" aria-hidden />
         </div>
 
-        {/* Footer Cột Trái: Trích đoạn Tin Mừng */}
-        <div className="relative z-10 pt-4 border-t border-white/15 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-200/80">
-          <span>{t('auth.verse')}</span>
-          <span className="font-mono text-[11px] text-brand-gold">Lk 2, 14</span>
+        {/* Trích Tin Mừng */}
+        <div className="relative z-[5] flex flex-col gap-4">
+          <div className="h-px w-full bg-[#FFFFFF26]" aria-hidden />
+          <div className="flex items-center justify-between gap-6">
+            <p className="w-[460px] max-w-full text-[11.5px] italic leading-[17px] text-[#A7F3D0C4]">
+              {t('auth.verse')}
+            </p>
+            <span className="font-mono text-[11px] font-semibold tracking-[1px] text-[#F2D07A]">Lc 2, 14</span>
+          </div>
         </div>
       </div>
 
-      {/* CỘT PHẢI: INTERACTIVE CRYSTAL AUTH CARD */}
-      <div className="relative z-20 lg:w-5/12 min-h-full flex items-center justify-center p-4 sm:p-8 lg:p-12">
-        <div className="w-full max-w-md glass-crystal rounded-3xl p-6 sm:p-8 shadow-2xl relative">
-          
-          {/* Logo GrottoWorks trên thẻ form */}
-          <div className="flex flex-col items-center mb-6">
-            <img
-              src="/pic/Logo_GrottoWorks.png"
-              alt="GrottoWorks"
-              draggable={false}
-              className="h-auto w-full max-w-[15rem] select-none"
-            />
+      {/* CỘT PHẢI — thẻ trắng 428px trên nền gradient sáng */}
+      <div className="relative flex min-h-screen flex-1 items-center justify-center bg-gradient-to-t from-[#F6F8F4] to-[#EAF0E6] p-4 sm:p-8">
+        <div
+          className="pointer-events-none absolute left-[430px] top-[-120px] z-0 size-[420px] rounded-full bg-[#E9B9491F] blur-[50px]"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute left-[-160px] top-[560px] z-[1] size-[460px] rounded-full bg-[#0A5C3614] blur-[55px]"
+          aria-hidden
+        />
+
+        <div className="relative z-[2] flex w-full max-w-[428px] flex-col rounded-[26px] border border-[#DFE7DC] bg-white p-[34px] shadow-[0px_26px_54px_#06281B24,0px_2px_6px_#06281B0F]">
+          {/* Thương hiệu nhỏ + huy hiệu */}
+          <div className="flex w-full items-center justify-between">
+            <span className="flex items-center gap-[10px]">
+              <span className="grid size-[34px] place-items-center rounded-[11px] bg-[#0A5C36]">
+                <Church className="size-[17px] text-[#F2D07A]" aria-hidden />
+              </span>
+              <span className="flex flex-col gap-px">
+                <span className="text-[13px] font-extrabold tracking-[0.5px] text-[#0B2E1F]">GROTTO WORKS</span>
+                <span className="text-[7.5px] font-semibold tracking-[1.4px] text-[#8AA298]">
+                  PARISH GROTTO COORDINATION
+                </span>
+              </span>
+            </span>
+            {badge && (
+              <span className="flex items-center gap-[5px] rounded-full bg-[#F0F6EC] px-[9px] py-[5px]">
+                <ShieldCheck className="size-[10px] text-[#3F7F5B]" aria-hidden />
+                <span className="text-[9.5px] font-bold text-[#3F7F5B]">{badge}</span>
+              </span>
+            )}
           </div>
 
-          {/* Segmented Tab Switcher (Đăng Nhập / Đăng Ký) — 100% SVG Icons */}
-          <div className="relative bg-slate-100/90 p-1.5 rounded-2xl border border-slate-200 mb-6 flex items-center">
+          {/* Tiêu đề thẻ */}
+          {(title || subtitle || accent) && (
+            <div className="flex w-full flex-col gap-[11px] pt-[26px]">
+              {accent && <span className="h-[3px] w-[30px] rounded-[2px] bg-[#E9B949]" aria-hidden />}
+              {title && (
+                <h2 className="w-full text-[25px] font-extrabold leading-[30px] tracking-[-0.6px] text-[#0B2E1F]">
+                  {title}
+                </h2>
+              )}
+              {subtitle && <p className="w-full text-[12.5px] leading-[19px] text-[#6B8175]">{subtitle}</p>}
+            </div>
+          )}
+
+          {/* Tab Đăng nhập / Đăng ký */}
+          <div
+            className={cn(
+              'flex w-full gap-[4px] rounded-[14px] bg-[#F1F5EE] p-[4px]',
+              compactTabs ? 'mt-[18px]' : 'mt-[20px]',
+            )}
+          >
             <Link
               to="/login"
-              className={`relative w-1/2 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+              className={cn(
+                'flex flex-1 items-center justify-center gap-[7px] rounded-[11px] transition-colors',
+                compactTabs ? 'h-[34px]' : 'h-[38px]',
                 activeTab === 'login'
-                  ? 'bg-white text-brand-pine'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+                  ? 'bg-white shadow-[0px_1px_3px_#06281B1A]'
+                  : 'hover:bg-white/60',
+              )}
             >
-              <LogIn className="w-4 h-4" />
-              <span>{t('auth.loginTab')}</span>
+              <LogIn
+                className={cn('size-[13px]', activeTab === 'login' ? 'text-[#0A5C36]' : 'text-[#6B8175]')}
+                aria-hidden
+              />
+              <span
+                className={cn(
+                  compactTabs ? 'text-[12px]' : 'text-[12.5px]',
+                  activeTab === 'login' ? 'font-bold text-[#0A5C36]' : 'font-semibold text-[#6B8175]',
+                )}
+              >
+                {t('auth.loginTab')}
+              </span>
             </Link>
-
             <Link
-              to="/signup"
-              className={`relative w-1/2 py-2.5 rounded-xl font-bold text-sm transition-all duration-300 flex items-center justify-center gap-2 ${
+              to="/register-account"
+              className={cn(
+                'flex flex-1 items-center justify-center gap-[7px] rounded-[11px] transition-colors',
+                compactTabs ? 'h-[34px]' : 'h-[38px]',
                 activeTab === 'register'
-                  ? 'bg-white text-brand-pine'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+                  ? 'bg-white shadow-[0px_1px_3px_#06281B1A]'
+                  : 'hover:bg-white/60',
+              )}
             >
-              <UserPlus className="w-4 h-4" />
-              <span>{t('auth.registerTab')}</span>
+              <UserPlus
+                className={cn('size-[13px]', activeTab === 'register' ? 'text-[#0A5C36]' : 'text-[#6B8175]')}
+                aria-hidden
+              />
+              <span
+                className={cn(
+                  compactTabs ? 'text-[12px]' : 'text-[12.5px]',
+                  activeTab === 'register' ? 'font-bold text-[#0A5C36]' : 'font-semibold text-[#6B8175]',
+                )}
+              >
+                {t('auth.registerTab')}
+              </span>
             </Link>
           </div>
 
-          {/* Lối vào luồng khác: chỉ để lại thông tin, không cần tài khoản. */}
-          <p className="mb-6 text-center text-xs text-slate-500">
-            {t('auth.joinOnly')}{' '}
-            <Link to="/join" className="font-semibold text-brand-pine hover:underline">
-              {t('auth.joinLink')}
-            </Link>
-          </p>
-
-          {/* Nội dung form được truyền vào */}
+          {/* Nội dung form */}
           {children}
 
-          {/* Footer Card: Bảo mật hệ thống */}
-          <div className="mt-6 pt-4 border-t border-slate-200/80 flex items-center justify-center gap-2 text-[11px] text-slate-500">
-            <ShieldCheck className="w-3.5 h-3.5 text-brand-pine" />
-            <span>{t('auth.securityNote')}</span>
+          {/* Chân thẻ: bảo mật */}
+          <div className="mt-0 flex w-full flex-col gap-4 pt-6">
+            <div className="h-px w-full bg-[#E7EDE4]" aria-hidden />
+            <p className="flex items-center justify-center gap-[7px] text-[10.5px] text-[#8AA298]">
+              <ShieldCheck className="size-[11px] text-[#0A5C36]" aria-hidden />
+              {t('auth.securityShort', { defaultValue: 'Bảo mật hệ thống giáo xứ · Phân quyền RBAC' })}
+            </p>
           </div>
         </div>
       </div>
