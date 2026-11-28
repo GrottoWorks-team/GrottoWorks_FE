@@ -322,16 +322,16 @@ export default function App() {
                 {/* Alias tương thích link cũ (/join, /signup) ở landing + Login. */}
                 <Route path="/join" element={<Register />} />
                 <Route path="/signup" element={<UserRegister />} />
+                {/* Hồ sơ cá nhân là trang riêng (có thanh trên + hero riêng như bản
+                    thiết kế Pen), không nằm trong khung sidebar. */}
                 <Route
                   path="/profile"
                   element={
                     <RequireRole roles={ROLES}>
-                      <AppShell />
+                      <Profile />
                     </RequireRole>
                   }
-                >
-                  <Route index element={<Profile />} />
-                </Route>
+                />
                 {ROLES.map(roleRoutes)}
                 <Route path="*" element={<NotFound />} />
               </Routes>
