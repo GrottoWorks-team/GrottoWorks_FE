@@ -8,7 +8,6 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ErrorState } from '@/components/shared/ErrorState'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { InlineAlert } from '@/components/ui/inline-alert'
 import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
@@ -17,6 +16,7 @@ import { exportCsv } from '@/lib/csv'
 import { ApiError } from '@/lib/api'
 import i18n from '@/lib/i18n'
 import { viDateTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import {
   downloadReportExport,
   useCreateReportExport,
@@ -27,9 +27,6 @@ import {
 import { useSeasonRecognition } from '@/features/recognition/api'
 
 const TYPES: ReportType[] = ['TASKS', 'MATERIALS', 'PURCHASES', 'CONTRIBUTIONS', 'ATTENDANCE', 'READINESS']
-
-const SELECT_CLS =
-  'mt-1 flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-foreground transition-colors focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30'
 
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return '—'
@@ -135,35 +132,49 @@ export default function ReportPage() {
     <div>
       <PageHeader
         title={t('features.reports.title')}
-        sub={t('features.reports.sub')}
+        sub={`${t('features.reports.sub')}.`}
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={onExport} disabled={!rows.length}>
-              <Download className="size-4" />
-              {t('features.reports.export')}
-            </Button>
-            <Button onClick={onServerExport} disabled={!selectedSeason || !!jobId}>
-              <FileSpreadsheet className="size-4" />
+          <>
+            <button
+              type="button"
+              onClick={onExport}
+              disabled={!rows.length}
+              className="flex h-[38px] items-center gap-[7px] rounded-[11px] border border-[#DBE5D6] bg-white px-3 transition-colors hover:bg-[#F4F8F1] disabled:opacity-55"
+            >
+              <Download className="size-[13px] text-[#3F7F5B]" aria-hidden />
+              <span className="text-[12px] font-semibold text-[#2C463A]">{t('features.reports.export')}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void onServerExport()}
+              disabled={!selectedSeason || !!jobId}
+              className="flex h-[38px] items-center gap-[7px] rounded-[11px] bg-[#0A5C36] px-3 text-[12px] font-bold text-white transition-colors hover:bg-[#0D7344] disabled:opacity-55"
+            >
+              <FileSpreadsheet className="size-[13px] text-[#F2D07A]" aria-hidden />
               {jobId ? t('features.reports.exportRunning') : t('features.reports.exportServer')}
-            </Button>
+            </button>
             {jobId && (
-              <Button variant="outline" onClick={() => void refetchJob()}>
+              <button
+                type="button"
+                onClick={() => void refetchJob()}
+                className="flex h-[38px] items-center rounded-[11px] border border-[#DBE5D6] bg-white px-3 text-[12px] font-semibold text-[#2C463A] transition-colors hover:bg-[#F4F8F1]"
+              >
                 {t('features.parish.jobRefresh')}
-              </Button>
+              </button>
             )}
-          </div>
+          </>
         }
       />
 
       {jobId ? (
-        <Card className="mb-4 flex flex-wrap items-center justify-between gap-3 border-brand-pine/25 bg-brand-pineLight/40 p-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[12px] border border-[#C9DCC9] bg-[#F1F6EE] p-4">
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">
+            <p className="text-[11.5px] font-bold text-[#0B2E1F]">
               {job?.status === 'RUNNING'
                 ? t('features.reports.jobRunning')
                 : t('features.reports.jobQueued')}
             </p>
-            <p className="text-xs text-muted-foreground">{t('features.reports.jobCanLeave')}</p>
+            <p className="text-[10.5px] text-[#7C9287]">{t('features.reports.jobCanLeave')}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => void refetchJob()}>
@@ -173,7 +184,7 @@ export default function ReportPage() {
               {t('common.close')}
             </Button>
           </div>
-        </Card>
+        </div>
       ) : null}
 
       {jobError ? (
@@ -182,13 +193,29 @@ export default function ReportPage() {
         </InlineAlert>
       ) : null}
 
-      <Card className="mb-6 grid gap-4 p-5 md:grid-cols-2">        <div>
-          <label className="lbl-mono text-xs" htmlFor="report-season">
-            {t('features.donations.season')}
-          </label>
+      <div className="mb-[16px] flex w-full flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 rounded-[12px] bg-[#EAF0E6] p-1">
+            {TYPES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setType(item)}
+                aria-pressed={item === type}
+                className={cn(
+                  'flex h-[30px] items-center rounded-[9px] px-[11px] text-[11px] transition-colors',
+                  item === type
+                    ? 'bg-white font-bold text-[#0A5C36] shadow-[0px_1px_3px_#06281B1A]'
+                    : 'font-medium text-[#7C9287] hover:text-[#0B2E1F]',
+                )}
+              >
+                {t(`features.reports.type.${item}`)}
+              </button>
+            ))}
+          </div>
           <select
-            id="report-season"
-            className={SELECT_CLS}
+            aria-label={t('features.donations.season')}
+            className="h-8 rounded-[9px] border border-[#DBE5D6] bg-[#F7F9F5] px-2.5 text-[10.5px] text-[#2C463A]"
             value={selectedSeason}
             onChange={(e) => setSeasonId(e.target.value)}
           >
@@ -198,12 +225,12 @@ export default function ReportPage() {
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="lbl-mono text-xs" htmlFor="report-area">
-            {t('features.allocations.area')}
-          </label>
-          <select id="report-area" className={SELECT_CLS} value={areaId} onChange={(e) => setAreaId(e.target.value)}>
+          <select
+            aria-label={t('features.allocations.area')}
+            className="h-8 rounded-[9px] border border-[#DBE5D6] bg-[#F7F9F5] px-2.5 text-[10.5px] text-[#2C463A]"
+            value={areaId}
+            onChange={(e) => setAreaId(e.target.value)}
+          >
             <option value="">{t('features.reports.allAreas')}</option>
             {areas.map((a) => (
               <option key={a.id} value={a.id}>
@@ -212,121 +239,120 @@ export default function ReportPage() {
             ))}
           </select>
         </div>
-      </Card>
-
-      <div className="mb-4 flex flex-wrap gap-2">
-        {TYPES.map((item) => (
-          <Button
-            key={item}
-            size="sm"
-            variant={item === type ? 'default' : 'outline'}
-            onClick={() => setType(item)}
-          >
-            {t(`features.reports.type.${item}`)}
-          </Button>
-        ))}
+        {data && (
+          <span className="font-mono text-[9px] text-[#96AAA0]">
+            {t('features.reports.scope')}: {data.scope} · {t('features.reports.generatedAt')}: {viDateTime(data.generatedAt)}
+          </span>
+        )}
       </div>
 
       {isPending ? (
-        <p className="lbl-mono">{t('common.loading')}</p>
+        <p className="py-10 text-center font-mono text-xs text-[#8AA298]">{t('common.loading')}</p>
       ) : isError ? (
         <ErrorState message={t('features.reports.error')} onRetry={() => void refetch()} />
       ) : !data ? (
-        <EmptyState
-          text={t('features.reports.empty')}
-          hint={t('features.reports.emptyHint')}
-        />
+        <EmptyState text={t('features.reports.empty')} hint={t('features.reports.emptyHint')} />
       ) : (
         <>
-          <Card className="mb-4 p-4 text-xs text-muted-foreground">
-            <p>
-              {t('features.reports.scope')}: <span className="font-semibold">{data.scope}</span> ·{' '}
-              {t('features.reports.generatedAt')}: {viDateTime(data.generatedAt)}
-            </p>
-            {data.notes.length > 0 && (
-              <ul className="mt-2 list-disc pl-5">
-                {data.notes.map((note, index) => (
-                  <li key={index}>{note}</li>
-                ))}
-              </ul>
-            )}
-          </Card>
+          {data.notes.length > 0 && (
+            <ul className="mb-3 flex w-full flex-col gap-1 rounded-[12px] border border-[#E9EFE6] bg-[#F7F9F5] p-[9px_12px]">
+              {data.notes.map((note, index) => (
+                <li key={index} className="text-[10px] leading-[15px] text-[#7C9287]">
+                  {note}
+                </li>
+              ))}
+            </ul>
+          )}
 
-          <div className="overflow-x-auto rounded-card border border-border bg-card">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40">
-                <tr>
-                  {data.columns.map((column) => (
-                    <th key={column.key} className="px-3 py-2 text-left font-semibold text-foreground">
-                      {column.label}
-                      {column.unit ? ` (${column.unit})` : ''}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 ? (
+          <div className="w-full overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+            <div className="flex w-full items-center justify-between gap-3 px-4 py-[13px]">
+              <span className="text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+                {t(`features.reports.type.${type}`)}
+              </span>
+              <span className="flex w-fit items-center rounded-full bg-[#F1F6EE] px-[9px] py-1 text-[10px] font-bold text-[#4F7A61]">
+                {t('features.reports.rowCount', { defaultValue: '{{count}} dòng', count: rows.length })}
+              </span>
+            </div>
+            <div className="h-px w-full bg-[#ECF1E9]" />
+            <div className="w-full overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#F7F9F5]">
                   <tr>
-                    <td colSpan={data.columns.length} className="px-3 py-6 text-center text-muted-foreground">
-                      {t('features.reports.noRows')}
-                    </td>
+                    {data.columns.map((column) => (
+                      <th
+                        key={column.key}
+                        className="whitespace-nowrap px-4 py-[10px] text-left font-mono text-[9px] font-semibold uppercase tracking-[0.9px] text-[#8C9F94]"
+                      >
+                        {column.label}
+                        {column.unit ? ` (${column.unit})` : ''}
+                      </th>
+                    ))}
                   </tr>
-                ) : (
-                  rows.map((row, index) => (
-                    <tr key={index} className="border-t border-border/60">
-                      {data.columns.map((column) => (
-                        <td key={column.key} className="px-3 py-2 tabular">
-                          {formatValue(row[column.key])}
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? (
+                    <tr>
+                      <td colSpan={data.columns.length} className="px-4 py-8 text-center text-[11px] text-[#A3B4A9]">
+                        {t('features.reports.noRows')}
+                      </td>
+                    </tr>
+                  ) : (
+                    rows.map((row, index) => (
+                      <tr key={index} className="border-t border-[#F0F4EC]">
+                        {data.columns.map((column) => (
+                          <td key={column.key} className="whitespace-nowrap px-4 py-[10px] text-[10.5px] text-[#233A2E]">
+                            {formatValue(row[column.key])}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+                {Object.keys(data.totals ?? {}).length > 0 && (
+                  <tfoot className="border-t border-[#ECF1E9] bg-[#FBFAF6]">
+                    <tr>
+                      {data.columns.map((column, index) => (
+                        <td key={column.key} className="px-4 py-[10px] font-mono text-[10.5px] font-bold text-[#0B2E1F]">
+                          {index === 0
+                            ? t('features.reports.totals')
+                            : formatValue((data.totals as Record<string, unknown>)[column.key])}
                         </td>
                       ))}
                     </tr>
-                  ))
+                  </tfoot>
                 )}
-              </tbody>
-              {Object.keys(data.totals ?? {}).length > 0 && (
-                <tfoot className="border-t border-border bg-muted/20 font-semibold">
-                  <tr>
-                    {data.columns.map((column, index) => (
-                      <td key={column.key} className="px-3 py-2 tabular">
-                        {index === 0
-                          ? t('features.reports.totals')
-                          : formatValue((data.totals as Record<string, unknown>)[column.key])}
-                      </td>
-                    ))}
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+              </table>
+            </div>
           </div>
         </>
       )}
 
       {recognition && recognition.ranking.length > 0 && (
-        <Card className="mt-6 p-5">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="lbl-mono">{t('features.reports.recognitionRanking')}</p>
-            <span className="tabular text-xs text-muted-foreground">
+        <div className="mt-4 w-full overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+          <div className="flex w-full items-center justify-between gap-3 px-4 py-[13px]">
+            <span className="text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+              {t('features.reports.recognitionRanking')}
+            </span>
+            <span className="font-mono text-[9.5px] text-[#96AAA0]">
               {t('features.reports.recognitionTotals', {
                 points: recognition.totalPoints,
                 contributors: recognition.contributors,
               })}
             </span>
           </div>
-          <ol className="space-y-1.5">
+          <ol className="flex w-full flex-col">
             {recognition.ranking.slice(0, 10).map((row) => (
               <li
                 key={row.userId}
-                className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-1.5 text-sm"
+                className="flex w-full items-center justify-between gap-3 border-t border-[#F0F4EC] px-4 py-[10px]"
               >
                 <span className="flex min-w-0 items-center gap-2">
-                  <span className="tabular w-6 shrink-0 text-xs font-bold text-brand-gold">
-                    #{row.rank}
-                  </span>
-                  <span className="truncate font-semibold">
+                  <span className="w-6 shrink-0 font-mono text-[10px] font-bold text-[#C98A12]">#{row.rank}</span>
+                  <span className="truncate text-[11px] font-semibold text-[#0B2E1F]">
                     {row.displayName ?? row.userId.slice(0, 8)}
                   </span>
                 </span>
-                <span className="tabular shrink-0 text-xs text-muted-foreground">
+                <span className="shrink-0 font-mono text-[9.5px] text-[#8AA298]">
                   {t('features.reports.recognitionRow', {
                     points: row.totalPoints,
                     contributions: row.contributions,
@@ -335,7 +361,7 @@ export default function ReportPage() {
               </li>
             ))}
           </ol>
-        </Card>
+        </div>
       )}
     </div>
   )

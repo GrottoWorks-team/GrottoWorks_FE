@@ -3,14 +3,11 @@
 // Donor do BE tự gán theo user đăng nhập (VolunteerDonorResolver).
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Ban, ClipboardCheck, Download, PencilLine, Plus, Users } from 'lucide-react'
+import { Ban, CheckCheck, ClipboardCheck, Coins, Gift, Hourglass, PencilLine, Plus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -18,7 +15,7 @@ import { useToast } from '@/components/ui/toast'
 import { useScopedAreas } from '@/features/areas/api'
 import { DonorsDialog } from '@/features/donors/DonorsDialog'
 import { useAuth } from '@/lib/auth'
-import { exportCsv } from '@/lib/csv'
+import { cn } from '@/lib/utils'
 import { formatQuantity, formatVnd, MISSING } from '@/lib/format'
 import { useCancelDonation, useContributionNeeds, useDonation, useDonations, useRecordDonationReceipt } from '../api'
 import { useSeasonContext } from '@/features/season/season-context'
@@ -206,7 +203,6 @@ function CancelDialog({ donation, onClose }: { donation: Donation; onClose: () =
 
 export default function DonationListPage() {
   const { t } = useTranslation()
-  const toast = useToast()
   const { user } = useAuth()
   const { data: areas = [], isPending: areasPending } = useScopedAreas()
   const { data: donations = [], isPending } = useDonations()
@@ -259,103 +255,6 @@ export default function DonationListPage() {
         ? d.items.map((item) => formatQuantity(item.receivedQuantity, item.unit)).join(' + ')
         : MISSING
 
-  const columns = useMemo(
-    () => [
-      {
-        key: 'donorName',
-        header: t('features.donations.donor'),
-        render: (d: Donation) => <span className="font-semibold text-foreground">{d.donorName}</span>,
-      },
-      { key: 'material', header: t('features.donations.material'), render: materialSummary },
-      {
-        key: 'workArea',
-        header: t('features.donations.workArea'),
-        render: (d: Donation) => <span className="text-muted-foreground">{areaNameOf(d)}</span>,
-      },
-      {
-        key: 'promised',
-        header: t('features.donations.promised'),
-        align: 'right' as const,
-        render: (d: Donation) => <span className="tabular">{pledgedOf(d)}</span>,
-      },
-      {
-        key: 'received',
-        header: t('features.donations.receivedCol'),
-        align: 'right' as const,
-        render: (d: Donation) => <span className="tabular">{receivedOf(d)}</span>,
-      },
-      { key: 'status', header: t('common.status'), render: (d: Donation) => <StatusTag status={d.status} /> },
-      {
-        key: 'actions',
-        header: t('common.actions'),
-        render: (d: Donation) =>
-          d.status === 'PLEDGED' || d.status === 'PARTIALLY_RECEIVED' ? (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.donations.record')}
-                onClick={() => setRecording(d)}
-              >
-                <ClipboardCheck className="size-4" />
-              </Button>
-              {d.status === 'PARTIALLY_RECEIVED' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t('features.donations.adjust')}
-                  onClick={() => setAdjusting(d)}
-                >
-                  <PencilLine className="size-4" />
-                </Button>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.donations.cancel')}
-                onClick={() => setCanceling(d)}
-              >
-                <Ban className="size-4" />
-              </Button>
-            </div>
-          ) : d.status === 'RECEIVED' ? (
-            <div className="flex justify-end gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={t('features.donations.adjust')}
-                onClick={() => setAdjusting(d)}
-              >
-                <PencilLine className="size-4" />
-              </Button>
-            </div>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
-      },
-    ],
-    // `areas` phải nằm trong deps: cột "Khu vực nhận" tra tên khu từ danh sách
-    // này, mà danh sách về SAU lần render đầu → thiếu deps sẽ đóng băng giá trị
-    // rỗng và luôn hiện "—".
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [t, areas],
-  )
-
-  const onExport = () => {
-    exportCsv(
-      'grottoworks-quyen-gop.csv',
-      rows.map((d) => ({
-        [t('features.donations.donor')]: d.donorName,
-        [t('features.donations.material')]: materialSummary(d),
-        [t('features.donations.workArea')]: areaNameOf(d),
-        [t('features.donations.promised')]: pledgedOf(d),
-        [t('features.donations.receivedCol')]: receivedOf(d),
-        [t('common.status')]: t(`status.${d.status}`),
-      })),
-    )
-    toast(t('features.donations.exported'))
-  }
-
   if (areasPending) return <p className="lbl-mono">{t('common.loading')}</p>
   if (isOfficer && !myAreaIds.size) return <EmptyState text={t('features.donations.noArea')} />
 
@@ -363,72 +262,247 @@ export default function DonationListPage() {
   const pending = rows.filter((d) => d.status === 'PLEDGED' || d.status === 'PARTIALLY_RECEIVED').length
   const totalMoney = rows.reduce((s, d) => s + (d.receivedAmount ?? 0), 0)
 
+  const stats = [
+    {
+      key: 'total',
+      icon: Gift,
+      label: t('features.donations.statTotal'),
+      value: String(rows.length),
+      hint: t('features.donations.statTotalUnit', { defaultValue: 'lượt cam kết' }),
+      warn: false,
+    },
+    {
+      key: 'received',
+      icon: CheckCheck,
+      label: t('features.donations.statReceived'),
+      value: String(fullReceived),
+      hint: t('features.donations.statReceivedUnit', { defaultValue: 'lượt đã nhận đủ' }),
+      warn: false,
+    },
+    {
+      key: 'pending',
+      icon: Hourglass,
+      label: t('features.donations.statPending'),
+      value: String(pending),
+      hint: t('features.donations.statPendingUnit', { defaultValue: 'lượt chờ ghi nhận' }),
+      warn: pending > 0,
+    },
+    {
+      key: 'money',
+      icon: Coins,
+      label: t('features.donations.statMoney'),
+      value: formatVnd(totalMoney),
+      hint: t('features.donations.statMoneyHint', { defaultValue: 'Quy đổi cam kết tiền' }),
+      warn: false,
+    },
+  ]
+
+  const TH = 'font-mono text-[9px] font-semibold uppercase tracking-[1px] text-[#8C9F94]'
+
   return (
     <div>
       <PageHeader
         title={t('features.donations.title')}
-        sub={t('features.donations.sub')}
+        sub={`${t('features.donations.sub')}.`}
         actions={
           <>
-            <Button variant="outline" onClick={() => setDonorsOpen(true)}>
-              <Users className="size-4" />
-              {t('features.donations.donors')}
-            </Button>
-            <Button variant="outline" onClick={onExport} disabled={!rows.length}>
-              <Download className="size-4" />
-              {t('features.donations.export')}
-            </Button>
+            <button
+              type="button"
+              onClick={() => setDonorsOpen(true)}
+              className="flex h-[38px] items-center gap-[7px] rounded-[11px] border border-[#DBE5D6] bg-white px-3 transition-colors hover:bg-[#F4F8F1]"
+            >
+              <Users className="size-[13px] text-[#3F7F5B]" aria-hidden />
+              <span className="text-[12px] font-semibold text-[#2C463A]">{t('features.donations.donors')}</span>
+            </button>
             {(user?.role === 'COMMUNITY' || user?.role === 'MATERIAL_OFFICER') && (
-              <Button variant="outline" onClick={() => setDirectOpen(true)}>
-                <Plus className="size-4" />
-                {t('features.donations.directCreate')}
-              </Button>
+              <button
+                type="button"
+                onClick={() => setDirectOpen(true)}
+                className="flex h-[38px] items-center gap-[7px] rounded-[11px] border border-[#DBE5D6] bg-white px-3 transition-colors hover:bg-[#F4F8F1]"
+              >
+                <ClipboardCheck className="size-[13px] text-[#3F7F5B]" aria-hidden />
+                <span className="text-[12px] font-semibold text-[#2C463A]">{t('features.donations.directCreate')}</span>
+              </button>
             )}
-            <Button onClick={() => setCreating(true)}>
-              <Plus className="size-4" />
-              {t('features.donations.create')}
-            </Button>
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="flex h-[38px] items-center gap-[7px] rounded-[11px] bg-[#0A5C36] px-[13px] shadow-[0px_6px_14px_#0A5C362E] transition-colors hover:bg-[#0D7344]"
+            >
+              <Plus className="size-[13px] text-[#F2D07A]" aria-hidden />
+              <span className="text-[12px] font-bold text-white">{t('features.donations.create')}</span>
+            </button>
           </>
         }
       />
 
-      <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <StatCard label={t('features.donations.statTotal')} value={rows.length} unit={t('features.donations.statTotalUnit')} />
-        <StatCard label={t('features.donations.statReceived')} value={fullReceived} unit={t('features.donations.statReceivedUnit')} tone="ok" />
-        <StatCard label={t('features.donations.statPending')} value={pending} unit={t('features.donations.statPendingUnit')} />
-        <StatCard label={t('features.donations.statMoney')} value={formatVnd(totalMoney)} tone="ok" />
+      <div className="flex w-full flex-col gap-[16px]">
+        <div className="grid w-full gap-[14px] sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map(({ key, icon: Icon, label, value, hint, warn }) => (
+            <section
+              key={key}
+              className="flex w-full flex-col gap-[9px] rounded-[16px] border border-[#E3EAE0] bg-white p-[15px] shadow-[0px_1px_2px_#06281B0A]"
+            >
+              <div className="flex w-full items-center justify-between gap-2">
+                <span
+                  className={cn(
+                    'grid size-[26px] shrink-0 place-items-center rounded-[8px]',
+                    warn ? 'bg-[#F7F4E7]' : 'bg-[#EDF4EA]',
+                  )}
+                >
+                  <Icon className={cn('size-[13px]', warn ? 'text-[#A8830F]' : 'text-[#3F7F5B]')} aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-right font-mono text-[8.5px] font-semibold uppercase leading-[13px] tracking-[1px] text-[#97AB9E]">
+                  {label}
+                </span>
+              </div>
+              <span className="font-mono text-[29px] font-extrabold leading-none tracking-[-1px] text-[#0B2E1F]">{value}</span>
+              <span className="w-full text-[10.5px] leading-[15px] text-[#8AA298]">{hint}</span>
+            </section>
+          ))}
+        </div>
+
+        <div className="flex w-full flex-col items-start gap-[16px] xl:flex-row">
+          <div className="w-full min-w-0 flex-1 overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+            <div className="flex w-full items-center justify-between gap-3 px-4 py-[14px]">
+              <span className="text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+                {t('features.donations.listHead', { defaultValue: 'Cam kết quyên góp' })}
+              </span>
+              <span className="flex w-fit items-center rounded-full bg-[#F1F6EE] px-[9px] py-1 text-[10px] font-bold text-[#4F7A61]">
+                {t('features.donations.countGifts', { defaultValue: '{{count}} lượt', count: rows.length })}
+              </span>
+            </div>
+            <div className="h-px w-full bg-[#ECF1E9]" />
+            <div className="flex w-full items-center gap-3 bg-[#F7F9F5] px-4 py-[10px]">
+              <span className={cn(TH, 'min-w-0 flex-1')}>{t('features.donations.donor')}</span>
+              <span className={cn(TH, 'min-w-0 flex-1')}>{t('features.donations.material')}</span>
+              <span className={cn(TH, 'min-w-0 flex-1')}>{t('features.donations.workArea')}</span>
+              <span className={cn(TH, 'min-w-0 flex-1')}>{t('features.donations.promised')}</span>
+              <span className={cn(TH, 'min-w-0 flex-1')}>{t('features.donations.receivedCol')}</span>
+              <span className={cn(TH, 'w-[110px] shrink-0')}>{t('common.status')}</span>
+              <span className={cn(TH, 'w-[84px] shrink-0 text-right')}>{t('common.actions')}</span>
+            </div>
+
+            {isPending ? (
+              <p className="py-10 text-center font-mono text-xs text-[#8AA298]">{t('common.loading')}</p>
+            ) : rows.length === 0 ? (
+              <div className="flex w-full flex-col items-center justify-center gap-[9px] px-4 py-12">
+                <Gift className="size-6 text-[#B9C8BE]" aria-hidden />
+                <span className="text-[12px] font-semibold text-[#7C9287]">{t('features.donations.empty')}</span>
+                <span className="w-full max-w-[320px] text-center text-[10px] leading-[15px] text-[#A3B4A9]">
+                  {t('features.donations.emptyHint', { defaultValue: 'Cam kết vật tư hoặc tiền sẽ xuất hiện ở đây khi được ghi nhận.' })}
+                </span>
+              </div>
+            ) : (
+              <ul className="flex w-full flex-col">
+                {rows.map((donation) => {
+                  const canRecord = donation.status === 'PLEDGED' || donation.status === 'PARTIALLY_RECEIVED'
+                  const canAdjust = donation.status === 'PARTIALLY_RECEIVED' || donation.status === 'RECEIVED'
+                  return (
+                    <li
+                      key={donation.id}
+                      className="flex w-full items-center gap-3 border-b border-[#F0F4EC] px-4 py-[11px] last:border-0"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-bold text-[#0B2E1F]">
+                        {donation.donorName}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[10.5px] text-[#5C7468]">{materialSummary(donation)}</span>
+                      <span className="min-w-0 flex-1 truncate text-[10.5px] text-[#5C7468]">{areaNameOf(donation)}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[#5C7468]">{pledgedOf(donation)}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono text-[10px] font-bold text-[#0B2E1F]">
+                        {receivedOf(donation)}
+                      </span>
+                      <span className="w-[110px] shrink-0">
+                        <StatusTag status={donation.status} />
+                      </span>
+                      <span className="flex w-[84px] shrink-0 items-center justify-end gap-1">
+                        {canRecord && (
+                          <button
+                            type="button"
+                            aria-label={t('features.donations.record')}
+                            onClick={() => setRecording(donation)}
+                            className="grid size-6 place-items-center rounded-[7px] border border-[#CBE3D2] bg-white text-[#0A5C36] transition-colors hover:bg-[#E9F4EC]"
+                          >
+                            <ClipboardCheck className="size-3" aria-hidden />
+                          </button>
+                        )}
+                        {canAdjust && (
+                          <button
+                            type="button"
+                            aria-label={t('features.donations.adjust')}
+                            onClick={() => setAdjusting(donation)}
+                            className="grid size-6 place-items-center rounded-[7px] border border-[#E7EEE3] bg-white text-[#6B8175] transition-colors hover:bg-[#F7F9F5]"
+                          >
+                            <PencilLine className="size-3" aria-hidden />
+                          </button>
+                        )}
+                        {canRecord && (
+                          <button
+                            type="button"
+                            aria-label={t('features.donations.cancel')}
+                            onClick={() => setCanceling(donation)}
+                            className="grid size-6 place-items-center rounded-[7px] border border-[#EFCFC7] bg-white text-[#A33F37] transition-colors hover:bg-[#FBEDEA]"
+                          >
+                            <Ban className="size-3" aria-hidden />
+                          </button>
+                        )}
+                      </span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+
+            <div className="flex w-full items-center justify-between border-t border-[#ECF1E9] px-4 py-[11px]">
+              <span className="text-[10.5px] text-[#96AAA0]">
+                {t('features.donations.footHint', { defaultValue: 'Ghi nhận khi quà thực sự về đến khu' })}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex w-full shrink-0 flex-col gap-[14px] xl:w-[300px]">
+            <section className="w-full overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+              <div className="flex w-full items-center px-4 py-[14px]">
+                <span className="font-mono text-[9px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+                  {t('features.donations.needsTitle')}
+                </span>
+              </div>
+              <div className="h-px w-full bg-[#ECF1E9]" />
+              <div className="flex w-full flex-col gap-2 p-3">
+                <span className="text-[10px] text-[#A3B4A9]">
+                  {t('features.donations.needsHint', { defaultValue: 'Cần quyên góp để đủ vật tư thi công' })}
+                </span>
+                {needs.length === 0 ? (
+                  <span className="py-4 text-center text-[10.5px] text-[#A3B4A9]">{t('features.donations.needsEmpty', { defaultValue: 'Không còn thiếu vật tư nào.' })}</span>
+                ) : (
+                  needs.slice(0, 4).map((need) => (
+                    <div
+                      key={`${need.workAreaId}-${need.materialId}`}
+                      className="flex w-full flex-col gap-1 rounded-[10px] border border-[#EDE6D6] bg-[#FBFAF6] p-[9px_11px]"
+                    >
+                      <span className="text-[11.5px] font-bold text-[#0B2E1F]">{need.materialName}</span>
+                      <span className="truncate text-[9.5px] text-[#A3B4A9]">· {need.workAreaName}</span>
+                      <span className="flex w-fit items-center rounded-full bg-[#FDF0EC] px-2 py-[3px] text-[9.5px] font-semibold text-[#A33F37]">
+                        {t('features.donations.needRemaining', { need: need.remainingNeed, unit: need.unit })}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
+
+            <section className="relative flex w-full flex-col gap-2 overflow-hidden rounded-[14px] bg-[#0A5C36] p-[13px_14px]">
+              <div className="absolute left-[180px] top-[-80px] size-[200px] rounded-full bg-[#E9B9492E] blur-[25px]" />
+              <span className="relative z-[1] w-fit font-mono text-[9px] font-bold tracking-[1.1px] text-[#F2D07A]">
+                {t('features.donations.recordHintHead', { defaultValue: 'Ghi nhận quyên góp' })}
+              </span>
+              <p className="relative z-[2] w-full text-[10.5px] leading-[16px] text-[#A9D7BF]">
+                {t('features.donations.recordHintBody', { defaultValue: 'Chỉ ghi nhận khi quà thực sự về đến khu. Cam kết chưa nhận sẽ nằm ở trạng thái Chờ ghi nhận.' })}
+              </p>
+            </section>
+          </div>
+        </div>
       </div>
-
-      {isPending ? (
-        <p className="lbl-mono">{t('common.loading')}</p>
-      ) : (
-        <DataTable rows={rows} columns={columns} emptyText={t('features.donations.empty')} />
-      )}
-
-      {needs.length > 0 && (
-        <Card className="mt-6 p-5">
-          <p className="lbl-mono mb-3">{t('features.donations.needsTitle')}</p>
-          <ul className="space-y-1.5">
-            {needs.slice(0, 8).map((need) => (
-              <li
-                key={`${need.workAreaId}-${need.materialId}`}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 px-3 py-1.5 text-sm"
-              >
-                <span className="min-w-0 truncate">
-                  <span className="font-semibold">{need.materialName}</span>
-                  <span className="text-muted-foreground"> · {need.workAreaName}</span>
-                </span>
-                <span className="tabular shrink-0 text-xs text-muted-foreground">
-                  {t('features.donations.needRemaining', {
-                    need: need.remainingNeed,
-                    unit: need.unit,
-                  })}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      )}
 
       {creating && <DonationFormDialog open onClose={() => setCreating(false)} />}
       {directOpen && <DirectDonationDialog onClose={() => setDirectOpen(false)} />}

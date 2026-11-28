@@ -24,6 +24,7 @@ vi.mock('../api', () => {
     })),
     useParishMaterialHistory: vi.fn(() => ({ data: [], isPending: false })),
     useParishPurchases: vi.fn(() => ({ data: [] })),
+    useParishDistributions: vi.fn(() => ({ data: { data: [], page: { page: 1, size: 100, totalItems: 0, totalPages: 1 } } })),
     useRecordParishPurchase: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),
     useRecordParishOpeningStock: vi.fn(() => ({ mutateAsync: openingRecordMutation, isPending: false })),
     useAdjustParishInventory: vi.fn(() => ({ mutateAsync: vi.fn(), isPending: false })),

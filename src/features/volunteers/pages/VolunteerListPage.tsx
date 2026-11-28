@@ -41,8 +41,8 @@ export default function VolunteerListPage() {
   const { season, seasonId } = useSeasonContext()
   const { data: users = [], isPending, isError, refetch } = useUsers()
   const { data: communities = [] } = useCommunities()
-  // Reporting chỉ mở dashboard mùa cho PARISH (ban hành giáo); leader bỏ trống.
-  const { data: dashboard } = useSeasonDashboard(me?.role === 'PARISH' ? seasonId : undefined)
+  // Reporting chỉ mở dashboard mùa cho ban hành giáo (BE PARISH → FE COMMUNITY); leader/ADMIN bỏ trống.
+  const { data: dashboard } = useSeasonDashboard(me?.role === 'COMMUNITY' ? seasonId : undefined)
 
   const volunteers = useMemo(
     () => users.filter((user) => user.rawRole?.toUpperCase() === 'VOLUNTEER'),

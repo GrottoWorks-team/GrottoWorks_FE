@@ -6,14 +6,12 @@
 //   4. Ban hành giáo theo dõi và **mở lại** phiếu khi cần (BE `reopenReadinessCheck` = PARISH + LEADER).
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Link2, Paperclip, Plus, X } from 'lucide-react'
+import { Check, FileCheck, Link2, Paperclip, Plus, RefreshCw, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { DataTable } from '@/components/shared/DataTable'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { StatCard } from '@/components/shared/StatCard'
 import { StatusTag } from '@/components/shared/StatusTag'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +21,7 @@ import { useTasks, useCreateTask } from '@/features/tasks/api'
 import { ReadinessItemsEditor } from '@/features/checklist/components/ReadinessItemsEditor'
 import { uploadFile } from '@/lib/files'
 import { ApiError } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { useAuth } from '@/lib/auth'
 import {
   getReadinessEvidenceUrl,
@@ -111,9 +110,9 @@ export default function ChecklistPage() {
   const [areaId, setAreaId] = useState('')
   const selected = myAreas.find((a) => a.id === areaId) ?? myAreas[0]
 
-  const { data: seasonReadiness, isPending: seasonPending } = useSeasonReadiness(selected?.seasonId)
+  const { data: seasonReadiness, isPending: seasonPending, refetch: refetchSeason } = useSeasonReadiness(selected?.seasonId)
   const row = seasonReadiness?.areas.find((a) => a.workAreaId === selected?.id)
-  const { data: check, isPending: checkPending } = useReadinessCheck(row?.readinessCheckId)
+  const { data: check, isPending: checkPending, refetch: refetchCheck } = useReadinessCheck(row?.readinessCheckId)
   // Query bị `enabled: false` (khu chưa có phiếu) luôn ở trạng thái pending →
   // chỉ coi là đang tải khi thực sự có `readinessCheckId` để gọi.
   const checkLoading = Boolean(row?.readinessCheckId) && checkPending
@@ -377,90 +376,217 @@ export default function ChecklistPage() {
 
   if (!myAreas.length && isLeader) return <EmptyState text={t('features.tasks.noArea')} />
 
+  const seasonAreas = seasonReadiness?.areas ?? []
+  const submittedChecks = seasonAreas.filter((area) => Boolean(area.readinessCheckId)).length
+  const mandatoryTotal = seasonAreas.reduce((sum, area) => sum + area.mandatoryItems, 0)
+  const cardCount = row?.readinessCheckId ? 1 : 0
+
+  const overview = [
+    {
+      key: 'ready',
+      label: t('features.checklist.ovReady', { defaultValue: 'Khu đã sẵn sàng' }),
+      value: `${seasonReadiness?.readyWorkAreas ?? 0}/${seasonReadiness?.workAreas ?? 0}`,
+      tone:
+        (seasonReadiness?.readyWorkAreas ?? 0) === (seasonReadiness?.workAreas ?? 0) && (seasonReadiness?.workAreas ?? 0) > 0
+          ? 'text-[#1B6B45]'
+          : 'text-[#A65A12]',
+    },
+    {
+      key: 'submitted',
+      label: t('features.checklist.ovSubmitted', { defaultValue: 'Phiếu đã nộp' }),
+      value: String(submittedChecks),
+      tone: 'text-[#0B2E1F]',
+    },
+    {
+      key: 'missing',
+      label: t('features.checklist.ovMissing', { defaultValue: 'Khu chưa có phiếu' }),
+      value: String(Math.max(0, (seasonReadiness?.workAreas ?? 0) - submittedChecks)),
+      tone: 'text-[#0B2E1F]',
+    },
+    {
+      key: 'mandatory',
+      label: t('features.checklist.ovMandatory', { defaultValue: 'Tiêu chí bắt buộc' }),
+      value: String(mandatoryTotal),
+      tone: 'text-[#0B2E1F]',
+    },
+  ]
+
   return (
     <div>
       <PageHeader
         title={t('features.checklist.title')}
-        sub={isLeader ? t('features.checklist.subLeader') : t('features.checklist.subCommittee')}
+        sub={`${isLeader ? t('features.checklist.subLeader') : t('features.checklist.subCommittee')}.`}
+        actions={
+          <button
+            type="button"
+            onClick={() => {
+              void refetchSeason()
+              if (row?.readinessCheckId) void refetchCheck()
+            }}
+            className="flex h-[38px] items-center gap-[7px] rounded-[11px] border border-[#DBE5D6] bg-white px-3 transition-colors hover:bg-[#F4F8F1]"
+          >
+            <RefreshCw className="size-[13px] text-[#3F7F5B]" aria-hidden />
+            <span className="text-[12px] font-semibold text-[#2C463A]">{t('features.checklist.refresh', { defaultValue: 'Làm mới' })}</span>
+          </button>
+        }
       />
-      <Card className="mb-6 p-5">
-        <Label htmlFor="check-area">{t('features.checklist.area')}</Label>
-        <select
-          id="check-area"
-          className={SELECT_CLS}
-          value={selected?.id ?? ''}
-          onChange={(e) => setAreaId(e.target.value)}
-        >
-          {myAreas.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-      </Card>
 
-      {seasonPending || checkLoading ? (
-        <p className="lbl-mono">{t('common.loading')}</p>
-      ) : !selected ? null : !row?.readinessCheckId ? (
-        <div className="space-y-3">
-          <EmptyState text={t('features.checklist.noCheck')} />
-          {canCreateCheck && (
-            <div className="flex justify-center">
-              <Button onClick={() => setCreating(true)}>
-                <Plus className="size-4" />
-                {t('features.checklist.create')}
-              </Button>
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="mb-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
-            <StatCard label={t('features.checklist.items')} value={row.totalItems} unit={t('features.checklist.itemUnit')} />
-            <StatCard label={t('features.checklist.passed')} value={row.passedItems} unit={t('features.checklist.itemUnit')} tone="ok" />
-            <StatCard label={t('features.checklist.failed')} value={row.failedItems} unit={t('features.checklist.itemUnit')} tone="alert" />
-            <StatCard label={t('features.checklist.pending')} value={row.pendingItems} unit={t('features.checklist.itemUnit')} />
-          </div>
-
-          <Card className="mb-6 flex flex-wrap items-center justify-between gap-3 p-5">
-            <div className="flex items-center gap-3">
-              <span className="font-semibold text-foreground">{check?.name ?? t('features.checklist.title')}</span>
-              {check && <StatusTag status={check.status} />}
-            </div>
-            {isLeader && check && check.status !== 'READY' && (
-              <Button onClick={onConfirm} disabled={confirm.isPending}>
-                {t('features.checklist.confirmParish')}
-              </Button>
-            )}
-            {(isLeader || isParishBoard) && check?.status === 'READY' && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setReopenReason('')
-                  setReopenError(false)
-                  setReopening(true)
-                }}
+      <div className="flex w-full flex-col items-start gap-[16px] xl:flex-row">
+        <div className="w-full min-w-0 flex-1 overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+          <div className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-[14px]">
+            <span className="text-[9.5px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+              {t('features.checklist.cardHead', { defaultValue: 'Phiếu kiểm tra sẵn sàng' })}
+            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'flex w-fit items-center gap-[6px] rounded-full px-[9px] py-1 text-[10px] font-bold',
+                  cardCount ? 'bg-[#E9F4EC] text-[#1B6B45]' : 'bg-[#F7F4E7] text-[#8A6412]',
+                )}
               >
-                {t('features.checklist.reopen')}
-              </Button>
-            )}
-          </Card>
+                {t('features.checklist.cardChip', { defaultValue: '{{count}} phiếu', count: cardCount })}
+              </span>
+              <select
+                aria-label={t('features.checklist.area')}
+                className="h-[26px] max-w-[200px] rounded-[8px] border border-[#E7EEE3] bg-[#F7F9F5] px-2 text-[10px] text-[#6B8175]"
+                value={selected?.id ?? ''}
+                onChange={(e) => setAreaId(e.target.value)}
+              >
+                {myAreas.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="h-px w-full bg-[#ECF1E9]" />
 
-          {isParishBoard && (
-            <p className="mb-4 rounded-card border border-brand-pine/15 bg-brand-pineLight px-3 py-2 text-xs leading-relaxed text-brand-pine">
-              {t('features.checklist.parishHint')}
+          {seasonPending || checkLoading ? (
+            <p className="py-10 text-center font-mono text-xs text-[#8AA298]">{t('common.loading')}</p>
+          ) : !selected ? null : !row?.readinessCheckId ? (
+            <div className="flex w-full flex-col items-center justify-center gap-[9px] px-5 py-12">
+              <FileCheck className="size-[24px] text-[#B9C8BE]" aria-hidden />
+              <span className="text-[12px] font-semibold text-[#7C9287]">
+                {t('features.checklist.emptyTitle', { defaultValue: 'Khu vực chưa có phiếu kiểm tra sẵn sàng.' })}
+              </span>
+              <span className="w-full max-w-[330px] text-center text-[10px] leading-[15px] text-[#A3B4A9]">
+                {t('features.checklist.emptyHint', { defaultValue: 'Ban hành giáo đặt tiêu chí ngay khi tạo khu vực; trưởng khu nộp minh chứng để đánh dấu Đạt.' })}
+              </span>
+              {canCreateCheck && (
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="mt-1 flex h-[32px] items-center gap-[6px] rounded-[9px] bg-[#0A5C36] px-[13px] text-[11px] font-bold text-white transition-colors hover:bg-[#0D7344]"
+                >
+                  <Plus className="size-[12px] text-[#F2D07A]" aria-hidden />
+                  {t('features.checklist.create')}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex w-full flex-col gap-3 p-4">
+              <div className="grid w-full gap-2 sm:grid-cols-4">
+                {[
+                  { key: 'total', label: t('features.checklist.items'), value: row.totalItems },
+                  { key: 'passed', label: t('features.checklist.passed'), value: row.passedItems, tone: 'text-[#1B6B45]' },
+                  { key: 'failed', label: t('features.checklist.failed'), value: row.failedItems, tone: 'text-[#A33F37]' },
+                  { key: 'pending', label: t('features.checklist.pending'), value: row.pendingItems, tone: 'text-[#8A6412]' },
+                ].map((stat) => (
+                  <div key={stat.key} className="flex flex-col gap-[3px] rounded-[12px] border border-[#E3EAE0] bg-white px-[13px] py-[11px]">
+                    <span className="text-[10px] text-[#96AAA0]">{stat.label}</span>
+                    <span className={cn('font-mono text-[20px] font-bold leading-none text-[#0B2E1F]', stat.tone)}>
+                      {stat.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-[12px] border border-[#E9EFE6] bg-[#F7F9F5] px-[13px] py-[10px]">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11.5px] font-bold text-[#0B2E1F]">{check?.name ?? t('features.checklist.title')}</span>
+                  {check && <StatusTag status={check.status} />}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isLeader && check && check.status !== 'READY' && (
+                    <button
+                      type="button"
+                      onClick={() => void onConfirm()}
+                      disabled={confirm.isPending}
+                      className="flex h-[30px] items-center rounded-[9px] bg-[#0A5C36] px-3 text-[10.5px] font-bold text-white transition-colors hover:bg-[#0D7344] disabled:opacity-55"
+                    >
+                      {t('features.checklist.confirmParish')}
+                    </button>
+                  )}
+                  {(isLeader || isParishBoard) && check?.status === 'READY' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReopenReason('')
+                        setReopenError(false)
+                        setReopening(true)
+                      }}
+                      className="flex h-[30px] items-center rounded-[9px] border border-[#DBE5D6] bg-white px-3 text-[10.5px] font-semibold text-[#2C463A] transition-colors hover:bg-[#F4F8F1]"
+                    >
+                      {t('features.checklist.reopen')}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isParishBoard && (
+                <p className="w-full rounded-[10px] border border-[#C9DCC9] bg-[#F1F6EE] px-[11px] py-[9px] text-[10px] leading-[15px] text-[#0A5C36]">
+                  {t('features.checklist.parishHint')}
+                </p>
+              )}
+
+              {check && (
+                <div id="checklist-items-table" className="w-full">
+                  <DataTable rows={check.items} columns={columns} emptyText={t('features.checklist.itemRequired')} />
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex w-full items-center justify-between border-t border-[#ECF1E9] px-4 py-[11px]">
+            <span className="text-[10.5px] text-[#96AAA0]">
+              {t('features.checklist.footNote', { defaultValue: 'Ban hành giáo có thể mở lại phiếu khi cần kiểm tra lại' })}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex w-full shrink-0 flex-col gap-[14px] xl:w-[300px]">
+          <section className="w-full overflow-hidden rounded-[16px] border border-[#E3EAE0] bg-white shadow-[0px_1px_2px_#06281B0A]">
+            <div className="flex w-full items-center px-4 py-[14px]">
+              <span className="font-mono text-[9px] font-semibold uppercase tracking-[1.1px] text-[#8C9F94]">
+                {t('features.checklist.ovHead', { defaultValue: 'Tổng quan sẵn sàng' })}
+              </span>
+            </div>
+            <div className="h-px w-full bg-[#ECF1E9]" />
+            <div className="flex w-full flex-col px-4 pb-3 pt-[6px]">
+              {overview.map((item) => (
+                <div
+                  key={item.key}
+                  className="flex w-full items-center justify-between gap-2 border-b border-[#F0F4EC] py-[9px] last:border-0"
+                >
+                  <span className="min-w-0 flex-1 text-[10.5px] text-[#6B8175]">{item.label}</span>
+                  <span className={cn('font-mono text-[10.5px] font-bold', item.tone)}>{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="relative flex w-full flex-col gap-2 overflow-hidden rounded-[14px] bg-[#0A5C36] p-[13px_14px]">
+            <div className="absolute left-[180px] top-[-80px] size-[200px] rounded-full bg-[#E9B9492E] blur-[25px]" />
+            <span className="relative z-[1] w-fit font-mono text-[9px] font-bold tracking-[1.1px] text-[#F2D07A]">
+              {t('features.checklist.flowHead', { defaultValue: 'Quy trình duyệt' })}
+            </span>
+            <p className="relative z-[2] w-full text-[10.5px] leading-[16px] text-[#A9D7BF]">
+              {t('features.checklist.flowBody', { defaultValue: 'Trưởng khu tự đánh dấu Đạt cho từng tiêu chí và duyệt khu vực; ban hành giáo mở lại phiếu khi cần kiểm tra.' })}
             </p>
-          )}
-
-          {check && (
-            <DataTable
-              rows={check.items}
-              columns={columns}
-              emptyText={t('features.checklist.itemRequired')}
-            />
-          )}
-        </>
-      )}
+          </section>
+        </div>
+      </div>
 
       {creating && selected && <CreateCheckDialog areaId={selected.id} onClose={() => setCreating(false)} />}
 
